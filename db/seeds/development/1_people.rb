@@ -13,21 +13,18 @@ class Wsjrdp2027PersonSeeder < PersonSeeder
 
 end
 
-puzzlers = [
-  'Carlo Beltrame',
-  'Matthias Viehweger',
-  'Micha Lüdi',
-  'Nils Rauch',
-  'Olivier Brian',
-  'Pascal Simon',
-  'Thomas Ellenberger',
+wsjrdp_devs = [
+  'Peter Neubauer',
+  'David Fritzsche',
+  'Raphael Topel',
+  'Felix Maurer',
+  'Lukas Schneider'
 ]
 
-devs = {
-  'Customer Name' => 'customer@email.com'
-}
-puzzlers.each do |puz|
-  devs[puz] = "#{puz.split.last.downcase.gsub('ü', 'ue')}@puzzle.ch"
+devs = { }
+
+wsjrdp_devs.each do |dev|
+  devs[dev] = "#{dev.downcase.gsub(' ', '.')}@worldscoutjamboree.de"
 end
 
 seeder = Wsjrdp2027PersonSeeder.new
