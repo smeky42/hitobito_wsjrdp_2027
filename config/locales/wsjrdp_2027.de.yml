@@ -5,8 +5,14 @@ de:
       ### GROUPS
 
       group/root:
-        one: Hauptgruppe
-        other: Hauptgruppen
+        one: CMT
+        other: CMT
+      group/unit:
+          one: Unit
+          other: Units
+      group/ist: 
+          one: IST 
+          other: ISTs
 
 
       ### ROLES

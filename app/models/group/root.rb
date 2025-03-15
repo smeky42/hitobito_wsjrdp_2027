@@ -1,22 +1,27 @@
 # frozen_string_literal: true
 
-# TODO: rename class to specific name and change all references
+# CMT
 class Group::Root < ::Group
   self.layer = true
 
-  # TODO: define actual child group types
-  children Group::Root
+  children Group::Unit
+  children Group::Ist
 
   ### ROLES
+  # Developers and Administrators
+  class Admin < ::Role
+    self.permissions = %i[layer_and_below_full admin]
+  end
 
-  # TODO: define actual role types
+  # HoC, Finance
   class Leader < ::Role
-    self.permissions = [:layer_and_below_full, :admin]
+    self.permissions = [:layer_and_below_full]
   end
 
+  # CMT Member
   class Member < ::Role
-    self.permissions = [:group_read]
+    self.permissions = []
   end
 
-  roles Leader, Member
+  roles Admin, Leader, Member
 end
