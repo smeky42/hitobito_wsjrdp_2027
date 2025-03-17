@@ -4,6 +4,32 @@ application:
   languages:
     de: Deutsch
 
+addresses:
+  imported_countries:
+    - DE
+
+countries:
+  prioritized:
+    - --
+    - DE
+
+phone_number:
+  predefined_labels:
+    - --
+    - Festnetz
+    - Mobil
+    - Teilnehmende*r
+    - Personensorgeberechtigte*r 1 (Mobil)
+    - Personensorgeberechtigte*r 2 (Mobil)
+    - Personensorgeberechtigte*r 1 (Festnetz)
+    - Personensorgeberechtigte*r 2 (Festnetz)
+    - Primärer Notfallkontakt
+    - Sekundärer Notfallkontakt
+    - Arbeit
+    - Fax
+    - Andere
+  default_country: DE
+
   # non UI languages for assigning to person#language
   # additional_languages:
   #   en: Englisch
