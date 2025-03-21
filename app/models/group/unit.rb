@@ -20,5 +20,5 @@ class Group::Unit < ::Group
     self.permissions = []
   end
 
-  roles Leader, Member
+  roles Manager, Leader, Member
 end
