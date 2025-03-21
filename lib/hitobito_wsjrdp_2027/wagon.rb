@@ -18,6 +18,7 @@ module HitobitoWsjrdp2027
       # extend application classes here
       Group.include Wsjrdp2027::Group
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
+      Sheet::Person.include Wsjrdp2027::Sheet::Person
     end
 
     initializer 'wsjrdp_2027.add_settings' do |_app|
