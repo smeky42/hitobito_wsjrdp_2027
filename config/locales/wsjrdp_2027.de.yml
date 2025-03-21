@@ -10,16 +10,28 @@ de:
       group/unit:
           one: Unit
           other: Units
-      group/ist: 
-          one: IST 
+      group/ist:
+          one: IST
           other: ISTs
 
 
       ### ROLES
 
+      group/root/admin:
+        one: Admin
       group/root/leader:
-        one: Leitung
-        description: Leitungspersonen verwalten die Applikation.
+        one: Leader
       group/root/member:
-        one: Mitglied
-        description: Mitglieder sind alle anderen.
+        one: CMT
+
+      group/ist/leader:
+        one: IST Manager
+      group/ist/member:
+        one: IST
+
+      group/unit/manager:
+        one: Unit Manager
+      group/unit/leader:
+        one: Unit Leader
+      group/unit/member:
+        one: Youth Participant
