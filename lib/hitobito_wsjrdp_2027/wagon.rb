@@ -17,6 +17,7 @@ module HitobitoWsjrdp2027
     config.to_prepare do
       # extend application classes here
       Group.include Wsjrdp2027::Group
+      Contactable.prepend Wsjrdp2027::Concerns::Contactable
     end
 
     initializer 'wsjrdp_2027.add_settings' do |_app|
