@@ -1,0 +1,49 @@
+//   Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+//   hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+//   or later. See the COPYING file at the top-level directory or at
+//   https://github.com/smeky42/wsjrdp_2027.
+
+@import '_variables.scss';
+
+.logo-image {
+	display: block;
+	position: relative;
+	text-indent: -9999px;
+	background: url("../../../images/wsjrdp-logo.png") transparent no-repeat;
+	width: 70px;
+	height: 70px;
+	background-size: contain;
+	margin-top: -15px;
+}
+
+body{
+	overflow-x: hidden;
+}
+
+.breadcrumb ul li {
+  text-shadow: 0px 0px $wsj_purple;
+  color: $wsj_purple;
+}
+
+.dropdown-menu{ 
+  background-color: $wsj_purple;
+}
+#page-footer {
+  margin-top: 0px;
+}
+
+.sheet.parent .level {
+  color: $white;
+}
+
+.level + .nav-sub a {
+  color: $gray-light;
+}
+
+#page-header > a {
+  color: $wsj_purple;
+}
+
+.is-logged-out #page-header a {
+  color: $wsj_purple;
+}
