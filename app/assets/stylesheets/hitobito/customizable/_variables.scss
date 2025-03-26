@@ -1,0 +1,103 @@
+//   Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+//   hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+//   or later. See the COPYING file at the top-level directory or at
+//   https://github.com/smeky42/wsjrdp_2027.
+
+/* Bootstrap variable definition here */
+
+// GLOBAL VALUES
+// --------------------------------------------------
+
+// design colors
+// -------------------------
+$wsj_purple:                #21697C;
+$wsj_red:                   #BE1E2D;
+$wsj_gray:                  #C5C7C4;
+
+// Grays
+// -------------------------
+$black:                     #000000 !default;
+$gray-darker:               #797E89 !default;
+$gray-dark:                 #ffffff !default;
+$gray:                      #7e7c7c !default;
+$gray-light:                #E8EBF0 !default;
+$gray-lighter:              #F8F9FA !default;
+$white:                     #fff !default;
+
+// Colors
+// ----------------------------
+$blue:                      $wsj_purple !default;
+$blue-dark:                 darken($blue, 10%) !default;
+$green:                     #007478 !default;
+$green-dark:                darken($green, 10%) !default;
+
+$orange:                    #DC795B;
+$orange-dark:               #C75B3B;
+$purple:                    $wsj_purple;
+$purple-dark:               darken($purple, 10%) !default;
+
+$red:                       $wsj_red !default;
+
+$text-color:                $black !default;
+$border-color:              $gray-light !default;
+
+$page-background:           $white; //lighten($green, 5%);
+$content-background:        $wsj_red;
+$footer-background:         $wsj_purple;
+$body-background:           $wsj_purple;
+
+$focus-color:               $purple;
+$shadow-color:              darken($wsj_red, 10%); //darken($page-background, 10%);
+$link-color:                $wsj_red !default;
+$link-color-hover:          $purple-dark !default;
+
+$footer-color:              $white;
+$footer-color-hover:        $white;
+
+$table-color-hover:         lighten($wsj_red, 50%);
+
+// Typography
+// -------------------------
+
+$sans-font-family:          'Noto Sans', sans-serif;
+$heading-font-family:       'Noto Sans', sans-serif; //'Quicksand', $sans-font-family !default;
+$base-font-family:          'Noto Sans', sans-serif; //'Varela Round', $sans-font-family !default;
+$headings-font-weight:      normal !default; // instead of browser default, bold
+
+// Decoration
+// -------------------------
+$border-radius:             6px;
+
+// Rhythm
+// -------------------------
+$v-space:                   24px;
+
+
+// FLUID GRID
+// --------------------------------------------------
+
+// Default
+// -------------------------
+$fluid-grid-column-width:           6.382978723% !default;
+$fluid-grid-gutter-width:           2.127659574% !default;
+
+// Portrait tablet to default desktop
+// -------------------------
+$fluid-grid-column-width-tablet:    5.801104972% !default;
+$fluid-grid-gutter-width-tablet:    2.762430939% !default;
+
+// Large desktop and up
+// -------------------------
+$fluid-grid-column-width-large:     5.982905983% !default;
+$fluid-grid-gutter-width-large:     2.564102564% !default;
+
+
+// RESPONSIVE DESIGN
+// --------------------------------------------------
+
+// Media widths
+// -------------------------
+$media-phone:                       480px !default;
+$media-tablet:                      768px !default;
+$media-desktop:                     980px !default;
+$media-large:                       1200px !default; // and upper
