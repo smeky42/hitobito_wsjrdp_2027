@@ -10,14 +10,13 @@
 
 // design colors
 // -------------------------
-$wsj_purple:                #8150ad;
-$wsj_red:                   #be1d2e;
-$wsj_link_color:            #622599;
-$wsj_gray:                  #333333;
+$wsj_purple:                #21697C;
+$wsj_red:                   #BE1E2D;
+$wsj_gray:                  #C5C7C4;
 
 // Grays
 // -------------------------
-$black:                     #474E5D !default;
+$black:                     #000000 !default;
 $gray-darker:               #797E89 !default;
 $gray-dark:                 #ffffff !default;
 $gray:                      #7e7c7c !default;
@@ -39,7 +38,7 @@ $purple-dark:               darken($purple, 10%) !default;
 
 $red:                       $wsj_red !default;
 
-$text-color:                $wsj_gray !default;
+$text-color:                $black !default;
 $border-color:              $gray-light !default;
 
 $page-background:           $white; //lighten($green, 5%);
