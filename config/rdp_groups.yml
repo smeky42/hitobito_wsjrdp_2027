@@ -2748,10 +2748,13 @@ production:
         Aachen, Forster-Linde:
         Aachen-Brand, Kornelimünster:
         Aachen-Eilendorf:
+        Aachen-Innenstadt, St. Adalbert:
         Aachen-Laurensberg, Funkenflug:
+        Aachen-Oberforst., Vennfüssler:
         Grenzlandfalken:
         Stamm Heilig Kreuz:
         Stamm Jakobiner:
+        Stamm Westwind:
       Bezirk Düren:
         Düren, Wildgänse St. Anna:
         Düren-Arnoldsweiler, St. Arnold:
@@ -2761,7 +2764,7 @@ production:
         Merzenich, St. Laurentius:
         Siersdorf, Kreuzritter:
       Bezirk Eifel:
-        Blankenheim-Bl.dorf, St. Peter und Paul, Burgfalk.:
+        Blankenheim-Bl.dorf, Burgfalken:
         Blankenheim-Rohr:
         Hellenthal:
         Hürtgenwald-Vossenack:
@@ -2769,27 +2772,26 @@ production:
         Simmerath-Lammersd., Maximilian Kolbe:
       Bezirk Grenzland:
         Dülken:
-        Grefrath, Dorenburg, St. Laurentius:
         Grefrath-Oedt, St. Vitus:
         Hinsbeck, St. Peter:
         Kaldenkirchen, St. Clemens:
         Kempen:
         Kempen, St. Hubert:
-        Nettetal-Lobberich, St. Sebastian:
         Schiefbahn, St. Hubertus:
         St. Lambertus Breyell:
+        St. Sebastian, Lobberich:
         Tönisvorst, St. Tönis:
         Viersen, St. Remigius:
         Willich-Wekeln, St. Katharina:
       Bezirk Heinsberg:
         Erkelenz-Mitte, St. Lambertus:
         Gangelt, St. Nikolaus:
-        Heinsberg-Schafhausen:
         Hückelhoven-Doveren, Kreuzherren:
         Wegberg, Beeck:
         Wegberg, Titus Brandsma:
         Wegberg-Dalheim:
       Bezirk Mönchengladbach:
+        Hochneukirch:
         Jüchen-Bedburdyck, St. Martinus:
         Mönchengladbach, Bettrath-Neuwerk:
         Mönchengladbach, Giesenkirchen:
@@ -2797,36 +2799,25 @@ production:
         Mönchengladbach, Rabenhorst:
         Mönchengladbach, Scheuburg:
         Mönchengladbach, Windberg:
-        Mönchengladbach-Rheydt, Cityscouts:
-      Krefeld-Hüls, Raubritter:
-        Krefeld, Kreuz-Ritter:
-        Krefeld-Oppum, Zu den Hl. Schutzengeln, Die Brücke:
-      Mönchengladbach-Holt, Martin-Luther-King:
-        Hochneukirch:
         Mönchengladbach-Eicken, Trotzenburg:
+        Mönchengladbach-Holt, Martin-Luther-King:
+        Mönchengladbach-Rheydt, Cityscouts:
         Mönchengladbach-Rheydt, Fabula:
         Stamm Otzenrath:
         Stamm Salier Meerkamp eV:
       Rheinbezirk:
         Krefeld, Inrath:
-        Krefeld, Linn:
+        Krefeld, Kreuz-Ritter:
         Krefeld, St. Norbertus:
         Krefeld-Cracau, St. Elisabeth:
         Krefeld-Forstwald:
+        Krefeld-Hüls, Raubritter:
         Krefeld-Lindenthal, Michael:
         Krefeld-Uerdingen/Ostgoten:
         Meerbusch-Lank-Latum, Lank Rheinfranken:
-      Stamm Westwind:
-        Aachen-Innenstadt, St. Adalbert:
-        Aachen-Oberforst., Vennfüssler:
+        Stamm Linn:
     Augsburg:
-      Augsburg, St. Ulrich & Afra:
-        Augsburg-Haunst., Weiße Rose:
-        Friedberg, Konradin:
-        Kissing, Guy de Larigaudie:
-        Neusäß:
       Bezirk Allgäu:
-        Buxheim, Don Bosco:
         Kaufbeuren, St. Martin:
         Kempten, Sankt Anton:
         Lindenberg, Tilia Monte:
@@ -2836,10 +2827,15 @@ production:
         Aichach, Otto von Wittelsbach:
         Augsburg, Livingstone:
         Augsburg, St. Konrad:
+        Augsburg, St. Ulrich & Afra:
+        Augsburg-Haunst., Weiße Rose:
         Augsburg-Hochzoll, St. Exupéry:
         Augsburg-Universitätsviertel, Salomon-Idler:
+        Friedberg, Konradin:
+        Kissing, Guy de Larigaudie:
+        Neusäß:
+        Stadtbergen:
       Bezirk Donau-Ries:
-        Dillingen, St. Ulrich:
         Donauwörth, Mangold v. Wörth:
         Gundelfingen, Kaspar v. Westernach:
         Neuburg a.d.Donau:
@@ -2850,7 +2846,6 @@ production:
         Holzheim, Las Casas:
         Ichenhausen:
         Krumbach, St. Michael:
-        Neu-Ulm, Pater Delp:
         Oberelchingen:
         Obergessertshausen, St. Peter:
         Vöhringen, Don Bosco:
@@ -2877,13 +2872,11 @@ production:
         Altenkunstadt, St. Kilian:
         Bad Staffelstein, Andechs-Rothenau:
         Bayreuth, Hl. Kreuz:
-        Burgkunstadt, St. Nepomuk:
         Kronach-Friesen, St. Georg:
         Lichtenfels, Andechs-Meran:
       Bezirk Schwabachgrund:
         Aurachtal - Herzogenaurach:
         Bubenreuth:
-        Erlangen, Hl. Kreuz:
         Erlangen, St. Bonifaz:
         Erlangen-Bruck, St. Marien:
         Erlangen-Sieglitzhof, St. Theresia:
@@ -2898,20 +2891,21 @@ production:
         Berlin-Lankwitz, Don Bosco:
         Berlin-Moabit, St. Paulus:
         Berlin-Neukölln (Gropiusstadt), Dominicus:
+        Berlin-Pankow, St. Georg:
         Berlin-Spandau, Anselm v. Havelberg:
         Berlin-Spandau, St. Markus:
+        Berlin-Tempelhof, Salvator:
         Berlin-Zehlendorf, St. Otto:
         Greifswald, Boddenkieker:
         Michendorf, Impeesa:
         Potsdam, Sanssouci:
     Eichstätt:
       Keine Bezirksebene:
-        Eichstätt, Dom:
+        Eichstätt Dom:
         Gunzenhausen:
         Ingolstadt, Münsterritter:
         Ingolstadt, St. Pius:
         Neumarkt, Pfalzgraf Johann:
-        Petersaurach:
         Pleinfeld, St. Michael:
         Roßtal, Horsadal:
         Schwanstetten-Rednitzhembach:
@@ -2933,35 +2927,45 @@ production:
         Bochum, Maximilian Kolbe:
         Bochum, Meinolphus:
         Bochum-Altenbochum, Liebfrauen:
-        Bochum-Dahlhausen, St. Engelbert:
         Bochum-Eppendorf, St. Theresia:
         Bochum-Gerthe, St. Elisabeth:
+        Bochum-Harpen, A. Frank & M.-L. King:
+        Bochum-Hiltrop, Geschwister Scholl:
         Bochum-Langendreer, Canchanabury:
+        Bochum-Querenb, St. Augustinus:
+        Bochum-Weitmar, Kardinal von Galen:
+        Bochum-Weitmar, St. Franziskus:
         St. Johannes Bochum-Wiemelhausen:
-      Bezirk Borbeck Frohnhausen:
-        Essen-Beding., St. Franziskus:
-        Essen-Borbeck, Anne Frank:
-        Essen-Borbeck, Don Bosco / St. Dionysius:
-        Essen-Frintrop, St. Josef:
-        Essen-Frohnhausen, Dom Helder Camara:
-        Essen-Frohnhausen, St. Augustinus:
-        Essen-Schönebeck, St. Ant. Abbas:
+        St. Johannes der Täufer Wattenscheid-Leithe:
       Bezirk Bottrop/Gladbeck:
         Bottrop, Herz Jesu, St. Barbara:
+        Bottrop, Impeesa:
         Bottrop, St. Peter:
         Bottrop-Eigen, St. Pius / Philippo Neri:
-        Gladbeck-Mitte, St. Lamberti:
+        Gladbeck-Ellinghorst, Elisabeth:
+        Gladbeck-Mitte, St. Johannes:
+        Gladbeck-Rentfort, St. Josef:
         Gladbeck-Zweckel, Herz Jesu:
       Bezirk Duisburg:
+        Duisburg, Abtei Hamborn:
         Duisburg-Buchh., Jud. Th./K.Martin:
+        Duisburg-Buchholz, Hl. Geist:
+        Duisburg-Buchholz, St. Nikolaus:
+        Duisburg-Fahrn, St. Georg:
         Duisburg-Großenbaum, St. Franziskus:
+        Duisburg-Hamborn, St. Peter Marxloh:
         Duisburg-Huckin.,Marc.Callo/St. Peter und Paul:
-        Duisburg-Serm,  Herz Jesu:
+        Duisburg-Rahm, St. Hubertus:
+        Duisburg-Serm, Herz Jesu:
       Bezirk Ennepe-Ruhr:
+        DPSG Bredenscheid, St.Mariä Empfängnis:
         Ennepetal, Herz Jesu:
         Gevelsberg, St. Engelbert:
-        Hattingen-Bredenscheid, St. Mariä Empfängnis:
+        Hattingen - Winz-Baak, Heilig Geist:
         Hattingen-Mitte, Peter und Paul:
+        Hattingen-Niederbonsfeld, Isenburg:
+        Hattingen-Niederwenigern, "Die Wennischen":
+        Janusz Korczak Wetter-Wengern e.V.:
         Schwelm, St. Marien:
         Sprockhövel, St. Januarius:
         Sprockhövel-Hasslinghausen, Sankt Josef:
@@ -2998,12 +3002,11 @@ production:
       Bezirk Mülheim / Ruhr:
         Mülheim a. d. R., St. Michael:
         Mülheim, St. Barbara:
-        Mülheim, St. M. Rosenkranz:
         Mülheim/Ruhr, St. Joseph:
+        St. Mariae Rosenkranz:
       Bezirk Oberhausen:
         Oberhausen, Heinrich Seuse:
         Oberhausen, St. Antonius:
-        Oberhausen, St. Katharina:
         Oberhausen, St. Theresia:
         Oberhausen, Sterkrade-Mitte, St. Clemens:
         Oberhausen, U.L.F.:
@@ -3015,33 +3018,24 @@ production:
         Neuenrade, Steve Biko:
         Plettenberg, Alavanyo:
         Werdohl, St. Michael:
-      Duisburg-Buchholz, Hl. Geist:
-        Duisburg, Abtei Hamborn:
-        Duisburg-Buchholz, St. Nikolaus:
-        Duisburg-Fahrn, St. Georg:
-        Duisburg-Hamborn, St. Peter Marxloh:
-        Duisburg-Rahm, St. Hubertus:
-      Gladbeck-Rentfort, St. Josef:
-        Bottrop, Impeesa:
-        Gladbeck-Ellinghorst, Elisabeth:
-      Hattingen-Niederbonsfeld, Isenburg:
-        DPSG Janusz Korczak Wetter-Wengern:
-        Hattingen - Winz-Baak, Heilig Geist:
-        Hattingen-Niederwenigern, Die Wennischen:
-      St. Johannes der Täufer Wattenscheid-Leithe:
-        Bochum-Harpen, A. Frank & M.-L. King:
-        Bochum-Hiltrop, Geschwister Scholl:
-        Bochum-Querenb, St. Augustinus:
-        Bochum-Weitmar, Kardinal von Galen:
-        Bochum-Weitmar, Vierzehnheiligen:
+      DPSG Bezirk Borbeck & Frohnhausen:
+        Essen-Beding., St. Franziskus:
+        Essen-Frintrop, St. Josef:
+        Essen-Frohnhausen, Dom Helder Camara:
+        Essen-Frohnhausen, St. Augustinus:
+        Essen-Schönebeck, St. Ant. Abbas:
     Freiburg:
       Bezirk Baar:
         Bad Dürrheim, Johanniter:
-        Bräunlingen, B. v. Baden:
         Hattingen/Baden., Maximilian Kolbe:
         Villingen, Ulrich v. Augs.:
         Villingen-Schwenningen; Der Wolf, der nie schläft:
       Bezirk Bodensee:
+        Daisendorf, St. Martin:
+        Hilzingen, Alfred Delp:
+        Höri, Rainbow:
+        Konstanz, Bruder Klaus:
+        Markdorf, St. Nikolaus:
         Mühlhausen-Ehingen, Peter und Paul:
         Radolfzell, Impeesa:
         Singen, St. Pankratius:
@@ -3057,7 +3051,7 @@ production:
         Freiburg-Opfingen, St. Nikolaus:
         Freiburg-St. Georgen, Betty Clay:
         Freiburg-Vauban, Kassiopeia:
-        Freiburg-Weing.,  Albino Luciani:
+        Freiburg-Weing., Albino Luciani:
         Gundelfingen, Rochus Spiecker:
         Kirchzarten, St. Exupery:
         Staufen, St. Martin:
@@ -3069,6 +3063,7 @@ production:
         Oberhausen, Hohe Flamme:
         Stutensee, Pater Kolbe:
         Waghäusel-Wiesental, St. Jodokus:
+        Walzbachtal:
       Bezirk Emmendingen:
         Emmendingen, Markgraf Bernhard von Baden:
         Emmendingen, Petter Moen:
@@ -3078,6 +3073,7 @@ production:
         Waldkirch, Konrad von Schwarzenberg:
       Bezirk Hohenzollern:
         Bingen, Martin-Luther-King:
+        DPSG Salmendingen:
         Fischingen, Dom H. Camara:
         Haigerloch, Leonardo da Vinci:
         Hechingen, St. Martin:
@@ -3085,7 +3081,6 @@ production:
         Ostrachtal, Rainbow:
         Pfullendorf, St. Jakobus:
         Rosenfeld-H-Zimmern, Adenauer:
-        Salmendingen:
         Sigmaringen, St. Fidelis:
       Bezirk Karlsruhe:
         Baden-Baden, Hohenbaden:
@@ -3107,7 +3102,6 @@ production:
         Sandhausen, Dreifaltigkeit:
         Sinsheim-Rohrbach/Reihen, Dom Helder Camara:
         Stamm Sr. Felicitas Heidelberg-Ziegelhausen:
-        Waibstadt:
       Bezirk Mannheim-Bergstraße:
         Hemsbach, Johanniter:
         Hirschberg-Leutershausen, St. Johannes:
@@ -3138,27 +3132,20 @@ production:
         Remchingen, Eisingen:
       Bezirk Wiesental-Hochrhein:
         Dogern, St. Clemens:
-        Grenzach-Wyhlen, St. Michael:
         Kandern, Sankt Katharina:
         Lörrach-Brombach, St. Josef:
         Lörrach-Stetten, St. Fridolin:
+        St. Michael Grenzach-Wyhlen:
         Wehr, St. Bernhard:
         Weil am Rhein, St. Sebastian:
-      Daisendorf, St. Martin:
-        Hilzingen, Alfred Delp:
-        Höri, Rainbow:
-        Konstanz, Bruder Klaus:
-        Markdorf, St. Nikolaus:
     Fulda:
       Keine Bezirksebene:
-        Bachrain, Maria Hilf:
         Bad Orb, St. Martin:
         Bad Soden-Salmünster-Ahl, Hl. Kreuz:
         Biebergemünd-Wirtheim, St. Jakobus:
         Fulda-Johannesberg, Mirjam:
         Fulda-Neuenberg, St. Andreas:
         Grossauheim, St. Paul:
-        Hanau, Speerflug:
         Hünfeld, St. Jakobus:
         Kassel-Vellmar, Folke Bernadotte:
         Maintal, Südwind:
@@ -3169,36 +3156,44 @@ production:
         Rodenbach, Barbarossa:
         Stamm Shalom Bruchköbel:
         Witzenhausen, Witta:
-        Wolfhagen, Heimerad, St. Maria:
         Wächtersbach, St. Bonifatius:
     Hamburg:
       Keine Bezirksebene:
         Ahrensburg, Camilo Torres:
         Bargteheide, Nepomuk:
-        Halstenbek, Nelson Mandela:
+        Digna Ochoa Quickborn:
+        Glinde, GerLinde:
         Hamburg-Altona, Große Freiheit:
         Hamburg-Blankenese, Jacques Marquette:
         Hamburg-Eidelstedt, Santa Lucia:
+        Hamburg-Eimsbüttel, Wilder Weiher:
         Hamburg-Farmsen, St. Ansgar:
         Hamburg-Hamm, Charles de Foucauld:
-        Hamburg-Harburg, Kardinal Graf  v. Galen:
+        Hamburg-Harburg, Kardinal Graf v. Galen:
         Hamburg-Neugraben, Störtebeker:
         Hamburg-Poppenbüttel, Don Bosco:
         Hamburg-Rahlstedt, Mutter Teresa:
         Hamburg-Volksdorf, St. Martin:
         Itzehoe, Geschwister Scholl:
+        Kiel Damiano:
         Lübeck, Johannes Prassek:
         Norderstedt, St. Hedwig:
-        Quickborn, Digna Ochoa:
         Rendsburg, Stern des Nordens:
-        Uetersen, Heilig Geist, Marcel Callo:
+        dpsg Stamm Nelson Mandela Halstenbek/Pinneberg:
     Hildesheim:
       Bezirk Elm:
+        Braunschweig, Martin Luther King:
+        Braunschweig, St. Martin:
         Celle, St. Ludwig:
+        Gifhorn, Fred Joseph:
         Helmstedt, St. Ludgeri:
+        Veltheim, Hl. Kreuz:
         Wendeburg-Vechelde, Pastor Theo Derks:
       Bezirk Hannover:
         Hameln, St. Franziskus:
+        Hannover-Kirchrode, Hl. Engel:
+        Hannover-Mühlenberg, St. Maximilian Kolbe:
+        Lehrte, Maximilian Kolbe:
         Neustadt, St. Peter & Paul:
         Wedemark, Arche Noah:
         Wunstorf, St. Bonifatius:
@@ -3211,7 +3206,6 @@ production:
         Osterode am Harz, St. Barbara:
         Seesen-Harz, Maria Königin:
       Bezirk Ludwig:
-        Delligsen, Franz von Assisi:
         Diekholzen, St. Jakobus:
         Elze, St. Petrus:
         Emmerke, St. Martinus:
@@ -3220,21 +3214,13 @@ production:
         Hohenhameln:
         Peine, Giovanni Don Bosco:
       Bezirk Nord:
-        Seevetal-Hittfeld, Thomas Morus:
-        Zeven, Christ König:
-      Braunschweig, Martin Luther King:
-        Braunschweig, St. Martin:
-        Gifhorn, Fred Joseph:
-        Veltheim, Hl. Kreuz:
-      Bremen-Walle, St. Marien:
         Bremen, Nordlicht:
         Buchholz, St. Petrus, Hallimasch:
-        Lilienthal b. Bremen, Franziskus:
+        Lilienthal bei Bremen, Franziskus:
+        Lüneburg:
+        Seevetal-Hittfeld, Thomas Morus:
         St. Paulus, Oyten:
-        Stade, Klara und Franz von Assisi:
-      Hannover-Kirchrode, Hl. Engel:
-        Hannover-Mühlenberg, St. Maximilian Kolbe:
-        Lehrte, Maximilian Kolbe:
+        Zeven, Christ König:
     Köln:
       Bezirk Bergisch Land:
         Remscheid-Lennep:
@@ -3253,27 +3239,41 @@ production:
       Bezirk Düsseldorf:
         Düsseldorf, Lörick:
         Düsseldorf-Bilk, Hohenstaufen:
+        Düsseldorf-Bilk, Winfried:
         Düsseldorf-Gerresheim, Gerrich Margar:
+        Düsseldorf-Unterrath, St. Bruno:
         Düsseldorf-Vennhausen:
+        Erkrath:
         Hochdahl, Franz v. Assisi:
         Langenfeld, Castanea:
         Langenfeld-Richr., St. Martin:
       Bezirk Erft:
         Brühl, Kurfürst:
+        Eisvögel:
+        Erftstadt-Liblar, St. Barbara, Las Casas:
         Horrem, von Merode:
+        Kerpen-Mödrath, St. Quirinus:
         Königsdorf, Hildebold:
         Neubottenbroich, Glückauf:
         Pulheim, Sankt Barbara:
         Pulheim-Brauweiler, Bernhard von Clairvaux:
         Reuschenberg Elsdorf:
+        Sinnersdorf, Maximilian Kolbe:
       Bezirk Köln Linksrheinisch:
-        Köln-Blumenberg, St. Katharina:
+        Bornheim-Hersel+Widdig, St. Franziskus:
+        Köln-Blumenberg, St. Katharina von Siena:
+        Köln-Ehrenfeld, Helios:
+        Köln-Heimersdorf, St. Markus:
+        Köln-Junkersdorf / Müngersdorf, St.Pankr.:
         Köln-Kriel, Helder Camara:
+        Köln-Rondorf:
         Köln-Sülz, Edith Stein:
         Köln-Worringen, Gilwell:
+        Philipp Neri:
         Rochus Spiecker Brühl - Schwadorf:
         Stamm St. Walburga, Bornheim-Walberberg:
       Bezirk Niederberg:
+        Essen-Kettwig, Kattwiga:
         Heiligenhaus:
         Lintorf:
         Mettmann:
@@ -3287,9 +3287,40 @@ production:
         Grevenbroich-Gustorf, Deutschritter:
         Neuss, Malteser:
         Neuss-Weckhoven, Alfred Delp:
-      Bezirk Rhein-Berg:
+        Phönix Neuss-Süd:
+        Rommerskirchen:
+      Bezirk Siebengebirge:
+        Eitorf, Shamrock:
+        Königswinter, Heisterbacherrott:
+        Königswinter-Ittenbach, Idubag:
+        Königswinter-Oberpleis:
+        Königswinter-Stieldorf, Romero:
+        Neunk.-Seelscheid, Edelweiss:
+        Rheinbreitbach, Terra Nova:
+        Ruppichterroth:
+        Stamm Isenburg, Schürdt-Oberlahr:
+        Sugambrer Hennef-Warth:
+        Waldbröl, St. Georg:
+        Winterscheid:
+      Bezirk Sieg:
+        Gummersbach, St. Felizitas:
+        Lohmar, Ichtys-Neuhonrath:
+        Lohmar, St. Johannes:
+        Niederkassel, Roncalli:
+        Siegburg - Kaldauen, eXodus:
+        Siegburg, St. Anno:
+        St. Augustin-Menden:
+      Bezirk Voreifel:
+        Euskirchen, Kreuzritter:
+        Euskirchen-Euenheim, 'Carpe diem':
+        Euskirchen-Stotzheim, St. Hubertus:
+        Meckenheim, Swabidua:
+        Rheinbach, Antoine de Saint-Exupery:
+        Zülpich, St. Quirinus:
+      Rhein Berg:
         Bensberg, Ommerborn:
         Bergisch Gladbach-Refr., Widukind:
+        Höhenberg-Vingst, Elisodor:
         Köln-Brück, Ostgoten:
         Köln-Ensen, St. Laurentius:
         Köln-Kalk, Hohenstaufen:
@@ -3297,110 +3328,71 @@ production:
         Köln-Porz:
         Köln-Rath/Heumar, Johannes Bosco:
         Köln-Stammheim, Gilwell:
-      Bezirk Siebengebirge:
-        Hennef-Warth, Sugambrer:
-        Königswinter, Heisterbacherrott:
-        Königswinter-Ittenbach, Idubag:
-        Königswinter-Oberpleis:
-        Königswinter-Stieldorf, Romero:
-        Rheinbreitbach, Terra Nova:
-        Ruppichterroth:
-        Stamm Isenburg, Schürdt-Oberlahr:
-        Winterscheid:
-      Bezirk Sieg:
-        Lohmar, St. Johannes:
-        Niederkassel, Roncalli:
-        Niederkassel-Lülsdorf/Ranzel, St. Franziskus:
-        Siegburg - Kaldauen, eXodus:
-        Siegburg, St. Anno:
-        St. Augustin-Menden:
-        Troisdorf-Sieglar, St. Johannes:
-      Bezirk Voreifel:
-      Bornheim-Hersel+Widdig, St. Franziskus:
-        Köln-Ehrenfeld, Helios:
-        Köln-Heimersdorf, St. Markus:
-        Köln-Junkersdorf / Müngersdorf, St.Pankr.:
-        Köln-Rondorf:
-        Philipp Neri:
-      Düsseldorf, Stamm Anton:
-        Düsseldorf-Bilk, Winfried:
-        Düsseldorf-Unterrath, St. Bruno:
-        Erkrath:
-      Essen-Kettwig, Kattwiga:
-      Leverkusen-Steinbüchel, Woodstock:
-        Höhenberg-Vingst, Elisodor:
         Leichlingen, Wippera, St. Johannes Baptist:
         Leverkusen-Schlebusch, Gezelin:
+        Leverkusen-Steinbüchel, Woodstock:
         Wipperfürth:
-      Lohmar, Ichtys-Neuhonrath:
-        Gummersbach, St. Felizitas:
-      Neunk.-Seelscheid, Edelweiss:
-        Eitorf, Shamrock:
-        Waldbröl, St. Georg:
-      Sinnersdorf, Maximilian Kolbe:
-        Eisvögel:
-        Erftstadt-Liblar, St. Barbara, Las Casas:
-        Kerpen-Mödrath, St. Quirinus:
     Limburg:
       Keine Bezirksebene:
         Aarbergen, Paloma:
         Bad Schwalbach, Don Quijote:
+        Dornburg Westerw.-Frickhofen, St. Blasius:
+        Eisenbach:
+        Eitelborn, Weiße Rose:
         Eschborn, Regenbogen:
         Frankfurt Nord / Stamm Marcel Callo:
         Frankfurt, Oberrad:
-        Frankfurt-Bornheim, St. Josef:
         Frankfurt-Fechenheim, Normannen:
         Frankfurt-Heddernheim, Wikinger:
         Frankfurt-Niederrad, Ch. de Foucauld:
         Frankfurt-Rödelheim, Damian de Veuster:
-        Frankfurt-Sachsenhausen, St. Bonifatius:
         Frankfurt-Schwanheim, Don Bosco:
         Frankfurt-Unterliederbach, Cherusker:
         Hofheim, St. Bonifatius:
         Idstein, St. Martin:
         Kelkheim, Johannes Bosco:
         Königstein:
-        Langenhain-Lorsbach, St. Franziskus:
-        Normannen Eltville:
-        Wiesbaden, Mutter Teresa:
-        Wiesbaden-Schierstein, Thomas Morus:
-      Schloßborn, Taunus-Wölfe:
-        Dornburg Westerw.-Frickhofen, St. Blasius:
-        Eisenbach:
-        Eitelborn, Weiße Rose:
-        Hundsangen, St. Goar:
         Lahnstein, Lubentius:
         Lahnstein-Oberlahnstein, St. Martin:
         Lahntal (Dietkirchen + Dehrn):
+        Langenhain-Lorsbach, St. Franziskus:
         Limburg-Dom:
         Limburg-Lindenholzhausen:
         Montabaur:
+        Normannen Eltville:
+        Schloßborn, Taunus-Wölfe:
+        St. Bonifatius:
         Stamm St. Rochus Simmern:
         Weilburg, Rochus Spiecker:
         Wetzlar/Dom, Barbarossa:
+        Wiesbaden, Mutter Teresa:
+        Wiesbaden-Schierstein, Thomas Morus:
         Wirges, Katharina Kasper:
     Magdeburg:
       Keine Bezirksebene:
         Badersleben, Sankt Martin e.V.:
         Blankenburg, St. Josef:
         Burgenlandfalken Weißenfels:
-        Dresden-Löbtau, Drachentöter:
+        Drachentöter Dresden:
         Halle (Saale), Phönix:
         Leipzig, Tilia:
         Magdeburg, Unser lieben Frauen:
         Sangerhausen-Altstadt, St. Jutta:
     Mainz:
       Bezirk Heldon:
+        Abtsteinach, Franz von Assisi:
         Breuberg-Höchst, Hl. Karl Borromäus:
         Bürstadt, Bruder Feuer:
+        Darmstadt, Liebfrauen:
         Darmstadt-Arheilgen, Arheilgen:
         Dieburg:
+        Einhausen:
         Gross-Zimmern, St. Bartholomäus:
         Heppenheim, St. Peter:
+        Lampertheim, Guy de Larigaudie:
         Lorsch, St. Nazarius:
         Michelstadt / Odenwald, St. Christophorus:
         Münster, St. Michael:
-        Pfungstadt, St. Antonius:
         Seeheim-Jugenheim, Bonifatius:
         Seeheim-Jugenheim, Ulrich von Münzenberg:
         Viernheim, Folke Bernadotte:
@@ -3416,21 +3408,18 @@ production:
         Sankt Marien Großen-Buseck:
       Bezirk Rhein-Main-Hessen:
         Budenheim, Don Bosco:
+        Dietzenbach, St. Martin:
+        Heidesheim:
         Ingelheim, Nikolaus von Flüe:
         Klein-Winternheim:
+        Mainz, Don Greif:
+        Mainz-Finthen, Bruder Franz:
         Mainz-Gonsenheim, St. Stephan:
+        Rödermark-Urberach, Gralsritter:
         Rüsselsheim, Partner Erde:
         Schwabenheim, Greifenklau:
-      Guy de Larigaudie Lampertheim:
-        Abtsteinach, Franz von Assisi:
-        Darmstadt, Liebfrauen:
-        Einhausen:
-      Mainz-Finthen, Bruder Franz:
-        Dietzenbach, St. Martin:
-        Mainz, Don Greif:
-        Rödermark-Urberach, Gralsritter:
-      Wöllstein, St. Franziskus-Rheinhessische Schweiz:
-    München und Freising:
+        Wöllstein, St. Franziskus-Rheinhessische Schweiz:
+    München:
       Bezirk Ebersberg:
         Anzing/Poing, Windrose:
         Grafing, St. Sebastian:
@@ -3451,99 +3440,106 @@ production:
         Putzbrunn, Arche Noah:
         Unterhaching, St. Birgitta:
       Bezirk München-Isar:
-        Forstenried, Hl. Kreuz:
         Garching, St. Severin:
-        Pullach, Maximilian Kolbe:
-        München-Au, Stamm Mariahilf:
+        Maximilian Kolbe:
+        München Hl. Kreuz - Forstenried:
         München-Giesing, Hl. Engel:
-        München-Großhadern, St. Canisius:
+        München-Grosshadern, St. Canisius:
         München-Lehel, St. Anna:
         München-Olympiadorf, Frieden Christi:
         München-Schwabing, Pater Rupert Mayer:
-        München-Schwabing, Swapingo:
         München-Solln, St. Ansgar:
+        Pfadfinderstamm Swapingo:
+        Stamm Mariahilf:
       Bezirk Oberland:
-        Bad Tölz:
-        Benediktbeuren, Dominikus Savio:
-        Baierbrunn und Schäftlarn, Ägypten:
-        Holzkirchen:
-        Schliersee, St. Sixtus:
-        Iffeldorf-Seeshaupt, St. Vitus:
+        Bad Tölz, Eisvogel:
+        Baierbrunn, Ägypten:
+        Benediktbeuern, Dominikus Savio:
+        Holzkirchen, St. Laurentius:
+        Iffeldorf/Seeshaupt, St. Vitus:
+        St. Sixtus Schliersee:
       Bezirk Rosenheim:
-        Aschau, Mountain Scouts:
         Bad Aibling, St. Franziskus:
         Degerndorf / Brannenburg, Christkönig:
-        Feldkirchen-Westerham, Phoenix:
-        Grosskarolinenfeld, St. Christophorus:
+        Feldkirchen-Westerh., Phoenix:
+        Grosskarolinenfeld, Christophorus:
         Kiefersfelden, Adler:
         Kolbermoor, St. Franziskus:
+        Mountain Scouts Aschau:
         Prutting:
         Rosenheim, St. Michael:
-        Rosenheim-Fürstätt, St. Quirinus:
-        Rosenheim-Oberwöhr, St. Josef der Arbeiter:
+        Rosenheim-Oberwöhr, St. Josef d. Arbeiter:
+        St. Quirinus Fürstätt:
       Bezirk Ruperti - Mühldorf:
+        Don Bosco Polling:
         Freilassing, St. Rupert:
-        Mühldorf, Tilly:
-        Mitterfelden, St. Christopherus:
         Laufen, Mariä Himmelfahrt:
-        Polling, Don Bosco:
-        Surberg, Stoabock Surberg:
-        Talkessel Berchtesgaden:
+        Mitterfelden, Christopherus:
+        Mühldorf, Tilly:
+        Steinadler Talkessel Berchtesgaden:
+        Surberg:
       Bezirk Würm - Amper:
-        Fürstenfeldbruck, St. Magdalena:
-        Germering, Parsbergstamm:
+        Germering, Parsberg:
         Gröbenzell, St. Johann Baptist:
         Karlsfeld, Anjo II:
-        Markt-Indersdorf, St. Marold - evtl. Neugründung:
         München-Laim, St. Willibald:
         München-Neuhadern, Oscar A. Romero:
-        München-Pasing, St. Hildeg./M.Schutz:
+        München-Pas., St. Hildeg./M.Schutz:
         München-Westend, St. Rupert:
         Olching, St. Peter und Paul:
         Puchheim, Bison:
     Münster:
-      Beckum, St. Stephanus:
-        Drensteinfurt-Rinkerode, St. Pankratius:
-        Ennigerloh, Enniger:
-        Hamm-Bockum-Hövel, Impeesa-HeiligGeist:
-        Sendenhorst, St. Martinus:
       Bezirk Borken:
-        Bocholt, Herz-Jesu:
+        Ahaus, St. Marien:
         Bocholt, Hl. Kreuz:
         Bocholt, St. Josef:
         Bocholt, St. Norbert:
         Borken, St. Remigius:
         Epe, St. Antonius:
+        Gescher, St. Pankratius:
+        Isselburg:
         Rhede:
+        Schöppingen:
+        Stadtlohn:
         Velen-Ramsdorf:
       Bezirk Coesfeld:
         Buldern, St. Pankratius:
+        Coesfeld:
         Dülmen, Heilig Kreuz:
         Lette, St. Johannes:
         Lüdinghausen:
         Nordkirchen:
         Nottuln, St. Martin:
+        Olfen, St. Vitus:
         Selm, St. Josef:
+        Senden:
       Bezirk Münster:
         DPSG St. Liutger:
+        Herz-Jesu Münster:
         Münster, Gremmendorf:
-        Münster, Herz Jesu:
         Münster, St. Franziskus:
         Münster-Gievenbeck, St. Michael:
         Münster-Handorf, St. Petronilla:
         Münster-Hiltrup, Rochus Spiecker:
         Münster-Wolbeck, Don Bosco:
-        St. Anna Mecklenbeck, Münster:
+        St. Anna Mecklenbeck Albachten Roxel Aaseestadt, Münster:
       Bezirk Niederrhein-Nord:
         Alpen, St. Ulrich:
+        DPSG St. Augustinus Gaesdonck:
         Emmerich, Janusz Korczak:
+        Geldern, St. Maria Magdalena:
         Geldern-Hartefeld:
-        Goch- Gaesdonck, St. Augustinus:
+        Geldern-Kapellen:
+        Geldern-Veert, St. Martin:
+        Goch, Edelweiß:
         Hamminkeln, St. Maria Himmelfahrt:
+        Hamminkeln, Wertherbruch:
         Kalkar, St. Benedikt:
         Kleve-Materborn, St. Georg:
+        Rheurdt, St. Nikolaus:
         Schermbeck, St. Ludgerus:
         Sonsbeck, St.Maria Magdalena:
+        Uedem:
         Weeze, St. Cyriakus:
         Wesel, z. d. Hl. Engeln:
         Wesel-Feldmark, Herz Jesu:
@@ -3553,11 +3549,9 @@ production:
         Dinslaken, St. Vincentius:
         Duisburg, St. Ludger:
         Duisburg-Homberg, Hochheide:
-        Duisburg-Homberg, St. Peter:
-        Duisburg-Rheinhausen, Christkönig:
+        Duisburg-Rheinhausen, Christus König:
         Friedrichsfeld, St. Elisabeth:
         Kamp-Lintfort, St. Marien:
-        Moers-Repelen, Martinus:
         Moers-Wesel, St. Josef:
         Rheinberg, St. Anna, Phönix:
         Voerde-Spellen, Sankt Peter Spellen:
@@ -3575,12 +3569,14 @@ production:
         Vechta, Füchtel:
         Vechta, St. Georg:
         Wilhelmshaven, Christus König:
-        Wilhelmshaven, St. Peter, Niels Stensen:
       Bezirk Recklinghausen:
+        Bottrop-Grafenwald, Hl. Familie:
         DPSG Hillerheide:
-        Dorsten, St. Agatha:
+        DPSG St. Agatha Dorsten:
+        Dorsten, St. Bonifatius:
         Dorsten, St. Johannes:
         Dorsten-Wulfen-Barkenberg, St. Barbara:
+        Haltern am See:
         Marl- Lenkerbeck, St. Marien:
         Marl-Sickingmühle, Christ König:
         Marl-Sinsen, Vasco da Gama:
@@ -3588,97 +3584,96 @@ production:
         Recklinghausen, Liebfrauen-Ost:
         Recklinghausen-Hochlar:
         Recklinghausen-Nord, St. Elisabeth:
+        Waltrop:
       Bezirk Steinfurt:
         Burgsteinfurt, St.Johannes Nepomuk:
         Emsdetten, St. Pankratius:
+        Greven, St. Josef:
+        Greven-Reckenfeld:
+        Hörstel, St. Antonius:
         Mettingen, Tüöttenstamm:
         Nordwalde, St. Dionysius:
         Saerbeck, St. Georg:
+        Stamm Ladbergen:
+        Tecklenburg, St. Michael:
         Wettringen, St. Petronilla:
       Bezirk Warendorf:
         Ahlen/Westf.:
+        Beckum, St. Stephanus:
         Drensteinfurt:
+        Drensteinfurt-Rinkerode, St. Pankratius:
+        Ennigerloh, Enniger:
+        Hamm-Bockum-Hövel, Impeesa-HeiligGeist:
         Oelde, Der kleine Bach:
         Ostbevern, St. Ambrosius:
+        Sendenhorst, St. Martinus:
         Warendorf:
-      Bottrop-Grafenwald, Hl. Familie:
-        Dorsten, St. Bonifatius:
-        Waltrop:
-      Geldern-Veert, St. Martin:
-        Geldern, St. Maria Magdalena:
-        Geldern-Kapellen:
-        Hamminkeln, Wertherbruch:
-        Rheurdt, St. Nikolaus:
-        Uedem:
-      Goch, Edelweiß:
-      Greven, St. Josef:
-        Altenberge, St. Johannes:
-        Greven-Reckenfeld:
-        Hörstel, St. Antonius:
-        Ladbergen:
-        Tecklenburg, St. Michael:
-      Isselburg:
-        Ahaus, St. Marien:
-        Gescher, St. Pankratius:
-        Schöppingen:
-        Stadtlohn:
-      Senden:
-        Coesfeld:
-        Olfen, St. Vitus:
     Osnabrück:
       Keine Bezirksebene:
-        Emden, Regenbogen:
         Haren, Franziskus:
         Haren, Nordlicht Altharen:
-        Haselüne-Lehrte, St. Vincentius:
+        Haselünne-Lehrte, St. Vincentius:
         Holzhausen-Ohrbeck:
         Lathen, Polarstern:
-        Lingen, St. Bonifatius:
         Melle-Gesmold, Horizonte:
+        Neuenkirchen, St. Laurentius:
         Nordhorn, St. Marien:
         Oesede, Hl. Geist:
         Osnabrück, Rosenkranz:
         Papenburg:
-        Wallenhorst, St. Alexander:
-      Neuenkirchen, St. Laurentius:
+        Pfadwind:
         Stamm Maximilian Kolbe Rulle:
+        Wallenhorst, St. Alexander:
     Paderborn:
       Bezirk Corvey:
         Brenkhausen, St. Johannes:
         Höxter-Ottbergen:
         Höxter-Stadtmitte, St. Ansgar:
-        Lüchtringen, St. Johannes:
         Stahle, St. Anna:
+        Stamm St. Johannes Baptist Lüchtringen:
       Bezirk Dortmund:
+        Castrop-Rauxel, St. Lambertus:
+        DPSG Dortmund-Barop (FRAXA):
+        DPSG Dortmund-Brünninghausen, Hl. Familie:
         DPSG St. Remigius Dortmund-Mengede:
+        Dortmund-Aplerbeck, St. Ewaldi:
+        Dortmund-Berghofen:
+        Dortmund-Huckarde, St. Urbanus:
         Dortmund-Husen:
+        Dortmund-Hörde, Marcel Callo:
+        Dortmund-Kirchlinde, St. Josef:
+        Dortmund-Lanstrop, St. Michael:
+        Dortmund-Lichtendorf/Sölderholz, Bonifaten 80:
         Dortmund-Lütgendortmund:
         Dortmund-Mitte, St. Franziskus:
         Dortmund-Obereving, St. Marien:
+        Dortmund-Scharnhorst, St. Franziskus:
         Dortmund-Soelde, St. Marien:
         Dortmund-Wambel, St. Meinolfus:
-      Bezirk Herne-Castrop Rauxel:
-        Castrop-Rauxel, St. Lambertus:
         Herne, Amelungen:
         Herne-Eickel, Franziskus:
+        St. Liborius - Dortmund-Körne:
       Bezirk Hochsauerland:
         Arnsberg, Liebfrauen:
         Arnsberg-Hüsten, Stamm Sankt Ludgerus:
-        Arnsberg-Neheim, St. Christopher:
         Brilon, Propstei:
         Eslohe-Wenholthausen, St. Cäcilia:
         Herdringen, St. Antonius:
         Meschede, St. Walburga:
         Meschede-Eversberg, St. Ever.:
+        Neheim, St. Christopher:
         Stamm Kückelheim:
         Sundern, Salamun:
-      Bezirk Paderborn:
+      Bezirk OWL:
         Bielefeld, Liebfrauen:
+        Detmold, Hl. Kreuz:
         Gütersloh-Spexard:
         Herford, St. Johannes Baptist:
+        Lemgo:
         Nordborchen:
         Paderborn, Auf der Lieth, St. Hedwig:
         Paderborn, St. Meinolf:
+        Paderborn-Elsen, St. Dionysius Elsen:
         Paderborn-Schloß Neuhaus, St. Heinrich:
       Bezirk Ruhr-Sauerland:
         DPSG St. Urban Ende-Syburg (Stamm):
@@ -3690,17 +3685,19 @@ production:
         Iserlohn-Nussberg, Arche:
         Schwerte-Ost, St. Marien:
         Unna, Goten:
-        Witten, St. Franziskus:
-        Witten, St. Marien:
         Witten-Bommern, Herz Jesu:
+        Wittener Löwen:
       Bezirk Siegerland-Südsauerland:
         Attendorn-Ennest, St. Margaretha:
         Netphen, St. Martini:
         Netphen-Dreis-Tiefenbach:
         Olpe, Vinzenz Pallotti:
+        Siegen, Dautenbach:
         Siegen, St. Michael:
         Siegen, St. Peter und Paul:
         Siegen-Hüttental:
+        Wenden-Gerlingen/ Abt. Anton.:
+        Wilnsdorf-Rudersdorf, St. Laurentius:
       Bezirk Soest-Hamm:
         Bad-Westernk., Franz v. Assisi:
         Geseke, Marco Polo:
@@ -3712,29 +3709,12 @@ production:
         Lippetal, Lippborg:
         Lippetal, Oestinghausen:
         Lippstadt, Albatros Cappel:
+        Lippstadt, Phönix:
         Möhnesee-Körbecke, St. Pankratius:
         Soest:
         Warstein, St. Petrus:
         Warstein-Belecke, St. Pankratius:
         Welver, Maximilian Kolbe:
-      Dortmund-Huckarde, St. Urbanus:
-        DPSG Dortmund-Barop (FRAXA):
-        Dortmund-Aplerbeck, St. Ewaldi:
-        Dortmund-Berghofen:
-        Dortmund-Brünninghausen, Hl. Familie:
-        Dortmund-Hörde, Marcel Callo:
-        Dortmund-Kirchlinde, St. Josef:
-        Dortmund-Lanstrop, St. Michael:
-        Dortmund-Lichtendorf/Sölderholz, Bonifaten 80:
-        Dortmund-Scharnhorst, St. Franziskus:
-        St. Liborius - Dortmund-Körne:
-      Lemgo:
-        Detmold, Hl. Kreuz:
-        Paderborn-Elsen, St. Dionysius Elsen:
-      Wilnsdorf-Rudersdorf, St. Laurentius:
-        Freudenberg, St. Marien:
-        Siegen, Dautenbach:
-        Wenden-Gerlingen/ Abt.  Anton.:
     Passau:
       Keine Bezirksebene:
         DPSG Fürstenstein-Nammering:
@@ -3746,8 +3726,6 @@ production:
         Hengersberg:
         Kirchdorf:
         Neuötting:
-        Passau-Grubweg, St. Michael:
-        Passau-Neustift:
         Pfarrkirchen:
         Pocking:
         Rotthalmünster, St. Sebastian:
@@ -3757,7 +3735,7 @@ production:
         Vilshofen:
         Winhöring:
     Regensburg:
-      Bezirk Dom:
+      Dombezirk:
         Hainsacker, Geschwister Scholl:
         Obertraubling, Trubilo:
         Pettendorf:
@@ -3772,6 +3750,7 @@ production:
         Sinzing:
         Wenzenbach:
       Bezirk Niederbayern:
+        DPSG Stamm Viechtach:
         Hohenthann:
         Landshut, Angelo Roncalli:
         Landshut, St. Pius:
@@ -3779,7 +3758,6 @@ production:
         Puchhausen-Hüttenkofen:
         Straubing, St. Jakob:
         Straßkirchen, Impeesa:
-        Viechtach:
         Vilsbiburg:
       Burgenbezirk:
         Eschenbach:
@@ -3801,14 +3779,14 @@ production:
         Sulzbach-Rosenberg:
       Jurabezirk:
         Abensberg-Offenstetten:
-        Kelheim,:
+        Kelheim:
         Parsberg:
         Saal, Christ König:
         Stamm Teugn:
-    Rottenburg-Stutt.:
+    Rottenburg-Stuttgart:
       Bezirk Hohenlohe:
         Bad Mergentheim, Hoch- und Deutschmeister:
-        Bretzfeld:
+        Bretzfeld Weiße Rose:
         Ingelfingen:
         Künzelsau:
         Santiago Schrozberg:
@@ -3819,19 +3797,25 @@ production:
         Eislingen:
         Göppingen, St. Maria:
         Salach, St. Margaretha:
+        Schwäbisch-Gmünd, Hl. Kreuz:
         Stamm Hl. Kreuz Deggingen:
-        Uhingen:
       Bezirk Neckar:
+        Ammerbuch-Entringen:
+        Böblingen:
         Eningen:
+        Frommern, St. Paulus:
         Herrenberg, St. Josef:
         Holzgerlingen:
-        Reutlingen-Nord/Orschel-Hagen:
+        Kiebingen, Heilig Geist:
+        Reutlingen Süd:
+        Reutlingen-Mitte:
+        Reutlingen-Nord:
+        St. Peter & Paul Weil der Stadt:
         Tübingen:
       Bezirk Neckar/Filder:
         Esslingen, Wikinger:
         Neuhausen, Petrus & Paulus:
         Nürtingen:
-        Plochingen:
         Wernau/Neckar:
       Bezirk Oberland:
         Biberach, Weiße Rose:
@@ -3839,7 +3823,6 @@ production:
         Ennetach:
         Friedrichshafen, Buchhorn:
         Laupheim, Kon - Tiki:
-        Mengen, St. Martin:
         Ravensburg, Impeesa:
         Schelklingen-Hütten, Guter Hirte:
         Sinningen, St. Michael:
@@ -3847,7 +3830,7 @@ production:
         Wolfegg, Loreto:
       Bezirk Ostalb:
         Aalen, Salvator:
-        Bopfingen, St. Josef:
+        DPSG Bopfingen:
         Ellwangen, St. Veit:
         Giengen, St. Michael:
         Herbrechtingen, Romero:
@@ -3868,11 +3851,10 @@ production:
         Oeffingen, Chico Mendes:
         Stuttgart-Hofen:
         Stuttgart-Möhringen, St. Hedwig:
-        Stuttgart-Neugereut:
         Stuttgart-Obertürkheim, St. Franziskus:
         Stuttgart-Zuffenhausen:
       Bezirk Unterland:
-        Bad Wimpfen:
+        Bad Wimpfen, Fähnlein Fieselschwein:
         Bietigheim-Bissingen:
         Brackenheim, Theodor Heuss:
         Erlenbach, St. Martinus:
@@ -3885,23 +3867,17 @@ production:
         Mühlacker, Herz-Jesu:
         Oedheim:
         St. Dionys Neckarsulm:
-      Frommern, St. Paulus:
-        Böblingen:
-        Reutlingen Süd:
-        Reutlingen-Mitte:
-        St. Peter & Paul Weil der Stadt:
-      Gingen/Fils:
-        Schwäbisch-Gmünd, Hl. Kreuz:
-      Kiebingen, Heilig Geist:
-        Ammerbuch-Entringen:
     Speyer:
       Bezirk Haardt:
         Edenkoben/Hainfeld, Hedin:
         Herxheim, Amundsen:
+        Lambrecht:
         Landau, St. Albert:
         Neustadt, Guy de Larigaudie:
         Neustadt-Lachen, Franz von Assisi:
         Rülzheim, St. Diethardt:
+        Speyer, Dompfarrei:
+        Speyer, St. Konrad:
         Winden, Marco Polo:
       Bezirk Ludwigshafen:
         Altrip, Rheingold:
@@ -3909,7 +3885,6 @@ production:
         Dannstadt-Schauernh., St. Michael:
         Frankenthal, St. Jakobus-Pilgerpfad:
         Ludwigshafen, Herz Jesu:
-        Ludwigshafen, St. Gallus:
         Ludwigshafen-Friesenheim, St. Josef:
         Ludwigshafen-Gartenstadt, Phoenix:
         Ludwigshafen-Oggersh., Christ König:
@@ -3917,8 +3892,12 @@ production:
         Maxdorf/Birkenheide, Impeesa:
         Otterstadt:
       Bezirk Saarpfalz:
+        DPSG Camino Homburg:
+        DPSG Johanneum:
         Homburg-Jägersb., St. Josef:
         Mandelbachtal/Heckendalh., St. Josef:
+        Niederwürzbach:
+        St. Ingbert, Eulenspiegel:
         St. Ingbert, Hassel:
         St. Ingbert-Mitte:
         St. Ingbert-Rohrbach:
@@ -3926,27 +3905,30 @@ production:
         Hauenstein, Christkönig:
         Kaiserslautern, Fridtjof Nansen:
         Ludwigswinkel:
-        Pirmasens-Winzeln, Christ König - St. Anton:
         Rodalben, Sel. Bernhard:
         Rodalben, St. Josef:
         Waldfischbach-Burgalben:
-      Homburg, Johanneum:
-        Camino Homburg:
-        Niederwürzbach:
-        St. Ingbert, Eulenspiegel:
-      Lambrecht:
-        Speyer, Dompfarrei:
-        Speyer, St. Konrad:
-      Zweibrücken Stamm Heilige Elisabeth:
+        Zweibrücken Stamm Heilige Elisabeth:
     Trier:
       Bezirk Eifel / Ahr:
+        Adenau:
         Andernach, Am Nastberg Eich:
+        Andernach, St. Michael:
+        Balu Hillesheim:
+        Grafschaft Ringen, G. Galilei:
+        Kruft, Dionysius:
         Saffig Pellenzbande:
+        Weißenthurm/Kettig, Feuer und Flamme:
       Bezirk Koblenz:
+        Bassenheim, St. Martin:
         Kaltenengers:
+        Koblenz-Asterstein:
         Koblenz-Castell-Niederberg:
         Koblenz-Goldgrube, St. Franziskus:
+        Koblenz-Güls, Seepfadfinder:
         Koblenz-Südliche Vorstadt, St. Josef:
+        Münstermaifeld, Maifeld-Scouts:
+        Rhens, St. Theresia:
         Urmitz:
       Bezirk Mittelmosel:
         Bernkastel-Kues, Moselfranken:
@@ -3965,8 +3947,12 @@ production:
       Bezirk Rhein-Wied:
         Bad Hönningen:
         Kurtscheid:
+        Leutesdorf, Marcel Callo:
         Neuwied City:
+        Neuwied, Heimbach-Weis:
+        Neuwied-Engers, St. Martin:
         Neuwied-Feldkirchen, St. Michael:
+        Neuwied-Gladbach:
         Neuwied-Oberbieber, St. Bonifatius:
         Rheinbrohl:
       Bezirk Saar-Hochwald:
@@ -3981,7 +3967,7 @@ production:
         Klarenthal, St. Bartholomäus:
         Köllerbach, Herz Jesu:
         Ludweiler, Warndt-Scouts:
-        Saarbrücken, Brebach-Fechingen:
+        Saarbrücken, Brebach:
         Spellenstein-Rentrisch:
       Bezirk Schaumberg-Blies:
         Hasborn:
@@ -3993,28 +3979,13 @@ production:
         Niederfischbach:
         Niederschelderhütte/Birken:
       Bezirk Trier:
+        Föhren, Don Bosco:
         Saarburg-Beurig, St. Franziskus:
         Trier-Euren, Helena/Tempelherren:
+        Trier-Heiligkreuz, Santa Cruz:
         Trier-Pfalzel, Pankratius:
         Trier-Tarforst, Centarburs:
-      Koblenz-Güls, Seepfadfinder:
-        Bassenheim, St. Martin:
-        Koblenz-Asterstein:
-        Münstermaifeld, Maifeld-Scouts:
-        Rhens, St. Theresia:
-      Peterslahr:
-        Leutesdorf, Marcel Callo:
-        Neuwied, Heimbach-Weis:
-        Neuwied-Engers, St. Martin:
-        Neuwied-Gladbach:
-      Trier-Heiligkreuz, Santa Cruz:
-        Föhren, Don Bosco:
     Würzburg:
-      Albstadt:
-        Alzenau:
-        Elsenfeld, Germania:
-        Großostheim:
-        Mönchberg, Aubachtal:
       Bezirk Genesis Nord:
         Bad Kissingen, Henneberg:
         Euerbach, St. Michael:
@@ -4036,23 +4007,31 @@ production:
       Bezirk Mainfranken:
         Eisingen, St. Nikolaus:
         Leinach, Kardinal Döpfner:
-        Volkach, St. Bartholomäus:
+        Ochsenfurt, Konradin:
+        Randersacker, St. Stephanus:
+        Reichenberg/Hattenhausen:
+        Rimpar,Tilman Riemenschneider:
+        Stadtschwarzach:
         Wertheim:
-      Bezirk St. Kilian/Würzburg:
-        Würzburg, Tilly:
+      Bezirk St. Kilian:
         Würzburg-Frauenland, Greiffenclau:
+        Würzburg-Heidingsfeld, Tilly:
         Würzburg-Lengfeld, St. Burkard:
         Würzburg-Rottenbauer, Wolfskeel:
         Würzburg-Sanderau, Fred Joseph:
       Bezirk Untermain:
+        Albstadt:
+        Alzenau:
         Aschaffenburg-Gailbach, Guy de Larigaudie e.V.:
         Aschaffenburg-Innenstadt, Johannisburg:
         Aschaffenburg/Schweinheim:
+        Elsenfeld, Germania:
+        Großostheim:
         Großwallstadt, Impeesa:
         Heimbuchenthal, Schwarzkittel:
         Mainaschaff, Ascapha:
+        Mönchberg, Aubachtal:
         Stockstadt, Mauritius:
-      Würzburg, St. Johannes:
   PSG:
     Aachen:
       Keine Bezirksebene:
