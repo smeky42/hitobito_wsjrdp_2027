@@ -44,6 +44,16 @@ de:
         buddy_id: Buddy ID
         genders:
           d: divers
+        rdp_association: Verband
+        rdp_association_region: Land, Diözese
+        rdp_association_sub_region: Bezirk, Region
+        rdp_association_group: Stamm, Ortsgruppe
+        rdp_association_number: Mitgliedsnummer
+
+  people:
+    form_tabs:
+      general: Kontaktdaten Teilnehmer*in
+      rdp_association: Verbandszugehörigkeit
 
   groups:
     self_registration:
