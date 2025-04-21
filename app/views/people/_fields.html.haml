@@ -10,46 +10,55 @@
 
 - has_relations = false # TODO throws error in Staging ||= PeopleRelation.any?
 
-= field_set_tag do
-  = f.labeled_input_fields(*entry.decorate.used_attributes(:first_name, :last_name, :nickname))
-  -# - entry.decorate.used?(:company_name) do
-  -#   = f.labeled_input_field(:company_name,
-  -#                            placeholder: I18n.t('global.search.placeholder_company_name'),
-  -#                            data: { provide: 'entity',
-  -#                                    url: query_company_name_path })
-  -# - entry.decorate.used?(:company) do
-  -#   = f.labeled_boolean_field :company
+= f.error_messages
+= render 'form_tabs'
 
-  = render_extensions :name_fields, locals: { f: f }
+.tab-content
+  #general.tab-pane.active
 
-= render 'contactable/fields', f: f
+    = field_set_tag do
+      = f.labeled_input_fields(*entry.decorate.used_attributes(:first_name, :last_name, :nickname))
+      -# - entry.decorate.used?(:company_name) do
+      -#   = f.labeled_input_field(:company_name,
+      -#                            placeholder: I18n.t('global.search.placeholder_company_name'),
+      -#                            data: { provide: 'entity',
+      -#                                    url: query_company_name_path })
+      -# - entry.decorate.used?(:company) do
+      -#   = f.labeled_boolean_field :company
 
-= field_set_tag do
-  = f.labeled(:gender) do
-    - (Person::GENDERS + ['']).each do |key|
-      = f.inline_radio_button(:gender, key, entry.gender_label(key))   
-    
+      = render_extensions :name_fields, locals: { f: f }
 
-  -# = f.labeled_string_field(:birthday,
-  -#                          value: f.date_value(:birthday),
-  -#                          help_inline: t('.format_birthday'),
-  -#                          class: 'col-2 form-control form-control-sm d-inline')
-  -# - FeatureGate.if(:person_language) do
-  -#   = f.labeled_collection_select(:language,
-  -#                                 Person::LANGUAGES,
-  -#                                 :first,
-  -#                                 :last,
-  -#                                 { prompt: true },
-  -#                                 class: 'form-select form-select-sm')
+    = render 'contactable/fields', f: f
+
+    = field_set_tag do
+      = f.labeled(:gender) do
+        - (Person::GENDERS + ['']).each do |key|
+          = f.inline_radio_button(:gender, key, entry.gender_label(key))   
+        
+
+      -# = f.labeled_string_field(:birthday,
+      -#                          value: f.date_value(:birthday),
+      -#                          help_inline: t('.format_birthday'),
+      -#                          class: 'col-2 form-control form-control-sm d-inline')
+      -# - FeatureGate.if(:person_language) do
+      -#   = f.labeled_collection_select(:language,
+      -#                                 Person::LANGUAGES,
+      -#                                 :first,
+      -#                                 :last,
+      -#                                 { prompt: true },
+      -#                                 class: 'form-select form-select-sm')
 
 
-= render_extensions :fields, locals: { f: f }
+    = render_extensions :fields, locals: { f: f }
 
-- if has_relations && PeopleRelation.possible_kinds.present?
-  = field_set_tag do
-    = f.labeled_inline_fields_for :relations_to_tails,
-                                  'people_relation_fields',
-                                  entry.relations_to_tails.includes(:tail)
+    - if has_relations && PeopleRelation.possible_kinds.present?
+      = field_set_tag do
+        = f.labeled_inline_fields_for :relations_to_tails,
+                                      'people_relation_fields',
+                                      entry.relations_to_tails.includes(:tail)
 
-= field_set_tag do
-  = f.labeled_input_field(:additional_information, help: t('.no_sensitive_information'))
+    = field_set_tag do
+      = f.labeled_input_field(:additional_information, help: t('.no_sensitive_information'))
+
+  #association.tab-pane 
+    = render 'association_fields', f: f

@@ -12,6 +12,7 @@ module HitobitoWsjrdp2027
       #{config.root}/app/abilities
       #{config.root}/app/domain
       #{config.root}/app/jobs
+      #{config.root}/app/controllers
     ]
 
     config.to_prepare do
@@ -19,8 +20,10 @@ module HitobitoWsjrdp2027
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
+      PeopleController.include Wsjrdp2027::PeopleController
       Sheet::Person.include Wsjrdp2027::Sheet::Person
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
+      PersonSerializer.include Wsjrdp2027::PersonSerializer
     end
 
     initializer 'wsjrdp_2027.add_settings' do |_app|
