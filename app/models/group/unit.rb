@@ -15,10 +15,15 @@ class Group::Unit < ::Group
     self.permissions = [:group_full]
   end
 
+  # Unapproved Unit Leader
+  class UnapprovedLeader < ::Role
+    self.permissions = []
+  end
+
   # Youth Participant
   class Member < ::Role
     self.permissions = []
   end
 
-  roles Manager, Leader, Member
+  roles Manager, Leader, UnapprovedLeader, Member
 end
