@@ -18,13 +18,11 @@ module Wsjrdp2027::Sheet::Person
   ]
 
   included do
-    tab "people.tabs.medicine",
-      :group_person_path,
-      if: :show
+    # tab "people.tabs.medicine",
+    #   :group_person_path,
+    #   if: :show
 
     self.tabs.select! {|t| shown_tabs.include? t.label_key}
     self.tabs.sort_by! {|t| shown_tabs.index t.label_key}
   end
-
-
 end
