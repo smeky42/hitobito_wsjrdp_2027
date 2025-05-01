@@ -37,6 +37,10 @@ de:
         one: Unit Leader (unbestätigt)
       group/unit/member:
         one: Youth Participant
+    
+    attributes: 
+      person:
+        nickname: Spitzname / Fahrtenname
   
   groups:
     self_registration:
