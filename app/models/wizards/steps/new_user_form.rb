@@ -2,6 +2,8 @@
 
 # Overwrite TODO is there something better?
 class Wizards::Steps::NewUserForm < Wizards::Step
+  include BuddyIdHelper
+
   attribute :first_name, :string
   attribute :last_name, :string
   attribute :nickname, :string
@@ -11,6 +13,7 @@ class Wizards::Steps::NewUserForm < Wizards::Step
   attribute :email, :string
   attribute :adult_consent, :boolean
   attribute :privacy_policy_accepted, :boolean
+  attribute :buddy_id, :string
 
   validates :first_name, :last_name, :birthday, presence: true
   validates :adult_consent, acceptance: true, if: :requires_adult_consent?
@@ -22,6 +25,11 @@ class Wizards::Steps::NewUserForm < Wizards::Step
   delegate :requires_adult_consent?, :requires_policy_acceptance?, to: :wizard
 
   class_attribute :support_company, default: true
+
+  def initialize(wizard, **params)
+    params[:buddy_id] ||= get_random_spice
+    super(wizard, **params)
+  end
 
   def self.human_attribute_name(attr, options = {})
     super(attr, default: Person.human_attribute_name(attr, options))

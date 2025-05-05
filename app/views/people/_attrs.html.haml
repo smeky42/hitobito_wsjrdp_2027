@@ -1,0 +1,57 @@
+-#  Copyright (c) 2012-2022, Jungwacht Blauring Schweiz. This file is part of
+-#  hitobito and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito.
+
+#main.row
+  %article.col-lg
+    = render 'contact_data', person: entry, only_public: cannot?(:show_details, entry)
+    - if can?(:show_details, entry)
+      %h2= t('.additional_data')
+      %div
+        = render_attrs(entry, :birthday, :gender)
+
+        = render_extensions :details, locals: { show_full: can?(:show_full, entry) }
+
+        - if can?(:update, entry)
+          = render_attrs(entry, :created_info, :updated_info, :login_status)
+        - else
+          = render_attrs(entry, :created_info, :updated_info)
+        - FeatureGate.if(:person_language) do
+          = render_attrs(entry, :language)
+
+        - entry.buddy_id = "#{entry.buddy_id}-#{entry.id}"
+        = render_attrs(entry, :buddy_id)
+
+        - FeatureGate.if(:self_registration_reason) do
+          = render_present_attrs(entry, :self_registration_reason_text)
+
+        = render 'people_relations'
+
+      - if entry.additional_information?
+        %h2= Person.human_attribute_name(:additional_information)
+        %p.multiline= safe_auto_link(entry.additional_information)
+
+    = render_extensions :show_left
+
+    - if can?(:index_notes, entry)
+      = render 'notes/section', create_path: group_person_notes_path(@group, entry)
+
+  - if can?(:show_full, entry)
+    %aside.col-lg-5.offset-lg-1
+      = render_extensions :data_quality
+      = render 'tags'
+      = render 'roles'
+      = render 'add_requests'
+      = render 'event_aside', title: Event::Application.model_name.human(count: 2), collection: entry.pending_applications
+      = render 'participation_aside', title: upcoming_events_title, collection: entry.upcoming_participations
+
+      = render_extensions :show_event
+
+      = render 'qualifications', show_buttons: true
+
+      = render(HouseholdAsideComponent.new(person: entry, group: @group))
+
+      = render_extensions :show_right
+  
+
