@@ -19,6 +19,7 @@ module HitobitoWsjrdp2027
       Group.include Wsjrdp2027::Group
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
       Sheet::Person.include Wsjrdp2027::Sheet::Person
+      Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
     end
 
     initializer 'wsjrdp_2027.add_settings' do |_app|
