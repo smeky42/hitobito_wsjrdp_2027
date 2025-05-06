@@ -37,17 +37,19 @@ de:
         one: Unit Leader (unbestätigt)
       group/unit/member:
         one: Youth Participant
-    
-    attributes: 
+
+    attributes:
       person:
         nickname: Spitzname / Fahrtenname
         buddy_id: Buddy ID
-  
+        genders:
+          d: divers
+
   groups:
     self_registration:
       create:
         flash:
-          role_policy: "Du kannst dich mit dieser Rolle nicht registrieren." 
+          role_policy: "Du kannst dich mit dieser Rolle nicht registrieren."
           birthday_format: "Bitte gib deinen Geburstag im Format dd.mm.yyyy ein."
           to_young: "Du bist zu jung. Um am Jamboree teilzunehmen musst du mindestens 14 Jahre alt sein. Also am oder vor dem 30.07.2013 geboren sein."
           yp_to_old: "Als Youth Participant musst du am Jamboree zwischen 14 und 18 Jahre alt sein. Also nach dem 30.07.2009 geboren sein."
