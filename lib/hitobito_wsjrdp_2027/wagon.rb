@@ -17,6 +17,7 @@ module HitobitoWsjrdp2027
     config.to_prepare do
       # extend application classes here
       Group.include Wsjrdp2027::Group
+      Person.include Wsjrdp2027::Person
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
       Sheet::Person.include Wsjrdp2027::Sheet::Person
     end
