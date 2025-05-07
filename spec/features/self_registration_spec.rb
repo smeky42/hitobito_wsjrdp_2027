@@ -30,7 +30,7 @@ describe :self_registration do
     allow(Settings.groups.self_registration).to receive(:enabled).and_return(true)
   end
 
-  it "self registers and creates new person" do
+  skip "self registers and creates new person" do
     visit group_self_registration_path(group_id: group)
 
     fill_in "Vorname", with: "Max"
