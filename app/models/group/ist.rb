@@ -9,7 +9,7 @@ class Group::Ist < ::Group
   ### ROLES
   # MIST
   class Leader < ::Role
-    self.permissions = [:layer_and_below_full, :event]
+    self.permissions = [:layer_and_below_full]
   end
 
   # IST Member
