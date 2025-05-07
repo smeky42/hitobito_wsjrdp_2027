@@ -5,8 +5,8 @@ root:
   name: Hauptgruppe
   type: Group::Root
   email: root@example.net
-  address: Ophovener Str. 79a
-  zip_code: 2843
+  street: Ophovener Str. 79a
+  zip_code: 28431
   town: Neu Carlscheid
   layer_group_id: <%= ActiveRecord::FixtureSet.identify(:root) %>
 
