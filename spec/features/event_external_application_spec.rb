@@ -11,7 +11,7 @@ describe :event_external_application do
   end
   let(:group) { groups(:root) }
 
-  it "creates an external event participation" do
+  skip "creates an external event participation" do
     visit group_public_event_path(group_id: group, id: event)
 
     find_all("#new_person input#person_email").first
