@@ -22,13 +22,4 @@ module Wsjrdp2027::Person
       i18n_setter :gender, (GENDERS + [nil])
     end
   end
-
-  included do
-    Person::PUBLIC_ATTRS << :rdp_association
-    Person::PUBLIC_ATTRS << :rdp_association_region
-    Person::PUBLIC_ATTRS << :rdp_association_sub_region
-    Person::PUBLIC_ATTRS << :rdp_association_group
-    Person::PUBLIC_ATTRS << :rdp_association_number
-  end
-
 end

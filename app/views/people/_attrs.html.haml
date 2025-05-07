@@ -41,6 +41,8 @@
     %aside.col-lg-5.offset-lg-1
       = render_extensions :data_quality
       = render 'tags'
+      %br/
+      = render_attrs(entry, :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group, :rdp_association_number)
       = render 'roles'
       = render 'add_requests'
       = render 'event_aside', title: Event::Application.model_name.human(count: 2), collection: entry.pending_applications
