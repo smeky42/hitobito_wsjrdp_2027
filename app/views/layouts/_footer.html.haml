@@ -1,0 +1,62 @@
+-#  Copyright (c) 2012-2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027.
+
+%footer#page-footer.py-4
+  .container
+    .row
+      - footer = Settings.application.footer
+
+      .col-md-4
+        - if footer.logo_image.present?
+          = link_to footer.logo_url, target: '_blank' do
+            = wagon_image_pack_tag(footer.logo_image, class: 'img-fluid')
+
+      .col-md-4
+        %p.mb-2
+          %strong Du hast Fragen zum Jamboree:
+          %br/
+          Dann informiere dich auf 
+          = link_to 'www.worldscoutjamboree.de', 'https://www.worldscoutjamboree.de', target: '_blank', class: 'text-white fw-bold'
+          oder schreib uns eine E-Mail an 
+          = mail_to 'helpdesk@worldscoutjamboree.de', 'helpdesk@worldscoutjamboree.de', class: 'text-white fw-bold'
+          %br/
+          -# Telefonisch sind wir unter 0695/87004115 zu erreichen.
+
+        -# %p.mb-2
+        -#   %strong Du hast Fragen zur Anmeldung:
+        -#   %br/
+        -#   = "Diese Anleitung führt dich durch den Anmeldeprozess: "
+        -#   = link_to 'www.worldscoutjamboree.de/howto-anmeldung', 'https://www.worldscoutjamboree.de/howto-anmeldung', target: '_blank'
+        -#   %br/
+        -#   = "Oder vielleicht helfen dier die FAQs weiter:"
+        -#   = link_to 'www.worldscoutjamboree.de/faq-anmeldung', 'https://www.worldscoutjamboree.de/faq-anmeldung', target: '_blank'
+
+      .col-md-4
+        %p.mb-2
+          Die Anmeldung zum World Scout Jamboree des deutschen Kontingents wird ehrenamtlich entwickelt und ist auf 
+          = link_to 'GitHub', 'https://github.com/smeky42/hitobito_wsjrdp_2027/', class: 'text-white fw-bold'
+          verfügbar.
+
+        %p.mb-2
+          = "World Scout Jamboree 2027 Anmeldung in Version #{Settings.application.version}"
+
+        %p.mb-2
+          Datenschutz: 
+          = link_to 'Zur Datenschutzseite', 'https://www.worldscoutjamboree.de/datenschutz/', target: '_blank', class: 'text-white fw-bold'
+
+        %p.mb-0
+          Die Anwendung baut auf der Open Source Software Hitobito auf:
+          %br/
+          - if Wagons.app_version.to_s > '0.0'
+            = link_to "Version #{Wagons.app_version}", changelog_path, class: 'text-white fw-bold'
+            %br/
+          = app_version_links
+          = link_to t('.source_code'), 'https://github.com/hitobito', target: '_blank', class: 'text-white fw-bold'
+          = " #{t('.available_under_license')} "
+          = link_to 'GNU Affero General Public License', 'http://www.gnu.org/licenses/agpl-3.0.html', target: '_blank', class: 'text-white fw-bold'
+          %br/
+          = "#{t('.developed_by')} "
+          = link_to 'Hitobito', 'http://hitobito.ch', target: '_blank', class: 'text-white fw-bold'
+          = " 2012 - #{Time.zone.now.year}"
