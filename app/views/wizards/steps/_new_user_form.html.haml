@@ -11,3 +11,11 @@
     = render 'groups/self_registration/adult_consent_field', f: ff
     = field_set_tag(nil, class: 'privacy-policy-fields') do
       = render('people/privacy_policy_acceptance_field', f: ff, policy_finder: f.object.policy_finder)
+
+%br/
+%br/
+= t('layouts.unauthorized.main_other_registration_info')
+%br/
+= link_to t('layouts.unauthorized.main_other_registration_info_text'), t('layouts.unauthorized.main_other_registration_info_link')
+%br/
+%br/ 

@@ -1,0 +1,30 @@
+-#  Copyright (c) 2012-2014, Jungwacht Blauring Schweiz. This file is part of
+-#  hitobito and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito.
+
+- form_url = params[:oauth] == 'true' ? person_session_path(oauth: true) : person_session_path
+- autofocus_login = true if autofocus_login.nil?
+
+= standard_form(resource, {url: form_url, stacked: true, data: { turbo: false }}) do |f|
+  = f.error_messages
+  = f.labeled_input_field(:login_identity, autocomplete: "login", autofocus: autofocus_login, label: t('.login_identity'), class: 'mw-100 mw-md-60ch')
+  = f.labeled_input_field(:password)
+  = f.labeled_boolean_field(:remember_me)
+  = f.indented(submit_button(f, t('.sign_in')))
+  = f.indented do
+    = link_to t('layouts.unauthorized.forgot_password'), new_person_password_path
+    %br/
+    %br/
+      
+    -# = link_to t('layouts.unauthorized.need_confirmation_email'), new_person_confirmation_path
+    -# %span.hide-last
+      
+    = render_self_registration_link
+
+    %br/
+    %br/
+    = t('layouts.unauthorized.main_other_registration_info')
+    %br/
+    = link_to t('layouts.unauthorized.main_other_registration_info_text'), t('layouts.unauthorized.main_other_registration_info_link')
+     

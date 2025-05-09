@@ -57,6 +57,9 @@ de:
 
   groups:
     self_registration:
+      form: 
+        has_account: Du hast bereits ein Login als UL oder CMT?
+        to_login_page: Dann kannst du dich hier anmelden. 
       create:
         flash:
           role_policy: "Du kannst dich mit dieser Rolle nicht registrieren."
@@ -66,3 +69,29 @@ de:
           ul_to_young: "Als Unit Leader musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
           ist_to_young: "Als IST musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
           cmt_to_young: "Als CMT musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
+
+  devise:
+    mailer: 
+      reset_password_instructions:
+        subject: "Anleitung für das Setzen Deines rdp Worldscoutjamboree 2027 Anmeldeportal Passworts"
+        body:
+          greeting: "Hallo %{name}!"
+          reset_instructions:
+            with_password: "Du kannst dein Passwort zum Anmeldeportal für das deutsche Kontingent zum Worldscoutjamboree 2027 unter folgendem Link zurücksetzen."
+            without_password_html: "du hast den ersten Schritt zur Anmeldung für das deutsche Kontingent zum Worldscoutjamboree 2027 in Polen gemacht!<br>Du bist jetzt registriert.<br>Bitte setze ein Passwort unter dem folgenden Link."
+          registration_information_html: 'Eine genaue Anleitung für deine Registrierung im Anmeldeportal findest du unter <a href="https://www.worldscoutjamboree.de/howto-anmeldung/">HowTo Anmeldung</a>.'
+          registration_mailing_information_html: 'Alle weiteren Mails von uns wirst du an %{email} geschickt bekommen. <br> Dies ist auch deine Mailadresse für unser <a href="https://anmeldung.worldscoutjamboree.de">Anmeldeportal</a>.'
+          registration_footer_information_html: 'Mehr Informationen zum Jamboree findest du auf unserer <a href="https://worldscoutjamboree.de">Homepage</a>. <br> <br> Wir freuen uns auf dich! <br> <br> Dein Worldscoutjamboree 2027 CMT'
+
+
+  layouts:
+    nav:
+      sign_out: "Abmelden"
+
+    unauthorized:
+      forgot_password: "Passwort vergessen?"
+      need_confirmation_email: "Keine Bestätigungs-E-Mail bekommen?"
+      main_self_registration: "Du möchtest dich als Unit Leader am Jamboree engagieren? Registriere Dich hier."
+      main_other_registration_info: "Du möchtest als Youth Participant oder IST am Jamboree teilehmen? Die Anmeldung für Dich startet im Juni."
+      main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
+      main_other_registration_info_link: "https://www.worldscoutjamboree.de/mitfahren/"
