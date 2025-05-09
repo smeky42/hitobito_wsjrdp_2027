@@ -4,6 +4,8 @@ application:
   languages:
     de: Deutsch
 
+  version: '0.0.1 - UL preregistration'
+
 email:
   sender: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <anmeldung@worldscoutjamboree.de>" %>
   mass_recipient: <%= "Deutsches Kontingent zum World Scout Jamboree 202  <anmeldung@worldscoutjamboree.de>" %>
