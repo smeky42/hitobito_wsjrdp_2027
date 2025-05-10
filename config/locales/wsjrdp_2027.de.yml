@@ -66,7 +66,7 @@ de:
           birthday_format: "Bitte gib deinen Geburstag im Format dd.mm.yyyy ein."
           to_young: "Du bist zu jung. Um am Jamboree teilzunehmen musst du mindestens 14 Jahre alt sein. Also am oder vor dem 30.07.2013 geboren sein."
           yp_to_old: "Als Youth Participant musst du am Jamboree zwischen 14 und 18 Jahre alt sein. Also nach dem 30.07.2009 geboren sein."
-          ul_to_young: "Als Unit Leader musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
+          ul_to_young: "Als Unit Leader musst du zum Zeitpunkt deiner Registrierung (also Heute) mindestens 18 Jahre alt sein."
           ist_to_young: "Als IST musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
           cmt_to_young: "Als CMT musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
 
@@ -92,6 +92,6 @@ de:
       forgot_password: "Passwort vergessen?"
       need_confirmation_email: "Keine Bestätigungs-E-Mail bekommen?"
       main_self_registration: "Du möchtest dich als Unit Leader am Jamboree engagieren? Registriere Dich hier."
-      main_other_registration_info: "Du möchtest als Youth Participant oder IST am Jamboree teilehmen? Die Anmeldung für Dich startet im Juni."
+      main_other_registration_info: "Du möchtest als Youth Participant oder IST am Jamboree teilnehmen? Die Anmeldung für Dich startet im Juni."
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
       main_other_registration_info_link: "https://www.worldscoutjamboree.de/mitfahren/"
