@@ -45,7 +45,7 @@ module Wsjrdp2027::Wizards::Steps::NewUserForm
     end
 
     # Adults: born on or before 30 July 2009
-    if (wizard.role.type == 'Group::Unit::UnapprovedLeader') && birthday > Date.new(2009, 7, 30)
+    if (wizard.role.type == 'Group::Unit::UnapprovedLeader') && birthday > 18.years.ago.to_date
       message = I18n.t('groups.self_registration.create.flash.ul_to_young')
       errors.add(:base, message)
     end

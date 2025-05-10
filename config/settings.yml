@@ -8,7 +8,8 @@ application:
 
 email:
   sender: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <anmeldung@worldscoutjamboree.de>" %>
-  mass_recipient: <%= "Deutsches Kontingent zum World Scout Jamboree 202  <anmeldung@worldscoutjamboree.de>" %>
+  reply_to: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <info@worldscoutjamboree.de>" %>
+  mass_recipient: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <anmeldung@worldscoutjamboree.de>" %>
 
 addresses:
   imported_countries:
