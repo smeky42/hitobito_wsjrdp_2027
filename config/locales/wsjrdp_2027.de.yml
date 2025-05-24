@@ -42,6 +42,8 @@ de:
       person:
         nickname: Spitzname / Fahrtenname
         buddy_id: Buddy ID
+        buddy_id_ul: Unit Leader Buddy ID
+        buddy_id_yp: Youth Participant Buddy ID 
         genders:
           d: divers
         rdp_association: Verband
@@ -53,7 +55,15 @@ de:
   people:
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
-      rdp_association: Verbandszugehörigkeit
+      rdp_association: Verband & Buddy-ID
+    association_fields:
+      buddy_id_header: Mit diesen Personen möchte ich in eine Unit 
+      rdp_association_header: Verbandszugehörigkeit 
+      buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in und eine*n Freundin wünschen. <br/> Die jeweilige Buddy-ID kann erfährst du von der jeweiligen Person. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie im "Info"-Tab.'   
+    participant_wish_data:
+      header: Die folgenden Personen haben deine Buddy-ID angegeben und
+      header_ul: wünschen sich dich als Unit Leader
+      header_yp: wünschen sich dich als Buddy
 
   groups:
     self_registration:
@@ -95,3 +105,4 @@ de:
       main_other_registration_info: "Du möchtest als Youth Participant oder IST am Jamboree teilnehmen? Die Anmeldung für Dich startet im Juni."
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
       main_other_registration_info_link: "https://www.worldscoutjamboree.de/mitfahren/"
+  
