@@ -1,0 +1,15 @@
+%h4= t('.header')
+%table
+  %tr
+    %th(colspan="2")=t('.header_ul')
+  - Person.where(buddy_id_ul: entry.buddy_id).each do |participant_wish|
+    %tr
+      %td(style="padding-right: 2px")= "#{participant_wish.first_name} #{participant_wish.last_name}"
+      %td(style="padding-left: 2px")= participant_wish.email
+  %tr
+    %th(colspan="2")=t('.header_yp')
+  - Person.where(buddy_id_yp: entry.buddy_id).each do |participant_wish|
+    %tr
+      %td(style="padding-right: 2px")= "#{participant_wish.first_name} #{participant_wish.last_name}"
+      %td(style="padding-left: 2px")= participant_wish.email
+  

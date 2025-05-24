@@ -20,9 +20,6 @@
         - FeatureGate.if(:person_language) do
           = render_attrs(entry, :language)
 
-        - entry.buddy_id = "#{entry.buddy_id}-#{entry.id}"
-        = render_attrs(entry, :buddy_id)
-
         - FeatureGate.if(:self_registration_reason) do
           = render_present_attrs(entry, :self_registration_reason_text)
 
@@ -43,6 +40,12 @@
       = render 'tags'
       %br/
       = render_attrs(entry, :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group, :rdp_association_number)
+      
+      - entry.buddy_id = "#{entry.buddy_id}-#{entry.id}"
+      = render_attrs(entry, :buddy_id)
+      
+      = render 'participant_wish_data'
+      
       = render 'roles'
       = render 'add_requests'
       = render 'event_aside', title: Event::Application.model_name.human(count: 2), collection: entry.pending_applications
