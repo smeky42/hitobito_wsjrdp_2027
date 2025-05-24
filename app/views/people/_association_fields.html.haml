@@ -4,6 +4,11 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027.
 
 %br/
+%h2= t('.buddy_id_header')
+= f.labeled_input_fields :buddy_id_ul, :buddy_id_yp
+= f.help_block(raw(t('.buddy_id_help')))
+%br/
+%h2= t('.rdp_association_header')
 = f.labeled_input_fields :rdp_association, :rdp_association_region, :rdp_association_sub_region
 = f.labeled_input_fields :rdp_association_group, :rdp_association_number 
 
