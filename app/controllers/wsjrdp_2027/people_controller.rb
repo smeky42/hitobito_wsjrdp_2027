@@ -13,7 +13,10 @@ module Wsjrdp2027::PeopleController
       :rdp_association_region,
       :rdp_association_sub_region,
       :rdp_association_group,
-      :rdp_association_number
+      :rdp_association_number,
+      :buddy_id,
+      :buddy_id_ul,
+      :buddy_id_yp
     ]
 
     # Override crud_controller
