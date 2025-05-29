@@ -1,4 +1,4 @@
-require 'test_helper'
+require "test_helper"
 
 class HitobitoWsjrdp2027Test < ActiveSupport::TestCase
   test "truth" do

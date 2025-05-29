@@ -23,7 +23,7 @@ module Wsjrdp2027::PeopleController
     # Display a form to edit an exisiting entry of this model.
     #   GET /entries/1/edit
     def edit(&block)
-      @rdp_groups = YAML.load_file(HitobitoWsjrdp2027::Wagon.root.join('config/rdp_groups.yml'))[Rails.env]
+      @rdp_groups = YAML.load_file(HitobitoWsjrdp2027::Wagon.root.join("config/rdp_groups.yml"))[Rails.env]
 
       respond_with(entry, &block)
     end
