@@ -5,7 +5,6 @@ require "hitobito_wsjrdp_2027/version"
 
 # Describe your gem and declare its dependencies:
 Gem::Specification.new do |s|
-  # rubocop:disable SingleSpaceBeforeFirstArg
   s.name = "hitobito_wsjrdp_2027"
   s.version = HitobitoWsjrdp2027::VERSION
   s.authors = ["Peter Neubauer"]
@@ -16,5 +15,4 @@ Gem::Specification.new do |s|
 
   s.files = Dir["{app,config,db,lib}/**/*"] + ["Rakefile"]
   s.test_files = Dir["test/**/*"]
-  # rubocop:enable SingleSpaceBeforeFirstArg
 end

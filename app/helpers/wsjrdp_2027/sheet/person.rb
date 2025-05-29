@@ -14,7 +14,7 @@ module Wsjrdp2027::Sheet::Person
     "people.tabs.log",
     "people.tabs.security_tools",
     "people.tabs.colleagues",
-    "activerecord.models.assignment.other",
+    "activerecord.models.assignment.other"
   ]
 
   included do
