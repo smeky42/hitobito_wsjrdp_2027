@@ -20,43 +20,43 @@ module Wsjrdp2027::Wizards::Steps::NewUserForm
   end
 
   def assert_role_policy
-    unless wizard.role.type.in?(['Group::Unit::Member', 'Group::Unit::UnapprovedLeader', 'Group::Ist::Member', 'Group::Root::Member'])
-      message = I18n.t('groups.self_registration.create.flash.role_policy')
+    unless wizard.role.type.in?(["Group::Unit::Member", "Group::Unit::UnapprovedLeader", "Group::Ist::Member", "Group::Root::Member"])
+      message = I18n.t("groups.self_registration.create.flash.role_policy")
       errors.add(:base, message)
     end
   end
 
   def assert_age_policy
     if birthday.nil?
-      message = I18n.t('groups.self_registration.create.flash.birthday_format')
+      message = I18n.t("groups.self_registration.create.flash.birthday_format")
       errors.add(:base, message)
       return
     end
 
     # Youth Particpants: born after 30 July 2009 but not later than 30 July 2013
     if birthday >= Date.new(2013, 7, 30)
-      message = I18n.t('groups.self_registration.create.flash.to_young')
+      message = I18n.t("groups.self_registration.create.flash.to_young")
       errors.add(:base, message)
     end
 
-    if (wizard.role.type == 'Group::Unit::Member') && birthday < Date.new(2009, 7, 30)
-      message = I18n.t('groups.self_registration.create.flash.yp_to_old')
+    if (wizard.role.type == "Group::Unit::Member") && birthday < Date.new(2009, 7, 30)
+      message = I18n.t("groups.self_registration.create.flash.yp_to_old")
       errors.add(:base, message)
     end
 
     # Adults: born on or before 30 July 2009
-    if (wizard.role.type == 'Group::Unit::UnapprovedLeader') && birthday > 18.years.ago.to_date
-      message = I18n.t('groups.self_registration.create.flash.ul_to_young')
+    if (wizard.role.type == "Group::Unit::UnapprovedLeader") && birthday > 18.years.ago.to_date
+      message = I18n.t("groups.self_registration.create.flash.ul_to_young")
       errors.add(:base, message)
     end
 
-    if (wizard.role.type == 'Group::Ist::Member') && birthday > Date.new(2009, 7, 30)
-      message = I18n.t('groups.self_registration.create.flash.ist_to_young')
+    if (wizard.role.type == "Group::Ist::Member") && birthday > Date.new(2009, 7, 30)
+      message = I18n.t("groups.self_registration.create.flash.ist_to_young")
       errors.add(:base, message)
     end
 
-    if (wizard.role.type == 'Group::Root::Member') && birthday > Date.new(2009, 7, 30)
-      message = I18n.t('groups.self_registration.create.flash.cmt_to_young')
+    if (wizard.role.type == "Group::Root::Member") && birthday > Date.new(2009, 7, 30)
+      message = I18n.t("groups.self_registration.create.flash.cmt_to_young")
       errors.add(:base, message)
     end
   end
