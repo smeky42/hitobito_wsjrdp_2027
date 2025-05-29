@@ -16,7 +16,7 @@ module Wsjrdp2027::Wizards::Steps::NewUserForm
 
   def initialize(wizard, **params)
     params[:buddy_id] ||= get_random_spice
-    super(wizard, **params)
+    super
   end
 
   def assert_role_policy
