@@ -14,16 +14,16 @@ class PersonAbility < AbilityDsl::Base
     permission(:admin).may(:totp_reset).all
     permission(:admin).may(:totp_disable).if_two_factor_authentication_not_enforced
 
-    #permission(:any).may(:show, :update, :update_email, :primary_group, :totp_reset, :security)
-    #.herself
+    # permission(:any).may(:show, :update, :update_email, :primary_group, :totp_reset, :security)
+    # .herself
     permission(:any).may(:show, :update)
-    .herself
+      .herself
     # permission(:any)
     #   .may(:show_details, :show_full, :history, :log, :index_invoices, :update_settings)
     #   .herself_unless_only_basic_permissions_roles
     permission(:any)
-    .may(:show_details, :show_full)
-    .herself_unless_only_basic_permissions_roles
+      .may(:show_details, :show_full)
+      .herself_unless_only_basic_permissions_roles
     # permission(:any).may(:totp_disable).herself_if_two_factor_authentication_not_enforced
     permission(:any).may(:totp_disable).herself_if_two_factor_authentication_not_enforced
 
