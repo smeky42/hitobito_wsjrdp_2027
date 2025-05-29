@@ -1,27 +1,46 @@
 name: 'Lint and test'
 
 on:
-  # The nightly obuild allows us to notice if changes to the core
-  # break the wagon.
+  # Runs nightly to notice if changes to the core break the wagon
   schedule:
-  - cron:  '38 3 * * *'
+    - cron:  '38 3 * * *'
+
+  # Run on all pushes
   push:
     paths-ignore:
       - 'doc/**'
       - '**.md'
+
+  # Run on all pull requests
   pull_request:
     paths-ignore:
       - 'doc/**'
       - '**.md'
-  workflow_dispatch: # Allow triggering manually
-    inputs:
-      core_ref:
-        description: Use a specific version of the core for the workflow run. Defaults to master.
-        type: string
-        default: 'master'
+
 jobs:
+  define-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      core_refs: ${{ steps.set-refs.outputs.core_refs }}
+    steps:
+      - name: Set hitobito core refs
+        id: set-refs
+        run: |
+          DEPLOYED_REF="2.5.7"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # For pushes, only tests against the deployed branch
+            echo "core_refs=[\"${DEPLOYED_REF}\"]" >> "$GITHUB_OUTPUT"
+          else
+            # Test deployed branch and master
+            echo "core_refs=[\"${DEPLOYED_REF}\", \"master\"]" >> "$GITHUB_OUTPUT"
+          fi
   wagon_tests:
+    needs: define-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        core_ref: ${{ fromJSON(needs.define-matrix.outputs.core_refs) }}
     uses: ./.github/workflows/wagon-tests.yml
     with:
       wagon_repository: ${{ github.event.repository.name }}
-      core_ref: ${{ inputs.core_ref }}
+      core_ref: ${{ matrix.core_ref }}
