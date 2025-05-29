@@ -43,6 +43,5 @@ module HitobitoWsjrdp2027
       fixtures = root.join('db', 'seeds')
       ENV['NO_ENV'] ? [fixtures] : [fixtures, File.join(fixtures, Rails.env)]
     end
-
   end
 end

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Wsjrdp2027::Person
-
   # This is just local to this module, it doesn't override anything when this module in included
   GENDERS = %w[m w d].freeze
 
