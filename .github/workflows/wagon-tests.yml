@@ -73,8 +73,8 @@ jobs:
       RAILS_ENV: development
       DISABLE_TEST_SCHEMA_MAINTENANCE: true
 
-    # only run seeds on master
-    if: ${{ github.ref_name == 'master' }}
+    # only run seeds on main and staging branches
+    if: ${{ github.ref_name == 'main' || github.ref_name == 'staging' }}
     services:
       postgres:
         image: postgres:16
