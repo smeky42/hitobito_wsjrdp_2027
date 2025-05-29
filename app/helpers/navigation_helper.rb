@@ -55,8 +55,8 @@ module NavigationHelper
        hitobito_log_entries
        mailing_lists/imap_mails
        api],
-       if: ->(_) { false }}
-      # if: ->(_) { can?(:index, LabelFormat) }}
+     if: ->(_) { false }}
+    # if: ->(_) { can?(:index, LabelFormat) }}
   ]
 
   def render_main_nav

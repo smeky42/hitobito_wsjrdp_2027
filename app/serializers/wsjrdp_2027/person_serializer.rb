@@ -10,11 +10,11 @@ module Wsjrdp2027::PersonSerializer
   included do
     extension(:details) do |_|
       map_properties :old_id,
-                     :rdp_association,
-                     :rdp_association_region,
-                     :rdp_association_sub_region,
-                     :rdp_association_group,
-                     :rdp_association_number
+        :rdp_association,
+        :rdp_association_region,
+        :rdp_association_sub_region,
+        :rdp_association_group,
+        :rdp_association_number
     end
   end
 end

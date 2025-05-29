@@ -10,5 +10,4 @@ module Wsjrdp2027::Group
 
     root_types Group::Root
   end
-
 end

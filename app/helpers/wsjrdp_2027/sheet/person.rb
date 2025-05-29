@@ -22,7 +22,7 @@ module Wsjrdp2027::Sheet::Person
     #   :group_person_path,
     #   if: :show
 
-    self.tabs.select! {|t| shown_tabs.include? t.label_key}
-    self.tabs.sort_by! {|t| shown_tabs.index t.label_key}
+    self.tabs.select! { |t| shown_tabs.include? t.label_key }
+    self.tabs.sort_by! { |t| shown_tabs.index t.label_key }
   end
 end
