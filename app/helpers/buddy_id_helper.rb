@@ -9,6 +9,6 @@ module BuddyIdHelper
   end
 
   def spice_yaml
-    YAML.load_file(HitobitoWsjrdp2027::Wagon.root.join('config/spice.yml'))
+    YAML.load_file(HitobitoWsjrdp2027::Wagon.root.join("config/spice.yml"))
   end
 end
