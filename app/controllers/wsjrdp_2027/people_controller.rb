@@ -16,7 +16,16 @@ module Wsjrdp2027::PeopleController
       :rdp_association_number,
       :buddy_id,
       :buddy_id_ul,
-      :buddy_id_yp
+      :buddy_id_yp,
+      :additional_contact_name_a,
+      :additional_contact_adress_a,
+      :additional_contact_email_a,
+      :additional_contact_phone_a,
+      :additional_contact_name_b,
+      :additional_contact_adress_b,
+      :additional_contact_email_b,
+      :additional_contact_phone_b,
+      :additional_contact_single
     ]
 
     # Override crud_controller

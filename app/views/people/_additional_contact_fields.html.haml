@@ -1,0 +1,64 @@
+-#  Copyright (c) 2012-2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027.
+
+= field_set_tag do
+  %h4
+    - if (@person.years.to_i >= 18) 
+      = t('activerecord.attributes.person.additional_contact_a_info_adult')
+    - else 
+      = t('activerecord.attributes.person.additional_contact_a_info')
+  = f.labeled_input_field :additional_contact_name_a 
+  .row
+    %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+      = t('activerecord.attributes.person.additional_contact_adress_a')
+    .col 
+      .d-flex.flex-row.mb-2
+        = f.input_field :additional_contact_adress_a, input_html: { id: 'additional_contact_adress_a' }
+        %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_additional_contact_adress_a")' }
+          = "vom YP übernehmen"
+
+  = f.labeled_input_field :additional_contact_email_a, placeholder: t('activerecord.attributes.person.additional_contact_email_info')
+  = f.labeled_input_field :additional_contact_phone_a, placeholder: t('activerecord.attributes.person.additional_contact_phone_info')
+= field_set_tag do
+  %h4
+    - if (@person.years.to_i >= 18) 
+      = t('activerecord.attributes.person.additional_contact_b_info_adult')
+    - else 
+      = t('activerecord.attributes.person.additional_contact_b_info')
+  = f.labeled_input_field :additional_contact_name_b 
+  .row
+    %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+      = t('activerecord.attributes.person.additional_contact_adress_b')
+    .col 
+      .d-flex.flex-row.mb-2
+        = f.input_field :additional_contact_adress_b, input_html: { id: 'additional_contact_adress_b' }
+        %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_additional_contact_adress_b")' }
+          = "vom YP übernehmen"
+
+  = f.labeled_input_field :additional_contact_email_b, placeholder: t('activerecord.attributes.person.additional_contact_email_info')
+  = f.labeled_input_field :additional_contact_phone_b, placeholder: t('activerecord.attributes.person.additional_contact_phone_info')
+  - if (@person.years.to_i < 18)
+    = f.labeled_input_field :additional_contact_single
+
+:javascript
+  function copyAddressToTargetId(targetId) {
+    const street = $('#person_street').val() || '';
+    const houseNumber = $('#person_housenumber').val() || '';
+    const zip = $('#person_zip_code').val() || '';
+    const town = $('#person_town').val() || '';
+
+    const target = $(targetId);
+
+    if (target.length === 0) {
+      console.warn('Target field #person_additional_contact_adress_a not found.');
+      return;
+    }
+
+    const addressLine1 = [street, houseNumber].filter(Boolean).join(' ').trim();
+    const addressLine2 = [zip, town].filter(Boolean).join(' ').trim();
+    const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(', ');
+
+    target.val(fullAddress);
+  }
