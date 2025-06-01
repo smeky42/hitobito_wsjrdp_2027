@@ -51,6 +51,22 @@ de:
         rdp_association_sub_region: Bezirk, Region
         rdp_association_group: Stamm, Ortsgruppe
         rdp_association_number: Mitgliedsnummer
+        additional_contact_a_info: Personensorgeberechtigte*r 1
+        additional_contact_a_info_adult: Primärer Notfallkontakt
+        additional_contact_name_a: Vor- und Nachname 
+        additional_contact_adress_a: Adresse 
+        additional_contact_email_a: E-Mail 
+        additional_contact_phone_a: Telefonnummer 
+        additional_contact_b_info: Personensorgeberechtigte*r 2
+        additional_contact_b_info_adult: Sekundärer Notfallkontakt
+        additional_contact_name_b: Vor- und Nachname 
+        additional_contact_adress_b: Adresse 
+        additional_contact_email_b: E-Mail 
+        additional_contact_phone_b: Telefonnummer 
+        additional_contact_single: Es gibt nur eine sorgeberechtigte Person
+        additional_contact_address_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
+        additional_contact_email_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
+        additional_contact_phone_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
 
   people:
     form_tabs:
@@ -64,6 +80,8 @@ de:
       header: Die folgenden Personen haben deine Buddy-ID angegeben und
       header_ul: wünschen sich dich als Unit Leader
       header_yp: wünschen sich dich als Buddy
+      rdp_association: Verbandszugehörigkeit
+      additional_contact: Weitere Kontaktdaten
 
   groups:
     self_registration:
@@ -92,7 +110,6 @@ de:
           registration_information_html: 'Eine genaue Anleitung für deine Registrierung im Anmeldeportal findest du unter <a href="https://www.worldscoutjamboree.de/howto-anmeldung/">HowTo Anmeldung</a>.'
           registration_mailing_information_html: 'Alle weiteren Mails von uns wirst du an %{email} geschickt bekommen. <br> Dies ist auch deine Mailadresse für unser <a href="https://anmeldung.worldscoutjamboree.de">Anmeldeportal</a>.'
           registration_footer_information_html: 'Mehr Informationen zum Jamboree findest du auf unserer <a href="https://worldscoutjamboree.de">Homepage</a>. <br> <br> Wir freuen uns auf dich! <br> <br> Dein Worldscoutjamboree 2027 CMT'
-
 
   layouts:
     nav:

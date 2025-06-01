@@ -60,5 +60,8 @@
     = field_set_tag do
       = f.labeled_input_field(:additional_information, help: t('.no_sensitive_information'))
 
+  #additional_contact.tab-pane 
+    = render 'additional_contact_fields', f: f
+
   #association.tab-pane 
     = render 'association_fields', f: f

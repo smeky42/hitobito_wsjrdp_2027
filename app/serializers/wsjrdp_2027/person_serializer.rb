@@ -14,7 +14,16 @@ module Wsjrdp2027::PersonSerializer
         :rdp_association_region,
         :rdp_association_sub_region,
         :rdp_association_group,
-        :rdp_association_number
+        :rdp_association_number,
+        :additional_contact_name_a,
+        :additional_contact_adress_a,
+        :additional_contact_email_a,
+        :additional_contact_phone_a,
+        :additional_contact_name_b,
+        :additional_contact_adress_b,
+        :additional_contact_email_b,
+        :additional_contact_phone_b,
+        :additional_contact_single
     end
   end
 end
