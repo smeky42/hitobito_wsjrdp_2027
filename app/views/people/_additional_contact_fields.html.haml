@@ -18,9 +18,24 @@
         = f.input_field :additional_contact_adress_a, input_html: { id: 'additional_contact_adress_a' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_additional_contact_adress_a")' }
           = "vom YP übernehmen"
+  .row
+    %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+      = t('activerecord.attributes.person.additional_contact_email_a')
+    .col 
+      .d-flex.flex-row.mb-2
+        = f.input_field :additional_contact_email_a, input_html: { id: 'additional_contact_email_a' }
+        %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyEmailToTargetId("#person_additional_contact_email_a")' }
+          = "vom YP übernehmen"
 
-  = f.labeled_input_field :additional_contact_email_a, placeholder: t('activerecord.attributes.person.additional_contact_email_info')
-  = f.labeled_input_field :additional_contact_phone_a, placeholder: t('activerecord.attributes.person.additional_contact_phone_info')
+  .row
+    %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+      = t('activerecord.attributes.person.additional_contact_phone_a')
+    .col 
+      .d-flex.flex-row.mb-2
+        = f.input_field :additional_contact_phone_a, input_html: { id: 'additional_contact_phone_a' }
+        %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyPhoneNumberToTargetId("#person_additional_contact_phone_a")' }
+          = "vom YP übernehmen"
+
 = field_set_tag do
   %h4
     - if (@person.years.to_i >= 18) 
@@ -37,8 +52,24 @@
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_additional_contact_adress_b")' }
           = "vom YP übernehmen"
 
-  = f.labeled_input_field :additional_contact_email_b, placeholder: t('activerecord.attributes.person.additional_contact_email_info')
-  = f.labeled_input_field :additional_contact_phone_b, placeholder: t('activerecord.attributes.person.additional_contact_phone_info')
+  .row
+    %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+      = t('activerecord.attributes.person.additional_contact_email_b')
+    .col 
+      .d-flex.flex-row.mb-2
+        = f.input_field :additional_contact_email_b, input_html: { id: 'additional_contact_email_b' }
+        %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyEmailToTargetId("#person_additional_contact_email_b")' }
+          = "vom YP übernehmen"
+
+  .row
+    %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+      = t('activerecord.attributes.person.additional_contact_phone_b')
+    .col 
+      .d-flex.flex-row.mb-2
+        = f.input_field :additional_contact_phone_b, input_html: { id: 'additional_contact_phone_b' }
+        %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyPhoneNumberToTargetId("#person_additional_contact_phone_b")' }
+          = "vom YP übernehmen"
+
   - if (@person.years.to_i < 18)
     = f.labeled_input_field :additional_contact_single
 
@@ -52,7 +83,7 @@
     const target = $(targetId);
 
     if (target.length === 0) {
-      console.warn('Target field #person_additional_contact_adress_a not found.');
+      console.warn(`Target field ${targetId} not found.`);
       return;
     }
 
@@ -61,4 +92,28 @@
     const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(', ');
 
     target.val(fullAddress);
+  }
+
+  function copyEmailToTargetId(targetId) {
+    const email = "#{j(@person.email || '')}";
+    const target = $(targetId);
+
+    if (target.length === 0) {
+      console.warn(`Target field ${targetId} not found.`);
+      return;
+    }
+
+    target.val(email);
+  }
+
+  function copyPhoneNumberToTargetId(targetId) {
+    const phoneNumber = $('#person_phone_numbers_attributes_0_number').val() || '';
+    const target = $(targetId);
+
+    if (target.length === 0) {
+      console.warn(`Target field ${targetId} not found.`);
+      return;
+    }
+    
+    target.val(phoneNumber);
   }
