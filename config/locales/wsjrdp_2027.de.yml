@@ -81,6 +81,8 @@ de:
       header: Die folgenden Personen haben deine Buddy-ID angegeben und
       header_ul: wünschen sich dich als Unit Leader
       header_yp: wünschen sich dich als Buddy
+    buttons:
+      copy_data: aus Teilnehmer*in Daten übernehmen
 
   groups:
     self_registration:
