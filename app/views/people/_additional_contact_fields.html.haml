@@ -17,7 +17,7 @@
       .d-flex.flex-row.mb-2
         = f.input_field :additional_contact_adress_a, input_html: { id: 'additional_contact_adress_a' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_additional_contact_adress_a")' }
-          = "vom YP übernehmen"
+          = t('people.buttons.copy_data')
   .row
     %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
       = t('activerecord.attributes.person.additional_contact_email_a')
@@ -25,7 +25,7 @@
       .d-flex.flex-row.mb-2
         = f.input_field :additional_contact_email_a, input_html: { id: 'additional_contact_email_a' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyEmailToTargetId("#person_additional_contact_email_a")' }
-          = "vom YP übernehmen"
+          = t('people.buttons.copy_data')
 
   .row
     %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
@@ -34,7 +34,7 @@
       .d-flex.flex-row.mb-2
         = f.input_field :additional_contact_phone_a, input_html: { id: 'additional_contact_phone_a' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyPhoneNumberToTargetId("#person_additional_contact_phone_a")' }
-          = "vom YP übernehmen"
+          = t('people.buttons.copy_data')
 
 = field_set_tag do
   %h4
@@ -50,7 +50,7 @@
       .d-flex.flex-row.mb-2
         = f.input_field :additional_contact_adress_b, input_html: { id: 'additional_contact_adress_b' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_additional_contact_adress_b")' }
-          = "vom YP übernehmen"
+          = t('people.buttons.copy_data')
 
   .row
     %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
@@ -59,7 +59,7 @@
       .d-flex.flex-row.mb-2
         = f.input_field :additional_contact_email_b, input_html: { id: 'additional_contact_email_b' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyEmailToTargetId("#person_additional_contact_email_b")' }
-          = "vom YP übernehmen"
+          = t('people.buttons.copy_data')
 
   .row
     %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
@@ -68,7 +68,7 @@
       .d-flex.flex-row.mb-2
         = f.input_field :additional_contact_phone_b, input_html: { id: 'additional_contact_phone_b' }
         %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyPhoneNumberToTargetId("#person_additional_contact_phone_b")' }
-          = "vom YP übernehmen"
+          = t('people.buttons.copy_data')
 
   - if (@person.years.to_i < 18)
     = f.labeled_input_field :additional_contact_single
