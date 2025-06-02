@@ -72,6 +72,7 @@ de:
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
+      additional_contact: Weitere Kontaktdaten
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit 
       rdp_association_header: Verbandszugehörigkeit 
@@ -80,8 +81,6 @@ de:
       header: Die folgenden Personen haben deine Buddy-ID angegeben und
       header_ul: wünschen sich dich als Unit Leader
       header_yp: wünschen sich dich als Buddy
-      rdp_association: Verbandszugehörigkeit
-      additional_contact: Weitere Kontaktdaten
 
   groups:
     self_registration:
