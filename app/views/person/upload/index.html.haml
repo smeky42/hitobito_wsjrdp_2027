@@ -5,12 +5,15 @@
     = f.labeled(:upload_contract_pdf, 'Vertrag hochladen ') do
       = f.file_field(:upload_contract_pdf)
     %br
+    = f.labeled(:upload_medical_pdf, 'Gesundheitsbogen hochladen ') do
+      = f.file_field(:upload_medical_pdf)
+    %br
     = f.labeled(:upload_data_agreement_pdf, 'Datenschutzerklärung hochladen ') do
       = f.file_field(:upload_data_agreement_pdf)
     %br
     = f.labeled(:upload_passport_pdf, 'Reisepass hochladen ') do
       = f.file_field(:upload_passport_pdf)
     %br
-    = f.labeled(:upload_good_conduct_pdf, 'Bestätigung Führungszeugnis hochladen ') do
-      = f.file_field(:upload_good_conduct_pdf)
+    = f.labeled(:upload_recommendation_pdf, 'Empfehlungsschreiben hochladen ') do
+      = f.file_field(:upload_recommendation_pdf)
     = form_buttons(f, submit_label: 'Dokumente hochladen', cancel_url: person_path(@person))
