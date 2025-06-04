@@ -1,0 +1,9 @@
+#main.row-fluid
+  - if can?(:edit, @person)
+    = action_button(t('people.buttons.print_preview'),
+                    '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/print/preview',
+                    :envelope,
+                    remote: false,
+                    method: :get,
+                    rel: :tooltip,
+                    title: t('people.buttons.print_preview'))
