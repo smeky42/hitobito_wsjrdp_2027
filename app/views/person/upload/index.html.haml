@@ -1,0 +1,16 @@
+#main.row-fluid
+  = standard_form(@person, {url: upload_group_person_path,  method: :put}) do |f|
+    = f.error_messages
+    %br
+    = f.labeled(:upload_contract_pdf, 'Vertrag hochladen ') do
+      = f.file_field(:upload_contract_pdf)
+    %br
+    = f.labeled(:upload_data_agreement_pdf, 'Datenschutzerklärung hochladen ') do
+      = f.file_field(:upload_data_agreement_pdf)
+    %br
+    = f.labeled(:upload_passport_pdf, 'Reisepass hochladen ') do
+      = f.file_field(:upload_passport_pdf)
+    %br
+    = f.labeled(:upload_good_conduct_pdf, 'Bestätigung Führungszeugnis hochladen ') do
+      = f.file_field(:upload_good_conduct_pdf)
+    = form_buttons(f, submit_label: 'Dokumente hochladen', cancel_url: person_path(@person))
