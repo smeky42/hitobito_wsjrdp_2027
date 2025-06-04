@@ -25,6 +25,7 @@ module HitobitoWsjrdp2027
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
       PersonSerializer.include Wsjrdp2027::PersonSerializer
       GroupAbility.include Wsjrdp2027::GroupAbility
+      PersonAbility.include Wsjrdp2027::PersonAbility
     end
 
     initializer "wsjrdp_2027.add_settings" do |_app|
