@@ -13,7 +13,7 @@ class Person::UploadController < ApplicationController
     @group ||= Group.find(params[:group_id])
     @person ||= group.people.find(params[:id])
     if request.put?
-      flash[:notice] = 'Uploaded: '
+      flash[:notice] = "Uploaded: "
       upload_files
     end
   end
@@ -30,10 +30,10 @@ class Person::UploadController < ApplicationController
 
   def upload_files
     unless params[:person].nil?
-      upload_file(params[:person][:upload_contract_pdf], 'upload_contract_pdf')
-      upload_file(params[:person][:upload_data_agreement_pdf], 'upload_data_agreement_pdf')
-      upload_file(params[:person][:upload_passport_pdf], 'upload_passport_pdf')
-      upload_file(params[:person][:upload_good_conduct_pdf], 'upload_good_conduct_pdf')
+      upload_file(params[:person][:upload_contract_pdf], "upload_contract_pdf")
+      upload_file(params[:person][:upload_data_agreement_pdf], "upload_data_agreement_pdf")
+      upload_file(params[:person][:upload_passport_pdf], "upload_passport_pdf")
+      upload_file(params[:person][:upload_good_conduct_pdf], "upload_good_conduct_pdf")
     end
   end
 
@@ -42,11 +42,11 @@ class Person::UploadController < ApplicationController
       return
     end
 
-    if file_param.content_type == 'application/pdf'
+    if file_param.content_type == "application/pdf"
       file_path = file_path(file_name)
       FileUtils.mkdir_p(File.dirname(file_path)) unless File.directory?(File.dirname(file_path))
 
-      File.open(file_path, 'wb') do |file|
+      File.open(file_path, "wb") do |file|
         file.write(file_param.read)
       end
 
@@ -54,17 +54,17 @@ class Person::UploadController < ApplicationController
       @person.save
 
     else
-      lash[:alert] = I18n.t('activerecord.alert.only_pdf_allowed')
+      lash[:alert] = I18n.t("activerecord.alert.only_pdf_allowed")
     end
   end
 
   def file_path(file_name)
-    date = Time.zone.now.strftime('%Y-%m-%d-%H-%M-%S')
-    file_name = file_name.remove('upload_').remove('_pdf')
+    date = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+    file_name = file_name.remove("upload_").remove("_pdf")
     "#{generate_file_path}#{date}--#{@person.id}-#{file_name}.pdf"
   end
 
   def generate_file_path
-    "#{Rails.root}/private/uploads/person/pdf/#{@person.id}/"
+    "#{HitobitoWsjrdp2027::Wagon.root}/private/uploads/person/pdf/#{@person.id}/"
   end
 end
