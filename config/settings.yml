@@ -1,6 +1,7 @@
 # Settings relevant for the hitobito_wsjrdp_2027 wagon
 # Overrides settings from the main application
 application:
+  name: WSJ2027
   languages:
     de: Deutsch
 
