@@ -16,6 +16,9 @@ zeus.json
 # ignore Gemfile.lock for wagons
 Gemfile.lock
 
+# uploaded pdf files
+/private/ 
+
 # reports
 spec/coverage
 spec/reports
