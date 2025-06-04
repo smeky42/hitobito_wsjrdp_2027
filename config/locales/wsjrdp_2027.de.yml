@@ -38,6 +38,9 @@ de:
       group/unit/member:
         one: Youth Participant
 
+    alert: 
+      only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
+      
     attributes:
       person:
         nickname: Spitzname / Fahrtenname
@@ -67,8 +70,14 @@ de:
         additional_contact_address_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
         additional_contact_email_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
         additional_contact_phone_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
+        upload_contract_pdf: Vertrag
+        upload_data_agreement_pdf: Datenschutzerklärung
+        upload_passport_pdf: Ausweis
+        upload_good_conduct_pdf: Nachweis Führungszeugnis
 
   people:
+    tabs:
+      upload: Uploads
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID

@@ -25,7 +25,11 @@ module Wsjrdp2027::PeopleController
       :additional_contact_adress_b,
       :additional_contact_email_b,
       :additional_contact_phone_b,
-      :additional_contact_single
+      :additional_contact_single,
+      :upload_contract_pdf,
+      :upload_data_agreement_pdf,
+      :upload_passport_pdf,
+      :upload_good_conduct_pdf
     ]
 
     # Override crud_controller
