@@ -6,10 +6,11 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2027.
 
 class AddPeopleAttrsUpload < ActiveRecord::Migration[4.2]
-    def change
-      add_column :people, :upload_contract_pdf, :string
-      add_column :people, :upload_data_agreement_pdf, :string
-      add_column :people, :upload_passport_pdf, :string
-      add_column :people, :upload_good_conduct_pdf, :string
-    end
+  def change
+    add_column :people, :upload_contract_pdf, :string
+    add_column :people, :upload_data_agreement_pdf, :string
+    add_column :people, :upload_passport_pdf, :string
+    add_column :people, :upload_recommendation_pdf, :string
+    add_column :people, :upload_medical_pdf, :string
+  end
 end

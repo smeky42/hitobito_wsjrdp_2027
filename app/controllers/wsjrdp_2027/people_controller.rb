@@ -29,7 +29,8 @@ module Wsjrdp2027::PeopleController
       :upload_contract_pdf,
       :upload_data_agreement_pdf,
       :upload_passport_pdf,
-      :upload_good_conduct_pdf
+      :upload_recommendation_pdf,
+      :upload_medical_pdf
     ]
 
     # Override crud_controller
