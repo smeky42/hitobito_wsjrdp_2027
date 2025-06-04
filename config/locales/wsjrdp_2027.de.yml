@@ -102,6 +102,7 @@ de:
   people:
     tabs:
       upload: Uploads
+      print: Anmeldung drucken
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
@@ -122,6 +123,7 @@ de:
       header_yp: wünschen sich dich als Buddy
     buttons:
       copy_data: aus Teilnehmer*in Daten übernehmen
+      print_preview: Vorschau drucken
 
   groups:
     self_registration:

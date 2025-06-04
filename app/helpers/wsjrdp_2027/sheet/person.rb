@@ -9,6 +9,7 @@ module Wsjrdp2027::Sheet::Person
     "people.tabs.medicine",
     "people.tabs.upload",
     # "people.tabs.subscriptions",
+    "people.tabs.print",
     "people.tabs.invoices",
     # "activerecord.models.message.other",
     "people.tabs.history",
@@ -18,10 +19,10 @@ module Wsjrdp2027::Sheet::Person
     "activerecord.models.assignment.other"
   ]
 
-  included do
-    # tab "people.tabs.medicine",
-    #   :group_person_path,
-    #   if: :show
+  included do  
+    tab "people.tabs.print",
+      :print_group_person_path,
+      if: :show
 
     self.tabs.select! { |t| shown_tabs.include? t.label_key }
     self.tabs.sort_by! { |t| shown_tabs.index t.label_key }
