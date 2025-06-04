@@ -17,15 +17,29 @@ module HitobitoWsjrdp2027
 
     config.to_prepare do
       # extend application classes here
+
+      # Models
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
+
+      # Concerns
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
+
+      # Controllers
       PeopleController.include Wsjrdp2027::PeopleController
+
+      # Helpers
       Sheet::Person.include Wsjrdp2027::Sheet::Person
-      Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
-      PersonSerializer.include Wsjrdp2027::PersonSerializer
+
+      # Abilities
+      EventAbility.include Wsjrdp2027::EventAbility
       GroupAbility.include Wsjrdp2027::GroupAbility
       PersonAbility.include Wsjrdp2027::PersonAbility
+      VariousAbility.include Wsjrdp2027::VariousAbility
+
+      # Other
+      Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
+      PersonSerializer.include Wsjrdp2027::PersonSerializer
     end
 
     initializer "wsjrdp_2027.add_settings" do |_app|
