@@ -13,7 +13,6 @@ class Person::UploadController < ApplicationController
     @group ||= Group.find(params[:group_id])
     @person ||= group.people.find(params[:id])
     if request.put?
-      flash[:notice] = "Uploaded: "
       upload_files
     end
   end
@@ -31,9 +30,10 @@ class Person::UploadController < ApplicationController
   def upload_files
     unless params[:person].nil?
       upload_file(params[:person][:upload_contract_pdf], "upload_contract_pdf")
+      upload_file(params[:person][:upload_medical_pdf], "upload_medical_pdf")
       upload_file(params[:person][:upload_data_agreement_pdf], "upload_data_agreement_pdf")
       upload_file(params[:person][:upload_passport_pdf], "upload_passport_pdf")
-      upload_file(params[:person][:upload_good_conduct_pdf], "upload_good_conduct_pdf")
+      upload_file(params[:person][:upload_recommendation_pdf], "upload_recommendation_pdf")
     end
   end
 
@@ -45,10 +45,7 @@ class Person::UploadController < ApplicationController
     if file_param.content_type == "application/pdf"
       file_path = file_path(file_name)
       FileUtils.mkdir_p(File.dirname(file_path)) unless File.directory?(File.dirname(file_path))
-
-      File.open(file_path, "wb") do |file|
-        file.write(file_param.read)
-      end
+      File.binwrite(file_path, file_param.read)
 
       @person[file_name] = file_path
       @person.save
