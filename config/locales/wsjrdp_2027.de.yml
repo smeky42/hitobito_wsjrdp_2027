@@ -73,7 +73,8 @@ de:
         upload_contract_pdf: Vertrag
         upload_data_agreement_pdf: Datenschutzerklärung
         upload_passport_pdf: Ausweis
-        upload_good_conduct_pdf: Nachweis Führungszeugnis
+        upload_recommendation_pdf: Empfehlungsschreiben
+        upload_medical_pdf: Gesundheitsbogen
 
   people:
     tabs:
