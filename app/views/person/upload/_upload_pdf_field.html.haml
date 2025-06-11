@@ -1,0 +1,16 @@
+.row
+  %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+    = label
+  .col 
+    .d-flex.flex-row.mb-2
+      .pb-2
+        = f.file_field(field)
+      - if @person.send(field).present?
+        = action_button(button_label,
+                        button_path,
+                        :envelope,
+                        remote: false,
+                        method: :get,
+                        rel: :tooltip,
+                        title: t('activerecord.buttons.review_hint'),
+                        target: '_blank')

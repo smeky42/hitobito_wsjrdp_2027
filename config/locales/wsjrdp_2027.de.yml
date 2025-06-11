@@ -75,6 +75,22 @@ de:
         upload_passport_pdf: Ausweisdokument
         upload_recommendation_pdf: Empfehlungsschreiben
         upload_medical_pdf: Gesundheitsbogen
+    
+    buttons:
+      show_contract: Vertrag einsehen
+      show_data_agreement: Datenschutzerklärung einsehen
+      show_passport: Ausweis einsehen
+      show_recommendation: Empfehlungsschreiben einsehen
+      show_medical: Gesundheitsbogen einsehen
+      review_hint: Dokument einsehen
+      upload_documents: Dokumente hochladen
+
+    fields:
+      upload_contract_pdf: Vertrag hochladen
+      upload_medical_pdf: Gesundheitsbogen hochladen
+      upload_data_agreement_pdf: Datenschutzerklärung hochladen
+      upload_passport_pdf: Ausweisdokument hochladen
+      upload_recommendation_pdf: Empfehlungsschreiben hochladen 
 
   people:
     tabs:

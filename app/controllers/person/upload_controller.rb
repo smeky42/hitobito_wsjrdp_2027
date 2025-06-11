@@ -17,6 +17,26 @@ class Person::UploadController < ApplicationController
     end
   end
 
+  def show_contract
+    download_file(@person.upload_contract_pdf)
+  end
+
+  def show_medical
+    download_file(@person.upload_medical_pdf)
+  end
+
+  def show_data_agreement
+    download_file(@person.upload_data_agreement_pdf)
+  end
+
+  def show_passport
+    download_file(@person.upload_passport_pdf)
+  end
+
+  def show_recommendation
+    download_file(@person.upload_recommendation_pdf)
+  end
+
   private
 
   def entry
@@ -25,6 +45,17 @@ class Person::UploadController < ApplicationController
 
   def authorize_action
     authorize!(:edit, entry)
+  end
+
+  def download_file(file)
+    if file.present? && can?(:edit, @person)
+      file_name = File.basename(file)
+      File.open(file, "r") do |f|
+        send_data f.read.force_encoding("BINARY"), filename: file_name,
+          type: "application/pdf",
+          disposition: "inline"
+      end
+    end
   end
 
   def upload_files
