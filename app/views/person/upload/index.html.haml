@@ -1,19 +1,40 @@
 #main.row-fluid
   = standard_form(@person, {url: upload_group_person_path,  method: :put}) do |f|
     = f.error_messages
-    %br
-    = f.labeled(:upload_contract_pdf, 'Vertrag hochladen ') do
-      = f.file_field(:upload_contract_pdf)
-    %br
-    = f.labeled(:upload_medical_pdf, 'Gesundheitsbogen hochladen ') do
-      = f.file_field(:upload_medical_pdf)
-    %br
-    = f.labeled(:upload_data_agreement_pdf, 'Datenschutzerklärung hochladen ') do
-      = f.file_field(:upload_data_agreement_pdf)
-    %br
-    = f.labeled(:upload_passport_pdf, 'Ausweisdokument hochladen ') do
-      = f.file_field(:upload_passport_pdf)
-    %br
-    = f.labeled(:upload_recommendation_pdf, 'Empfehlungsschreiben hochladen ') do
-      = f.file_field(:upload_recommendation_pdf)
-    = form_buttons(f, submit_label: 'Dokumente hochladen', cancel_url: person_path(@person))
+
+    = render 'person/upload/upload_pdf_field',
+      f:f,
+      label: t("activerecord.fields.upload_contract_pdf"),
+      field: :upload_contract_pdf,
+      button_label: t('activerecord.buttons.show_contract'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_contract"
+
+    = render 'person/upload/upload_pdf_field',
+      f:f,
+      label: t("activerecord.fields.upload_medical_pdf"),
+      field: :upload_medical_pdf,
+      button_label: t('activerecord.buttons.show_medical'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_medical"
+
+    = render 'person/upload/upload_pdf_field',
+      f:f,
+      label: t("activerecord.fields.upload_data_agreement_pdf"),
+      field: :upload_data_agreement_pdf,
+      button_label: t('activerecord.buttons.show_data_agreement'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement"
+
+    = render 'person/upload/upload_pdf_field',
+      f:f,
+      label: t("activerecord.fields.upload_passport_pdf"),
+      field: :upload_passport_pdf,
+      button_label: t('activerecord.buttons.show_passport'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport"
+
+    = render 'person/upload/upload_pdf_field',
+      f:f,
+      label: t("activerecord.fields.upload_recommendation_pdf"),
+      field: :upload_recommendation_pdf,
+      button_label: t('activerecord.buttons.show_recommendation'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation"
+
+    = form_buttons(f, submit_label: t('activerecord.buttons.upload_documents') , cancel_url: person_path(@person))
