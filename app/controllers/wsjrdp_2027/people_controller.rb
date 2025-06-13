@@ -30,7 +30,14 @@ module Wsjrdp2027::PeopleController
       :upload_data_agreement_pdf,
       :upload_passport_pdf,
       :upload_recommendation_pdf,
-      :upload_medical_pdf
+      :upload_medical_pdf,
+      :sepa_name,
+      :sepa_address,
+      :sepa_mail,
+      :sepa_iban,
+      :sepa_bic,
+      :sepa_status,
+      :early_payer
     ]
 
     # Override crud_controller
