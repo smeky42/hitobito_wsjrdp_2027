@@ -1,0 +1,21 @@
+-#  Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+
+%h2.mt-3
+  = t('people.form_tabs.additional_contact')
+%h4
+  - if (entry.years.to_i >= 18) 
+    = t('activerecord.attributes.person.additional_contact_a_info_adult')
+  - else 
+    = t('activerecord.attributes.person.additional_contact_a_info')
+= render_attrs(entry, :additional_contact_name_a, :additional_contact_adress_a, :additional_contact_email_a, :additional_contact_phone_a)
+
+- if entry.years.to_i >= 18 || !entry.additional_contact_single
+  %h4
+    - if (entry.years.to_i >= 18) 
+      = t('activerecord.attributes.person.additional_contact_b_info_adult')
+    - else 
+      = t('activerecord.attributes.person.additional_contact_b_info')
+  = render_attrs(entry, :additional_contact_name_b, :additional_contact_adress_b, :additional_contact_email_b, :additional_contact_phone_b)
