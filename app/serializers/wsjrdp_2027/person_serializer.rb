@@ -23,7 +23,14 @@ module Wsjrdp2027::PersonSerializer
         :additional_contact_adress_b,
         :additional_contact_email_b,
         :additional_contact_phone_b,
-        :additional_contact_single
+        :additional_contact_single,
+        :sepa_name,
+        :sepa_address,
+        :sepa_mail,
+        :sepa_iban,
+        :sepa_bic,
+        :sepa_status,
+        :early_payer
     end
   end
 end

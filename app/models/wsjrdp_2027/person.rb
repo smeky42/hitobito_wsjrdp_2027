@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "iban-tools"
+
 module Wsjrdp2027::Person
   # This is just local to this module, it doesn't override anything when this module in included
   GENDERS = %w[m w d].freeze
@@ -19,6 +21,19 @@ module Wsjrdp2027::Person
       # Then add the attr with validator and the setter again
       i18n_enum :gender, GENDERS
       i18n_setter :gender, (GENDERS + [nil])
+
+      validate :validate_iban_format
+
+      private
+
+      def validate_iban_format
+        return if sepa_iban.blank?
+
+        normalized_iban = sepa_iban.gsub(/\s+/, "").upcase
+        unless IBANTools::IBAN.valid?(normalized_iban)
+          errors.add(:sepa_iban, I18n.t("people.finance_fields.invalid_iban"))
+        end
+      end
     end
   end
 end

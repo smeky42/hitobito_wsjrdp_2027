@@ -64,6 +64,17 @@
             = t('activerecord.attributes.person.additional_contact_b_info')
         = render_attrs(entry, :additional_contact_name_b, :additional_contact_adress_b, :additional_contact_email_b, :additional_contact_phone_b)
       
+      %br/
+      %h2 
+        = t('people.form_tabs.finance')
+      = render_attrs(entry,
+          :early_payer,
+          :sepa_name,
+          :sepa_address,
+          :sepa_mail,
+          :sepa_iban,
+          :sepa_bic)
+      
       = render 'roles'
       = render 'add_requests'
       = render 'event_aside', title: Event::Application.model_name.human(count: 2), collection: entry.pending_applications
