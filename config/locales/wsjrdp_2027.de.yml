@@ -75,6 +75,13 @@ de:
         upload_passport_pdf: Ausweisdokument
         upload_recommendation_pdf: Empfehlungsschreiben
         upload_medical_pdf: Gesundheitsbogen
+        sepa_name: Kontoinhaber*in
+        sepa_address: Adresse 
+        sepa_mail: Mailadresse
+        sepa_iban: IBAN
+        sepa_bic: BIC
+        sepa_status: Finanzstatus
+        early_payer: Early Payer
     
     buttons:
       show_contract: Vertrag einsehen
@@ -99,6 +106,12 @@ de:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
       additional_contact: Weitere Kontaktdaten
+      finance: SEPA
+    finance_fields:
+      sepa_header: Kontaktdaten Kontoinhaber*in
+      sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet 
+      early_payer_help: Wenn du als Early Payer am Jamboree teilnimmst, unterstützt du uns bei bei der Durchführung des Jamborees und sicherst so deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, schon am 15. September der komplette Betrag von deinem Konto abgebucht.
+      invalid_iban: ist keine gültige IBAN    
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit 
       rdp_association_header: Verbandszugehörigkeit 
