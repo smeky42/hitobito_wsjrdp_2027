@@ -1,7 +1,7 @@
--#  Copyright (c) 2012-2023, Jungwacht Blauring Schweiz. This file is part of
--#  hitobito and licensed under the Affero General Public License version 3
+-#  Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
 -#  or later. See the COPYING file at the top-level directory or at
--#  https://github.com/hitobito/hitobito.
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
 
 
 -# BEWARE: This partial is used from different places (e.g. event/register/register).
@@ -61,10 +61,10 @@
       = f.labeled_input_field(:additional_information, help: t('.no_sensitive_information'))
 
   #additional_contact.tab-pane 
-    = render 'additional_contact_fields', f: f
+    = render 'contactable/additional_contact_fields', f: f
 
   #association.tab-pane 
-    = render 'association_fields', f: f
+    = render 'contactable/association_fields', f: f
 
   #finance.tab-pane
     = render 'contactable/finance_fields', f: f
