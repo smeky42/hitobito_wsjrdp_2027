@@ -82,7 +82,8 @@ class Person::UploadController < ApplicationController
       @person.save
 
     else
-      lash[:alert] = I18n.t("activerecord.alert.only_pdf_allowed")
+      flash[:alert] = I18n.t("activerecord.alert.only_pdf_allowed")
+      redirect_to upload_group_person_path
     end
   end
 
