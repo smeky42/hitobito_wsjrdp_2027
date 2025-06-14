@@ -110,6 +110,15 @@ de:
       additional_contact: Weitere Kontaktdaten
       finance: SEPA
     status: Anmeldestatus
+    status_help:
+      registered: Um bei deiner Anmeldung fortzufahren musst du alle Daten (über Bearbeiten) und den Medizinbogen (im Medizin Tab) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
+      printed: Du hast deine Anmeldung gedruckt. Der nächste Schritt ist das Hochladen der Dokumente. Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden. 
+      upload: Du hast deine Anmeldung vollständig hochgeladen. Wir überprüfen deine Daten und die Anmeldung in den nächsten Wochen.
+      in_review: Deine Anmeldedaten werden gerade von einem CMT Mitglied überprüft.
+      reviewed: Dein Anmeldedokumente sind vollständig überpüft.
+      confirmed: Du bist Bestätigt und Teil des Kontingents. Wir freuen uns mit dir nach Polen zu reisen. 
+      deregistration_noted: Wir haben deine Abmeldung erhalten. Für die weiteren Schritte kommt ein CMT Mitglied auf dich zu.
+      deregistered: Du bist Abgemeldet, deine Daten werden in Kürze aus dem Anmeldesystem gelöscht.
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
       sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet 
