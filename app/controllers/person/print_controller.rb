@@ -10,25 +10,24 @@ class Person::PrintController < ApplicationController
     @printable = printable
 
     unless printable
-      flash[:alert] = (I18n.t 'activerecord.alert.print') + ': ' + not_printable_reason
+      flash[:alert] = (I18n.t "activerecord.alert.print") + ": " + not_printable_reason
     end
 
-    unless true # @person.status == 'registriert'
-      flash[:info] = (I18n.t 'activerecord.text.print')
+    unless @person.status == "registrered"
+      flash[:info] = (I18n.t "activerecord.text.print")
     end
   end
 
   def preview
-    if printable && (@person.status == 'registered')
+    if printable && (@person.status == "registered")
       pdf = Wsjrdp2027::Export::Pdf::Registration.render(@person, true)
 
-      send_data pdf, type: :pdf, disposition: 'attachment',
-                     filename: 'Anmeldung-WSJ-Vorschau-Nicht-Hochladen.pdf'
+      send_data pdf, type: :pdf, disposition: "attachment", filename: "Anmeldung-WSJ-Vorschau-Nicht-Hochladen.pdf"
     end
   end
 
   def submit
-    if printable && (@person.status == 'registered') 
+    if printable && (@person.status == "registered")
       pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
 
       folder = file_folder
@@ -38,18 +37,18 @@ class Person::PrintController < ApplicationController
 
       pdf.render_file full_name
 
-      @person.status = 'printed'
+      @person.status = "printed"
       @person.generated_registration_pdf = full_name
       @person.save
 
-      send_data File.read(full_name), type: :pdf, disposition: 'attachment', filename: name
+      send_data File.read(full_name), type: :pdf, disposition: "attachment", filename: name
     end
   end
 
   def not_printable_reason
-    reason = ''
-    
-    reason
+    # reason = ""
+    # reason
+    ""
   end
 
   def printable
@@ -67,12 +66,11 @@ class Person::PrintController < ApplicationController
   end
 
   def file_name
-    date = Time.zone.now.strftime('%Y-%m-%d-%H-%M-%S')
+    date = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
     "#{date}--#{@person.id}-registration-generated.pdf"
   end
 
   def file_folder
-    "#{Rails.root}/private/uploads/person/pdf/#{@person.id}/"
+    Rails.root.join("private", "uploads", "person", "pdf", @person.id.to_s)
   end
-
 end

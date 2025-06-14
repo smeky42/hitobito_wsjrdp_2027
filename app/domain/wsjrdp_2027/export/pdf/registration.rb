@@ -11,10 +11,7 @@ module Wsjrdp2027
         # rubocop:disable Metrics/AbcSize
         # rubocop:disable Metrics/MethodLength
         def new_pdf(person, pdf_preview)
-          pdf = Prawn::Document.new(page_size: 'A4',
-                                    page_layout: :portrait,
-                                    margin: 2.cm,
-                                    bottom_margin: 1.cm)
+          pdf = Prawn::Document.new(page_size: "A4", page_layout: :portrait, margin: 2.cm, bottom_margin: 1.cm)
 
           @person = person
 
@@ -22,7 +19,7 @@ module Wsjrdp2027
 
           # define header & footer variables
           # ToDo relative to root
-          imagePath = '../hitobito_wsjrdp_2027/app/assets/images/'
+          image_path = "../hitobito_wsjrdp_2027/app/assets/images/"
 
           pdf.y = 850
           # pdf.page_count = 0
@@ -31,28 +28,28 @@ module Wsjrdp2027
             if pdf_preview
               pdf.bounding_box [150, 750], width: pdf.bounds.width, height: 200 do
                 pdf.transparent(0.5) do
-                  pdf.text 'Vorschau:', size: 24
-                  pdf.text 'Nicht zum upload gedacht!', size: 12
-                  pdf.text 'Bitte nutze die Anmeldung unter', size: 12
+                  pdf.text "Vorschau:", size: 24
+                  pdf.text "Nicht zum upload gedacht!", size: 12
+                  pdf.text "Bitte nutze die Anmeldung unter", size: 12
                   pdf.text '"Verbindlich drucken".', size: 12
                 end
               end
             end
 
-            logo = Rails.root.join(imagePath + 'wsjrdp-logo.png')
+            logo = Rails.root.join(image_path + "wsjrdp-logo.png")
             pdf.bounding_box [350, 800], width: pdf.bounds.width, height: 375 do
               pdf.image logo, width: 150
               # pdf.move_up 15
             end
 
             pdf.bounding_box [pdf.bounds.left, pdf.bounds.bottom + 10], width: pdf.bounds.width do
-              pdf.text person.id.to_s + ' - ' + person.full_name + ' '\
-               + person.birthday.strftime('%d.%m.%Y'), size: 8
+              pdf.text person.id.to_s + " - " + person.full_name + " " \
+               + person.birthday.strftime("%d.%m.%Y"), size: 8
             end
           end
 
-          pdf.number_pages 'Seite <page> von <total>',
-                           at: [pdf.bounds.left, pdf.bounds.bottom], size: 8
+          pdf.number_pages "Seite <page> von <total>",
+            at: [pdf.bounds.left, pdf.bounds.bottom], size: 8
 
           pdf
         end
@@ -65,10 +62,10 @@ module Wsjrdp2027
         end
 
         def sections
-          # if @person.role_wish == 'Unit Leitung'
+          # if @person.role_wish == "Unit Leitung"
           #   return [Contract, Medicin, DataProcessing, Recommondation, Travel, DataAgreement]
           # end
-          # if @person.role_wish == 'Kontingentsteam'
+          # if @person.role_wish == "Kontingentsteam"
           #   return [Contract, Medicin, DataProcessing, Travel, DataAgreement]
           # end
 
@@ -86,7 +83,6 @@ module Wsjrdp2027
       def self.new_pdf(person, pdf_preview)
         runner.new.new_pdf(person, pdf_preview)
       end
-
     end
   end
 end
