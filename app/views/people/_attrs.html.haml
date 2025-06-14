@@ -28,7 +28,9 @@
       - if entry.additional_information?
         %h2= Person.human_attribute_name(:additional_information)
         %p.multiline= safe_auto_link(entry.additional_information)
-
+    
+    = render 'additional_contact'
+    
     = render_extensions :show_left
 
     - if can?(:index_notes, entry)
@@ -39,9 +41,9 @@
       = render_extensions :data_quality
       = render 'tags'
       
+      = render 'status'
       = render 'association'
       = render 'participant_wish_data'
-      = render 'additional_contact'
       = render 'finance'
 
       = render 'roles'

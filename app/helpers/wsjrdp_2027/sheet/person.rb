@@ -7,9 +7,9 @@ module Wsjrdp2027::Sheet::Person
   shown_tabs = [
     "global.tabs.info",
     "people.tabs.medicine",
-    "people.tabs.upload",
     # "people.tabs.subscriptions",
     "people.tabs.print",
+    "people.tabs.upload",
     "people.tabs.invoices",
     # "activerecord.models.message.other",
     "people.tabs.history",
