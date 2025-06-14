@@ -3,15 +3,14 @@
 module Wsjrdp2027
   module Export::Pdf::Registration
     class Section
-
       attr_reader :pdf
 
       class_attribute :model_class
 
       delegate :bounds, :bounding_box, :table,
-               :text, :cursor, :font_size, :text_box,
-               :fill_and_stroke_rectangle, :fill_color,
-               :image, :group, to: :pdf
+        :text, :cursor, :font_size, :text_box,
+        :fill_and_stroke_rectangle, :fill_color,
+        :image, :group, to: :pdf
 
       def initialize(pdf, person)
         @pdf = pdf
@@ -37,9 +36,9 @@ module Wsjrdp2027
           width = (bounds.width / 2) - (gutter / 2)
           starting_page = pdf.page_number
 
-          pdf.span(width, { position: 0 }, &left)
+          pdf.span(width, {position: 0}, &left)
           pdf.go_to_page(starting_page)
-          pdf.span(width, { position: width + gutter }, &right)
+          pdf.span(width, {position: width + gutter}, &right)
         end
         move_down_line
       end
@@ -57,7 +56,7 @@ module Wsjrdp2027
 
       def text(*args)
         options = args.extract_options!
-        pdf.text args.join(' '), options
+        pdf.text args.join(" "), options
       end
 
       def move_down_line(line = 10)
@@ -70,15 +69,15 @@ module Wsjrdp2027
 
       def labeled_attr(model, attr)
         value = model.send(attr)
-        text [model.class.human_attribute_name(attr), f(value)].join(': ') if value.present?
+        text [model.class.human_attribute_name(attr), f(value)].join(": ") if value.present?
       end
 
       def f(value)
         case value
-        when Date   then I18n.l(value)
-        when Time   then I18n.l(value, format: :time)
-        when true   then I18n.t(:"global.yes")
-        when false  then I18n.t(:"global.no")
+        when Date then I18n.l(value)
+        when Time then I18n.l(value, format: :time)
+        when true then I18n.t(:"global.yes")
+        when false then I18n.t(:"global.no")
         else value.to_s
         end
       end
@@ -96,7 +95,7 @@ module Wsjrdp2027
       end
 
       def document_id
-        Base64.encode64(@person.id.to_s + Time.zone.today.strftime('%d.%m.%Y'))
+        Base64.encode64(@person.id.to_s + Time.zone.today.strftime("%d.%m.%Y"))
       end
 
       def event_with_kind?
@@ -104,7 +103,7 @@ module Wsjrdp2027
       end
 
       def i18n_event_postfix
-        event.class.to_s.underscore.tr('/', '_')
+        event.class.to_s.underscore.tr("/", "_")
       end
     end
   end
