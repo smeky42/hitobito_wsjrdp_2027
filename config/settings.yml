@@ -11,6 +11,16 @@ email:
   reply_to: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <info@worldscoutjamboree.de>" %>
   mass_recipient: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <anmeldung@worldscoutjamboree.de>" %>
 
+status:
+  registered: Registriert # Jeder der sich initial eingelogged hat
+  printed: Anmeldung gedruckt # Jeder der alle Pflichfelder ausgefüllt und auf drucken gedrück hat
+  upload: Upload vollständig # Jeder der seine Pflichtdokumente hochgeladen hat
+  in_review: Dokumente in Überprüfung durch CMT # Uploads auf Unterschriften
+  reviewed: Dokumente vollständig überprüft # Jeder der Alle notwendigen dokumente unterschrieben hochgeladen hat
+  confirmed: Bestätigt durch CMT # Jeder der bestätigt Teil einer Unit des Kontingentes ist
+  deregistration_noted: Abmeldung Vermerkt # Personen die sich abmelden wollen, bei denen es noch Klärungsbedarf gibt
+  deregistered: Abgemeldet # Alle die nicht mehr am Jamboree Teilnehmen wollen
+
 addresses:
   imported_countries:
     - DE
