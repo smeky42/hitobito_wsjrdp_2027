@@ -19,7 +19,7 @@ class Person::PrintController < ApplicationController
   end
 
   def preview
-    if true # printable && (@person.status == 'registriert')
+    if printable && (@person.status == 'registered')
       pdf = Wsjrdp2027::Export::Pdf::Registration.render(@person, true)
 
       send_data pdf, type: :pdf, disposition: 'attachment',
@@ -28,8 +28,8 @@ class Person::PrintController < ApplicationController
   end
 
   def submit
-    if true # printable && (@person.status == 'registriert') 
-      pdf = Wsjrdp2023::Export::Pdf::Registration.new_pdf(@person, false)
+    if printable && (@person.status == 'registered') 
+      pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
 
       folder = file_folder
       name = file_name
@@ -38,7 +38,7 @@ class Person::PrintController < ApplicationController
 
       pdf.render_file full_name
 
-      # @person.status = 'gedruckt'
+      @person.status = 'printed'
       @person.generated_registration_pdf = full_name
       @person.save
 
@@ -48,7 +48,7 @@ class Person::PrintController < ApplicationController
 
   def not_printable_reason
     reason = ''
-
+    
     reason
   end
 

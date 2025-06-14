@@ -1,9 +1,39 @@
 #main.row-fluid
-  - if can?(:edit, @person)
-    = action_button(t('people.buttons.print_preview'),
-                    '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/print/preview',
-                    :envelope,
-                    remote: false,
-                    method: :get,
-                    rel: :tooltip,
-                    title: t('people.buttons.print_preview'))
+  - if @printable and (@person.status == 'registered')
+    - if can?(:edit, @person)
+      = action_button(t('people.buttons.print_preview'),
+                      '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/print/preview',
+                      :envelope,
+                      remote: false,
+                      method: :get,
+                      rel: :tooltip,
+                      title: t('people.buttons.print_preview'))
+      %br
+      = raw(t('people.buttons.print_preview_info'))
+      %br
+      %br
+
+      = action_button(t('people.buttons.print_submit'),
+                      '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/print/submit',
+                      :envelope,
+                      remote: false,
+                      method: :get,
+                      rel: :tooltip,
+                      title: t('people.buttons.print_submit_hint'))
+      %br
+      = raw(t('people.buttons.print_submit_info'))
+  - else 
+    - if can?(:edit, @person) 
+      -if @person.status != 'registered'
+        = raw(t('people.status_help.printed'))
+        %br
+        %br
+        = standard_form(@person, {url: print_group_person_path,  method: :put}) do |f|
+          - if @person.generated_registration_pdf.present?
+            = action_button(t('people.buttons.show_registration_generated'),
+                            '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/upload/show_registration_generated',
+                            :envelope,
+                            remote: false,
+                            method: :get,
+                            rel: :tooltip,
+                            title: t('people.buttons.review_hint'))
