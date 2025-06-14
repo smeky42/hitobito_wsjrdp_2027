@@ -37,7 +37,8 @@ module Wsjrdp2027::PeopleController
       :sepa_iban,
       :sepa_bic,
       :sepa_status,
-      :early_payer
+      :early_payer,
+      :status
     ]
 
     # Override crud_controller
