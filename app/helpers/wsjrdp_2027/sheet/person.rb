@@ -19,7 +19,7 @@ module Wsjrdp2027::Sheet::Person
     "activerecord.models.assignment.other"
   ]
 
-  included do  
+  included do
     tab "people.tabs.print",
       :print_group_person_path,
       if: :show

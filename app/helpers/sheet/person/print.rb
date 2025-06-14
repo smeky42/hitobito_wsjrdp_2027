@@ -6,7 +6,6 @@ module Sheet
       extend ActiveSupport::Concern
 
       self.parent_sheet = Sheet::Person
-    end 
+    end
   end
 end
-
