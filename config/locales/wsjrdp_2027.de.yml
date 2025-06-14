@@ -112,7 +112,7 @@ de:
     status: Anmeldestatus
     status_help:
       registered: Um bei deiner Anmeldung fortzufahren musst du alle Daten (über Bearbeiten) und den Medizinbogen (im Medizin Tab) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
-      printed: Du hast deine Anmeldung gedruckt. Der nächste Schritt ist das Hochladen der Dokumente. Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden. 
+      printed: Du hast deine Anmeldung erfolgreich gedruckt. </br> Der nächste Schritt ist das Hochladen der Dokumente. </br> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden. 
       upload: Du hast deine Anmeldung vollständig hochgeladen. Wir überprüfen deine Daten und die Anmeldung in den nächsten Wochen.
       in_review: Deine Anmeldedaten werden gerade von einem CMT Mitglied überprüft.
       reviewed: Dein Anmeldedokumente sind vollständig überpüft.
@@ -135,7 +135,14 @@ de:
     buttons:
       copy_data: aus Teilnehmer*in Daten übernehmen
       print_preview: Vorschau drucken
-
+      print_preview_info: Hier kannst du dir ein Vorschau-PDF deiner Anmeldung genererieren. <br/> Überprüfe damit ob du deine Daten richtig angegeben hast. <br/> Das Vorschau PDF darf nicht hochgeladen werden und ist keine Anmeldung. 
+      print_preview_hint: Zur Kontrolle der Anmeldung
+      print_submit: Verbindlich drucken
+      print_submit_info: Hier kannst du deine Anmeldung verbindlich drucken. <br/> Nach dem Drucken, werden einige Felder zur Bearbeitung gesperrt und du kommst in den nächsten Anmeldestatus. <br/> Der nächste Schritt ist das Hochladen der Dokumente. <br/> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden.
+      print_submit_hint: Sperrt bestimmte Felder für weitere Bearbeitung
+      printed_info: Du hast deine Anmeldung erfolgreich gedruckt. <br/> Hier kannst du sie dir noch einmal herunterladen. <br/> Im nächsten Schritt musst du die Anmeldung und weitere Dokumente bei 'Upload' hochladen.
+      show_registration_generated: Gedruckte Anmeldung erneut herunterladen
+      review_hint: Dokument einsehen
   groups:
     self_registration:
       form: 
