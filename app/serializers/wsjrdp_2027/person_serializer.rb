@@ -30,7 +30,8 @@ module Wsjrdp2027::PersonSerializer
         :sepa_iban,
         :sepa_bic,
         :sepa_status,
-        :early_payer
+        :early_payer,
+        :status
     end
   end
 end

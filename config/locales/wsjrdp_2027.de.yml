@@ -101,13 +101,15 @@ de:
 
   people:
     tabs:
-      upload: Uploads
-      print: Anmeldung drucken
+      info: Persönliche Informationen
+      upload: Dokumente hochladen
+      print: Dokumente drucken
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
       additional_contact: Weitere Kontaktdaten
       finance: SEPA
+    status: Anmeldestatus
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
       sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet 
