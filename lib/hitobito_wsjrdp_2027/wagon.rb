@@ -29,6 +29,8 @@ module HitobitoWsjrdp2027
       PeopleController.include Wsjrdp2027::PeopleController
 
       # Helpers
+      Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass
+      Sheet::Base.prepend Wsjrdp2027::Sheet::Base
       Sheet::Person.include Wsjrdp2027::Sheet::Person
 
       # Abilities
