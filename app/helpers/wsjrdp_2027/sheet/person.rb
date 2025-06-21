@@ -30,6 +30,7 @@ module Wsjrdp2027::Sheet::Person
 
     tab "people.tabs.medical",
       :medical_group_person_path,
+      alt: [:medical_edit_group_person_path],
       if: :show
 
     self.tabs.select! { |t| shown_tabs.include? t.label_key }
