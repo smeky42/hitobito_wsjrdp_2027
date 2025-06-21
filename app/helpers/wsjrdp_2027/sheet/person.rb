@@ -6,7 +6,7 @@ module Wsjrdp2027::Sheet::Person
   # Only these tabs can be shown, in this order.
   shown_tabs = [
     "global.tabs.info",
-    "people.tabs.medicine",
+    "people.tabs.medical",
     # "people.tabs.subscriptions",
     "people.tabs.print",
     "people.tabs.upload",
@@ -26,6 +26,10 @@ module Wsjrdp2027::Sheet::Person
 
     tab "people.tabs.upload",
       :upload_group_person_path,
+      if: :show
+
+    tab "people.tabs.medical",
+      :medical_group_person_path,
       if: :show
 
     self.tabs.select! { |t| shown_tabs.include? t.label_key }

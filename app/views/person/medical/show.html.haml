@@ -1,0 +1,39 @@
+#main.row
+  %article.col-lg
+    %h2= t('people.tabs.medical')
+
+    %h3= t('people.medical_fields.vaccinations')
+    = render_attrs(@person,
+        :medical_stiko_vaccinations,
+        :medical_additional_vaccinations)
+
+    %h3= t('people.tabs.medical')
+    = render_attrs(@person,
+        :medical_preexisting_conditions,
+        :medical_abnormalities,
+        :medical_allergies,
+        :medical_eating_disorders,
+        :medical_mobility_needs,
+        :medical_infectious_diseases,
+        :medical_medical_treatment_contact)
+
+    %h3= t('people.medical_fields.medication')
+    = render_attrs(@person,
+        :medical_continuous_medication,
+        :medical_needs_medication,
+        :medical_self_treatment_medication)
+
+    %h3= t('people.medical_fields.wellbeing')
+    = render_attrs(@person,
+        :medical_mental_health,
+        :medical_situational_support,
+        :medical_person_of_trust)
+
+    %h3= t('people.medical_fields.other')
+    = render_attrs(@person,
+        :medical_other)
+
+  %aside.col-lg-5.offset-lg-1
+    -# = render 'people/additional_contact', :entry => @person
+
+
