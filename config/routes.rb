@@ -24,8 +24,9 @@ Rails.application.routes.draw do
           get "upload/show_passport" => "person/upload#show_passport"
           get "upload/show_recommendation" => "person/upload#show_recommendation"
 
-        end 
-      end 
+          get "medical" => "person/medical#show"
+        end
+      end
     end
   end
 end

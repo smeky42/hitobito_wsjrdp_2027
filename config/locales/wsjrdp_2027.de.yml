@@ -38,15 +38,15 @@ de:
       group/unit/member:
         one: Youth Participant
 
-    alert: 
+    alert:
       only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
-      
+
     attributes:
       person:
         nickname: Spitzname / Fahrtenname
         buddy_id: Buddy ID
         buddy_id_ul: Unit Leader Buddy ID
-        buddy_id_yp: Youth Participant Buddy ID 
+        buddy_id_yp: Youth Participant Buddy ID
         genders:
           d: divers
         rdp_association: Verband
@@ -56,16 +56,16 @@ de:
         rdp_association_number: Mitgliedsnummer
         additional_contact_a_info: Personensorgeberechtigte*r 1
         additional_contact_a_info_adult: Primärer Notfallkontakt
-        additional_contact_name_a: Vor- und Nachname 
-        additional_contact_adress_a: Adresse 
-        additional_contact_email_a: E-Mail 
-        additional_contact_phone_a: Telefonnummer 
+        additional_contact_name_a: Vor- und Nachname
+        additional_contact_adress_a: Adresse
+        additional_contact_email_a: E-Mail
+        additional_contact_phone_a: Telefonnummer
         additional_contact_b_info: Personensorgeberechtigte*r 2
         additional_contact_b_info_adult: Sekundärer Notfallkontakt
-        additional_contact_name_b: Vor- und Nachname 
-        additional_contact_adress_b: Adresse 
-        additional_contact_email_b: E-Mail 
-        additional_contact_phone_b: Telefonnummer 
+        additional_contact_name_b: Vor- und Nachname
+        additional_contact_adress_b: Adresse
+        additional_contact_email_b: E-Mail
+        additional_contact_phone_b: Telefonnummer
         additional_contact_single: Es gibt nur eine sorgeberechtigte Person
         additional_contact_address_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
         additional_contact_email_info: Sofern abweichend von Kontaktdaten Teilnehmer*in
@@ -76,13 +76,29 @@ de:
         upload_recommendation_pdf: Empfehlungsschreiben
         upload_medical_pdf: Gesundheitsbogen
         sepa_name: Kontoinhaber*in
-        sepa_address: Adresse 
+        sepa_address: Adresse
         sepa_mail: Mailadresse
         sepa_iban: IBAN
         sepa_bic: BIC
         sepa_status: Finanzstatus
         early_payer: Early Payer
-    
+        medical_stiko_vaccinations: Impfungen nach STIKO-Empfehlung
+        medical_additional_vaccinations: Weitere Impfungen
+        medical_preexisting_conditions: Bekannte Vorerkrankungen / Operationen / Kinderkrankheiten
+        medical_abnormalities: Auffälligkeiten / Erkrankungen
+        medical_allergies: Allergien
+        medical_eating_disorders: Essensbesonderheiten
+        medical_mobility_needs: Mobilitätsbedürfnisse
+        medical_infectious_diseases: Infektiöse Erkrankungen
+        medical_medical_treatment_contact: Behandelnde*r Ärzt*in
+        medical_continuous_medication: Dauermedikation
+        medical_needs_medication: Bedarfsmedikation
+        medical_self_treatment_medication: Selbstständige Medikamenteneinnahme
+        medical_mental_health: Psychische Gesundheit
+        medical_situational_support: Unterstützung in belastenden Situationen
+        medical_person_of_trust: Vertrauensperson
+        medical_other: Weitere Informationen
+
     buttons:
       show_contract: Vertrag einsehen
       show_data_agreement: Datenschutzerklärung einsehen
@@ -97,13 +113,14 @@ de:
       upload_medical_pdf: Gesundheitsbogen hochladen
       upload_data_agreement_pdf: Datenschutzerklärung hochladen
       upload_passport_pdf: Ausweisdokument hochladen
-      upload_recommendation_pdf: Empfehlungsschreiben hochladen 
+      upload_recommendation_pdf: Empfehlungsschreiben hochladen
 
   people:
     tabs:
       info: Persönliche Informationen
       upload: Dokumente hochladen
       print: Dokumente drucken
+      medical: "Medizinische Angaben"
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
@@ -112,22 +129,25 @@ de:
     status: Anmeldestatus
     status_help:
       registered: Um bei deiner Anmeldung fortzufahren musst du alle Daten (über Bearbeiten) und den Medizinbogen (im Medizin Tab) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
-      printed: Du hast deine Anmeldung erfolgreich gedruckt. </br> Der nächste Schritt ist das Hochladen der Dokumente. </br> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden. 
+      printed: Du hast deine Anmeldung erfolgreich gedruckt. </br> Der nächste Schritt ist das Hochladen der Dokumente. </br> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden.
       upload: Du hast deine Anmeldung vollständig hochgeladen. Wir überprüfen deine Daten und die Anmeldung in den nächsten Wochen.
       in_review: Deine Anmeldedaten werden gerade von einem CMT Mitglied überprüft.
       reviewed: Dein Anmeldedokumente sind vollständig überpüft.
-      confirmed: Du bist Bestätigt und Teil des Kontingents. Wir freuen uns mit dir nach Polen zu reisen. 
+      confirmed: Du bist Bestätigt und Teil des Kontingents. Wir freuen uns mit dir nach Polen zu reisen.
       deregistration_noted: Wir haben deine Abmeldung erhalten. Für die weiteren Schritte kommt ein CMT Mitglied auf dich zu.
       deregistered: Du bist Abgemeldet, deine Daten werden in Kürze aus dem Anmeldesystem gelöscht.
+    contact_fields:
+      format_birthday: (dd.mm.yyyy)
+      no_sensitive_information: ""
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
-      sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet 
+      sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet
       early_payer_help: Wenn du als Early Payer am Jamboree teilnimmst, unterstützt du uns bei bei der Durchführung des Jamborees und sicherst so deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, schon am 15. September der komplette Betrag von deinem Konto abgebucht.
-      invalid_iban: ist keine gültige IBAN    
+      invalid_iban: ist keine gültige IBAN
     association_fields:
-      buddy_id_header: Mit diesen Personen möchte ich in eine Unit 
-      rdp_association_header: Verbandszugehörigkeit 
-      buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in und eine*n Freundin wünschen. <br/> Die jeweilige Buddy-ID kann erfährst du von der jeweiligen Person. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie im "Info"-Tab.'   
+      buddy_id_header: Mit diesen Personen möchte ich in eine Unit
+      rdp_association_header: Verbandszugehörigkeit
+      buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in und eine*n Freundin wünschen. <br/> Die jeweilige Buddy-ID kann erfährst du von der jeweiligen Person. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie im "Info"-Tab.'
     participant_wish_data:
       header: Die folgenden Personen haben deine Buddy-ID angegeben und
       header_ul: wünschen sich dich als Unit Leader
@@ -135,7 +155,7 @@ de:
     buttons:
       copy_data: aus Teilnehmer*in Daten übernehmen
       print_preview: Vorschau drucken
-      print_preview_info: Hier kannst du dir ein Vorschau-PDF deiner Anmeldung genererieren. <br/> Überprüfe damit ob du deine Daten richtig angegeben hast. <br/> Das Vorschau PDF darf nicht hochgeladen werden und ist keine Anmeldung. 
+      print_preview_info: Hier kannst du dir ein Vorschau-PDF deiner Anmeldung genererieren. <br/> Überprüfe damit ob du deine Daten richtig angegeben hast. <br/> Das Vorschau PDF darf nicht hochgeladen werden und ist keine Anmeldung.
       print_preview_hint: Zur Kontrolle der Anmeldung
       print_submit: Verbindlich drucken
       print_submit_info: Hier kannst du deine Anmeldung verbindlich drucken. <br/> Nach dem Drucken, werden einige Felder zur Bearbeitung gesperrt und du kommst in den nächsten Anmeldestatus. <br/> Der nächste Schritt ist das Hochladen der Dokumente. <br/> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden.
@@ -145,10 +165,10 @@ de:
       review_hint: Dokument einsehen
     alerts:
       print_missing_fields: Leider kannst du noch nicht drucken. Unter Kontaktdaten fehlen noch korrekte Angaben für folgende Felder
-    info: 
+    info:
       print_already_printed: Deine Anmeldung wurde schon gedruckt
-    print: 
-      contract_roles: 
+    print:
+      contract_roles:
         Group:
           Unit:
             UnapprovedLeader: Unit Leader einer Unit
@@ -164,9 +184,9 @@ de:
           Leader: International Service Team Mitglied (Leader)
   groups:
     self_registration:
-      form: 
+      form:
         has_account: Du hast bereits ein Login als UL oder CMT?
-        to_login_page: Dann kannst du dich hier anmelden. 
+        to_login_page: Dann kannst du dich hier anmelden.
       create:
         flash:
           role_policy: "Du kannst dich mit dieser Rolle nicht registrieren."
@@ -178,7 +198,7 @@ de:
           cmt_to_young: "Als CMT musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
 
   devise:
-    mailer: 
+    mailer:
       reset_password_instructions:
         subject: "Anleitung für das Setzen Deines rdp Worldscoutjamboree 2027 Anmeldeportal Passworts"
         body:
@@ -201,4 +221,4 @@ de:
       main_other_registration_info: "Du möchtest als Youth Participant oder IST am Jamboree teilnehmen? Die Anmeldung für Dich startet im Juni."
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
       main_other_registration_info_link: "https://www.worldscoutjamboree.de/mitfahren/"
-  
+
