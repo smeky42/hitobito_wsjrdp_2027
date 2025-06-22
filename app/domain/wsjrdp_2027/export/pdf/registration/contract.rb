@@ -9,7 +9,7 @@ module Wsjrdp2027
       def render
         pdf.y = bounds.height - 60
         bounding_box([0, 230.mm], width: bounds.width, height: bounds.height - 200) do
-          font_size(10) do
+          font_size(8) do
             text list, style: :italic, width: bounds.width
           end
         end
@@ -39,7 +39,7 @@ module Wsjrdp2027
         text "Die Reise ist für den Zeitraum vom 20.07 bis 18.08.2027 geplant. Der Reisezeitraum variiert je nach gewähltem Paket und Lage der Sommerferien. Reisedauer sind #{role_type(@person).starts_with?("Group::Unit") ? "17 bis 21" : "15 bis 17"} Tage."
 
         pdf.move_down 3.mm
-        text "Hiermit #{of_legal_age ? "melde ich mich" : "melden wir unser Kind"}, #{@person.full_name} geboren am #{@person.birthday}, verbindlich mit dem Paket für #{person_payment_role_full_name(@person)} zur Teilnahme im Deutschen Kontingent zum 26. World Scout Jamboree 2027 an. Mit der Anmeldung #{of_legal_age ? "akzeptiere ich" : "akzeptieren wir"} die Reisebedingungen, die vom rdp als Veranstalter vorgegeben werden."
+        text "Hiermit #{of_legal_age ? "melde ich mich" : "melden wir unser Kind"}, #{@person.full_name} geboren am #{@person.birthday.strftime("%d.%m.%Y")}, verbindlich mit dem Paket für #{person_payment_role_full_name(@person)} zur Teilnahme im Deutschen Kontingent zum 26. World Scout Jamboree 2027 an. Mit der Anmeldung #{of_legal_age ? "akzeptiere ich" : "akzeptieren wir"} die Reisebedingungen, die vom rdp als Veranstalter vorgegeben werden."
 
         pdf.move_down 3.mm
         text "Der rdp behält sich das Recht vor, angekündigte Programminhalte durch andere zu ersetzen und notwendige Änderungen des Programms, unter Wahrung des Gesamtcharakters der Veranstaltung vorzunehmen."
@@ -52,11 +52,14 @@ module Wsjrdp2027
           text "Für die Dauer der Reise übertragen wir die Ausübung der Aufsichtspflicht und das Aufenthaltsbestimmungsrecht über unser Kind dem Reiseveranstalter. Wir sind damit einverstanden, dass die Ausübung im erforderlichen Ausmaß auf volljährige Betreuer*innen übertragen wird."
         end
 
+        pdf.move_down 3.mm
         text "Als Bestandteil dieser Anmeldung haben wir folgende Dokumente in der Anlage zur Kenntnis genommen:"
         text "- die Teilnahme- und Reisebedingungen des rdp (v1 vom 28.06.2025)"
         text "- die Datenschutzhinweise (v1 vom 28.06.2025)"
         text ""
         text "Die Dokumente stehen auch unter www.worldscoutjamboree.de/downloads zur Verfügung."
+
+        pdf.move_down 3.mm
         text "Den Medizinbogen, die Fotohinweise und das SEPA-Mandat im Anhang haben #{of_legal_age ? "habe ich" : "haben wir"} gesondert unterschrieben."
 
         pdf.move_down 3.mm
