@@ -25,6 +25,8 @@ Rails.application.routes.draw do
           get "upload/show_recommendation" => "person/upload#show_recommendation"
 
           get "medical" => "person/medical#show"
+          get "medical/edit" => "person/medical#edit"
+          put "medical" => "person/medical#update"
         end
       end
     end
