@@ -70,13 +70,32 @@ module ContractHelper
       payment_role_name      
     end
     
-    def payment_array_by(role)
+    def payment_array_by(person)
+      role = person.payment_role
       payment_array.find { |row| row[0] == role }
     end
 
     def payment_value(person)
-      payment_array_by(person.payment_role)[1]
+      payment_array_by(person)[1]
     end
+
+    def payment_array_table(person)
+      array = payment_array_by(person)
+
+      
+      array.each_with_index do |element, index|
+        if index == 0
+          array[index] = role_full_name(array[0].split("::", 2)[1])
+        else
+          if not array[index].blank?
+            array[index] = "#{array[index]} €"
+          end
+        end
+      end     
+
+      [payment_array[0], array]
+    end
+  
  
   end
 end
