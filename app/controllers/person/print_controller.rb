@@ -54,9 +54,38 @@ class Person::PrintController < ApplicationController
   end
 
   def not_printable_reason
-    # reason = ""
-    # reason
-    ""
+    reason = ""
+    attrs = %w[
+      first_name last_name email address zip_code town country
+      gender birthday rdp_association_number sepa_name sepa_address
+    ]
+
+    attrs.each do |attr|
+      if @person.public_send(attr).blank?
+        reason += "\n - #{I18n.t("activerecord.attributes.person.#{attr}")}"
+      end
+    end
+
+    if @person.years.to_i < 18
+      if @person.additional_contact_name_a.blank?
+        reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_a")
+      end
+      unless @person.additional_contact_single
+        if @person.additional_contact_name_b.blank?
+          reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_b")
+        end
+      end
+    end
+
+    if !IBANTools::IBAN.valid?(@person.sepa_iban)
+      reason += "\n" + (I18n.t "people.alerts.iban")
+    end
+
+    if @person.sepa_mail.blank? || !Truemail.valid?(@person.sepa_mail)
+      reason += "\n" + (I18n.t "people.alerts.sepa_mail")
+    end
+
+    reason
   end
 
   def printable
