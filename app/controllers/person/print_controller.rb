@@ -24,9 +24,9 @@ class Person::PrintController < ApplicationController
     if printable && (@person.status == "registered")
       @person.payment_role = payment_role(PersonDecorator.new(@person))
       @person.save
-      
+
       pdf = Wsjrdp2027::Export::Pdf::Registration.render(@person, true)
-      
+
       send_data pdf, type: :pdf, disposition: "attachment", filename: "Anmeldung-WSJ-Vorschau-Nicht-Hochladen.pdf"
     end
   end
