@@ -166,6 +166,8 @@ de:
     alerts:
       print_missing_fields: Leider kannst du noch nicht drucken. Unter Kontaktdaten fehlen noch korrekte Angaben für folgende Felder
     info:
+      iban: Deine IBAN ist fehlerhaft, bitte überprüfe diese noch einmal!
+      sepa_mail: Deine Mailadrese für das SEPA Verfahren ist fehlerhaft, bitte überprüfe diese noch einmal!
       print_already_printed: Deine Anmeldung wurde schon gedruckt
     print:
       contract_roles:
