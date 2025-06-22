@@ -4,6 +4,8 @@ class Person::PrintController < ApplicationController
   before_action :authorize_action
   decorates :group, :person
 
+  include ContractHelper
+
   def index
     @group ||= Group.find(params[:group_id])
     @person ||= group.people.find(params[:id])
@@ -20,14 +22,20 @@ class Person::PrintController < ApplicationController
 
   def preview
     if printable && (@person.status == "registered")
+      @person.payment_role = payment_role(PersonDecorator.new(@person))
+      @person.save
+      
       pdf = Wsjrdp2027::Export::Pdf::Registration.render(@person, true)
-
+      
       send_data pdf, type: :pdf, disposition: "attachment", filename: "Anmeldung-WSJ-Vorschau-Nicht-Hochladen.pdf"
     end
   end
 
   def submit
     if printable && (@person.status == "registered")
+      @person.payment_role = payment_role(PersonDecorator.new(@person))
+      @person.save
+
       pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
 
       folder = file_folder

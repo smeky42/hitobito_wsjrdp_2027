@@ -13,9 +13,9 @@ module Wsjrdp2027
         def new_pdf(person, pdf_preview)
           pdf = Prawn::Document.new(page_size: "A4", page_layout: :portrait, margin: 2.cm, bottom_margin: 1.cm)
 
-          @person = person
+          @person = PersonDecorator.new(person)
 
-          sections.each { |section| section.new(pdf, person).render }
+          sections.each { |section| section.new(pdf, @person).render }
 
           # define header & footer variables
           # ToDo relative to root
