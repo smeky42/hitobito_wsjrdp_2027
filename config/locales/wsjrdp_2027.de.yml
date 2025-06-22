@@ -143,6 +143,10 @@ de:
       printed_info: Du hast deine Anmeldung erfolgreich gedruckt. <br/> Hier kannst du sie dir noch einmal herunterladen. <br/> Im nächsten Schritt musst du die Anmeldung und weitere Dokumente bei 'Upload' hochladen.
       show_registration_generated: Gedruckte Anmeldung erneut herunterladen
       review_hint: Dokument einsehen
+    alerts:
+      print_missing_fields: Leider kannst du noch nicht drucken. Unter Kontaktdaten fehlen noch korrekte Angaben für folgende Felder
+    info: 
+      print_already_printed: Deine Anmeldung wurde schon gedruckt
   groups:
     self_registration:
       form: 

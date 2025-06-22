@@ -10,11 +10,11 @@ class Person::PrintController < ApplicationController
     @printable = printable
 
     unless printable
-      flash[:alert] = (I18n.t "activerecord.alert.print") + ": " + not_printable_reason
+      flash[:alert] = (I18n.t "people.alerts.print_missing_fields") + ": " + not_printable_reason
     end
 
     unless @person.status == "registrered"
-      flash[:info] = (I18n.t "activerecord.text.print")
+      flash[:info] = (I18n.t "people.info.print_already_printed")
     end
   end
 
