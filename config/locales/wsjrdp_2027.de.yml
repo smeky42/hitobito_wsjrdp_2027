@@ -195,13 +195,13 @@ de:
       medical_treatment_contact_long: Zurzeit in ärztlicher Behandlung bei (behandelnde*r Ärzt*in mit Fachrichtung, Name, Kontaktdaten)
       medication: Medikamente
       continuous_medication_long: Dauermedikation (Dosierung, Einnahmeschema, Einnahmegrund)
-      needs_medication_long: Bedarfsmedikation (Dosierung, Einnahmeschema, Einnahmegrund)
+      needs_medication_long: Bedarfsmedikation (Dosierung, Tageshöchstmenge, Einnahmegrund)
       self_treatment_medication_long: Folgende Medikamente werden selbstständig eingenommen
       wellbeing: Wellbeing
       mental_health_long: Gibt es etwas, das wir im Hinblick auf deine psychische Gesundheit wissen sollten?
       situational_support_long: Was hilft dir, wenn du in stressige oder belastende Situationen gerätst? (Gibt es bestimmte Maßnahmen, Verhaltensweisen oder Unterstützung, die dir dann gut tun?)
       person_of_trust_long: Möchtest du eine Vertrauensperson angeben, die dich in schwierigen Situationen unterstützen kann? (Bitte gib Name und Kontaktdaten an)
-      other: Weitere Informationen
+      other: Weitere Angaben
       other_long: Es ist außerdem auf Folgendes zu achten
 
   groups:
