@@ -15,7 +15,10 @@ module Wsjrdp2027
 
           @person = PersonDecorator.new(person)
 
-          sections.each { |section| section.new(pdf, @person).render }
+          sections.each do |section|
+            section.new(pdf, @person).render
+            pdf.start_new_page if section != sections.last
+          end
 
           # define header & footer variables
           # ToDo relative to root
@@ -70,7 +73,7 @@ module Wsjrdp2027
           # end
 
           # [Contract, Medicin, Travel, DataAgreement]
-          [Contract]
+          [Contract, Medical]
         end
       end
       mattr_accessor :runner
