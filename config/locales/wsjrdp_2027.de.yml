@@ -182,6 +182,28 @@ de:
         Ist:
           Member: International Service Team Mitglied
           Leader: International Service Team Mitglied (Leader)
+    medical_fields:
+      vaccinations: Schutzimpfungen
+      stiko_vaccinations_long: Die von der STIKO empfohlenen Schutzimpfungen wurden durchgeführt
+      additional_vaccinations_long: Weitere Impfungen (Impfdatum Monat/Jahr)
+      preexisting_conditions_long: Bekannte Vorerkrankungen / Operationen / Kinderkrankheiten
+      abnormalities_long: Bekannte Auffälligkeiten / Erkrankungen (z.B. Asthma, Reisekrankheit, Epilepsie, etc.)
+      allergies_long: Allergien (z.B. gegen Medikamente, nachgewiesene Lebensmittelallergien, Heuschnupfen, etc.), ggf. mit folgenden Symptomen
+      eating_disorders_long: Essensbesonderheiten, ggf. mit folgenden Symptomen
+      mobility_needs_long: Mobilitätsbedürfnisse auf Grund von
+      infectious_diseases_long: Es besteht eine infektiöse Erkrankung, vor der andere Menschen oder medizinisches Personal besonders geschützt werden müssen (z.B. meldepflichtige Erkrankungen, Tuberkulose, Hepatitis B/C, HIV, etc.)
+      medical_treatment_contact_long: Zurzeit in ärztlicher Behandlung bei (behandelnde*r Ärzt*in mit Fachrichtung, Name, Kontaktdaten)
+      medication: Medikamente
+      continuous_medication_long: Dauermedikation (Dosierung, Einnahmeschema, Einnahmegrund)
+      needs_medication_long: Bedarfsmedikation (Dosierung, Einnahmeschema, Einnahmegrund)
+      self_treatment_medication_long: Folgende Medikamente werden selbstständig eingenommen
+      wellbeing: Wellbeing
+      mental_health_long: Gibt es etwas, das wir im Hinblick auf deine psychische Gesundheit wissen sollten?
+      situational_support_long: Was hilft dir, wenn du in stressige oder belastende Situationen gerätst? (Gibt es bestimmte Maßnahmen, Verhaltensweisen oder Unterstützung, die dir dann gut tun?)
+      person_of_trust_long: Möchtest du eine Vertrauensperson angeben, die dich in schwierigen Situationen unterstützen kann? (Bitte gib Name und Kontaktdaten an)
+      other: Weitere Informationen
+      other_long: Es ist außerdem auf Folgendes zu achten
+
   groups:
     self_registration:
       form:
