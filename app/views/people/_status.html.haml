@@ -1,5 +1,5 @@
 %h2.mt-3
   = t('people.status')
-= raw(t("people.status_help.#{entry.status}"))
+= raw(t("people.status_help.#{entry.status}", default: 'Unknown Status'))
 - entry.status = Settings.status[entry.status]
 = render_attrs(entry, :status)

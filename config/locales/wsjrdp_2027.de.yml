@@ -147,6 +147,21 @@ de:
       print_missing_fields: Leider kannst du noch nicht drucken. Unter Kontaktdaten fehlen noch korrekte Angaben für folgende Felder
     info: 
       print_already_printed: Deine Anmeldung wurde schon gedruckt
+    print: 
+      contract_roles: 
+        Group:
+          Unit:
+            UnapprovedLeader: Unit Leader einer Unit
+            Leader: Unit Leader einer Unit
+            Member: Youth Participant in einer Unit
+            Manager: Contingent Management Team Mitglied (Unit Manager)
+        Root:
+          Member: Contingent Management Team Mitglied
+          Admin: Contingent Management Team Mitglied (Admin)
+          Leader: Contingent Management Team Mitglied (Leader)
+        Ist:
+          Member: International Service Team Mitglied
+          Leader: International Service Team Mitglied (Leader)
   groups:
     self_registration:
       form: 
