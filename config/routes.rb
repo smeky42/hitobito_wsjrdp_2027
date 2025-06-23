@@ -10,10 +10,10 @@ Rails.application.routes.draw do
           post :send_password_instructions
           put :primary_group
 
-          get 'print' => 'person/print#index'
-          put 'print' => 'person/print#index'
-          get 'print/preview' => 'person/print#preview'
-          get 'print/submit' => 'person/print#submit'
+          get "print" => "person/print#index"
+          put "print" => "person/print#index"
+          get "print/preview" => "person/print#preview"
+          get "print/submit" => "person/print#submit"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
@@ -27,6 +27,10 @@ Rails.application.routes.draw do
           get "medical" => "person/medical#show"
           get "medical/edit" => "person/medical#edit"
           put "medical" => "person/medical#update"
+
+          get "status" => "person/status#show"
+          get "status/edit" => "person/status#edit"
+          put "status" => "person/status#update"
         end
       end
     end
