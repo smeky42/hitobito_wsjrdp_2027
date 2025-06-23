@@ -30,11 +30,12 @@
       button_label: t('activerecord.buttons.show_passport'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport"
 
-    = render 'person/upload/upload_pdf_field',
-      f:f,
-      label: t("activerecord.fields.upload_recommendation_pdf"),
-      field: :upload_recommendation_pdf,
-      button_label: t('activerecord.buttons.show_recommendation'),
-      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation"
+    - if ul?(@person)
+      = render 'person/upload/upload_pdf_field',
+        f:f,
+        label: t("activerecord.fields.upload_recommendation_pdf"),
+        field: :upload_recommendation_pdf,
+        button_label: t('activerecord.buttons.show_recommendation'),
+        button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation"
 
     = form_buttons(f, submit_label: t('activerecord.buttons.upload_documents') , cancel_url: person_path(@person))
