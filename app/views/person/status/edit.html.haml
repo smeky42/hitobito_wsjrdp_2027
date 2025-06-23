@@ -1,0 +1,12 @@
+#main.row
+  = standard_form @person, url: status_group_person_path,  method: :put, html: { class: 'form-striped' } do |f|
+    = f.error_messages
+    = form_buttons(f, cancel_url: status_group_person_path)
+
+    .mt-3
+      -# %h3= t('people.attributes.status')
+    = field_set_tag do
+      = f.labeled_collection_select(:status, Settings.status, :first, :last, {}, class: 'span2')
+    = form_buttons(f, cancel_url: status_group_person_path)
+
+
