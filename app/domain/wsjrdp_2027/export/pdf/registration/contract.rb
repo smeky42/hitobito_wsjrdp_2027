@@ -8,7 +8,7 @@ module Wsjrdp2027
       # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity
       def render
         pdf.y = bounds.height - 60
-        bounding_box([0, 230.mm], width: bounds.width, height: bounds.height - 200) do
+        bounding_box([0, 230.mm], width: bounds.width, height: bounds.height - 210) do
           font_size(8) do
             text list, style: :italic, width: bounds.width
           end

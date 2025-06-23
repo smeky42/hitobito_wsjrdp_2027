@@ -7,7 +7,7 @@ module ContractHelper
     # rubocop:disable Metrics/MethodLength
     def payment_array
       [
-        ["Rolle", "Gesamtbeitrag", "Dez 2025 (Anzahlung)", "Jan 2026", "Feb 2026", "Mär 2026", "Aug 2026", "Nov 2026", "Feb 2027", "Mai 2027"],
+        ["Rolle", "Gesamt", "Dez 2025 (Anzahlung)", "Jan 2026", "Feb 2026", "Mär 2026", "Aug 2026", "Nov 2026", "Feb 2027", "Mai 2027"],
         ["RegularPayer::Group::Unit::Member", "3400", "300", "500", "500", "500", "400", "400", "400", "400"],
         ["RegularPayer::Group::Unit::Leader", "2400", "150", "350", "350", "350", "300", "300", "300", "300"],
         ["RegularPayer::Group::Ist::Member", "2600", "200", "400", "400", "400", "300", "300", "300", "300"],
@@ -108,6 +108,29 @@ module ContractHelper
     def payment_value(person)
       payment_array_by(person)[1]
     end
+    # rubocop:disable Metrics/MethodLength
+    def payment_array_sepa
+      array = []
+
+      payment_array.each_with_index do |row, row_index|
+        if row_index == 0
+          array[0] = row
+        else
+          new_row = []
+          row.each_with_index do |element, index|
+            if index == 0
+              new_row[index] = role_full_name(element.split("::", 2)[1])
+            elsif !element.blank?
+              new_row[index] = "#{element} €"
+            end
+          end
+          array[row_index] = new_row
+        end
+      end
+
+      array
+    end
+    # rubocop:enable Metrics/MethodLength
 
     def payment_array_table(person)
       array = payment_array_by(person)
