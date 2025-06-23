@@ -121,6 +121,7 @@ de:
       upload: Dokumente hochladen
       print: Dokumente drucken
       medical: "Medizinische Angaben"
+      status: Check Status
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID

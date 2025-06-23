@@ -14,6 +14,7 @@ module Wsjrdp2027::Sheet::Person
     # "activerecord.models.message.other",
     "people.tabs.history",
     "people.tabs.log",
+    "people.tabs.status",
     "people.tabs.security_tools",
     "people.tabs.colleagues",
     "activerecord.models.assignment.other"
@@ -32,6 +33,13 @@ module Wsjrdp2027::Sheet::Person
       :medical_group_person_path,
       alt: [:medical_edit_group_person_path],
       if: :show
+
+    tab "people.tabs.status",
+      :status_group_person_path,
+      alt: [:status_edit_group_person_path],
+      if: (lambda do |view, _group, person|
+        view.can?(:log, person)
+      end)
 
     self.tabs.select! { |t| shown_tabs.include? t.label_key }
     self.tabs.sort_by! { |t| shown_tabs.index t.label_key }
