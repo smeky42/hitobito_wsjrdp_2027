@@ -98,6 +98,8 @@ de:
         medical_situational_support: Unterstützung in belastenden Situationen
         medical_person_of_trust: Vertrauensperson
         medical_other: Weitere Informationen
+        contract_upload_at: Vertrag hochgeladen am
+        complete_document_upload_at: Alle dokumente vollständig hochgeladen am
 
     buttons:
       show_contract: Vertrag einsehen
