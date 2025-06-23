@@ -16,7 +16,6 @@
   #general.tab-pane.active
 
     = field_set_tag do
-      = f.labeled_input_fields(:status)
       = f.labeled_input_fields(*entry.decorate.used_attributes(:first_name, :last_name, :nickname))
       -# - entry.decorate.used?(:company_name) do
       -#   = f.labeled_input_field(:company_name,
