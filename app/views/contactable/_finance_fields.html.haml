@@ -7,7 +7,10 @@
   .col
     %h4= t('activerecord.attributes.person.early_payer')
     %p.text-muted= raw(t('people.finance_fields.early_payer_help'))
-    = f.labeled_input_field :early_payer
+    - if (@person.status == 'registered')
+      = f.labeled_input_field :early_payer
+    - else
+      = render_attrs(entry, :early_payer)
 
 .row.mt-5
   .col
@@ -15,8 +18,15 @@
     %p.text-muted= t('people.finance_fields.sepa_info')
 
 .row.mt-3
-  = f.labeled_input_fields :sepa_name,
-    :sepa_address,
-    :sepa_mail,
-    :sepa_iban,
-    :sepa_bic
+  -if (@person.status == 'registered')
+    = f.labeled_input_fields :sepa_name,
+                    :sepa_address,
+                    :sepa_mail,
+                    :sepa_iban,
+                    :sepa_bic
+  -else 
+    = render_attrs(entry,  :sepa_name,
+                    :sepa_address,
+                    :sepa_mail,
+                    :sepa_iban,
+                    :sepa_bic)

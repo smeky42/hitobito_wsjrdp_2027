@@ -66,14 +66,12 @@ class Person::PrintController < ApplicationController
       end
     end
 
-    if @person.years.to_i < 18
-      if @person.additional_contact_name_a.blank?
-        reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_a")
-      end
-      unless @person.additional_contact_single
-        if @person.additional_contact_name_b.blank?
-          reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_b")
-        end
+    if @person.additional_contact_name_a.blank?
+      reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_a")
+    end
+    unless @person.additional_contact_single
+      if @person.additional_contact_name_b.blank?
+        reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_b")
       end
     end
 
