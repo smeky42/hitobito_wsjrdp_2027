@@ -5,7 +5,7 @@ module Wsjrdp2027
     class Medical < Section
       def render
         pdf.y = bounds.height - 60
-        bounding_box([0, 230.mm], width: bounds.width, height: bounds.height - 200) do
+        bounding_box([0, 230.mm], width: bounds.width, height: bounds.height - 210) do
           font_size(8) do
             text content, width: bounds.width
           end
