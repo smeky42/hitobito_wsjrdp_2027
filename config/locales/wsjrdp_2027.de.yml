@@ -180,13 +180,13 @@ de:
             Leader: Unit Leader einer Unit
             Member: Youth Participant in einer Unit
             Manager: Contingent Management Team Mitglied (Unit Manager)
-        Root:
-          Member: Contingent Management Team Mitglied
-          Admin: Contingent Management Team Mitglied (Admin)
-          Leader: Contingent Management Team Mitglied (Leader)
-        Ist:
-          Member: International Service Team Mitglied
-          Leader: International Service Team Mitglied (Leader)
+          Root:
+            Member: Contingent Management Team Mitglied
+            Admin: Contingent Management Team Mitglied (Admin)
+            Leader: Contingent Management Team Mitglied (Leader)
+          Ist:
+            Member: International Service Team Mitglied
+            Leader: International Service Team Mitglied (Leader)
     medical_fields:
       vaccinations: Schutzimpfungen
       stiko_vaccinations_long: Die von der STIKO empfohlenen Schutzimpfungen wurden durchgeführt
