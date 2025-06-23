@@ -9,6 +9,8 @@ class Person::UploadController < ApplicationController
   before_action :authorize_action
   decorates :group, :person
 
+  include ContractHelper
+
   def index
     @group ||= Group.find(params[:group_id])
     @person ||= group.people.find(params[:id])
@@ -78,6 +80,13 @@ class Person::UploadController < ApplicationController
     if @person.complete_document_upload_at.nil? &&
         %i[upload_contract_pdf upload_medical_pdf upload_data_agreement_pdf upload_passport_pdf]
             .all? { |fld| @person.public_send(fld).present? }
+
+      if ul?(person)
+        if @person.upload_recommendation_pdf.nil?
+          return
+        end
+      end
+
       @person.complete_document_upload_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
       @person.status = "upload"
       @person.save
