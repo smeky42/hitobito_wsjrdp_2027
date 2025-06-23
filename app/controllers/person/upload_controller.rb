@@ -66,6 +66,22 @@ class Person::UploadController < ApplicationController
       upload_file(params[:person][:upload_passport_pdf], "upload_passport_pdf")
       upload_file(params[:person][:upload_recommendation_pdf], "upload_recommendation_pdf")
     end
+    check_files
+  end
+
+  def check_files
+    if @person.contract_upload_at.nil? && @person.upload_contract_pdf.present?
+      @person.contract_upload_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+      @person.save
+    end
+
+    if @person.complete_document_upload_at.nil? &&
+        %i[upload_contract_pdf upload_medical_pdf upload_data_agreement_pdf upload_passport_pdf]
+            .all? { |fld| @person.public_send(fld).present? }
+      @person.complete_document_upload_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+      @person.status = "upload"
+      @person.save
+    end
   end
 
   def upload_file(file_param, file_name)
