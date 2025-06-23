@@ -72,6 +72,34 @@ module ContractHelper
     end
     # rubocop:enable Metrics/MethodLength
 
+    def cmt?(person)
+      if person.payment_role.nil?
+        person.payment_role = payment_role(person)
+      end
+      person.payment_role.ends_with?("Root::Member")
+    end
+
+    def ul?(person)
+      if person.payment_role.nil?
+        person.payment_role = payment_role(person)
+      end
+      person.payment_role.ends_with?("Unit::Leader")
+    end
+
+    def yp?(person)
+      if person.payment_role.nil?
+        person.payment_role = payment_role(person)
+      end
+      person.payment_role.ends_with?("Unit::Member")
+    end
+
+    def ist?(person)
+      if person.payment_role.nil?
+        person.payment_role = payment_role(person)
+      end
+      person.payment_role.ends_with?("Ist::Member")
+    end
+
     def payment_array_by(person)
       role = person.payment_role
       payment_array.find { |row| row[0] == role }
