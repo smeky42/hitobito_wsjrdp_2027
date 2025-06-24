@@ -39,7 +39,15 @@ module Wsjrdp2027::PeopleController
       :sepa_status,
       :early_payer,
       :status,
-      :foto_permission
+      :foto_permission,
+      :pronoun,
+      :passport_germany,
+      :passport_nationality,
+      :passport_approved,
+      :languages_spoken,
+      :shirt_size,
+      :uniform_size,
+      :can_swim
     ]
 
     # Override crud_controller

@@ -21,26 +21,21 @@
     - else
       = render_attrs(entry, :first_name, :last_name) 
 
-    = field_set_tag do
-      = f.labeled_input_fields(*entry.decorate.used_attributes(:nickname))
-
-      = render_extensions :name_fields, locals: { f: f }
-
-    = render 'contactable/fields', f: f
-
     - if (@person.status == 'registered')
       = field_set_tag do
         = f.labeled(:gender) do
           - (Person::GENDERS + ['']).each do |key|
             = f.inline_radio_button(:gender, key, entry.gender_label(key))
-      = field_set_tag do
-        = f.labeled(:foto_permission) do
-          - { true  => 'Ja', false => 'Nein' }.each do |value, label|
-            = f.inline_radio_button(:foto_permission, value, label)
-        -# ToDo design and place are not the best
-        = raw(t('.foto_permission_help'))
     - else 
-      = render_attrs(entry,  :gender, :foto_permission)
+      = render_attrs(entry,  :gender)
+      
+    = field_set_tag do
+      = f.labeled_input_field(:pronoun)
+      = f.labeled_input_fields(*entry.decorate.used_attributes(:nickname))
+
+      = render_extensions :name_fields, locals: { f: f }
+
+    = render 'contactable/fields', f: f
 
 
     = render_extensions :fields, locals: { f: f }
@@ -56,6 +51,9 @@
 
   #additional_contact.tab-pane
     = render 'contactable/additional_contact_fields', f: f
+  
+  #additional_info.tab-pane
+    = render 'contactable/additional_info_fields', f: f
 
   #association.tab-pane
     = render 'contactable/association_fields', f: f
