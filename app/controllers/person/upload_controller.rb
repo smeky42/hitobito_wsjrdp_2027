@@ -90,7 +90,7 @@ class Person::UploadController < ApplicationController
     end
 
     if @person.complete_document_upload_at.nil? &&
-        %i[upload_contract_pdf upload_medical_pdf upload_data_agreement_pdf upload_passport_pdf upload_photo_permission_pdf]
+        %i[upload_contract_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
             .all? { |fld| @person.public_send(fld).present? }
 
       if ul?(@person) || ist?(@person) || cmt?(@person)
@@ -106,12 +106,6 @@ class Person::UploadController < ApplicationController
       end
 
       if ul?(@person)
-        if @person.upload_recommendation_pdf.nil?
-          return
-        end
-      end
-
-      if ul?(person)
         if @person.upload_recommendation_pdf.nil?
           return
         end
