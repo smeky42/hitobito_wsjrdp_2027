@@ -38,7 +38,8 @@ module Wsjrdp2027::PeopleController
       :sepa_bic,
       :sepa_status,
       :early_payer,
-      :status
+      :status,
+      :foto_permission
     ]
 
     # Override crud_controller
