@@ -4,6 +4,8 @@ module Wsjrdp2027
   module Export::Pdf
     module Registration
       class Runner
+        include ContractHelper
+
         def render(person, pdf_preview)
           new_pdf(person, pdf_preview).render
         end
@@ -65,15 +67,15 @@ module Wsjrdp2027
         end
 
         def sections
-          # if @person.role_wish == "Unit Leitung"
-          #   return [Contract, Medicin, DataProcessing, Recommondation, Travel, DataAgreement]
-          # end
-          # if @person.role_wish == "Kontingentsteam"
-          #   return [Contract, Medicin, DataProcessing, Travel, DataAgreement]
-          # end
+          if ul?(@person)
+            return [Contract, Medical, Recommondation, DataProcessing, Foto, Travel]
+          end
 
-          # [Contract, Medicin, Travel, DataAgreement]
-          [Contract, Medical, Recommondation, DataProcessing, Foto, Travel]
+          if cmt?(@person)
+            return [Contract, Medical, DataProcessing, Foto, Travel]
+          end
+
+          [Contract, Medical, Foto, Travel]
         end
       end
       mattr_accessor :runner
