@@ -6,7 +6,7 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2023.
 
 class AddPeopleAttrsUploadGenerated < ActiveRecord::Migration[4.2]
-    def change
-      add_column :people, :generated_registration_pdf, :string
-    end
+  def change
+    add_column :people, :generated_registration_pdf, :string
+  end
 end

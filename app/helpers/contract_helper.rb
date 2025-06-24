@@ -108,6 +108,7 @@ module ContractHelper
     def payment_value(person)
       payment_array_by(person)[1]
     end
+
     # rubocop:disable Metrics/MethodLength
     def payment_array_sepa
       array = []
