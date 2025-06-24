@@ -39,6 +39,14 @@ class Person::UploadController < ApplicationController
     download_file(@person.upload_recommendation_pdf)
   end
 
+  def show_photo_permission_pdf
+    download_file(@person.upload_photo_permission_pdf)
+  end
+
+  def _good_conduct_pdf
+    download_file(@person.upload_good_conduct_pdf)
+  end
+
   private
 
   def entry
@@ -64,11 +72,15 @@ class Person::UploadController < ApplicationController
     unless params[:person].nil?
       upload_file(params[:person][:upload_contract_pdf], "upload_contract_pdf")
       upload_file(params[:person][:upload_medical_pdf], "upload_medical_pdf")
-      upload_file(params[:person][:upload_data_agreement_pdf], "upload_data_agreement_pdf")
       upload_file(params[:person][:upload_passport_pdf], "upload_passport_pdf")
+      upload_file(params[:person][:upload_photo_permission_pdf], "upload_photo_permission_pdf")
+      upload_file(params[:person][:upload_good_conduct_pdf], "upload_good_conduct_pdf")
+      upload_file(params[:person][:upload_data_agreement_pdf], "upload_data_agreement_pdf")
       upload_file(params[:person][:upload_recommendation_pdf], "upload_recommendation_pdf")
     end
     check_files
+
+    redirect_to upload_group_person_path
   end
 
   def check_files
@@ -78,8 +90,26 @@ class Person::UploadController < ApplicationController
     end
 
     if @person.complete_document_upload_at.nil? &&
-        %i[upload_contract_pdf upload_medical_pdf upload_data_agreement_pdf upload_passport_pdf]
+        %i[upload_contract_pdf upload_medical_pdf upload_data_agreement_pdf upload_passport_pdf upload_photo_permission_pdf]
             .all? { |fld| @person.public_send(fld).present? }
+
+      if ul?(@person) || ist?(@person) || cmt?(@person)
+        if @person.upload_good_conduct_pdf.nil?
+          return
+        end
+      end
+
+      if ul?(@person) || cmt?(@person)
+        if @person.upload_data_agreement_pdf.nil?
+          return
+        end
+      end
+
+      if ul?(@person)
+        if @person.upload_recommendation_pdf.nil?
+          return
+        end
+      end
 
       if ul?(person)
         if @person.upload_recommendation_pdf.nil?
