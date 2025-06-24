@@ -103,6 +103,16 @@ de:
         contract_upload_at: Vertrag hochgeladen am
         complete_document_upload_at: Alle dokumente vollständig hochgeladen am
         foto_permission: Fotoeinwilligung
+        pronoun: Meine Pronomen sind
+        passport_germany: Ich besitze einen bis Sept. 2027 gültigen deutschen Reisepass bzw. Personalausweis
+        passport_nationality: Nationalität
+        passport_nationality_info: z.B. Deutsch
+        passport_approved: Pass überprüft
+        languages_spoken: Ich spreche folgende Sprachen
+        languages_spoken_info: z.B. Deutsch (Muttersprache), Englisch (5 Jahre Schule) 
+        shirt_size: T-Shirt Größe
+        uniform_size: Tracht- bzw. Klufthemdgröße
+        can_swim: Ich kann schwimmen 
 
     buttons:
       show_contract: Vertrag einsehen
@@ -135,6 +145,9 @@ de:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
       additional_contact: Weitere Kontaktdaten
+      additional_contact_adult: Notfallkontakt 
+      additional_contact_yp: Personensorgeberechtigte*r
+      additional_info: Weitere Informationen
       finance: SEPA
     status: Anmeldestatus
     status_help:
@@ -215,7 +228,7 @@ de:
       person_of_trust_long: Möchtest du eine Vertrauensperson angeben, die dich in schwierigen Situationen unterstützen kann? (Bitte gib Name und Kontaktdaten an)
       other: Weitere Angaben
       other_long: Es ist außerdem auf Folgendes zu achten
-    fields: 
+    additional_info_fields: 
        foto_permission_help: 'Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoerlaubnis</a>. </br></br> Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.'
 
   groups:
