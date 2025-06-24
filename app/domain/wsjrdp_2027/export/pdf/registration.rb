@@ -73,7 +73,7 @@ module Wsjrdp2027
           # end
 
           # [Contract, Medicin, Travel, DataAgreement]
-          [Contract, Medical, DataProcessing, Foto, Travel]
+          [Contract, Medical, Recommondation, DataProcessing, Foto, Travel]
         end
       end
       mattr_accessor :runner
