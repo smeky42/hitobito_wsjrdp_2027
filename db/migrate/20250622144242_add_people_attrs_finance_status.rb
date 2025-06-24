@@ -6,7 +6,7 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2023.
 
 class AddPeopleAttrsFinanceStatus < ActiveRecord::Migration[4.2]
-    def change
-      add_column :people, :payment_role, :string
-    end
+  def change
+    add_column :people, :payment_role, :string
+  end
 end
