@@ -91,7 +91,7 @@ module Wsjrdp2027
         pdf.move_down 3.mm
         text "Medikamente", size: 10, style: :bold
         pdf.move_down 1.mm
-        text "Mein / Unser Kind bekommt folgende Medikamente."
+        text "#{of_legal_age ? "Ich nehme" : "Mein / Unser Kind nimmt"}  folgende Medikamente."
         pdf.move_down 1.mm
         text "Dauermedikation (Dosierung / Einnahmeschema / Einnahmegrund)", style: :bold
         text @person.medical_continuous_medication.presence || "---"
@@ -132,14 +132,17 @@ module Wsjrdp2027
         text "Es ist auf Folgendes zu achten", style: :bold
         text @person.medical_other.presence || "---"
 
-        pdf.move_down 3.mm
-        text "Im Falle eines Falles", size: 10, style: :bold
-        pdf.move_down 1.mm
-        text "Im Falle einer Erkrankung oder eines Unfalles, bei denen durch eine Behandlung oder vorläufige Nicht-Behandlung in der Regel keine bleibenden Schäden zu erwarten sind (Bagatellerkrankungen/-verletzungen, Zecke/Splitter entfernen,...) darf unser Kind eigenständig über Behandlungen entscheiden und in medizinische Eingriffe einwilligen, da es die für eine solche Entscheidung notwendige persönliche geistige und körperliche Reife aufweist. Die Versorgung darf auch von Seiten der Betreuung erfolgen."
-        pdf.move_down 1.mm
-        text "Bei lebensbedrohlichen Erkrankungen / Unfällen entscheidet der behandelnde Arzt vor Ort."
-        pdf.move_down 1.mm
-        text "Wir haben den Gesundheitsfragebogen warheitsgemäß ausgefüllt. Wir sind damit einverstanden, dass die persönlichen Daten und so wie Behandlungsdaten zum Zwecke der gesetzlich vorgeschriebenen Dokumentation gespeichert werden. Nach Ablauf der gesetzlichen Aufbewahrungsfrist werden die Daten gelöscht."
+        if !of_legal_age
+          pdf.move_down 3.mm
+          text "Im Falle eines Falles", size: 10, style: :bold
+          pdf.move_down 1.mm
+          text "Im Falle einer Erkrankung oder eines Unfalles, bei denen durch eine Behandlung oder vorläufige Nicht-Behandlung in der Regel keine bleibenden Schäden zu erwarten sind (Bagatellerkrankungen/-verletzungen, Zecke/Splitter entfernen,...) darf unser Kind eigenständig über Behandlungen entscheiden und in medizinische Eingriffe einwilligen, da es die für eine solche Entscheidung notwendige persönliche geistige und körperliche Reife aufweist. Die Versorgung darf auch von Seiten der Betreuung erfolgen."
+          pdf.move_down 1.mm
+          text "Bei lebensbedrohlichen Erkrankungen / Unfällen entscheidet der behandelnde Arzt vor Ort."
+          pdf.move_down 1.mm
+        end
+
+        text "#{of_legal_age ? "Ich habe" : "Wir haben"} den Gesundheitsfragebogen warheitsgemäß ausgefüllt. #{of_legal_age ? "Ich bin" : "Wir sind"}  damit einverstanden, dass die persönlichen Daten und so wie Behandlungsdaten zum Zwecke der gesetzlich vorgeschriebenen Dokumentation gespeichert werden. Nach Ablauf der gesetzlichen Aufbewahrungsfrist werden die Daten gelöscht."
 
         signature = if of_legal_age
           pdf.make_table([
