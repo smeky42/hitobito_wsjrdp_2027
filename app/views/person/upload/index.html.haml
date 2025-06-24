@@ -15,13 +15,29 @@
       field: :upload_medical_pdf,
       button_label: t('activerecord.buttons.show_medical'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_medical"
+    
+    - if ul?(@person)
+      = render 'person/upload/upload_pdf_field',
+        f:f,
+        label: t("activerecord.fields.upload_recommendation_pdf"),
+        field: :upload_recommendation_pdf,
+        button_label: t('activerecord.buttons.show_recommendation'),
+        button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation"
 
+    - if ul?(@person) || cmt?(@person)
+      = render 'person/upload/upload_pdf_field',
+        f:f,
+        label: t("activerecord.fields.upload_data_agreement_pdf"),
+        field: :upload_data_agreement_pdf,
+        button_label: t('activerecord.buttons.show_data_agreement'),
+        button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement"
+    
     = render 'person/upload/upload_pdf_field',
       f:f,
-      label: t("activerecord.fields.upload_data_agreement_pdf"),
-      field: :upload_data_agreement_pdf,
-      button_label: t('activerecord.buttons.show_data_agreement'),
-      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement"
+      label: t("activerecord.fields.upload_photo_permission_pdf"),
+      field: :upload_photo_permission_pdf,
+      button_label: t('activerecord.buttons.show_photo_permission'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_photo_permission"
 
     = render 'person/upload/upload_pdf_field',
       f:f,
@@ -30,12 +46,15 @@
       button_label: t('activerecord.buttons.show_passport'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport"
 
-    - if ul?(@person)
+    - if ul?(@person) || ist?(@person) || cmt?(@person)
       = render 'person/upload/upload_pdf_field',
         f:f,
-        label: t("activerecord.fields.upload_recommendation_pdf"),
-        field: :upload_recommendation_pdf,
-        button_label: t('activerecord.buttons.show_recommendation'),
-        button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation"
+        label: t("activerecord.fields.upload_good_conduct_pdf"),
+        field: :upload_good_conduct_pdf,
+        button_label: t('activerecord.buttons.show_good_conduct'),
+        button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct"
+      
+  
+
 
     = form_buttons(f, submit_label: t('activerecord.buttons.upload_documents') , cancel_url: person_path(@person))
