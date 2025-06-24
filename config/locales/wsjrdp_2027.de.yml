@@ -75,6 +75,8 @@ de:
         upload_passport_pdf: Ausweisdokument
         upload_recommendation_pdf: Empfehlungsschreiben
         upload_medical_pdf: Gesundheitsbogen
+        upload_photo_permission_pdf: Fotoerlaubnis
+        upload_photo_good_conduct_pdf: Nachweis über ein Führungszeugnis 
         sepa_name: Kontoinhaber*in
         sepa_address: Adresse
         sepa_mail: Mailadresse
@@ -110,6 +112,8 @@ de:
       show_medical: Gesundheitsbogen einsehen
       review_hint: Dokument einsehen
       upload_documents: Dokumente hochladen
+      show_photo_permission: Fotoerlaubnis einsehen
+      show_good_conduct: Nachweis über das Führungszeugnis einsehen
 
     fields:
       upload_contract_pdf: Vertrag hochladen
@@ -117,6 +121,8 @@ de:
       upload_data_agreement_pdf: Datenschutzerklärung hochladen
       upload_passport_pdf: Ausweisdokument hochladen
       upload_recommendation_pdf: Empfehlungsschreiben hochladen
+      upload_photo_permission_pdf: Fotoerlaubnis hochladen
+      upload_good_conduct_pdf: Nachweis über ein Führungszeugnis hochladen
 
   people:
     tabs:
