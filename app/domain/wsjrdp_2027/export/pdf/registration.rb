@@ -24,7 +24,7 @@ module Wsjrdp2027
 
           # define header & footer variables
           # ToDo relative to root
-          image_path = "../hitobito_wsjrdp_2027/app/assets/images/"
+          image_path = "#{HitobitoWsjrdp2027::Wagon.root}/app/assets/images/"
 
           pdf.y = 850
           # pdf.page_count = 0
@@ -42,7 +42,7 @@ module Wsjrdp2027
             end
 
             logo = Rails.root.join(image_path + "wsjrdp-logo.png")
-            pdf.bounding_box [350, 800], width: pdf.bounds.width, height: 375 do
+            pdf.bounding_box [350, 750], width: pdf.bounds.width, height: 375 do
               pdf.image logo, width: 150
               # pdf.move_up 15
             end
