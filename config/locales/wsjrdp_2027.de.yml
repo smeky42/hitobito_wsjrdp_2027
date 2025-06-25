@@ -266,8 +266,8 @@ de:
     unauthorized:
       forgot_password: "Passwort vergessen?"
       need_confirmation_email: "Keine Bestätigungs-E-Mail bekommen?"
-      main_self_registration: "Du möchtest dich als Unit Leader am Jamboree engagieren? Registriere Dich hier."
-      main_other_registration_info: "Du möchtest als Youth Participant oder IST am Jamboree teilnehmen? Die Anmeldung für Dich startet im Juni."
+      main_self_registration: "Du möchtest dich Jamboree engagieren? Registriere Dich hier."
+      main_other_registration_info: "Du hast noch keinen Account? Hier erfährst du wie du ich im Anmeldeportal registrieren und deine Anmeldung abschließen kannst!"
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
-      main_other_registration_info_link: "https://www.worldscoutjamboree.de/mitfahren/"
+      main_other_registration_info_link: "https://www.worldscoutjamboree.de/howto-anmeldung/"
 
