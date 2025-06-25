@@ -19,6 +19,10 @@ class Person::UploadController < ApplicationController
     end
   end
 
+  def show_registration_generated
+    download_file(@person.generated_registration_pdf)
+  end
+
   def show_contract
     download_file(@person.upload_contract_pdf)
   end

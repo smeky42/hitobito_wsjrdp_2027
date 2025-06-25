@@ -17,6 +17,7 @@ Rails.application.routes.draw do
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
+          get "upload/show_registration_generated" => "person/upload#show_registration_generated"
           get "upload/show_contract" => "person/upload#show_contract"
           get "upload/show_medical" => "person/upload#show_medical"
           get "upload/show_data_agreement" => "person/upload#show_data_agreement"
