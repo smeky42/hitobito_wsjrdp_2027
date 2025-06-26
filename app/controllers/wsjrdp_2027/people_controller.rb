@@ -48,7 +48,8 @@ module Wsjrdp2027::PeopleController
       :shirt_size,
       :uniform_size,
       :can_swim,
-      :diet
+      :diet,
+      :medical_eating_disorders
     ]
 
     # Override crud_controller
