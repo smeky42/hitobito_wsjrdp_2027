@@ -47,7 +47,8 @@ module Wsjrdp2027::PeopleController
       :languages_spoken,
       :shirt_size,
       :uniform_size,
-      :can_swim
+      :can_swim,
+      :diet
     ]
 
     # Override crud_controller

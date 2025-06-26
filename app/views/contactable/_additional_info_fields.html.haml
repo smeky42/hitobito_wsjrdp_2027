@@ -12,6 +12,9 @@
   = f.labeled_input_field :languages_spoken, placeholder: t('activerecord.attributes.person.languages_spoken_info')
 
 = field_set_tag do
+  = f.labeled_collection_select(:diet, Settings.diets, :first, :last, {}, class: 'span2')
+  = f.labeled_input_field :medical_eating_disorders, label: t('people.medical_fields.eating_disorders_long')
+= field_set_tag do
   = f.labeled_collection_select(:shirt_size, Settings.shirt_size, :to_s, :to_s, {}, class: 'span2')
   = f.labeled_collection_select(:uniform_size, Settings.uniform_size, :to_s, :to_s, {}, class: 'span2')
 
