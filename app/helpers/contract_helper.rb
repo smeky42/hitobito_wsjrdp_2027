@@ -64,9 +64,9 @@ module ContractHelper
       elsif role == "Group::Unit::Member"
         "::Group::Unit::Member"
       elsif role == "Group::Ist::Member"
-        "Group::Ist::Member"
+        "::Group::Ist::Member"
       else
-        "Group::Root::Member"
+        "::Group::Root::Member"
       end
       payment_role_name
     end
