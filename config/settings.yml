@@ -21,6 +21,13 @@ status:
   deregistration_noted: Abmeldung Vermerkt # Personen die sich abmelden wollen, bei denen es noch Klärungsbedarf gibt
   deregistered: Abgemeldet # Alle die nicht mehr am Jamboree Teilnehmen wollen
 
+diets:
+  omnivorous: "Allesesser"
+  vegetarian: "Vegetarisch"
+  vegan: "Vegan"
+  kosher: "Koscher"
+  halal: "Halal"
+
 addresses:
   imported_countries:
     - DE
