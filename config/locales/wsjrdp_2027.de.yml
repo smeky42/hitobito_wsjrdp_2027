@@ -113,6 +113,7 @@ de:
         shirt_size: T-Shirt Größe
         uniform_size: Tracht- bzw. Klufthemdgröße
         can_swim: Ich kann schwimmen 
+        diet: Essensgewohnheiten
 
     buttons:
       show_contract: Vertrag einsehen
