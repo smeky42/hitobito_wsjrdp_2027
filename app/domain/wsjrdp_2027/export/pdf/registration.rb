@@ -6,6 +6,10 @@ module Wsjrdp2027
       class Runner
         include ContractHelper
 
+        def font_path(name)
+          HitobitoWsjrdp2027::Wagon.root.join("app", "assets", "fonts", name)
+        end
+
         def render(person, pdf_preview)
           new_pdf(person, pdf_preview).render
         end
@@ -14,6 +18,15 @@ module Wsjrdp2027
         # rubocop:disable Metrics/MethodLength
         def new_pdf(person, pdf_preview)
           pdf = Prawn::Document.new(page_size: "A4", page_layout: :portrait, margin: 2.cm, bottom_margin: 1.cm)
+
+          pdf.font_families.update("Montserrat" => {
+            normal: font_path("Montserrat-Regular.ttf"),
+            bold: font_path("Montserrat-Bold.ttf"),
+            italic: font_path("Montserrat-Italic.ttf"),
+            bold_italic: font_path("NotoSans-BoldItalic.ttf")
+          })
+          pdf.font "Montserrat"
+          pdf.font_size 8
 
           @person = PersonDecorator.new(person)
 
