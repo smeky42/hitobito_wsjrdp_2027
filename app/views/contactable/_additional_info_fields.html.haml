@@ -28,6 +28,7 @@
     = f.labeled(:foto_permission) do
       - { true  => 'Ja', false => 'Nein' }.each do |value, label|
         = f.inline_radio_button(:foto_permission, value, label)
-    = raw(t('people.additional_info_fields.foto_permission_help'))
-- else 
+    .mw-90ch.mb-2
+      = raw(t('people.additional_info_fields.foto_permission_help'))
+- else
   = render_attrs(entry, :foto_permission)
