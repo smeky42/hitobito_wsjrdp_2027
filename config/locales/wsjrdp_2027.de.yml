@@ -152,7 +152,7 @@ de:
       finance: SEPA
     status: Anmeldestatus
     status_help:
-      registered: Um bei deiner Anmeldung fortzufahren musst du alle Daten (über Bearbeiten) und den Medizinbogen (im Medizin Tab) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
+      registered: Um bei deiner Anmeldung fortzufahren musst du alle Daten (über Info->Bearbeiten) und den Medizinbogen (über Medizinische Angaben->Bearbeiten) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
       printed: Du hast deine Anmeldung erfolgreich gedruckt. </br> Der nächste Schritt ist das Hochladen der Dokumente. </br> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden.
       upload: Du hast deine Anmeldung vollständig hochgeladen. Wir überprüfen deine Daten und die Anmeldung in den nächsten Wochen.
       in_review: Deine Anmeldedaten werden gerade von einem CMT Mitglied überprüft.
