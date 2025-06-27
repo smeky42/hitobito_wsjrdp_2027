@@ -69,7 +69,7 @@ module Wsjrdp2027
         text "Bekannte Vorerkrankungen / Operationen / Kinderkrankheiten", style: :bold
         text @person.medical_preexisting_conditions.presence || "---"
         pdf.move_down 1.mm
-        text "Folgende Auffälligkeiten / Erkrankungen sind bekannt (z.B. Asthma, Reisekrankheit, Epilepsie, Angststörung, AD(H)S, erhöhter Betreuungsaufwand, etc.)", style: :bold
+        text "Folgende Auffälligkeiten / Erkrankungen sind bekannt (z.B. Asthma, Reisekrankheit, Epilepsie, etc.)", style: :bold
         text @person.medical_abnormalities.presence || "---"
         pdf.move_down 1.mm
         text "Es bestehen folgende Allergien (z.B. gegen Medikamente, nachgewiesene Lebensmittelallergien, Heuschnupfen, etc.) mit folgenden Symptomen", style: :bold
@@ -81,7 +81,7 @@ module Wsjrdp2027
         text "Es bestehen folgende Mobilitätsbedürfnisse auf Grund von", style: :bold
         text @person.medical_mobility_needs.presence || "---"
         pdf.move_down 1.mm
-        text "Es besteht eine infektiöse Erkrankung, vor der andere Menschen oder medizinisches Personal besonders geschützt werden müssen (z.B. meldepflichtige Erkrankungen, Tuberkulose, Hepatitis B/C, HIV etc.)", style: :bold
+        text "Es besteht eine infektiöse Erkrankung, vor der andere Menschen oder medizinisches Personal besonders geschützt werden müssen (z.B. meldepflichtige Erkrankungen, Tuberkulose, Hepatitis B/C, HIV, etc.)", style: :bold
         text @person.medical_infectious_diseases.presence || "---"
         pdf.move_down 1.mm
         text "Zurzeit in ärztlicher Behandlung bei (behandelnde*r Ärzt*in mit Fachrichtung, Name, Kontaktdaten)", style: :bold
@@ -102,10 +102,10 @@ module Wsjrdp2027
         text "Es werden folgende Medikamente selbstständig eingenommen", style: :bold
         text @person.medical_self_treatment_medication.presence || "---"
         pdf.move_down 1.mm
-        text "Mit dem Hausarzt ist abzuklären, ob für die bestehende Dauer- & Bedarfsmedikation ein aktueller Medikamentenplan der Medikamente mitgeführt werden muss. Sollten spezielle Lagerungsbedingungen für Medikamente benötigt werden (z.B. Kühlung), bitte frühzeitig unter info@worldscoutjamboree.de melden."
+        text "Mit dem Hausarzt ist abzuklären, ob für die bestehende Dauer- und Bedarfsmedikation ein aktueller Medikamentenplan der Medikamente mitgeführt werden muss. Sollten spezielle Lagerungsbedingungen für Medikamente benötigt werden (z.B. Kühlung), bitte frühzeitig unter info@worldscoutjamboree.de melden."
 
         pdf.move_down 3.mm
-        text "Wellbeing – durch die Teilnehmenden selbst auszufüllen", size: 10, style: :bold
+        text "Wellbeing - durch die Teilnehmenden selbst auszufüllen", size: 10, style: :bold
         pdf.move_down 1.mm
         text "Uns ist es wichtig, dass sich alle Teilnehmenden während der Reise wohlfühlen und die gemeinsame Zeit genießen können. Wir wissen aber auch: Eine lange Reise in ein fremdes Land, in einer neuen Gruppe, kann manchmal sehr herausfordernd sein."
         pdf.move_down 1.mm
@@ -139,9 +139,9 @@ module Wsjrdp2027
           text "Im Falle einer Erkrankung oder eines Unfalles, bei denen durch eine Behandlung oder vorläufige Nicht-Behandlung in der Regel keine bleibenden Schäden zu erwarten sind (Bagatellerkrankungen/-verletzungen, Zecke/Splitter entfernen,...) darf unser Kind eigenständig über Behandlungen entscheiden und in medizinische Eingriffe einwilligen, da es die für eine solche Entscheidung notwendige persönliche geistige und körperliche Reife aufweist. Die Versorgung darf auch von Seiten der Betreuung erfolgen."
           pdf.move_down 1.mm
           text "Bei lebensbedrohlichen Erkrankungen / Unfällen entscheidet der behandelnde Arzt vor Ort."
-          pdf.move_down 1.mm
         end
 
+        pdf.move_down 1.mm
         text "#{of_legal_age ? "Ich habe" : "Wir haben"} den Gesundheitsfragebogen warheitsgemäß ausgefüllt. #{of_legal_age ? "Ich bin" : "Wir sind"}  damit einverstanden, dass die persönlichen Daten und so wie Behandlungsdaten zum Zwecke der gesetzlich vorgeschriebenen Dokumentation gespeichert werden. Nach Ablauf der gesetzlichen Aufbewahrungsfrist werden die Daten gelöscht."
 
         signature = if of_legal_age

@@ -76,7 +76,7 @@ de:
         upload_recommendation_pdf: Empfehlungsschreiben
         upload_medical_pdf: Gesundheitsbogen
         upload_photo_permission_pdf: Fotoerlaubnis
-        upload_photo_good_conduct_pdf: Nachweis über ein Führungszeugnis 
+        upload_photo_good_conduct_pdf: Nachweis über ein Führungszeugnis
         sepa_name: Kontoinhaber*in
         sepa_address: Adresse
         sepa_mail: Mailadresse
@@ -110,10 +110,10 @@ de:
         passport_nationality_info: z.B. Deutsch
         passport_approved: Pass überprüft
         languages_spoken: Ich spreche folgende Sprachen
-        languages_spoken_info: z.B. Deutsch (Muttersprache), Englisch (5 Jahre Schule) 
+        languages_spoken_info: z.B. Deutsch (Muttersprache), Englisch (5 Jahre Schule)
         shirt_size: T-Shirt Größe
         uniform_size: Tracht- bzw. Klufthemdgröße
-        can_swim: Ich kann schwimmen 
+        can_swim: Ich kann schwimmen
         diet: Essensgewohnheiten
 
     buttons:
@@ -149,13 +149,13 @@ de:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID
       additional_contact: Weitere Kontaktdaten
-      additional_contact_adult: Notfallkontakt 
+      additional_contact_adult: Notfallkontakt
       additional_contact_yp: Personensorgeberechtigte*r
       additional_info: Weitere Informationen
       finance: SEPA
     status: Anmeldestatus
     status_help:
-      registered: Um bei deiner Anmeldung fortzufahren musst du alle Daten (über Info->Bearbeiten) und den Medizinbogen (über Medizinische Angaben->Bearbeiten) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
+      registered: Um mit deiner Anmeldung fortzufahren musst du alle Daten (über Info->Bearbeiten) und den Medizinbogen (über Medizinische Angaben->Bearbeiten) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
       printed: Du hast deine Anmeldung erfolgreich gedruckt. </br> Der nächste Schritt ist das Hochladen der Dokumente. </br> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden.
       upload: Du hast deine Anmeldung vollständig hochgeladen. Wir überprüfen deine Daten und die Anmeldung in den nächsten Wochen.
       in_review: Deine Anmeldedaten werden gerade von einem CMT Mitglied überprüft.
@@ -175,7 +175,7 @@ de:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
       rdp_association_header: Verbandszugehörigkeit
       buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in bzw. eine*n Freund*in wünschen. <br/> Die jeweilige Buddy-ID erfährst du von deinem Buddy. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie oben auf dieser Seite.  <br/>Wenn du eine Buddy-ID angibst sieht dein Buddy in seinem Profil, deinen Namen und E-Mailadresse.'
-    participant_wish_data: 
+    participant_wish_data:
       header: Die folgenden Personen haben deine Buddy-ID angegeben und
       header_ul: wünschen sich dich als Unit Leader
       header_yp: wünschen sich dich als Buddy
@@ -215,8 +215,10 @@ de:
             Leader: International Service Team Mitglied (Leader)
     medical_fields:
       vaccinations: Schutzimpfungen
+      vaccinations_valid: Nur im Impfausweis dokumentierte Impfungen gelten als durchgeführt.
       stiko_vaccinations_long: Die von der STIKO empfohlenen Schutzimpfungen wurden durchgeführt
       additional_vaccinations_long: Weitere Impfungen (Impfdatum Monat/Jahr)
+      additional_vaccinations_help: "Folgende Impfungen/Grundimmunisierung werden unsererseits empfohlen: Hepatitis A & B. Außerdem werden reisemedizinisch für Touristen bei einfachen Reisen für Polen (Stand 31.04.2025) weitere Impfungen empfohlen: FSME. Da auf dem Jamboree Kontakt zu Jugendlichen aus allen Teilen der Erde bei einfachen hygienischen Verhältnissen besteht, ist auch Kontakt zu für Europa untypischen Erkrankungen denkbar. Eine Beratung zu weiteren Impfungen nach individuellem Risiko durch den Kinder- oder Hausarzt wird empfohlen."
       preexisting_conditions_long: Bekannte Vorerkrankungen / Operationen / Kinderkrankheiten
       abnormalities_long: Bekannte Auffälligkeiten / Erkrankungen (z.B. Asthma, Reisekrankheit, Epilepsie, etc.)
       allergies_long: Allergien (z.B. gegen Medikamente, nachgewiesene Lebensmittelallergien, Heuschnupfen, etc.), ggf. mit folgenden Symptomen
@@ -224,17 +226,23 @@ de:
       mobility_needs_long: Mobilitätsbedürfnisse auf Grund von
       infectious_diseases_long: Es besteht eine infektiöse Erkrankung, vor der andere Menschen oder medizinisches Personal besonders geschützt werden müssen (z.B. meldepflichtige Erkrankungen, Tuberkulose, Hepatitis B/C, HIV, etc.)
       medical_treatment_contact_long: Zurzeit in ärztlicher Behandlung bei (behandelnde*r Ärzt*in mit Fachrichtung, Name, Kontaktdaten)
+      medical_secrecy_help: Es wird bei Bedarf gestattet, dass sich das ärztliche Team des CMT mit dem genannten med. Fachpersonal in Kontakt setzt, um Gesundheitsdaten / Informationen auzutauschen (Schweigepflichtentbindung).
       medication: Medikamente
+      medication_explanation: Mit dem Hausarzt ist abzuklären, ob für die bestehende Dauer- und Bedarfsmedikation ein aktueller Medikamentenplan der Medikamente mitgeführt werden muss. Sollten spezielle Lagerungsbedingungen für Medikamente benötigt werden (z.B. Kühlung), bitte frühzeitig unter info@worldscoutjamboree.de melden.
       continuous_medication_long: Dauermedikation (Dosierung, Einnahmeschema, Einnahmegrund)
       needs_medication_long: Bedarfsmedikation (Dosierung, Tageshöchstmenge, Einnahmegrund)
       self_treatment_medication_long: Folgende Medikamente werden selbstständig eingenommen
       wellbeing: Wellbeing
+      wellbeing_explanation_p1: "Uns ist es wichtig, dass sich alle Teilnehmenden während der Reise wohlfühlen und die gemeinsame Zeit genießen können. Wir wissen aber auch: Eine lange Reise in ein fremdes Land, in einer neuen Gruppe, kann manchmal sehr herausfordernd sein."
+      wellbeing_explanation_p2: Damit wir dich bestmöglich unterstützen können, wenn es nötig wird, möchten wir dir die Möglichkeit geben, uns im Vorfeld ein paar Informationen mitzuteilen. Unser Wellbeing-Team besteht aus Fachpersonen für psychische Gesundheit und ist jederzeit ansprechbar, wenn du Unterstützung brauchst. Gerne kannst du auch schon im Vorfeld das Gespräch zu uns suchen, dann können wir gemeinsam überlegen, wie wir dich in schwierigen Situationen unterstützen.
       mental_health_long: Gibt es etwas, das wir im Hinblick auf deine psychische Gesundheit wissen sollten?
-      situational_support_long: Was hilft dir, wenn du in stressige oder belastende Situationen gerätst? (Gibt es bestimmte Maßnahmen, Verhaltensweisen oder Unterstützung, die dir dann gut tun?)
+      mental_health_help: "Dazu zählen zum Beispiel: erhöhte Stressbelastung, Depressionen, Angststörungen, ADHS, Persönlichkeitsmerkmale oder ein erhöhter Unterstützungsbedarf. Falls ja: Warst du deswegen bereits in Behandlung (z.B. durch Therapie, Medikamente oder einen Klinikaufenthalt)?"
+      situational_support_long: Was hilft dir, wenn du in stressige oder belastende Situationen gerätst?
+      situational_support_help: Gibt es bestimmte Maßnahmen, Verhaltensweisen oder Unterstützung, die dir dann gut tun?
       person_of_trust_long: Möchtest du eine Vertrauensperson angeben, die dich in schwierigen Situationen unterstützen kann? (Bitte gib Name und Kontaktdaten an)
       other: Weitere Angaben
       other_long: Es ist außerdem auf Folgendes zu achten
-    additional_info_fields: 
+    additional_info_fields:
        foto_permission_help: 'Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoerlaubnis</a>. </br></br> Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.'
 
   groups:
