@@ -82,6 +82,7 @@ de:
         sepa_mail: Mailadresse
         sepa_iban: IBAN
         sepa_bic: BIC
+        sepa: SEPA
         sepa_status: Finanzstatus
         early_payer: Early Payer
         medical_stiko_vaccinations: Impfungen nach STIKO-Empfehlung
