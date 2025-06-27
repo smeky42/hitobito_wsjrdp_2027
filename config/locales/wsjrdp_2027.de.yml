@@ -174,7 +174,7 @@ de:
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
       rdp_association_header: Verbandszugehörigkeit
-      buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in und eine*n Freundin wünschen. <br/> Die jeweilige Buddy-ID kann erfährst du von der jeweiligen Person. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie im "Info"-Tab.'
+      buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in bzw. eine*n Freund*in wünschen. <br/> Die jeweilige Buddy-ID erfährst du von deinem Buddy. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie oben auf dieser Seite.  <br/>Wenn du eine Buddy-ID angibst sieht dein Buddy in seinem Profil, deinen Namen und E-Mailadresse.'
     participant_wish_data: 
       header: Die folgenden Personen haben deine Buddy-ID angegeben und
       header_ul: wünschen sich dich als Unit Leader
