@@ -117,6 +117,7 @@ de:
 
     buttons:
       show_contract: Vertrag einsehen
+      show_sepa: SEPA einsehen
       show_data_agreement: Datenschutzerklärung einsehen
       show_passport: Ausweis einsehen
       show_recommendation: Empfehlungsschreiben einsehen
@@ -128,6 +129,7 @@ de:
 
     fields:
       upload_contract_pdf: Vertrag hochladen
+      upload_sepa_pdf: SEPA hochladen
       upload_medical_pdf: Gesundheitsbogen hochladen
       upload_data_agreement_pdf: Datenschutzerklärung hochladen
       upload_passport_pdf: Ausweisdokument hochladen

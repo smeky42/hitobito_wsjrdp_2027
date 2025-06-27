@@ -1,5 +1,5 @@
 #main.row-fluid
-- if @printable and (@person.status != 'registered')
+- if @person.status != 'registered'
   = standard_form(@person, {url: upload_group_person_path,  method: :put}) do |f|
     = f.error_messages
 
@@ -9,6 +9,13 @@
       field: :upload_contract_pdf,
       button_label: t('activerecord.buttons.show_contract'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_contract"
+    
+    = render 'person/upload/upload_pdf_field',
+      f:f,
+      label: t("activerecord.fields.upload_sepa_pdf"),
+      field: :upload_sepa_pdf,
+      button_label: t('activerecord.buttons.show_sepa'),
+      button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_sepa"
 
     = render 'person/upload/upload_pdf_field',
       f:f,
