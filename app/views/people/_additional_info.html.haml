@@ -5,6 +5,7 @@
 
 %h2.mt-3
   = t('people.form_tabs.additional_info')
+- entry.diet = Settings.diets[entry.diet]
 = render_attrs(entry, :passport_germany,
                       :passport_nationality,
                       :passport_approved,
