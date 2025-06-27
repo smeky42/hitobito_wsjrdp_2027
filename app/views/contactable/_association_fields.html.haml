@@ -4,9 +4,14 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027.
 
 %br/
-%h2= t('people.association_fields.buddy_id_header')
-= f.labeled_input_fields :buddy_id_ul, :buddy_id_yp
-= f.help_block(raw(t('people.association_fields.buddy_id_help')))
+- entry.buddy_id = "#{entry.buddy_id}-#{entry.id}"
+= render_attrs(entry, :buddy_id)
+- if yp?(@person) || ul?(@person)
+  %h2= t('people.association_fields.buddy_id_header')
+  = f.labeled_input_fields :buddy_id_ul
+  - if yp?(@person)
+    = f.labeled_input_fields :buddy_id_yp
+  = f.help_block(raw(t('people.association_fields.buddy_id_help')))
 %br/
 %h2= t('people.association_fields.rdp_association_header')
 = f.labeled_input_fields :rdp_association, :rdp_association_region, :rdp_association_sub_region
