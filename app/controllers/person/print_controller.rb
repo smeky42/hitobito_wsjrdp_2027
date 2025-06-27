@@ -67,24 +67,24 @@ class Person::PrintController < ApplicationController
     end
 
     if @person.additional_contact_name_a.blank?
-      reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_a")
+      reason += "\n - #{I18n.t "activerecord.attributes.person.additional_contact_name_a"} #{I18n.t "people.form_tabs.additional_contact_adult"} bzw. #{I18n.t "people.form_tabs.additional_contact_yp"} 1"
     end
     unless @person.additional_contact_single
       if @person.additional_contact_name_b.blank?
-        reason += "\n" + (I18n.t "activerecord.attributes.person.additional_contact_name_b")
+        reason += "\n - #{I18n.t "activerecord.attributes.person.additional_contact_name_b"}  #{I18n.t "people.form_tabs.additional_contact_adult"} bzw. #{I18n.t "people.form_tabs.additional_contact_yp"} 2"
       end
     end
 
     if @person.sepa_name.blank?
-      reason += "\n" + (I18n.t "activerecord.attributes.person.sepa_name") + " (SEPA)"
+      reason += "\n - #{I18n.t "activerecord.attributes.person.sepa_name"} #{I18n.t "activerecord.attributes.person.sepa"}"
     end
 
     if @person.sepa_address.blank?
-      reason += "\n" + (I18n.t "activerecord.attributes.person.sepa_address") + " (SEPA)"
+      reason += "\n - #{I18n.t "activerecord.attributes.person.sepa_address"} #{I18n.t "activerecord.attributes.person.sepa"}"
     end
 
     if @person.sepa_mail.blank? || !Truemail.valid?(@person.sepa_mail)
-      reason += "\n" + (I18n.t "people.alerts.sepa_mail") + " (SEPA)"
+      reason += "\n #{I18n.t "people.alerts.sepa_mail"}"
     end
 
     if !IBANTools::IBAN.valid?(@person.sepa_iban)
