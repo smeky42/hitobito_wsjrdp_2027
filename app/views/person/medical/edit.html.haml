@@ -5,10 +5,15 @@
 
     .mt-3
       %h3= t('people.medical_fields.vaccinations')
+    .text-muted.mw-90ch.mb-2
+      %p= t('people.medical_fields.vaccinations_valid')
     = field_set_tag do
-      = f.labeled_input_field :medical_stiko_vaccinations, label: t('people.medical_fields.stiko_vaccinations_long')
+      = f.labeled_input_field :medical_stiko_vaccinations,
+          label: t('people.medical_fields.stiko_vaccinations_long')
     = field_set_tag do
-      = f.labeled_input_field :medical_additional_vaccinations, label: t('people.medical_fields.additional_vaccinations_long')
+      = f.labeled_input_field :medical_additional_vaccinations,
+          label: t('people.medical_fields.additional_vaccinations_long'),
+          help: t('people.medical_fields.additional_vaccinations_help')
 
     .mt-5
       %h3= t('people.tabs.medical')
@@ -18,17 +23,19 @@
       = f.labeled_input_field :medical_abnormalities, label: t('people.medical_fields.abnormalities_long')
     = field_set_tag do
       = f.labeled_input_field :medical_allergies, label: t('people.medical_fields.allergies_long')
-    -# = field_set_tag do
-    -#   = f.labeled_input_field :medical_eating_disorders, label: t('people.medical_fields.eating_disorders_long')
     = field_set_tag do
       = f.labeled_input_field :medical_mobility_needs, label: t('people.medical_fields.mobility_needs_long')
     = field_set_tag do
       = f.labeled_input_field :medical_infectious_diseases, label: t('people.medical_fields.infectious_diseases_long')
     = field_set_tag do
-      = f.labeled_input_field :medical_medical_treatment_contact, label: t('people.medical_fields.medical_treatment_contact_long')
+      = f.labeled_input_field :medical_medical_treatment_contact,
+          label: t('people.medical_fields.medical_treatment_contact_long'),
+          help: t('people.medical_fields.medical_secrecy_help')
 
     .mt-5
       %h3= t('people.medical_fields.medication')
+    .text-muted.mw-90ch.mb-2
+      %p= t('people.medical_fields.medication_explanation')
     = field_set_tag do
       = f.labeled_input_field :medical_continuous_medication, label: t('people.medical_fields.continuous_medication_long')
     = field_set_tag do
@@ -38,10 +45,17 @@
 
     .mt-5
       %h3= t('people.medical_fields.wellbeing')
+    .text-muted.mw-90ch.mb-2
+      %p= t('people.medical_fields.wellbeing_explanation_p1')
+      %p= t('people.medical_fields.wellbeing_explanation_p2')
     = field_set_tag do
-      = f.labeled_input_field :medical_mental_health, label: t('people.medical_fields.mental_health_long')
+      = f.labeled_input_field :medical_mental_health,
+          label: t('people.medical_fields.mental_health_long'),
+          help: t('people.medical_fields.mental_health_help')
     = field_set_tag do
-      = f.labeled_input_field :medical_situational_support, label: t('people.medical_fields.situational_support_long')
+      = f.labeled_input_field :medical_situational_support,
+          label: t('people.medical_fields.situational_support_long'),
+          help: t('people.medical_fields.situational_support_help')
     = field_set_tag do
       = f.labeled_input_field :medical_person_of_trust, label: t('people.medical_fields.person_of_trust_long')
 
