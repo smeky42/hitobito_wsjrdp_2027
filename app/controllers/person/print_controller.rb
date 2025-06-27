@@ -91,6 +91,35 @@ class Person::PrintController < ApplicationController
       reason += "\n" + (I18n.t "people.alerts.iban")
     end
 
+    medical_attrs = %i[
+      medical_stiko_vaccinations
+      medical_additional_vaccinations
+      medical_preexisting_conditions
+      medical_abnormalities
+      medical_allergies
+      medical_eating_disorders
+      medical_mobility_needs
+      medical_infectious_diseases
+      medical_medical_treatment_contact
+      medical_continuous_medication
+      medical_needs_medication
+      medical_self_treatment_medication
+      medical_mental_health
+      medical_situational_support
+      medical_person_of_trust
+      medical_other
+    ]
+
+    all_blank = true
+    medical_attrs.each do |attr|
+      if !@person.public_send(attr).blank?
+        all_blank = false
+      end
+    end
+    if all_blank
+      reason += "\n" + (I18n.t "people.alerts.medical")
+    end
+
     reason
   end
 
