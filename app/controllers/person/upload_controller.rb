@@ -27,6 +27,10 @@ class Person::UploadController < ApplicationController
     download_file(@person.upload_contract_pdf)
   end
 
+  def show_sepa
+    download_file(@person.upload_sepa_pdf)
+  end
+
   def show_medical
     download_file(@person.upload_medical_pdf)
   end
@@ -43,7 +47,7 @@ class Person::UploadController < ApplicationController
     download_file(@person.upload_recommendation_pdf)
   end
 
-  def show_photo_permission_pdf
+  def show_photo_permission
     download_file(@person.upload_photo_permission_pdf)
   end
 
@@ -75,6 +79,7 @@ class Person::UploadController < ApplicationController
   def upload_files
     unless params[:person].nil?
       upload_file(params[:person][:upload_contract_pdf], "upload_contract_pdf")
+      upload_file(params[:person][:upload_sepa_pdf], "upload_sepa_pdf")
       upload_file(params[:person][:upload_medical_pdf], "upload_medical_pdf")
       upload_file(params[:person][:upload_passport_pdf], "upload_passport_pdf")
       upload_file(params[:person][:upload_photo_permission_pdf], "upload_photo_permission_pdf")
@@ -94,7 +99,7 @@ class Person::UploadController < ApplicationController
     end
 
     if @person.complete_document_upload_at.nil? &&
-        %i[upload_contract_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
+        %i[upload_contract_pdf upload_sepa_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
             .all? { |fld| @person.public_send(fld).present? }
 
       if ul?(@person) || ist?(@person) || cmt?(@person)
