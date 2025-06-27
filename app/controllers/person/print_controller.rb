@@ -57,7 +57,7 @@ class Person::PrintController < ApplicationController
     reason = ""
     attrs = %w[
       first_name last_name email address zip_code town country
-      gender birthday rdp_association_number sepa_name sepa_address
+      gender birthday rdp_association_number
     ]
 
     attrs.each do |attr|
@@ -75,12 +75,20 @@ class Person::PrintController < ApplicationController
       end
     end
 
-    if !IBANTools::IBAN.valid?(@person.sepa_iban)
-      reason += "\n" + (I18n.t "people.alerts.iban")
+    if @person.sepa_name.blank?
+      reason += "\n" + (I18n.t "activerecord.attributes.person.sepa_name") + " (SEPA)"
+    end
+
+    if @person.sepa_address.blank?
+      reason += "\n" + (I18n.t "activerecord.attributes.person.sepa_address") + " (SEPA)"
     end
 
     if @person.sepa_mail.blank? || !Truemail.valid?(@person.sepa_mail)
-      reason += "\n" + (I18n.t "people.alerts.sepa_mail")
+      reason += "\n" + (I18n.t "people.alerts.sepa_mail") + " (SEPA)"
+    end
+
+    if !IBANTools::IBAN.valid?(@person.sepa_iban)
+      reason += "\n" + (I18n.t "people.alerts.iban")
     end
 
     reason
