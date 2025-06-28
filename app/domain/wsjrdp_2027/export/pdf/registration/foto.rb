@@ -113,7 +113,7 @@ module Wsjrdp2027
         text "Unabhängig hiervon werden Bild- und Tonaufnahmen der Teilnehmer*innen gelöscht, sobald sie nicht mehr für Zwecke der Dokumentation der Veranstaltung oder für die Außendarstellung des rdp benötigt werden. "
 
         pdf.move_down 3.mm
-        text "Wenn die Einwilligung nicht erteilt wird, wird die Unitleitung die vom Veranstalter beauftragten Fotograf*innen anweisen, #{of_legal_age ? "mich" : "den*die Teilnehmer*in"} nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen."
+        text "Wenn die Einwilligung nicht erteilt oder wenn sie widerrufen wird, wird die Unitleitung die vom Veranstalter beauftragten Fotograf*innen anweisen, #{of_legal_age ? "mich" : "den*die Teilnehmer*in"} nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen."
 
         pdf.move_down 3.mm
         text "Fragen zu der Anfertigung von Bild- und Tonaufnahmen und zu deren Verwendung können an die E-Mail-Adresse media-info@worldscoutjamboree.de gerichtet werden."
