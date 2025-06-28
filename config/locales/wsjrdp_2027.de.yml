@@ -41,6 +41,13 @@ de:
     alert:
       only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
 
+    errors:
+      models:
+        person:
+          buddy_self: "darf nicht deine eigene Buddy ID sein."
+          buddy_no_ul: "muss zu einer Person gehören, die Unit Leader ist."
+          buddy_no_yp: "muss zu einer Person gehören, die Youth Participant ist."
+
     attributes:
       person:
         nickname: Spitzname / Fahrtenname
