@@ -60,11 +60,11 @@
       button_label: t('activerecord.buttons.show_passport'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport"
 
-    %br
-    = raw(t('people.buttons.upload_good_conduct_info'))
-    %br
-    %br
     - if ul?(@person) || ist?(@person) || cmt?(@person)
+      %br
+      = raw(t('people.buttons.upload_good_conduct_info'))
+      %br
+      %br
       = render 'person/upload/upload_pdf_field',
         f:f,
         label: t("activerecord.fields.upload_good_conduct_pdf"),
