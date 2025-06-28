@@ -2,7 +2,9 @@
 - if @person.status != 'registered'
   = standard_form(@person, {url: upload_group_person_path,  method: :put}) do |f|
     = f.error_messages
-
+    = raw(t('people.buttons.upload_info'))
+    %br
+    %br
     = render 'person/upload/upload_pdf_field',
       f:f,
       label: t("activerecord.fields.upload_contract_pdf"),
@@ -47,6 +49,10 @@
       button_label: t('activerecord.buttons.show_photo_permission'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_photo_permission"
 
+    %br
+    = raw(t('people.buttons.upload_passport_info'))
+    %br
+    %br
     = render 'person/upload/upload_pdf_field',
       f:f,
       label: t("activerecord.fields.upload_passport_pdf"),
@@ -54,6 +60,10 @@
       button_label: t('activerecord.buttons.show_passport'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport"
 
+    %br
+    = raw(t('people.buttons.upload_good_conduct_info'))
+    %br
+    %br
     - if ul?(@person) || ist?(@person) || cmt?(@person)
       = render 'person/upload/upload_pdf_field',
         f:f,
