@@ -6,6 +6,7 @@ module Wsjrdp2027
       attr_reader :pdf
 
       class_attribute :model_class
+      class_attribute :name
 
       delegate :bounds, :bounding_box, :table,
         :text, :cursor, :font_size, :text_box,

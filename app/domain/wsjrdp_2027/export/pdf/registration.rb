@@ -31,7 +31,18 @@ module Wsjrdp2027
           @person = PersonDecorator.new(person)
 
           sections.each do |section|
+            pstart = pdf.page_number
+            current_section = section.name || ""
             section.new(pdf, @person).render
+            pend = pdf.page_number
+
+            pdf.repeat pstart..pend do
+              pdf.bounding_box [pdf.bounds.right - pdf.bounds.width / 2, pdf.bounds.bottom + 10],
+                width: pdf.bounds.width / 2 do
+                pdf.text_box current_section, align: :right
+              end
+            end
+
             pdf.start_new_page if section != sections.last
           end
 
@@ -81,14 +92,14 @@ module Wsjrdp2027
 
         def sections
           if ul?(@person)
-            return [Contract, Medical, Recommondation, DataProcessing, Foto, Travel]
+            return [Contract, Sepa, Medical, Recommondation, DataProcessing, Foto, Travel]
           end
 
           if cmt?(@person)
-            return [Contract, Medical, DataProcessing, Foto, Travel]
+            return [Contract, Sepa, Medical, DataProcessing, Foto, Travel]
           end
 
-          [Contract, Medical, Foto, Travel]
+          [Contract, Sepa, Medical, Foto, Travel]
         end
       end
       mattr_accessor :runner
