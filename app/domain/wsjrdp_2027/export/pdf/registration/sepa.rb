@@ -65,7 +65,7 @@ module Wsjrdp2027
         end
 
         pdf.move_down 3.mm
-        text "Der erste Einzug erfolgt frühestens nach dem Hochladen aller Anmeldeunterlagen. Wir werden mindestens 4 Tage vor dem Einzug der Anzahlung über diesen informieren"
+        text "Der erste Einzug erfolgt frühestens nach dem Hochladen aller Anmeldeunterlagen. Wir werden mindestens 4 Tage vor dem Einzug über diesen informieren"
         text "Im Falle einer Rücklastschrift behalten wir uns vor, die dadurch entstehenden Kosten an die*den Teilnehmer*in weiterzugeben."
 
         pdf.move_down 3.mm
