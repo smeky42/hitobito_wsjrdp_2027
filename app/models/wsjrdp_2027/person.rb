@@ -7,7 +7,7 @@ module Wsjrdp2027::Person
 
   # This is just local to this module, it doesn't override anything when this module in included
   GENDERS = %w[m w d].freeze
-  BUDDY_ID_FORMAT = /^(?<tag>\w+-\w+)-(?<id>\d+)$/
+  BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
   def self.included(base)
     # This hack is needed to make Person::GENDERS return the right value
