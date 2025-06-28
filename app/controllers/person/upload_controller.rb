@@ -51,7 +51,7 @@ class Person::UploadController < ApplicationController
     download_file(@person.upload_photo_permission_pdf)
   end
 
-  def _good_conduct_pdf
+  def show_good_conduct
     download_file(@person.upload_good_conduct_pdf)
   end
 
@@ -77,6 +77,7 @@ class Person::UploadController < ApplicationController
   end
 
   def upload_files
+    Rails.logger.debug "-------------------- Upload"
     unless params[:person].nil?
       upload_file(params[:person][:upload_contract_pdf], "upload_contract_pdf")
       upload_file(params[:person][:upload_sepa_pdf], "upload_sepa_pdf")
@@ -98,9 +99,8 @@ class Person::UploadController < ApplicationController
       @person.save
     end
 
-    if @person.complete_document_upload_at.nil? &&
-        %i[upload_contract_pdf upload_sepa_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
-            .all? { |fld| @person.public_send(fld).present? }
+    if %i[upload_contract_pdf upload_sepa_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
+        .all? { |fld| @person.public_send(fld).present? }
 
       if ul?(@person) || ist?(@person) || cmt?(@person)
         if @person.upload_good_conduct_pdf.nil?
@@ -120,7 +120,10 @@ class Person::UploadController < ApplicationController
         end
       end
 
-      @person.complete_document_upload_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+      if @person.complete_document_upload_at.nil?
+        @person.complete_document_upload_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+      end
+
       @person.status = "upload"
       @person.save
     end
