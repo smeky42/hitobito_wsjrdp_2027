@@ -22,7 +22,7 @@ class Person::PrintController < ApplicationController
 
   def preview
     if printable && (@person.status == "registered")
-      @person.payment_role = payment_role(PersonDecorator.new(@person))
+      @person.payment_role = build_payment_role(@person)
       @person.save
 
       pdf = Wsjrdp2027::Export::Pdf::Registration.render(@person, true)
@@ -33,7 +33,7 @@ class Person::PrintController < ApplicationController
 
   def submit
     if printable && (@person.status == "registered")
-      @person.payment_role = payment_role(PersonDecorator.new(@person))
+      @person.payment_role = build_payment_role(@person)
       @person.save
 
       pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
