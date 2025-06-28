@@ -28,7 +28,7 @@ module Wsjrdp2027
           pdf.font "Montserrat"
           pdf.font_size 8
 
-          @person = PersonDecorator.new(person)
+          @person = person
 
           sections.each do |section|
             pstart = pdf.page_number
