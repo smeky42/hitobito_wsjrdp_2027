@@ -4,7 +4,7 @@
 
 = c.fields_for do |ff|
   = ff.labeled_input_fields :first_name, :last_name
-  = ff.labeled_date_field :birthday
+  = ff.labeled_date_field :birthday, yearRange: "1900:+0"
   = ff.labeled_input_field :email, help_inline: t('people.email_field.used_as_login'), class: 'd-inline'
 
   - if f.object.steps.one?
@@ -18,4 +18,4 @@
 %br/
 = link_to t('layouts.unauthorized.main_other_registration_info_text'), t('layouts.unauthorized.main_other_registration_info_link')
 %br/
-%br/ 
+%br/
