@@ -116,7 +116,11 @@ module Wsjrdp2027
                        size: 8}).draw
 
         pdf.move_down 3.mm
-        text "Bei Wahl des Einmalzahlungsmodells am 5. August 2025 (bei Anmeldung bis Ende Juli) oder am 5. November 2025 (bei Anmeldung bis Ende August):"
+        text "Bei Wahl des Einmalzahlungsmodells: "
+        text "- am 5. August 2025 (bei Anmeldung bis 31. Juli 2025)"
+        text "- am 5. November 2025 (bei Anmeldung bis 31. Oktober 2025)"
+        text "- zum Termin der nächsten Rate (im Ratenzahlungsmodell) mindestens 4 Kalendertage nach Anmeldung (bei Anmeldung ab 1. November 2025)"
+
         pdf.make_table(payment_array_sepa.slice!(5, 9), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
           cell_style: {padding: 1,
                        border_width: 0,
