@@ -109,11 +109,11 @@ module Wsjrdp2027
 
         pdf.start_new_page
         text "Bei Wahl des Ratenzahlungsmodells:"
-          pdf.make_table(payment_array_sepa.slice!(0, 5), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
-            cell_style: {padding: 1,
-                         border_width: 0,
-                         inline_format: true,
-                         size: 8}).draw
+        pdf.make_table(payment_array_sepa.slice!(0, 5), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
+          cell_style: {padding: 1,
+                       border_width: 0,
+                       inline_format: true,
+                       size: 8}).draw
 
         pdf.move_down 3.mm
         text "Bei Wahl des Einmalzahlungsmodells am 5. August 2025 (bei Anmeldung bis Ende Juli) oder am 5. November 2025 (bei Anmeldung bis Ende August):"
