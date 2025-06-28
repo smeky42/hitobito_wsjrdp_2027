@@ -145,7 +145,7 @@ module Wsjrdp2027
         text "7. Rücktritt des Teilnehmenden vor Leistungsbeginn", size: 10
 
         pdf.move_down 3.mm
-        text "7.1 Der*Die Teilnehmer*in kann jederzeit vor Beginn der Reise von dem Vertrag zurücktreten. Der Rücktritt ist in Textform gegenüber dem rdp via E-Mail an info@worldscoutjamboree.de oder postalisch (Ringe deutscher Pfadfinder*innenverbände e.V. (rdp), Chausseestraße 128/129, 10115 Berlin) zu erklären."
+        text "7.1 Der*Die Teilnehmer*in kann jederzeit vor Beginn der Reise von dem Vertrag zurücktreten. Der Rücktritt ist in Textform gegenüber dem rdp via E-Mail an info@worldscoutjamboree.de oder postalisch (Ring deutscher Pfadfinder*innenverbände e.V. (rdp), Chausseestraße 128/129, 10115 Berlin) zu erklären."
 
         pdf.move_down 3.mm
         text "7.2 Erklärt der*die Teilnehmer*in den Rücktritt, so verliert der rdp den Anspruch auf Zahlung des Teilnehmerbeitrages. Stattdessen kann der rdp eine angemessene Entschädigung verlangen, sofern der Rücktritt nicht von ihm zu vertreten ist. Die Höhe der Entschädigung ist pauschaliert wie folgt:"
