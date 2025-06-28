@@ -8,7 +8,9 @@
     %h4= t('activerecord.attributes.person.early_payer')
     %p.text-muted= raw(t('people.finance_fields.early_payer_help'))
     - if (@person.status == 'registered')
-      = f.labeled_input_field :early_payer
+      = f.labeled(:early_payer) do
+        - { true  => 'Einmalzahlung', false => 'Ratenzahlung' }.each do |value, label|
+          = f.inline_radio_button(:early_payer, value, label)
     - else
       = render_attrs(entry, :early_payer)
 
