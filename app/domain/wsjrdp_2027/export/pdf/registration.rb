@@ -55,10 +55,10 @@ module Wsjrdp2027
           pdf.repeat :all do
             # define header
             if pdf_preview
-              pdf.bounding_box [150, 750], width: pdf.bounds.width, height: 200 do
+              pdf.bounding_box [150, 780], width: pdf.bounds.width, height: 200 do
                 pdf.transparent(0.5) do
                   pdf.text "Vorschau:", size: 24
-                  pdf.text "Nicht zum upload gedacht!", size: 12
+                  pdf.text "Nicht zum Upload gedacht!", size: 12
                   pdf.text "Bitte nutze die Anmeldung unter", size: 12
                   pdf.text '"Verbindlich drucken".', size: 12
                 end

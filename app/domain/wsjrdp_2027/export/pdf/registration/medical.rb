@@ -151,31 +151,20 @@ module Wsjrdp2027
             [{content: @person.town + " den #{Time.zone.today.strftime("%d.%m.%Y")}", height: 30}],
             ["______________________________", ""],
             [{content: @person.full_name, height: 30}, ""]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+          ], cell_style: {width: 240, padding: 1, border_width: 0, inline_format: true})
         elsif @person.additional_contact_single
           pdf.make_table([
-            [{content: @person.town + " den " \
+            [{content: @person.town + ", den " \
               + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
             %w[__________________________ __________________________],
-            [{content: @person.additional_contact_name_a, height: 30}, \
-              + @person.full_name]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+            [{content: @person.additional_contact_name_a, height: 30}, @person.full_name]
+          ], cell_style: {width: 240, padding: 1, border_width: 0, inline_format: true})
         else
           pdf.make_table([
-            [{content: @person.town + " den " \
-              + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
-            %w[__________________________ __________________________],
-            [{content: @person.additional_contact_name_a, height: 30}, \
-              + @person.additional_contact_name_b],
-            ["______________________________", ""],
-            [{content: @person.full_name, height: 30}, ""]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+            [{content: @person.town + ", den " + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
+            %w[__________________________ __________________________ __________________________],
+            [{content: @person.additional_contact_name_a, height: 30}, @person.additional_contact_name_b, @person.full_name]
+          ], column_widths: [150, 150, 150], cell_style: {padding: 1, border_width: 0, inline_format: true})
         end
 
         pdf.move_down 6.mm

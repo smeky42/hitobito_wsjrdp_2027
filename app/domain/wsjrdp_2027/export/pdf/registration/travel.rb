@@ -26,7 +26,7 @@ module Wsjrdp2027
         text "Im Rahmen dieser Reisebedidungen werden die folgenden Begriffe für verschiedene Rollen im Kontingent verwendet "
         text "    • Youth Participant (kurz YP): Jugendliche im Alter von 14 bis 18 Jahren"
         text "    • Unit Leaders (kurz UL): Volljährige Unitleiter*innen"
-        text "    • Contingent Management Team (kurz CMT). VOlljährige Mitglieder des Kontingentsteams"
+        text "    • Contingent Management Team (kurz CMT). Volljährige Mitglieder des Kontingentsteams"
         text "    • International Service Team (kurz IST): Volljährige Mitglieder des International Service Teams"
         text "    • Head of Contingent (kurz HOC): Kontingentsleitung des deuschen Kontingents. Sind Mitglieder des CMT"
         text "Das Wort Teilnehmer*in umfasst im Folgenden alle Rollen (YP, IST, UL und CMT)."
@@ -76,9 +76,9 @@ module Wsjrdp2027
 
         pdf.move_down 3.mm
         text "4.2 Eine aktive Mitgliedschaft in einem der folgenden Pfadfinder*innenverbände ist Voraussetzung für die Teilnahme:"
-        text "- Bund der Pfadfinderinnen und Pfadfinder e.V. (BdP),"
+        text "- Bund der Pfadfinder*innen e.V.  (BdP),"
         text "- Bund Muslimischer Pfadfinder und Pfadfinderinnen Deutschlands e.V. (BMPPD),"
-        text "- Deutsche Pfadfinderschaft Sankt Georg / Bundesamt Sankt Georg e.V. (DPSG),"
+        text "- Deutsche Pfadfinder*innenschaft Sankt Georg / Bundesamt Sankt Georg e.V. (DPSG),"
         text "- Pfadfinderinnenschaft Sankt Georg / Pfadfinderinnenwerk St. Georg e.V. (PSG),"
         text "- Verband Christlicher Pfadfinder*innen (VCP) e.V."
 
@@ -95,7 +95,7 @@ module Wsjrdp2027
         text "5. Anmeldung und Vertragsschluss", size: 10
 
         pdf.move_down 3.mm
-        text "5.1 Die Anmeldung ist bis spätestens zum 15.10.2025 über die Homepage anmeldung.worldscoutjamboree.de möglich. Sollte während der Anmeldephase die vom CMT festgelegte Maximalanzahl an Teilnehmer*innen überschritten werden, kann die Anmeldung schon früher geschlossen werden. Während des Online-Anmeldeprozesses wird eine PDF-Dokument generiert, das die anmeldende Person lesen und akzeptieren muss. Das Anmeldungsdokument muss unterschrieben werden und spätestens bis zum Anmeldeschluss am 15.10.2025 über die Homepage hochgeladen werden. Die Anmeldung muss im Original (Papierform mit Unterschriften) spätestens zum 01.06.2026 bei den entsprechenden Betreuer*innen (UL für YPs, IST-Betreuung für IST, CMT Management für UL und CMT) abgegeben werden."
+        text "5.1 Die Anmeldung ist bis spätestens zum 15.10.2025 über die Homepage anmeldung.worldscoutjamboree.de möglich. Sollte während der Anmeldephase die vom CMT festgelegte Maximalanzahl an Teilnehmer*innen überschritten werden, kann die Anmeldung schon früher geschlossen werden. Während des Online-Anmeldeprozesses wird ein PDF-Dokument generiert, das die anmeldende Person lesen und akzeptieren muss. Das Anmeldungsdokument muss unterschrieben werden und spätestens bis zum Anmeldeschluss am 15.10.2025 über die Homepage hochgeladen werden. Die Anmeldung muss im Original (Papierform mit Unterschriften) spätestens zum 01.06.2026 bei den entsprechenden Betreuer*innen (UL für YPs, IST-Betreuung für IST, CMT Management für UL und CMT) abgegeben werden."
         text "Bei Personen, die zum Zeitpunkt der Anmeldung das 18. Lebensjahr noch nicht vollendet haben, muss die Anmeldung durch alle Personensorgeberechtigten unterzeichnet sein. "
 
         pdf.move_down 3.mm
@@ -107,19 +107,21 @@ module Wsjrdp2027
         pdf.move_down 3.mm
         text "6.1 Der Teilnahmebetrag richtet sich nach der gewählten Teilnahmevariante (s.o. Ziff. 3.2, Reiseform und Pakete) und ggf. nach der Funktion der*des Teilnehmerin*s im Kontingent. Das SEPA Lastschriftverfahren wird je nach gewähltem Zahlungsmodell in Raten oder einmalig eingezogen. Der Einzug erfolgt am 5. des jeweiligen Monats bzw. am darauffolgenden Werktag. "
 
-        pdf.move_down 3.mm
+        pdf.start_new_page
         text "Bei Wahl des Ratenzahlungsmodells:"
-        pdf.make_table(payment_array_sepa.slice!(0, 5), cell_style: {padding: 1,
-                                                                     border_width: 0,
-                                                                     inline_format: true,
-                                                                     size: 8}).draw
+          pdf.make_table(payment_array_sepa.slice!(0, 5), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
+            cell_style: {padding: 1,
+                         border_width: 0,
+                         inline_format: true,
+                         size: 8}).draw
 
         pdf.move_down 3.mm
         text "Bei Wahl des Einmalzahlungsmodells am 5. August 2025 (bei Anmeldung bis Ende Juli) oder am 5. November 2025 (bei Anmeldung bis Ende August):"
-        pdf.make_table(payment_array_sepa.slice!(5, 9), cell_style: {padding: 1,
-                                                                     border_width: 0,
-                                                                     inline_format: true,
-                                                                     size: 8}).draw
+        pdf.make_table(payment_array_sepa.slice!(5, 9), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
+          cell_style: {padding: 1,
+                       border_width: 0,
+                       inline_format: true,
+                       size: 8}).draw
 
         pdf.move_down 3.mm
         text "NICHT im Teilnahmebeitrag enthalten sind:"
@@ -161,8 +163,8 @@ module Wsjrdp2027
         pdf.move_down 3.mm
         text "8.1 Der rdp ist berechtigt, den Vertrag ohne Einhaltung einer Frist zu kündigen, wenn der*die Teilnehmer*in nachhaltig gegen seine im Reisevertrag und diesen Reisebedingungen vereinbarten Pflichten verstößt oder sonst durch sein Verhalten die Durchführung und den Erfolg der Veranstaltung nachhaltig gefährdet. Das ist insbesondere der Fall,"
         text "- wenn der*die Teilnehmer*in entgegen 4.3 bei mehr als zwei Vorbereitungstreffen unentschuldigt gefehlt hat, oder"
-        text "- wenn der*die Teilnehmer*in gegen die Satzung seines Mitgliedsverbandes 4.2 verstößt, die Mitgliedschaft aufgibt oder sie verliert"
-        text "Die Kündigung ist nur zulässig, wenn der rdp den*die Teilnehmer*in zuvor in Textform (z.B. durch eine Email) abgemahnt hat und der*die Teilnehmer*in sein Fehlverhalten dennoch fortsetzt. Eine vorherige Abmahnung ist nicht erforderlich in Fällen gröbsten Fehlverhaltens, in denen eine sofortige Aufhebung des Vertrages auch unter Berücksichtigung der Interessen des Teilnehmers gerechtfertigt ist."
+        text "- wenn der*die Teilnehmer*in gegen die Satzung seines Mitgliedsverbandes nach 4.2 verstößt, die Mitgliedschaft aufgibt oder sie verliert"
+        text "Die Kündigung ist nur zulässig, wenn der rdp den*die Teilnehmer*in zuvor in Textform (z.B. durch eine Email) abgemahnt hat und der*die Teilnehmer*in sein Fehlverhalten dennoch fortsetzt. Eine vorherige Abmahnung ist nicht erforderlich in Fällen gröbsten Fehlverhaltens, in denen eine sofortige Aufhebung des Vertrages auch unter Berücksichtigung der Interessen des*der Teilnehmer*in gerechtfertigt ist."
 
         pdf.move_down 3.mm
         text "8.2 Der rdp ist zur Kündigung des Vertrages weiter dann berechtigt, wenn Lastschriften nicht eingelöst werden oder ihnen widersprochen wurde und auch nach schriftlicher Mahnung der fällige Teil des Teilnahmebeitrags nicht innerhalb von zwei Wochen bezahlt wird."
@@ -240,7 +242,7 @@ module Wsjrdp2027
         text "Teilnehmer*innen, soweit dies für die Erfüllung der ihnen übertragenen Aufgaben erforderlich ist. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Mit den Empfängern ist eine Vertraulichkeitsvereinbarung abgeschlossen."
 
         pdf.move_down 3.mm
-        text "3.2 Einzelne personenbezogene Daten werden an Unternehmen und Organisationen übertragen, deren Dienste der Veranstalter in Anspruch nimmt, um seine Pflichten aus dem Reisevertrag zu erfüllen (im Besonderen: Bund der Pfadfinderinnen und Pfadfinder e.V. (BdP) / Kesselhaken 23 34376 Immenhausen, Deutsche Pfadfinderschaft Sankt Georg / Martinstraße 2 in 41472 Neuss (Holzheim), Verband Christlicher Pfadfinderinnen und Pfadfinder / VCP Bundeszentrale Wichernweg 3 in 34121 Kassel). Hierzu zählen insbesondere Name, Anschrift, Geburtsdatum, Telefonnummern, Emailadresse, Mitgliedsnummer und Details zu den Reisedokumenten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO."
+        text "3.2 Einzelne personenbezogene Daten werden an Unternehmen und Organisationen übertragen, deren Dienste der Veranstalter in Anspruch nimmt, um seine Pflichten aus dem Reisevertrag zu erfüllen (im Besonderen: Bund der Pfadfinderinnen und Pfadfinder e.V. (BdP) / Kesselhaken 23 34376 Immenhausen, Deutsche Pfadfinder*innenschaft Sankt Georg / Martinstraße 2 in 41472 Neuss (Holzheim), Verband Christlicher Pfadfinderinnen und Pfadfinder / VCP Bundeszentrale Wichernweg 3 in 34121 Kassel). Hierzu zählen insbesondere Name, Anschrift, Geburtsdatum, Telefonnummern, Emailadresse, Mitgliedsnummer und Details zu den Reisedokumenten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO."
 
         pdf.move_down 3.mm
         text "3.3 Einzelne personenbezogene Daten werden an den Veranstalter des Jamboree (Organising Committee for the 26th World Scout Jamboree, Za murami 2-10, 80-823 Gdansk, Republik Polen) übermittelt. Dieser hat seinen Sitz in der Republik Polen und damit innerhalb des Geltungsbereiches der DSGVO. Der Veranstalter hat rechtliche und"
@@ -260,7 +262,7 @@ module Wsjrdp2027
         text "4.1 Die erhobenen Daten werden gespeichert, solange ihre Kenntnis für die Vorbereitung, Durchführung und Nachbereitung des Jamboree erforderlich ist. Nach Ablauf der gesetzlichen Aufbewahrungsfristen werden die Daten gelöscht oder gesperrt."
 
         pdf.move_down 3.mm
-        text "4.2 Für die Löschung von Bild- und Tonaufnahmen gelten die in der Fotoerlaubnis festgelegten Regelungen."
+        text "4.2 Für die Löschung von Bild- und Tonaufnahmen gelten die in der Fotoeinwilligung festgelegten Regelungen."
 
         pdf.move_down 3.mm
         text "5. Betroffenenrechte", size: 10

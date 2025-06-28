@@ -65,12 +65,12 @@ module Wsjrdp2027
         end
 
         pdf.move_down 3.mm
-        text "Die Anzahlung wird frühestens nach dem Hochladen aller Anmeldeunterlagen eingezogen. Wir werden mindestens 7 Tage vor dem Einzug der Anzahlung über diesen informieren"
+        text "Der erste Einzug erfolgt frühestens nach dem Hochladen aller Anmeldeunterlagen. Wir werden mindestens 4 Tage vor dem Einzug der Anzahlung über diesen informieren"
         text "Im Falle einer Rücklastschrift behalten wir uns vor, die dadurch entstehenden Kosten an die*den Teilnehmer*in weiterzugeben."
 
         pdf.move_down 3.mm
         pdf.make_table([
-          [{content: @person.town + " den " + Time.zone.today.strftime("%d.%m.%Y"),
+          [{content: @person.town + ", den " + Time.zone.today.strftime("%d.%m.%Y"),
             height: 30}],
           ["______________________________", ""],
           [{content: @person.sepa_name, height: 30}, ""]
