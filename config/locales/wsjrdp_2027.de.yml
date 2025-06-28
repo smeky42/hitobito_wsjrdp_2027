@@ -117,25 +117,25 @@ de:
         diet: Essensgewohnheiten
 
     buttons:
-      show_contract: Vertrag einsehen
-      show_sepa: SEPA einsehen
-      show_data_agreement: Datenschutzerklärung einsehen
+      show_contract: Anmeldung einsehen
+      show_sepa: SEPA-Mandat einsehen
+      show_data_agreement: Vertraulichkeitsvereinbarung einsehen
       show_passport: Ausweis einsehen
       show_recommendation: Empfehlungsschreiben einsehen
-      show_medical: Gesundheitsbogen einsehen
+      show_medical: Medizinbogen einsehen
       review_hint: Dokument einsehen
       upload_documents: Dokumente hochladen
-      show_photo_permission: Fotoerlaubnis einsehen
+      show_photo_permission: Fotoeinwilligung einsehen
       show_good_conduct: Nachweis über das Führungszeugnis einsehen
 
     fields:
-      upload_contract_pdf: Vertrag hochladen
-      upload_sepa_pdf: SEPA hochladen
-      upload_medical_pdf: Gesundheitsbogen hochladen
-      upload_data_agreement_pdf: Datenschutzerklärung hochladen
+      upload_contract_pdf: Anmeldung hochladen
+      upload_sepa_pdf: SEPA-Mandat hochladen
+      upload_medical_pdf: Medizinbogen hochladen
+      upload_data_agreement_pdf: Vertraulichkeitsvereinbarung hochladen
       upload_passport_pdf: Ausweisdokument hochladen
       upload_recommendation_pdf: Empfehlungsschreiben hochladen
-      upload_photo_permission_pdf: Fotoerlaubnis hochladen
+      upload_photo_permission_pdf: Fotoeinwilligung hochladen
       upload_good_conduct_pdf: Nachweis über ein Führungszeugnis hochladen
 
   people:
@@ -169,7 +169,7 @@ de:
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
       sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet
-      early_payer_help: Wenn du als Early Payer am Jamboree teilnimmst, unterstützt du uns bei bei der Durchführung des Jamborees und sicherst so deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, schon am 15. September der komplette Betrag von deinem Konto abgebucht.
+      early_payer_help: Wenn du als Early Payer am Jamboree teilnimmst, unterstützt du uns bei bei der Durchführung des Jamborees und sicherst so deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, bei Anmeldung bis 31.07. am 01.08. der komplette Betrag von deinem Konto abgebucht.
       invalid_iban: ist keine gültige IBAN
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
@@ -243,12 +243,12 @@ de:
       other: Weitere Angaben
       other_long: Es ist außerdem auf Folgendes zu achten
     additional_info_fields:
-       foto_permission_help: '<p>Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoerlaubnis</a>.</p><p>Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.</p>'
+       foto_permission_help: '<p>Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoeinwilligung</a>.</p><p>Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.</p>'
 
   groups:
     self_registration:
       form:
-        has_account: Du hast bereits ein Login als UL oder CMT?
+        has_account: Du hast bereits ein Login?
         to_login_page: Dann kannst du dich hier anmelden.
       create:
         flash:
