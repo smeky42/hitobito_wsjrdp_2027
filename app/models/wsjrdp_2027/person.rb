@@ -3,8 +3,11 @@
 require "iban-tools"
 
 module Wsjrdp2027::Person
+  include ContractHelper
+
   # This is just local to this module, it doesn't override anything when this module in included
   GENDERS = %w[m w d].freeze
+  BUDDY_ID_FORMAT = /^(?<tag>\w+-\w+)-(?<id>\d+)$/
 
   def self.included(base)
     # This hack is needed to make Person::GENDERS return the right value
@@ -23,6 +26,8 @@ module Wsjrdp2027::Person
       i18n_setter :gender, (GENDERS + [nil])
 
       validate :validate_iban_format
+      validate :validate_buddy_id_ul
+      validate :validate_buddy_id_yp
 
       private
 
@@ -32,6 +37,49 @@ module Wsjrdp2027::Person
         normalized_iban = sepa_iban.gsub(/\s+/, "").upcase
         unless IBANTools::IBAN.valid?(normalized_iban)
           errors.add(:sepa_iban, I18n.t("people.finance_fields.invalid_iban"))
+        end
+      end
+
+      def validate_buddy_id(field)
+        buddy_id = send(field)
+        return nil if buddy_id.blank?
+
+        id_parts = buddy_id.match(BUDDY_ID_FORMAT)
+        if id_parts.nil?
+          errors.add(field, :invalid)
+          return nil
+        end
+
+        buddy = Person.find_by(id: id_parts[:id])
+        if buddy.nil? ||
+            buddy.buddy_id != id_parts[:tag]
+          errors.add(field, :invalid)
+          return nil
+        end
+
+        if buddy == self
+          errors.add(field, :buddy_self)
+          return nil
+        end
+
+        buddy
+      end
+
+      def validate_buddy_id_ul
+        buddy = validate_buddy_id(:buddy_id_ul)
+        return if buddy.nil?
+
+        unless ul?(buddy)
+          errors.add(:buddy_id_ul, :buddy_no_ul)
+        end
+      end
+
+      def validate_buddy_id_yp
+        buddy = validate_buddy_id(:buddy_id_yp)
+        return if buddy.nil?
+
+        unless yp?(buddy)
+          errors.add(:buddy_id_yp, :buddy_no_yp)
         end
       end
     end
