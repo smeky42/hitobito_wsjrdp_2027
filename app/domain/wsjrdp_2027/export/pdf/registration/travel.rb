@@ -29,7 +29,7 @@ module Wsjrdp2027
         text "    • Contingent Management Team (kurz CMT). VOlljährige Mitglieder des Kontingentsteams"
         text "    • International Service Team (kurz IST): Volljährige Mitglieder des International Service Teams"
         text "    • Head of Contingent (kurz HOC): Kontingentsleitung des deuschen Kontingents. Sind Mitglieder des CMT"
-        text "Das Wort Teilnehmender*in umfasst im Folgenden alle Rollen (Youth Participants, IST, ULs, CMTs)."
+        text "Das Wort Teilnehmer*in umfasst im Folgenden alle Rollen (YP, IST, UL und CMT)."
 
         pdf.move_down 3.mm
         text "1. Veranstalter", size: 10
@@ -153,7 +153,7 @@ module Wsjrdp2027
         text "7.3 Wenn der rdp von der ihm eingeräumten Möglichkeit Gebrauch macht, den Teilnahmebeitrag um mehr als 5 % gegenüber dem ursprünglich geltenden Preis zu erhöhen, und erklärt der*die Teilnehmer*in deshalb den Rücktritt, ist eine Entschädigung nicht geschuldet; der*die Teilnehmer*in schuldet aber Ausgleich für Teilleistungen, die er bis zum Rücktritt in Anspruch genommen hat. Das gleiche gilt für den Fall, dass der*die Teilnehmer*in mit ergänzenden Bedingungen, die der rdp aufgrund von Vorgaben des polnischen Veranstalters weiterreichen muss, nicht einverstanden ist."
 
         pdf.move_down 3.mm
-        text "7.4 Der rdp behält sich das Recht vor, anstelle der Entschädigung nach Ziff. 8.2 Schadensersatz zu verlangen, soweit er nachweisen kann, dass aufgrund des Rücktritts oder des Nichtantritts der Reise wesentlich höhere Aufwendungen oder ein wesentlich höherer Schaden entstanden sind."
+        text "7.4 Der rdp behält sich das Recht vor, anstelle der Entschädigung nach Ziff. 7.2 Schadensersatz zu verlangen, soweit er nachweisen kann, dass aufgrund des Rücktritts oder des Nichtantritts der Reise wesentlich höhere Aufwendungen oder ein wesentlich höherer Schaden entstanden sind."
 
         pdf.move_down 3.mm
         text "8. Kündigung und Rücktritt durch den rdp", size: 10
