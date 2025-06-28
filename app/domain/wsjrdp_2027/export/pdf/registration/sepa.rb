@@ -33,7 +33,7 @@ module Wsjrdp2027
         text "Die Teilnahmebeitrag zum Jamboree werden mittels SEPA-Basislastschrift eingezogen:"
 
         pdf.move_down 3.mm
-        text "Ich ermächtige den Ring deutscher Pfadfinder*innenverbände e.V., die Zahlungen gemäß Zahlungsplan von meinem Konto mittels Lastschrift einzuziehen. Maßgeblich ist das von mir gewählte Zahlungsmodell (#{payment_role(@person).start_with?("EarlyPayer") ? "Einmalzahlung" : "Ratenzahlungen"}). Zugleich weise ich mein Kreditinstitut an, die vom Ring deutscher Pfadfinder*innenverbände e.V. auf mein Konto gezogenen Lastschriften einzulösen."
+        text "Ich ermächtige den Ring deutscher Pfadfinder*innenverbände e.V., die Zahlungen gemäß Zahlungsplan von meinem Konto mittels Lastschrift einzuziehen. Maßgeblich ist das von mir gewählte Zahlungsmodell (#{early_payer?(@person) ? "Einmalzahlung" : "Ratenzahlungen"}). Zugleich weise ich mein Kreditinstitut an, die vom Ring deutscher Pfadfinder*innenverbände e.V. auf mein Konto gezogenen Lastschriften einzulösen."
 
         pdf.move_down 3.mm
         text "Hinweis: Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen."
@@ -54,7 +54,7 @@ module Wsjrdp2027
 
         pdf.move_down 3.mm
 
-        if payment_role(@person).start_with?("EarlyPayer")
+        if early_payer?(@person)
           text "Der Einzug des Gesamtbetrages von #{payment_value(@person)} € erfolgt am 5. August 2025."
         else
           text "Der Einzug erfolgt am 5. des jeweiligen Monats bzw. am darauffolgenden Werktag nach folgendem Ratenplan:"

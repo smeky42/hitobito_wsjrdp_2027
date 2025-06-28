@@ -22,7 +22,7 @@ module ContractHelper
 
     # each person has a primary group which defines the price and role type
     def role_type(person)
-      roles = person.current_roles_grouped
+      roles = PersonDecorator.new(person).current_roles_grouped
       # If no role could be detected, fallback should be Youth Participant
       role = "Group::Unit::Member"
 
@@ -46,12 +46,12 @@ module ContractHelper
     end
 
     def person_payment_role_full_name(person)
-      role = payment_role(person)
+      role = build_payment_role(person)
       role_full_name(role.split("::", 2)[1])
     end
 
     # rubocop:disable Metrics/MethodLength
-    def payment_role(person)
+    def build_payment_role(person)
       role = role_type(person)
       payment_role_name = "RegularPayer"
 
@@ -74,30 +74,37 @@ module ContractHelper
 
     def cmt?(person)
       if person.payment_role.nil?
-        person.payment_role = payment_role(person)
+        person.payment_role = build_payment_role(person)
       end
       person.payment_role.ends_with?("Root::Member")
     end
 
     def ul?(person)
       if person.payment_role.nil?
-        person.payment_role = payment_role(person)
+        person.payment_role = build_payment_role(person)
       end
       person.payment_role.ends_with?("Unit::Leader")
     end
 
     def yp?(person)
       if person.payment_role.nil?
-        person.payment_role = payment_role(person)
+        person.payment_role = build_payment_role(person)
       end
       person.payment_role.ends_with?("Unit::Member")
     end
 
     def ist?(person)
       if person.payment_role.nil?
-        person.payment_role = payment_role(person)
+        person.payment_role = build_payment_role(person)
       end
       person.payment_role.ends_with?("Ist::Member")
+    end
+
+    def early_payer?(person)
+      if person.payment_role.nil?
+        person.payment_role = build_payment_role(person)
+      end
+      person.payment_role.start_with?("EarlyPayer")
     end
 
     def payment_array_by(person)

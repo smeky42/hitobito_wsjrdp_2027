@@ -65,7 +65,7 @@ module Wsjrdp2027
         text "Den Medizinbogen, die Fotohinweise und das SEPA-Mandat im Anhang haben #{of_legal_age ? "habe ich" : "haben wir"} gesondert unterschrieben."
 
         pdf.move_down 3.mm
-        if payment_role(@person).start_with?("EarlyPayer")
+        if early_payer?(@person)
           text "Für die Zahlung des Teilnehmendenbeitrages wünsche ich Einmalzahlung im August 2025."
         else
           text "Für die Zahlung des Teilnehmendenbeitrages wünschen wir Ratenzahlung nach dem in den Reisebedingungen aufgeführten Ratenplan."
