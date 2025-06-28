@@ -5,6 +5,8 @@ module Wsjrdp2027
     class Travel < Section
       include ContractHelper
 
+      self.name = "Teilnahme- und Reisebedingungen"
+
       # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity
       def render
         pdf.y = bounds.height - 60
@@ -195,7 +197,7 @@ module Wsjrdp2027
         pdf.move_down 3.mm
         text "9.3 Sollten einzelne Bestimmungen des Vertrages oder der vorliegenden Reisebedingungen unwirksam oder nichtig sein oder werden, so wird die Wirksamkeit des Vertrages und der übrigen Bedingungen hiervon nicht berührt. Die Parteien werden in einem solchen Fall unter Berücksichtigung des Gesetzes eine Vereinbarung treffen, die der unwirksamen oder nichtigen Klausel wirtschaftlich nahekommt. Das gleiche soll für den Fall gelten, dass im Vertrag eine Regelungslücke offenbar wird."
 
-        pdf.move_down 10.mm
+        pdf.start_new_page
         text "Hinweise zur Datenverarbeitung", size: 12
 
         pdf.move_down 3.mm

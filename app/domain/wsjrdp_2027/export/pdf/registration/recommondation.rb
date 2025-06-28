@@ -3,6 +3,8 @@
 module Wsjrdp2027
   module Export::Pdf::Registration
     class Recommondation < Section
+      self.name = "Empfehlungsschreiben"
+
       # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity
       def render
         pdf.y = bounds.height - 60

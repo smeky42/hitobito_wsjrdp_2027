@@ -3,6 +3,8 @@
 module Wsjrdp2027
   module Export::Pdf::Registration
     class DataProcessing < Section
+      self.name = "Vertraulichkeitsvereinbarung"
+
       # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity
       def render
         pdf.y = bounds.height - 60
