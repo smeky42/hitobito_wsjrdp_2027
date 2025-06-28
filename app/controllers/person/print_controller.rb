@@ -46,6 +46,7 @@ class Person::PrintController < ApplicationController
       pdf.render_file full_name
 
       @person.status = "printed"
+      @person.print_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
       @person.generated_registration_pdf = full_name
       @person.save
 
