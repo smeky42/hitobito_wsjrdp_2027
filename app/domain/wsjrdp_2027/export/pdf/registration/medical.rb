@@ -3,6 +3,8 @@
 module Wsjrdp2027
   module Export::Pdf::Registration
     class Medical < Section
+      self.name = "Medizinbogen"
+
       def render
         pdf.y = bounds.height - 60
         bounding_box([0, 230.mm], width: bounds.width, height: bounds.height - 210) do
