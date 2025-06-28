@@ -23,31 +23,20 @@ module Wsjrdp2027
             [{content: @person.town + " den #{Time.zone.today.strftime("%d.%m.%Y")}", height: 30}],
             ["______________________________", ""],
             [{content: @person.full_name, height: 30}, ""]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+          ], cell_style: {width: 240, padding: 1, border_width: 0, inline_format: true})
         elsif @person.additional_contact_single
           pdf.make_table([
-            [{content: @person.town + " den " \
+            [{content: @person.town + ", den " \
               + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
             %w[__________________________ __________________________],
-            [{content: @person.additional_contact_name_a, height: 30}, \
-              + @person.full_name]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+            [{content: @person.additional_contact_name_a, height: 30}, @person.full_name]
+          ], cell_style: {width: 240, padding: 1, border_width: 0, inline_format: true})
         else
           pdf.make_table([
-            [{content: @person.town + " den " \
-              + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
-            %w[__________________________ __________________________],
-            [{content: @person.additional_contact_name_a, height: 30}, \
-              + @person.additional_contact_name_b],
-            ["______________________________", ""],
-            [{content: @person.full_name, height: 30}, ""]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+            [{content: @person.town + ", den " + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
+            %w[__________________________ __________________________ __________________________],
+            [{content: @person.additional_contact_name_a, height: 30}, @person.additional_contact_name_b, @person.full_name]
+          ], column_widths: [150, 150, 150], cell_style: {padding: 1, border_width: 0, inline_format: true})
         end
 
         text "Was muss ich mit der Fotoeinwilligung machen?", size: 12
@@ -74,10 +63,10 @@ module Wsjrdp2027
           text "#{of_legal_age ? "Ich bin" : "Wir sind"} nicht damit einverstanden, dass der Veranstalter Fotos und Videos, auf denen #{of_legal_age ? "ich zu sehen bin" : "unser Kind zu sehen ist"}, anfertigt und bearbeitet."
 
           pdf.move_down 3.mm
-          text "Da die Einwilligung nicht erteilt wird, wird die Unitleitung die vom Veranstalter beauftragten Fotograf*innen anweisen, entsprechende Teilnehmer*in nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmer*innen, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen."
+          text "Da die Einwilligung nicht erteilt wird, wird die Betreuungsperson die vom Veranstalter beauftragten Fotograf*innen anweisen, entsprechende Teilnehmer*in nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmer*innen, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen."
 
           pdf.move_down 3.mm
-          text "#{of_legal_age ? "Ich habe" : "Wir haben"} die die folgenden Fotoeinwilligung gelesen und widerspreche ihr."
+          text "#{of_legal_age ? "Ich habe" : "Wir haben"} die die folgenden Fotoeinwilligung gelesen und #{of_legal_age ? "widerspreche" : "widersprechen"} widerspreche ihr."
 
           pdf.move_down 3.mm
           if !@person.foto_permission
@@ -108,7 +97,7 @@ module Wsjrdp2027
         text "Soweit aus dem Foto oder Video Angaben zur rassischen und ethnischen Herkunft, zu politischen Meinungen, zu religiösen oder weltanschaulichen Überzeugungen oder Gesundheit #{of_legal_age ? "von mir" : "des*der Teilnehmeri*n"}  zu entnehmen sind, bezieht sich meine Einwilligung auch auf diese Angaben."
 
         pdf.move_down 3.mm
-        text "Die Einwilligung kann jederzeit ganz oder teilweise mit Wirkung für die Zukunft widerrufen, etwa per E-Mail an media-info@worldscoutjamboree.de. In diesem Fall werden Aufnahmen, die #{of_legal_age ? "mich" : "den*die Teilnehmer*in"} zeigen, vom Veranstalter von den Internetseiten und – soweit dieser verantwortlich sind – auch von den betreffenden „Social Media“-Diensten entfernt. Sollten Aufnahmen in Printprodukten verwendet worden sein, dürfen bereits gedruckte Exemplare weiterverwendet werden. Bei einer Neuauflage wird berücksichtigt, dass das Foto nicht wieder erscheint."
+        text "Die Einwilligung kann jederzeit ganz oder teilweise mit Wirkung für die Zukunft widerrufen, etwa per E-Mail an media@worldscoutjamboree.de. In diesem Fall werden Aufnahmen, die #{of_legal_age ? "mich" : "den*die Teilnehmer*in"} zeigen, vom Veranstalter von den Internetseiten und – soweit dieser verantwortlich sind – auch von den betreffenden „Social Media“-Diensten entfernt. Sollten Aufnahmen in Printprodukten verwendet worden sein, dürfen bereits gedruckte Exemplare weiterverwendet werden. Bei einer Neuauflage wird berücksichtigt, dass das Foto nicht wieder erscheint."
 
         text "Unabhängig hiervon werden Bild- und Tonaufnahmen der Teilnehmer*innen gelöscht, sobald sie nicht mehr für Zwecke der Dokumentation der Veranstaltung oder für die Außendarstellung des rdp benötigt werden. "
 
@@ -116,7 +105,7 @@ module Wsjrdp2027
         text "Wenn die Einwilligung nicht erteilt oder wenn sie widerrufen wird, wird die Unitleitung die vom Veranstalter beauftragten Fotograf*innen anweisen, #{of_legal_age ? "mich" : "den*die Teilnehmer*in"} nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen."
 
         pdf.move_down 3.mm
-        text "Fragen zu der Anfertigung von Bild- und Tonaufnahmen und zu deren Verwendung können an die E-Mail-Adresse media-info@worldscoutjamboree.de gerichtet werden."
+        text "Fragen zu der Anfertigung von Bild- und Tonaufnahmen und zu deren Verwendung können an die E-Mail-Adresse media@worldscoutjamboree.de gerichtet werden."
 
         pdf.move_down 3.mm
         if @person.foto_permission

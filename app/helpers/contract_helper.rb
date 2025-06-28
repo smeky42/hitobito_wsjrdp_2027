@@ -7,7 +7,7 @@ module ContractHelper
     # rubocop:disable Metrics/MethodLength
     def payment_array
       [
-        ["Rolle", "Gesamt", "Dez 2025 (Anzahlung)", "Jan 2026", "Feb 2026", "Mär 2026", "Aug 2026", "Nov 2026", "Feb 2027", "Mai 2027"],
+        ["Rolle", "Gesamt", "Dez 2025", "Jan 2026", "Feb 2026", "Mär 2026", "Aug 2026", "Nov 2026", "Feb 2027", "Mai 2027"],
         ["RegularPayer::Group::Unit::Member", "3400", "300", "500", "500", "500", "400", "400", "400", "400"],
         ["RegularPayer::Group::Unit::Leader", "2400", "150", "350", "350", "350", "300", "300", "300", "300"],
         ["RegularPayer::Group::Ist::Member", "2600", "200", "400", "400", "400", "300", "300", "300", "300"],

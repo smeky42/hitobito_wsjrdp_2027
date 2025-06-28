@@ -47,7 +47,7 @@ module Wsjrdp2027
         text "Der rdp behält sich das Recht vor, angekündigte Programminhalte durch andere zu ersetzen und notwendige Änderungen des Programms, unter Wahrung des Gesamtcharakters der Veranstaltung vorzunehmen."
 
         pdf.move_down 3.mm
-        text "Es besteht die Möglichkeit, dass der Veranstalter des Jamborees in Polen ergänzende Bedingungen für die Teilnahme stellt und/oder weitere Daten abfragt. Der rdp muss diese ergänzenden Bedingungen an alle Teilnehmer*innen weitergeben, obwohl er auf den Inhalt keinen Einfluss hat, weil sonst eine Teilnahme nicht möglich ist. Die Teilnehmer*innen werden über diese Änderungen in Textform unterrichtet. Sollte der Teilnehmer*innen mit diesen ergänzenden Bedingungen nicht einverstanden sein, kann er nach Maßgabe von Punkt 8. der Reisebedingungen zu diesem Vertrag zurücktreten."
+        text "Es besteht die Möglichkeit, dass der Veranstalter des Jamborees in Polen ergänzende Bedingungen für die Teilnahme stellt und/oder weitere Daten abfragt. Der rdp muss diese ergänzenden Bedingungen an alle Teilnehmer*innen weitergeben, obwohl er auf den Inhalt keinen Einfluss hat, weil sonst eine Teilnahme nicht möglich ist. Die Teilnehmer*innen werden über diese Änderungen in Textform unterrichtet. Sollte der*die Teilnehmer*in mit diesen ergänzenden Bedingungen nicht einverstanden sein, kann er*sie nach Maßgabe von Punkt 8. der Reisebedingungen zu diesem Vertrag zurücktreten."
 
         if !of_legal_age
           pdf.move_down 3.mm
@@ -68,7 +68,7 @@ module Wsjrdp2027
         if payment_role(@person).start_with?("EarlyPayer")
           text "Für die Zahlung des Teilnehmendenbeitrages wünsche ich Einmalzahlung im August 2025."
         else
-          text "Für die Zahlung des Teilnehmendenbeitrages wünsche Ratenzahlung nach dem in den Reisebedingungen aufgeführten Ratenplan."
+          text "Für die Zahlung des Teilnehmendenbeitrages wünschen wir Ratenzahlung nach dem in den Reisebedingungen aufgeführten Ratenplan."
         end
 
         signature = if of_legal_age
@@ -76,34 +76,21 @@ module Wsjrdp2027
             [{content: @person.town + " den #{Time.zone.today.strftime("%d.%m.%Y")}", height: 30}],
             ["______________________________", ""],
             [{content: @person.full_name, height: 30}, ""]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+          ], cell_style: {width: 240, padding: 1, border_width: 0, inline_format: true})
         elsif @person.additional_contact_single
           pdf.make_table([
-            [{content: @person.town + " den " \
+            [{content: @person.town + ", den " \
               + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
             %w[__________________________ __________________________],
-            [{content: @person.additional_contact_name_a, height: 30}, \
-              + @person.full_name]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+            [{content: @person.additional_contact_name_a, height: 30}, @person.full_name]
+          ], cell_style: {width: 240, padding: 1, border_width: 0, inline_format: true})
         else
           pdf.make_table([
-            [{content: @person.town + " den " \
-              + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
-            %w[__________________________ __________________________],
-            [{content: @person.additional_contact_name_a, height: 30}, \
-              + @person.additional_contact_name_b],
-            ["______________________________", ""],
-            [{content: @person.full_name, height: 30}, ""]
-          ],
-            cell_style: {width: 240, padding: 1, border_width: 0,
-                         inline_format: true})
+            [{content: @person.town + ", den " + Time.zone.today.strftime("%d.%m.%Y"), height: 30}],
+            %w[__________________________ __________________________ __________________________],
+            [{content: @person.additional_contact_name_a, height: 30}, @person.additional_contact_name_b, @person.full_name]
+          ], column_widths: [150, 150, 150], cell_style: {padding: 1, border_width: 0, inline_format: true})
         end
-
-        pdf.move_down 3.mm
 
         pdf.move_down 3.mm
 
