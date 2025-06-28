@@ -16,6 +16,7 @@ module Wsjrdp2027::Wizards::Steps::NewUserForm
 
   def initialize(wizard, **params)
     params[:buddy_id] ||= get_random_spice
+    params[:birthday] ||= Date.new(2009, 7, 30)
     super
   end
 
