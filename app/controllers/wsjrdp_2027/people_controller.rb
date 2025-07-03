@@ -52,6 +52,8 @@ module Wsjrdp2027::PeopleController
       :medical_eating_disorders
     ]
 
+    Person::FILTER_ATTRS << :status << :early_payer
+
     # Override crud_controller
     # Display a form to edit an exisiting entry of this model.
     #   GET /entries/1/edit
