@@ -1,7 +1,97 @@
 - content_for(:toolbar, render('actions_show'))
 
 #main.row
-  = render_attrs(@person, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role)
+  = render_attrs(@person, :birthday, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role)
+- if @person.status == 'upload'
+  %br
+  %br
+  = action_button(t('activerecord.buttons.review_documents'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/status/review_documents",
+                :envelope,
+                remote: false,
+                method: :post,
+                rel: :tooltip,
+                title: t('activerecord.buttons.review_documents'))
+- if @person.status == 'in_review'
+  #main.row-fluid
+  %h3="Dokumente Einsehen"
+  = render_attrs(@person, :id, :birthday, :first_name, :last_name, :payment_role )
+  = raw(t("people.check_status_help.contract"))
+  %br
+  = action_button(t('activerecord.buttons.show_contract'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_contract",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_contract'))
+  = action_button(t('activerecord.buttons.show_passport'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_passport'))
+  = action_button(t('activerecord.buttons.show_photo_permission'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_photo_permission",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_photo_permission'))
+  = action_button(t('activerecord.buttons.show_medical'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_medical",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_medical'))
+  %br 
+  = render_attrs(@person, :sepa_name, :sepa_iban)
+  = raw(t("people.check_status_help.sepa"))
+  %br             
+  = action_button(t('activerecord.buttons.show_sepa'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_sepa",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_sepa'))
+  %br  
+  = raw(t("people.check_status_help.external"))
+  %br  
+  - if ul?(@person)
+    = action_button(t('activerecord.buttons.show_recommendation'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :post,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_recommendation'))
+  - if ul?(@person) || cmt?(@person) || ist?(@person) 
+    = action_button(t('activerecord.buttons.show_good_conduct'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_good_conduct'))
+  %br
+  %br
+  = action_button(t('activerecord.buttons.approve_documents'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/status/approve_documents",
+                :envelope,
+                remote: false,
+                method: :post,
+                rel: :tooltip,
+                title: t('activerecord.buttons.approve_documents'))
 
 
 
