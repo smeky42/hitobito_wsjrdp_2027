@@ -135,6 +135,8 @@ de:
       upload_documents: Dokumente hochladen
       show_photo_permission: Fotoeinwilligung einsehen
       show_good_conduct: Nachweis über das Führungszeugnis einsehen
+      review_documents: TN in den Status "Dokumente in Überprüfung durch CMT" schalten.
+      approve_documents: Ich habe alle Dokumente eingesehen und überprüft. TN in den Status "Dokumente vollständig überprüft" schalten.
 
     fields:
       upload_contract_pdf: Anmeldung hochladen
@@ -171,6 +173,10 @@ de:
       confirmed: Du bist Bestätigt und Teil des Kontingents. Wir freuen uns mit dir nach Polen zu reisen.
       deregistration_noted: Wir haben deine Abmeldung erhalten. Für die weiteren Schritte kommt ein CMT Mitglied auf dich zu.
       deregistered: Du bist Abgemeldet, deine Daten werden in Kürze aus dem Anmeldesystem gelöscht.
+    check_status_help:
+      contract: Überprüfe für die folgenden Dokumente, dass <br/> die ID zur Person passt, <br/> alle Felder unterschrieben sind, <br/> Name und Geburstdatum mit der Anmeldung und Ausweis übereinstimmen, <br/> Rolle und Alter passen.     
+      sepa: Überprüfe für das SEPA, dass die ID zur Person passt, <br/> eine valide Unterschrift auf dem Dokument ist.     
+      external: Überprüfe für folgende Dokumente die Validität.     
     contact_fields:
       format_birthday: (dd.mm.yyyy)
       no_sensitive_information: ""

@@ -28,7 +28,6 @@ Rails.application.routes.draw do
           get "upload/show_photo_permission" => "person/upload#show_photo_permission"
           get "upload/show_good_conduct" => "person/upload#show_good_conduct"
 
-
           get "medical" => "person/medical#show"
           get "medical/edit" => "person/medical#edit"
           put "medical" => "person/medical#update"
@@ -36,6 +35,8 @@ Rails.application.routes.draw do
           get "status" => "person/status#show"
           get "status/edit" => "person/status#edit"
           put "status" => "person/status#update"
+          post "status/review_documents" => "person/status#review_documents"
+          post "status/approve_documents" => "person/status#approve_documents"
         end
       end
     end

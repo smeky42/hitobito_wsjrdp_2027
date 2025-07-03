@@ -6,7 +6,13 @@ class Person::StatusController < ApplicationController
   respond_to :html
 
   self.permitted_attrs = [
-    :status
+    :status,
+    :birthday,
+    :first_name,
+    :last_name,
+    :print_at,
+    :contract_upload_at,
+    :complete_document_upload_at
   ]
 
   def show
@@ -23,6 +29,24 @@ class Person::StatusController < ApplicationController
     authorize!(:log, person)
     person.attributes = params.require(:person).permit(permitted_attrs)
     person.save
+    respond_with person, location: status_group_person_path
+  end
+
+  def review_documents
+    authorize!(:log, person)
+    if @person.status == "upload"
+      @person.status = "in_review"
+      person.save
+    end
+    respond_with person, location: status_group_person_path
+  end
+
+  def approve_documents
+    authorize!(:log, person)
+    if @person.status == "in_review"
+      @person.status = "reviewed"
+      person.save
+    end
     respond_with person, location: status_group_person_path
   end
 
