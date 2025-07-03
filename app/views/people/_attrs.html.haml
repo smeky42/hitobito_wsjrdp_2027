@@ -35,13 +35,10 @@
     
     = render_extensions :show_left
 
-    - if can?(:index_notes, entry)
-      = render 'notes/section', create_path: group_person_notes_path(@group, entry)
 
   - if can?(:show_full, entry)
     %aside.col-lg-5.offset-lg-1
       = render_extensions :data_quality
-      = render 'tags'
       
       = render 'status'
       = render 'association'
@@ -60,3 +57,8 @@
       = render(HouseholdAsideComponent.new(person: entry, group: @group))
 
       = render_extensions :show_right
+      
+      - if can?(:log, entry)
+        = render 'notes/section', create_path: group_person_notes_path(@group, entry)
+        = render 'tags'
+
