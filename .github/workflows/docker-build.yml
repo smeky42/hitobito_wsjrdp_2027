@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Add commit hash to version string
+        run: |
+          short_sha=${GITHUB_SHA::7}
+          sed -i -E "s/([0-9]+\.[0-9]+\.[0-9]+)/\1-$short_sha/" lib/hitobito_wsjrdp_2027/version.rb
+          cat lib/hitobito_wsjrdp_2027/version.rb
+
       - name: Prepare Tags
         id: taggen
         run: |
