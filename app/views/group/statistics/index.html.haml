@@ -1,0 +1,37 @@
+-#  Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+
+- title(t('groups.statistics.title'))
+
+.container.my-4
+  .row.mb-4
+    .col-12
+      %p
+        %strong Personen in Status:
+      = column_chart @people_by_status
+
+  .row.mb-4
+    .col-12
+      %p
+        %strong Angemeldete Personen - (im Anmeldeportal mindestens registriert):
+      = line_chart @people_by_registration_date
+
+  .row.mb-4
+    .col-12
+      = column_chart @people_by_role
+
+  .row.mb-4
+    .col-12
+      %p
+        %strong Anmeldung von TN abgeschlossen - ("Upload vollständig", "Dokumente in Überprüfung durch CMT" oder "Dokumente vollständig überprüft"):
+      = column_chart @registration_completed_people_by_role
+
+  .row.mb-4
+    .col-12
+      %p
+        %strong Bestätigt durch CMT:
+      = column_chart @registration_verified_people_by_role
+
+= javascript_include_tag 'hitobito_wsjrdp_2027/application'
