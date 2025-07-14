@@ -32,7 +32,7 @@ module Wsjrdp2027::StatisticsController
       role_daily_counts = Hash.new { |h, k| h[k] = {} }
 
       (start_date..end_date).each do |day|
-        day_people = people.where(created_at: day.beginning_of_day..day.end_of_day)
+        day_people = people.where(created_at: day.all_day)
         total_daily[day] = day_people.count
 
         day_people.each do |person|
