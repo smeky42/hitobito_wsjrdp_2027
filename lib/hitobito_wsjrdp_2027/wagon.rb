@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "chartkick"
+
 module HitobitoWsjrdp2027
   class Wagon < Rails::Engine
     include Wagons::Wagon
@@ -28,6 +30,7 @@ module HitobitoWsjrdp2027
       # Controllers
       PeopleController.include Wsjrdp2027::PeopleController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
+      Group::StatisticsController.include Wsjrdp2027::StatisticsController
 
       # Helpers
       Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass
@@ -43,6 +46,8 @@ module HitobitoWsjrdp2027
       # Other
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
       PersonSerializer.include Wsjrdp2027::PersonSerializer
+
+      ActiveSupport.on_load(:action_view) { include Chartkick::Helper }
     end
 
     initializer "wsjrdp_2027.add_settings" do |_app|
@@ -54,6 +59,12 @@ module HitobitoWsjrdp2027
       ActiveSupport::Inflector.inflections do |inflect|
         # inflect.irregular 'census', 'censuses'
       end
+    end
+
+    initializer "wsjrdp_2027.assets.precompile" do |app|
+      app.config.assets.precompile += %w[
+        hitobito_wsjrdp_2027/application.js
+      ]
     end
 
     private
