@@ -2,14 +2,15 @@ name: Docker Build & Push
 
 on:
   push:
-    # branches:
-    #   - main
+    branches:
+      - main
+    tags: 
+      - "v*"
 
 jobs:
   build:
     name: Build Images
     runs-on: ubuntu-latest
-    # if: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
 
