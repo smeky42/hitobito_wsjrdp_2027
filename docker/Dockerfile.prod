@@ -268,4 +268,5 @@ FROM nginx:stable AS web
 ARG HOME
 
 COPY --from=build $HOME/public/packs /var/www/html/packs
+COPY --from=build $HOME/public/assets/hitobito_wsjrdp_2027 /var/www/html/assets/hitobito_wsjrdp_2027
 
