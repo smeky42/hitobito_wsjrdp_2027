@@ -20,6 +20,22 @@ class Person::UploadController < ApplicationController
   end
 
   def show_registration_generated
+    # File should exist if not created before docker volume problem
+    # generate new if not
+    if !File.exist?(@person.generated_registration_pdf)
+      pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
+
+      folder = generate_file_path
+      date = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+      name = "#{date}--#{@person.id}-registration-generated.pdf"
+      full_name = folder + name
+      FileUtils.mkdir_p(folder) unless File.directory?(folder)
+
+      pdf.render_file full_name
+
+      @person.generated_registration_pdf = full_name
+      @person.save
+    end
     download_file(@person.generated_registration_pdf)
   end
 

@@ -144,6 +144,8 @@ class Person::PrintController < ApplicationController
   end
 
   def file_folder
-    Rails.root.join("private", "uploads", "person", "pdf", @person.id.to_s)
+    # Changed due to problems in container mounting unified with
+    # Rails.root.join("private", "uploads", "person", "pdf", @person.id.to_s)
+    "#{HitobitoWsjrdp2027::Wagon.root}/private/uploads/person/pdf/#{@person.id}/"
   end
 end
