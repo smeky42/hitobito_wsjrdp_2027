@@ -61,6 +61,7 @@ de:
         rdp_association_sub_region: Bezirk, Region
         rdp_association_group: Stamm, Ortsgruppe
         rdp_association_number: Mitgliedsnummer
+        accounting_info: Hier erhälst du einen Überblick über deine bisherigen Zahlungen und deinen Ratenplan
         additional_contact_a_info: Personensorgeberechtigte*r 1
         additional_contact_a_info_adult: Primärer Notfallkontakt
         additional_contact_name_a: Vor- und Nachname
@@ -150,6 +151,7 @@ de:
 
   people:
     tabs:
+      accounting: Buchhaltung
       info: Persönliche Informationen
       upload: Dokumente hochladen
       print: Dokumente drucken
