@@ -29,6 +29,10 @@ module Wsjrdp2027::Sheet::Person
       :upload_group_person_path,
       if: :show
 
+    tab 'people.tabs.accounting',
+      :accounting_group_person_path,
+      if: :show
+
     tab "people.tabs.medical",
       :medical_group_person_path,
       alt: [:medical_edit_group_person_path],
