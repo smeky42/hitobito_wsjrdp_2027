@@ -12,9 +12,10 @@ class Person::AccountingController < ApplicationController
 
       @accounting = accounting
       @accounting_entries = accounting_entries
-      @accounting_payment_value = -1 * get_payment_value
+      @accounting_payment_value = get_number_to_currency(-1 * get_payment_value.to_f)
       @accounting_payment_array = accounting_payment_array
       @accounting_balance = accounting_balance
+      @possible_sepa_states = Settings.sepa_status
       save_put
     end
   
@@ -64,12 +65,15 @@ class Person::AccountingController < ApplicationController
    
     def accounting_payment_array
       array = []
+      total = (-1 * get_payment_value.to_f);
       payment_array_table = payment_array_table(@person).dup
       payment_array_table[0].each_index {
         |x| if payment_array_table[0][x] != "Rolle" && payment_array_table[0][x] != "Gesamt"
+          total += payment_array_table[1][x].to_f
           array.push({
               month: payment_array_table[0][x],
-              ammount: payment_array_table[1][x]
+              ammount: get_number_to_currency(payment_array_table[1][x].to_f),
+              total: get_number_to_currency(total)
           }
           )
         end
@@ -79,7 +83,7 @@ class Person::AccountingController < ApplicationController
   
     def accounting_balance
       balance = 0
-      balance = 0 - get_payment_value[1...-3].to_i
+      balance = 0 - (1 * get_payment_value.to_f)
       accountEntries = accounting_entries
       accountEntries.each {
         |x|  balance = balance + (x.ammount.to_f/100)
