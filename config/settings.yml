@@ -53,6 +53,11 @@ phone_number:
     - Andere
   default_country: DE
 
+sepa_status:
+  - OK
+  - In Überprüfung
+  - Zahlung ausstehend
+
 shirt_size:
   - Größe auswählen
   - XXS

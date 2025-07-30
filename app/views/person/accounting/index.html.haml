@@ -1,70 +1,62 @@
-#main.row-fluid
-  = standard_form(@person, {url: accounting_group_person_path,  method: :get}) do |f|
+.container
+  = standard_form(@person, { url: accounting_group_person_path, method: :get }) do |f|
     = f.error_messages
-  %h3
-    = "Buchungen" 
-  - if @accounting_entries.nil? || @accounting_entries.count == 0
-    = "Keine Buchungen"
-  - else 
-    %table{:width => "600"}
-      %tbody{:style => "border: 1px solid gray"}
-        %tr
-          %th{:style => "border: 1px solid gray"} Zeitstempel
-          %th{:style => "border: 1px solid gray"} Autor
-          %th{:style => "border: 1px solid gray"} Kommentar
-          %th{:style => "border: 1px solid gray", :align => "right"} Betrag
-        %tr
-          %td{:style => "border: 1px solid gray"}= ""
-          %td{:style => "border: 1px solid gray"}= "System"
-          %td{:style => "border: 1px solid gray"}= "Teilnehmendenbetrag Gesamt"
-          %td{:style => "border: 1px solid gray", :align => "right"}= @accounting_payment_value
-        - @accounting_entries.each do |entry|
+  .col-md-6
+    %h3.mb-3 Buchungen
+    - if @accounting_entries.blank?
+      %p.text-muted Keine Buchungen
+    - else
+      %table.table.table-striped.table-bordered.table-sm.table-custom
+        %thead
           %tr
-            %td{:style => "border: 1px solid gray"}= entry.created_at.strftime("%d.%m.%Y %H:%M:%S") 
-            %td{:style => "border: 1px solid gray"}= Person.where(id: entry.author_id).first.full_name
-            %td{:style => "border: 1px solid gray"}= entry.comment
-            %td{:style => "border: 1px solid gray", :align => "right"}= accounting_value(entry.ammount)
-      %tfoot
-        %tr
-          %td= ""
-          %td= ""
-          %td{:style => "font-weight: bold", :align => "center"}= "Kontostand "
-          %td{:style => "font-weight: bold; border-bottom-style: double", :align => "right"}= @accounting_balance
-    
-    -# %h3
-  -#   = "Nächste Rate"
-  -#   = @next_payment
-  %h3
-    = "Ratenplan" 
-  %table{:border => 1, :width => "600"}
-    %tbody
-      %tr
-        %th Zeitpunkt
-        %th{:align => "right"} Betrag
-        %th{:align => "right"} Soll Kontostand
-      - @accounting_payment_array.each do |entry|
-        %tr
-          %td=entry[:month].strftime("%d.%m.%Y")
-          %td{:align => "right"}= entry[:ammount]
-          %td{:align => "right"}= entry[:total]            
-  %br
+            %th Zeitstempel
+            %th Autor
+            %th Kommentar
+            %th.text-end Betrag
+        %tbody
+          %tr
+            %td
+            %td System
+            %td Teilnehmendenbetrag Gesamt
+            %td.text-end= @accounting_payment_value
+          - @accounting_entries.each do |entry|
+            %tr
+              %td= entry.created_at.strftime("%d.%m.%Y %H:%M:%S")
+              %td= Person.find(entry.author_id).full_name
+              %td= entry.comment
+              %td.text-end= accounting_value(entry.ammount)
+        %tfoot
+          %tr
+            %td
+            %td
+            %td.fw-bold.text-center Kontostand
+            %td.fw-bold.text-end.border-bottom.border-2= @accounting_balance
 
-  -if @accounting
-    = form_with url: accounting_group_person_path, local: true, :method => :put do |f|
-      %dl.dl-horizontal 
-        %dt.muted
-          = "Betrag in Cent"
-        %dd
-          = f.number_field :accounting_ammount
-          %br
-        %dt.muted
-          = "Kommentar"
-        %dd
-          = f.text_area :accounting_comment, size: "70x5"
-          %br
-        %dt.muted
-          = "Status"
-        %dd
-          = f.collection_select(:sepa_status, @possible_sepa_states, :to_s, :to_s, {:selected => @person.sepa_status.to_s}, class: 'span2')
-        %br
+    %h3.mt-3.mb-3 Ratenplan
+    %table.table.table-bordered.table-sm.table-custom
+      %thead
+        %tr
+          %th Zeitpunkt
+          %th.text-end Betrag
+          %th.text-end Soll Kontostand
+      %tbody
+        - @accounting_payment_array.each do |entry|
+          %tr
+            %td= entry[:month]
+            %td.text-end= entry[:ammount]
+            %td.text-end= entry[:total]
+
+  - if @accounting
+    = form_with url: accounting_group_person_path, method: :put, local: true do |f|
+      .row.mt-4
+        .col-md-6
+          .mb-3
+            = f.label :accounting_ammount, "Betrag in Cent", class: "form-label"
+            = f.number_field :accounting_ammount, class: "form-control"
+          .mb-3
+            = f.label :accounting_comment, "Kommentar", class: "form-label"
+            = f.text_area :accounting_comment, class: "form-control", rows: 4
+          .mb-3
+            = f.label :sepa_status, "Status", class: "form-label"
+            = f.collection_select(:sepa_status, @possible_sepa_states, :to_s, :to_s, { selected: @person.sepa_status.to_s }, class: 'form-select form-select-sm')
           = form_buttons(f, submit_label: "Buchung anlegen")
