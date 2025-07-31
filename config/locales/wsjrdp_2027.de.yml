@@ -306,3 +306,11 @@ de:
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
       main_other_registration_info_link: "https://www.worldscoutjamboree.de/howto-anmeldung/"
 
+  public:
+    statistics:
+      units_title: "Mögliche Units nach aktuellem Anmeldestand"
+      missing_uls: "Um alle angemeldeten Youth Participants zu betreuen benötigen wir aktuell noch %{count} Unit Leader."
+      missing_yps: "Mit der aktuell angemeldeten Zahl an Unit Leadern können wir noch %{count} zusätzliche Youth Participants betreuen."
+      balanced: "Mit der aktuellen Anzahl an Youth Participants und Unit Leader bekommen wir genau %{count} Units zusammen."
+      yp_bar_label: "YP: %{count} Units"
+      ul_bar_label: "UL: %{count} Units"
