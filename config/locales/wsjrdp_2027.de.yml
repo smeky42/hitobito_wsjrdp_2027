@@ -183,7 +183,7 @@ de:
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
       sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet
-      early_payer_help: Wenn du das Zahlungsmodell Einmalzahlung (Early Payer) auswählst, unterstützt du uns bei der Durchführung des Jamborees und sicherst dir so früh deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, bei Anmeldung bis 31.07. im August der komplette Betrag von deinem Konto abgebucht.
+      early_payer_help: Wenn du das Zahlungsmodell Einmalzahlung (Early Payer) auswählst, unterstützt du uns bei der Durchführung des Jamborees und sicherst dir so früh deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, bei Anmeldung bis 31.10. im November der komplette Betrag von deinem Konto abgebucht.
       invalid_iban: ist keine gültige IBAN
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
