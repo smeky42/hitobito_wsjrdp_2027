@@ -30,7 +30,7 @@ module Wsjrdp2027::Sheet::Person
       :upload_group_person_path,
       if: :show
 
-    tab 'people.tabs.accounting',
+    tab "people.tabs.accounting",
       :accounting_group_person_path,
       if: :show
 

@@ -108,7 +108,11 @@ module ContractHelper
     end
 
     def payment_array_by(person)
-      role = person.payment_role
+      role = if person.payment_role.nil?
+        build_payment_role(person)
+      else
+        person.payment_role
+      end
       payment_array.find { |row| row[0] == role }
     end
 
