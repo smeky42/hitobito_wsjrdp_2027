@@ -1,0 +1,100 @@
+-#  Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+
+!!! 5
+
+%html{lang: I18n.locale}
+  %head
+    %meta{charset: 'utf-8'}
+    %title= "#{Settings.application.name} - Statistiken"
+    %meta{name: 'viewport', content: 'width=device-width, initial-scale=1.0'}
+    %meta{name: 'turbo-cache-control', content: 'no-cache'}
+    %meta{name: 'turbo-prefetch', content: 'false'}
+
+    = csrf_meta_tag
+    = wagon_favicon_pack_tag 'favicon.ico'
+
+    = stylesheet_pack_tag 'application', media: 'screen', 'data-turbo-track': true
+    = stylesheet_pack_tag 'print', media: 'print'
+    - if Rails.env.test?
+      = stylesheet_pack_tag 'disable_animations'
+    = javascript_pack_tag 'application', 'data-turbo-track': true
+
+    :css
+      .stat-circle {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        border-width: 7px;
+        border-color: #be1d2e;
+        padding: 3rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+      }
+      .stat-circle .card-body {
+        padding: 3rem;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border-width: 7px;
+        border-color: #be1d2e;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+    = yield(:head)
+
+  %body.bg-white.m-3
+    .row.justify-content-center
+      .col.mb-4
+        .card.shadow-sm.stat-circle.bg-white
+          .card-body
+            .fw-bold.text-center Youth Participants
+            %p.display-6.mb-0= @yp_count
+      
+      .col.mb-4
+        .card.shadow-sm.stat-circle.bg-white
+          .card-body
+            .fw-bold.text-center Unit Leader
+            %p.display-6.mb-0= @ul_count
+
+      .col.mb-4
+        .card.shadow-sm.stat-circle.bg-white
+          .card-body
+            .fw-bold.text-center International Service Team
+            %p.display-6.mb-0= @ist_count
+      
+      .col.mb-4
+        .card.shadow-sm.stat-circle.bg-white
+          .card-body
+            .fw-bold.text-center Contingent Management Team
+            %p.display-6.mb-0= @cmt_count
+    
+    .card.shadow.mt-2.p-4.bg-light
+      .card-body
+        %h4.text-center= t('public.statistics.units_title')
+
+        - if @missing_uls > 0
+          %p.text-center.text-muted.mt-3
+            = t('public.statistics.missing_uls', count: @missing_uls)
+        - elsif @missing_yps > 0
+          %p.text-center.text-muted.mt-3
+            = t('public.statistics.missing_yps', count: @missing_yps)
+        - else
+          %p.text-center.text-muted.mt-3
+            = t('public.statistics.balanced', count: @max_units)
+        
+        %div.progress.mb-3{style: "height: 2rem;"}
+          %div.progress-bar.bg-info{style: "width: #{(@units_by_yp.to_f / @max_units * 100).round}%;"} 
+            = t('public.statistics.yp_bar_label', count: @units_by_yp)
+
+        %div.progress.mb-3{style: "height: 2rem;"}
+          %div.progress-bar.bg-success{style: "width: #{(@units_by_ul.to_f / @max_units * 100).round}%;"} 
+            = t('public.statistics.yp_bar_label', count: @units_by_ul)

@@ -3,6 +3,10 @@
 Rails.application.routes.draw do
   extend LanguageRouteScope
 
+  namespace :public do
+    get "statistics", to: "statistics#index"
+  end
+
   language_scope do
     resources :groups do
       resources :people, except: [:new, :create] do
@@ -15,8 +19,8 @@ Rails.application.routes.draw do
           get "print/preview" => "person/print#preview"
           get "print/submit" => "person/print#submit"
 
-          get 'accounting' => 'person/accounting#index'
-          put 'accounting' => 'person/accounting#index'
+          get "accounting" => "person/accounting#index"
+          put "accounting" => "person/accounting#index"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
