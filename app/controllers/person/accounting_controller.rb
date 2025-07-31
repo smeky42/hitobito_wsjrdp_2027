@@ -45,15 +45,32 @@ class Person::AccountingController < ApplicationController
 
   # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength,Metrics/AbcSize
   def save_put
-    if @accounting && request.put? && !params[:accounting_comment].nil? && !params[:accounting_ammount].nil?
+    if @accounting && request.put?
+      if params[:accounting_comment].empty?
+        flash[:alert] = "Bitte gib einen Kommentar an."
+        redirect_back(fallback_location: "/")
+        return
+      end
+
+      accounting_ammount = if params[:accounting_ammount].empty?
+        0
+      else
+        params[:accounting_ammount]
+      end
+
       AccountingEntries.create(id: AccountingEntries.count + 1,
         subject_id: @person.id,
         author_id: current_user.id,
-        ammount: params[:accounting_ammount],
+        ammount: accounting_ammount,
         comment: params[:accounting_comment],
         created_at: DateTime.now)
+
+      @person.sepa_status = params[:sepa_status]
+      @person.save
+
       flash[:notice] =
-        "Buchung #{params[:accounting_comment]} in Höhe von #{get_number_to_currency(params[:accounting_ammount].to_i / 100)} erfolgreich angelegt!"
+        "Buchung #{params[:sepa_status]} in Höhe von #{accounting_ammount} cent erfolgreich angelegt! \n
+         Status auf #{params[:sepa_status]} gesetzt."
       redirect_back(fallback_location: "/")
     end
   end
