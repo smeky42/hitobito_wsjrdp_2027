@@ -1,3 +1,5 @@
+!.github
+
 .bundle/
 log/*.log
 tmp/
