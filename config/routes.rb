@@ -19,8 +19,8 @@ Rails.application.routes.draw do
           get "print/preview" => "person/print#preview"
           get "print/submit" => "person/print#submit"
 
-          get "accounting" => "person/accounting#index"
-          put "accounting" => "person/accounting#index"
+          get 'accounting' => 'person/accounting#index'
+          post 'accounting' => 'person/accounting#create'
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
