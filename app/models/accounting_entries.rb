@@ -20,13 +20,17 @@ class AccountingEntries < ActiveRecord::Base
     self.amount_cents = value.blank? ? nil : (value.to_f * 100.0).round
   end
 
-  def amount_eur_string
+  def amount_eur_display
     if amount_cents.nil?
       nil
     else
       eur = amount_cents.to_f / 100.0
       number_to_currency(eur, separator: ",", delimiter: ".", format: "%n")
     end
+  end
+
+  def sepa_status_display
+    Settings.sepa_status[sepa_status]
   end
 
   private

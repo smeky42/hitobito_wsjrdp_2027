@@ -28,3 +28,7 @@
             - else
               Automatische Buchung
         %td.text-end.fw-semibold(style="white-space:nowrap;")= format_cents_de(entry.amount_cents)
+        %td.pl-1
+          - unless entry.id.blank?
+            %a{href: accounting_entry_path(entry)}
+              %span.fa.fa-info-circle(aria-label="info" role="img")

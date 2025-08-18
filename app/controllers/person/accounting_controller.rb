@@ -48,7 +48,7 @@ class Person::AccountingController < ApplicationController
       return
     end
 
-    @notices << "Neue Buchung in Höhe von #{@new_accounting_entry.amount_eur_string} erfolgreich angelegt."
+    @notices << "Neue Buchung in Höhe von #{@new_accounting_entry.amount_eur_display} erfolgreich angelegt."
 
     new_sepa_status = @new_accounting_entry.sepa_status
     if new_sepa_status != @person.sepa_status
@@ -202,7 +202,7 @@ class Person::AccountingController < ApplicationController
     end
 
     flash[:notice] =
-      "Buchung #{entry.id} in Höhe von #{entry.amount_eur_string} erfolgreich angelegt!\n
+      "Buchung #{entry.id} in Höhe von #{entry.amount_eur_display} erfolgreich angelegt!\n
        Finanzstatus auf #{Settings.sepa_status[entry.sepa_status]} gesetzt."
     redirect_back_or_to(accounting_group_person_path)
   end

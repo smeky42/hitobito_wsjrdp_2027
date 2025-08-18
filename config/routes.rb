@@ -46,6 +46,9 @@ Rails.application.routes.draw do
           post "status/approve_documents" => "person/status#approve_documents"
         end
       end
+
+      resources :accounting_entries, shallow: true, only: [:show, :update]
+
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
