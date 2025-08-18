@@ -62,13 +62,13 @@ module Wsjrdp2027
         text "Die Dokumente stehen auch unter www.worldscoutjamboree.de/downloads zur Verfügung."
 
         pdf.move_down 3.mm
-        text "Den Medizinbogen, die Fotohinweise und das SEPA-Mandat im Anhang haben #{of_legal_age ? "habe ich" : "haben wir"} gesondert unterschrieben."
+        text "Den Medizinbogen, die Fotohinweise und das SEPA-Mandat im Anhang #{of_legal_age ? "habe ich" : "haben wir"} gesondert unterschrieben."
 
         pdf.move_down 3.mm
         if early_payer?(@person)
-          text "Für die Zahlung des Teilnehmendenbeitrages wünsche ich Einmalzahlung im August 2025."
+          text "Für die Zahlung des Teilnehmendenbeitrages #{of_legal_age ? "wünsche ich" : "wünschen wir"} Einmalzahlung im November 2025."
         else
-          text "Für die Zahlung des Teilnehmendenbeitrages wünschen wir Ratenzahlung nach dem in den Reisebedingungen aufgeführten Ratenplan."
+          text "Für die Zahlung des Teilnehmendenbeitrages #{of_legal_age ? "wünsche ich" : "wünschen wir"} Ratenzahlung nach dem in den Reisebedingungen aufgeführten Ratenplan."
         end
 
         signature = if of_legal_age

@@ -176,16 +176,16 @@ de:
       deregistration_noted: Wir haben deine Abmeldung erhalten. Für die weiteren Schritte kommt ein CMT Mitglied auf dich zu.
       deregistered: Du bist Abgemeldet, deine Daten werden in Kürze aus dem Anmeldesystem gelöscht.
     check_status_help:
-      contract: Überprüfe für die folgenden Dokumente, dass <br/> die ID zur Person passt, <br/> alle Felder unterschrieben sind, <br/> Name und Geburstdatum mit der Anmeldung und Ausweis übereinstimmen, <br/> Rolle und Alter passen.     
-      sepa: Überprüfe für das SEPA, dass die ID zur Person passt, <br/> eine valide Unterschrift auf dem Dokument ist.     
-      external: Überprüfe für folgende Dokumente die Validität.     
+      contract: Überprüfe für die folgenden Dokumente, dass <br/> die ID zur Person passt, <br/> alle Felder unterschrieben sind, <br/> Name und Geburstdatum mit der Anmeldung und Ausweis übereinstimmen, <br/> Rolle und Alter passen.
+      sepa: Überprüfe für das SEPA, dass die ID zur Person passt, <br/> eine valide Unterschrift auf dem Dokument ist.
+      external: Überprüfe für folgende Dokumente die Validität.
     contact_fields:
       format_birthday: (dd.mm.yyyy)
       no_sensitive_information: ""
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
       sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet
-      early_payer_help: Wenn du das Zahlungsmodell Einmalzahlung (Early Payer) auswählst, unterstützt du uns bei der Durchführung des Jamborees und sicherst dir so früh deinen Platz im Deutschen Kontingent. <br/> Dafür wird, nach Bestätigung deiner Teilnahme, bei Anmeldung bis 31.10. im November der komplette Betrag von deinem Konto abgebucht.
+      early_payer_help: Wenn du das Zahlungsmodell Einmalzahlung (Early Payer) auswählst, unterstützt du uns bei der Durchführung des Jamborees. <br/> Nach Überprüfung deiner Anmeldung wird der komplette Teilnehmendenbeitrag im November von deinem Konto abgebucht.
       invalid_iban: ist keine gültige IBAN
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
