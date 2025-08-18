@@ -1,11 +1,12 @@
 #main.row
   = standard_form(@new_accounting_entry, {as: :accounting_entry, url: accounting_group_person_path, method: :post }) do |f|
     = f.error_messages
+
     = render 'accounting_entries'
 
     - if can_accounting?
       = field_set_tag do
-        = f.labeled_input_field :amount_eur, {placeholder: "10000,00", step: 0.01, value: @new_accounting_entry.amount_eur_string, type: "number", lang: "de-DE", autocomplete: "off"}
+        = f.labeled_input_field :amount_eur, {placeholder: "10000,00", step: 0.01, value: @new_accounting_entry.amount_eur_display, type: "number", lang: "de-DE", autocomplete: "off"}
         = f.labeled_input_field :description, required: true
         = f.labeled_input_field :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten'
         = f.labeled_input_field :value_date, help_inline: 'Nur falls abweichend vom aktuellen Datum'

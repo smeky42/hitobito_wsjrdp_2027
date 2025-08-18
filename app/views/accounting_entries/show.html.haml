@@ -1,0 +1,21 @@
+#main.row
+  -# %div= "params: #{params.inspect}"
+  -# %div= "request: #{request.inspect}"
+  -# %div= "request.post?: #{request.post?}"
+  -# %div= "request.get?: #{request.get?}"
+  -# %div= "request.put?: #{request.put?}"
+  -# %div= "request.patch?: #{request.patch?}"
+  = standard_form(accounting_entry, {as: :accounting_entry, method: :put}) do |f|
+    -# %div= "accounting_entry: #{accounting_entry.inspect}"
+    = f.error_messages
+    = form_buttons(f, cancel_url: accounting_entry_path)
+
+    .mt-3
+    = field_set_tag do
+      = form_like_render_attrs(accounting_entry, :created_at, :updated_at)
+      = form_like_render_attrs(accounting_entry, :amount_eur_display, :description)
+      - if can_accounting?
+        = f.labeled_input_field :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten'
+      = form_like_render_attrs(accounting_entry, :value_date, :end_to_end_identifier, :sepa_status_display)
+
+    = form_buttons(f, cancel_url: accounting_entry_path)
