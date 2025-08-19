@@ -1,16 +1,19 @@
 class AccountingEntriesController < ApplicationController
+  # include ContractHelper
   include FormatHelper
   include UtilityHelper
   include ::ActionView::Helpers::TagHelper
 
   before_action :authorize_action
+  # decorates :group, :person
 
   helper_method :accounting_entry
+  helper_method :accounting_entry_path
   helper_method :can_accounting?
   helper_method :person
 
   def show
-    render "show"
+    render "person/accounting_entries/show"
   end
 
   def update
@@ -30,6 +33,14 @@ class AccountingEntriesController < ApplicationController
 
   def person
     @person ||= Person.find(accounting_entry.people_id)
+  end
+
+  def group
+    @group ||= person.primary_group
+  end
+
+  def accounting_entry_path(entry=nil)
+    group_person_accounting_entry_path(group, person, accounting_entry)
   end
 
   def can_accounting?
