@@ -1,4 +1,10 @@
 #main.row
+  %div= "current_user: #{current_user} #{current_user&.id}"
+  %div= "person_signed_in? #{person_signed_in?}"
+  %div= "render_nav? #{render_nav?}"
+  %div= "current_person&.root? #{current_person&.root?}"
+  %div= "current_person&.roles.present? #{current_person&.roles.present?}"
+  %div= "current_person&.basic_permissions_only? #{current_person&.basic_permissions_only?}"
   -# %div= "params: #{params.inspect}"
   -# %div= "request: #{request.inspect}"
   -# %div= "request.post?: #{request.post?}"

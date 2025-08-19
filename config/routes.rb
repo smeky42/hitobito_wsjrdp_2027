@@ -45,9 +45,10 @@ Rails.application.routes.draw do
           post "status/review_documents" => "person/status#review_documents"
           post "status/approve_documents" => "person/status#approve_documents"
         end
-      end
 
-      resources :accounting_entries, shallow: true, only: [:show, :update]
+        resources :accounting_entries, only: [:show, :update]
+
+      end
 
     end
 
