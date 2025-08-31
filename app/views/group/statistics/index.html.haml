@@ -10,28 +10,78 @@
     .col-12
       %p
         %strong Personen in Status:
-      = column_chart @people_by_status
+      #chart-status{style: "height: 300px; width: 100%; text-align: center; color: #999; line-height: 300px; font-size: 14px; font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;"}
+      %div.text-muted.loading-text Daten werden geladen...
 
   .row.mb-4
     .col-12
       %p
         %strong Angemeldete Personen - (im Anmeldeportal mindestens registriert):
-      = line_chart @people_by_registration_date
+      #chart-registration-date{style: "height: 300px; width: 100%; text-align: center; color: #999; line-height: 300px; font-size: 14px; font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;"}
+      %div.text-muted.loading-text Daten werden geladen...
 
   .row.mb-4
     .col-12
-      = column_chart @people_by_role
+      #chart-role{style: "height: 300px; width: 100%; text-align: center; color: #999; line-height: 300px; font-size: 14px; font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;"}
+      %div.text-muted.loading-text Daten werden geladen...
 
   .row.mb-4
     .col-12
       %p
         %strong Anmeldung von TN abgeschlossen - ("Upload vollständig", "Dokumente in Überprüfung durch CMT" oder "Dokumente vollständig überprüft"):
-      = column_chart @registration_completed_people_by_role
+      #chart-registration-completed{style: "height: 300px; width: 100%; text-align: center; color: #999; line-height: 300px; font-size: 14px; font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;"}
+      %div.text-muted.loading-text Daten werden geladen...
 
   .row.mb-4
     .col-12
       %p
         %strong Bestätigt durch CMT:
-      = column_chart @registration_verified_people_by_role
+      #chart-registration-verified{style: "height: 300px; width: 100%; text-align: center; color: #999; line-height: 300px; font-size: 14px; font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;"}
+      %div.text-muted.loading-text Daten werden geladen...
 
 = javascript_include_tag 'hitobito_wsjrdp_2027/application'
+
+:javascript
+  (function () {
+    const groupId = "#{@group.id}";
+
+    fetch(`/groups/${groupId}/statistics/data`)
+      .then(response => response.json())
+      .then(data => {
+        renderColumnChart("chart-status", data.people_by_status, {library: {title: "Personen nach Status"}});
+        renderLineChart("chart-registration-date", data.people_by_registration_date, {library: {title: "Registrierung über Zeit"}});
+        renderColumnChart("chart-role", data.people_by_role, {library: {title: "Personen nach Rolle"}});
+        renderColumnChart("chart-registration-completed", data.registration_completed_people_by_role, {library: {title: "Registrierung abgeschlossen"}});
+        renderColumnChart("chart-registration-verified", data.registration_verified_people_by_role, {library: {title: "Bestätigte Anmeldungen"}});
+      })
+      .catch(error => {
+        console.error("Fehler beim Laden der Statistikdaten:", error);
+        document.querySelectorAll(".loading-text").forEach(el => {
+          el.textContent = "Fehler beim Laden der Daten.";
+        });
+      });
+  })();
+
+  function renderColumnChart(containerId, data, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const loadingText = container.nextElementSibling;
+    if (loadingText?.classList.contains("loading-text")) {
+      loadingText.remove();
+    }
+
+    new Chartkick.ColumnChart(container, data, options);
+  }
+
+  function renderLineChart(containerId, data, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const loadingText = container.nextElementSibling;
+    if (loadingText?.classList.contains("loading-text")) {
+      loadingText.remove();
+    }
+
+    new Chartkick.LineChart(container, data, options);
+  }

@@ -47,5 +47,7 @@ Rails.application.routes.draw do
         end
       end
     end
+
+    get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
   end
 end
