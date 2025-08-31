@@ -12,17 +12,22 @@ module Wsjrdp2027::StatisticsController
 
     def index
       @group = Group.find(params[:group_id])
+    end
+
+    def statistics_data
       groups = @group.self_and_descendants
-      @people = Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct
+      @people = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct
 
       start_date = Date.parse("2025-05-01")
       end_date = Time.zone.today
 
-      @people_by_registration_date = get_people_by_registration_date(@people, start_date, end_date)
-      @people_by_status = get_people_by_status(@people)
-      @people_by_role = get_people_by_role(@people)
-      @registration_completed_people_by_role = get_registration_completed_people_by_role(@people)
-      @registration_verified_people_by_role = get_registration_verified_people_by_role(@people)
+      render json: {
+        people_by_registration_date: get_people_by_registration_date(@people, start_date, end_date),
+        people_by_status: get_people_by_status(@people),
+        people_by_role: get_people_by_role(@people),
+        registration_completed_people_by_role: get_registration_completed_people_by_role(@people),
+        registration_verified_people_by_role: get_registration_verified_people_by_role(@people)
+      }
     end
 
     private
@@ -70,7 +75,7 @@ module Wsjrdp2027::StatisticsController
     end
 
     def get_registration_verified_people_by_role(people)
-      final_verified_people = people.select { |p| p.status == "confirmed" }
+      final_verified_people = people.select { |p| p.status == "reviewed" }
       chart_data(role_counts(final_verified_people))
     end
 
