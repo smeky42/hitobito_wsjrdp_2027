@@ -6,6 +6,28 @@
 - title(t('groups.statistics.title'))
 
 .container.my-4
+  .row.mb-4#stats-cards
+    .col-md-2.col-6.mb-3
+      .stat-card.card-total.loading
+        %div.label Gesamt
+        %div.value= @total_count
+    .col-md-2.col-6.mb-3
+      .stat-card.loading
+        %div.label YP
+        %div.value= @yp_count
+    .col-md-2.col-6.mb-3
+      .stat-card.loading
+        %div.label UL
+        %div.value= @ul_count
+    .col-md-2.col-6.mb-3
+      .stat-card.loading
+        %div.label IST
+        %div.value= @ist_count
+    .col-md-2.col-6.mb-3
+      .stat-card.loading
+        %div.label CMT
+        %div.value= @cmt_count
+
   .row.mb-4
     .col-12
       %p
