@@ -12,6 +12,15 @@ module Wsjrdp2027::StatisticsController
 
     def index
       @group = Group.find(params[:group_id])
+
+      groups = @group.self_and_descendants
+      people = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct
+
+      @total_count = people.count
+      @ist_count = people.count { |person| ist?(PersonDecorator.new(person)) }
+      @yp_count = people.count { |person| yp?(PersonDecorator.new(person)) }
+      @ul_count = people.count { |person| ul?(PersonDecorator.new(person)) }
+      @cmt_count = people.count { |person| cmt?(PersonDecorator.new(person)) }
     end
 
     def statistics_data
