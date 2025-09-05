@@ -90,11 +90,14 @@
         - else
           %p.text-center.text-muted.mt-3
             = t('public.statistics.balanced', count: @max_units)
+
+        - yp_percentage = @max_units.to_i > 0 ? ((@units_by_yp.to_f / @max_units) * 100).round : 0
+        - ul_percentage = @max_units.to_i > 0 ? ((@units_by_ul.to_f / @max_units) * 100).round : 0
         
         %div.progress.mb-3{style: "height: 2rem;"}
-          %div.progress-bar.bg-info{style: "width: #{(@units_by_yp.to_f / @max_units * 100).round}%;"} 
+          %div.progress-bar.bg-info{style: "width: #{yp_percentage}%;"}
             = t('public.statistics.yp_bar_label', count: @units_by_yp)
 
         %div.progress.mb-3{style: "height: 2rem;"}
-          %div.progress-bar.bg-success{style: "width: #{(@units_by_ul.to_f / @max_units * 100).round}%;"} 
+          %div.progress-bar.bg-success{style: "width: #{ul_percentage}%;"}
             = t('public.statistics.yp_bar_label', count: @units_by_ul)
