@@ -1,16 +1,12 @@
 #main.row
-  %div= "current_user: #{current_user} #{current_user&.id}"
-  %div= "person_signed_in? #{person_signed_in?}"
-  %div= "render_nav? #{render_nav?}"
-  %div= "current_person&.root? #{current_person&.root?}"
-  %div= "current_person&.roles.present? #{current_person&.roles.present?}"
-  %div= "current_person&.basic_permissions_only? #{current_person&.basic_permissions_only?}"
+  -# %div= "current_user: #{current_user} #{current_user&.id}"
+  -# %div= "person_signed_in? #{person_signed_in?}"
+  -# %div= "render_nav? #{render_nav?}"
+  -# %div= "current_person&.root? #{current_person&.root?}"
+  -# %div= "current_person&.roles.present? #{current_person&.roles.present?}"
+  -# %div= "current_person&.basic_permissions_only? #{current_person&.basic_permissions_only?}"
   -# %div= "params: #{params.inspect}"
   -# %div= "request: #{request.inspect}"
-  -# %div= "request.post?: #{request.post?}"
-  -# %div= "request.get?: #{request.get?}"
-  -# %div= "request.put?: #{request.put?}"
-  -# %div= "request.patch?: #{request.patch?}"
   = standard_form(accounting_entry, {as: :accounting_entry, method: :put}) do |f|
     -# %div= "accounting_entry: #{accounting_entry.inspect}"
     = f.error_messages
