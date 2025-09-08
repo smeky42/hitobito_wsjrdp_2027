@@ -103,6 +103,7 @@ development:
     Berlin/Brandenburg:
       Keine Bezirksebene:
         Alanen:
+        Albrecht der Bär:
         Askanier:
         Burgund:
         Grabowski:
@@ -1869,9 +1870,12 @@ development:
         VCP Zeitlofs:
         VCP Zell/Stamm Friedrich Emmert:
       Mitte:
+        VCP Bad Windsheim/Stamm Dorothea Pastorius:
         VCP Bruckberg/Stamm Bruckberger Heime:
         VCP Diespeck/Stamm Veit vom Berg:
+        VCP Fürth/Stamm Emmy Noether:
         VCP Fürth/Stamm Franken:
+        VCP Gunzenhausen/Stamm Altmühl:
         VCP Heideck:
         VCP Lichtenau Impessa:
         VCP MTA62:
@@ -2545,6 +2549,7 @@ production:
     Berlin/Brandenburg:
       Keine Bezirksebene:
         Alanen:
+        Albrecht der Bär:
         Askanier:
         Burgund:
         Grabowski:
@@ -4291,9 +4296,12 @@ production:
         VCP Zeitlofs:
         VCP Zell/Stamm Friedrich Emmert:
       Mitte:
+        VCP Bad Windsheim/Stamm Dorothea Pastorius:
         VCP Bruckberg/Stamm Bruckberger Heime:
         VCP Diespeck/Stamm Veit vom Berg:
+        VCP Fürth/Stamm Emmy Noether:
         VCP Fürth/Stamm Franken:
+        VCP Gunzenhausen/Stamm Altmühl:
         VCP Heideck:
         VCP Lichtenau Impessa:
         VCP MTA62:
