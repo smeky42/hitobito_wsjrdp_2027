@@ -50,10 +50,10 @@
                 method: :get,
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_medical'))
-  %br 
+  %br
   = render_attrs(@person, :sepa_name, :sepa_iban)
   = raw(t("people.check_status_help.sepa"))
-  %br             
+  %br
   = action_button(t('activerecord.buttons.show_sepa'),
                 "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_sepa",
                 :envelope,
@@ -62,19 +62,28 @@
                 method: :get,
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_sepa'))
-  %br  
+  %br
   = raw(t("people.check_status_help.external"))
-  %br  
+  %br
   - if ul?(@person)
     = action_button(t('activerecord.buttons.show_recommendation'),
                 "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation",
                 :envelope,
                 target: "_blank",
                 remote: false,
-                method: :post,
+                method: :get,
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_recommendation'))
-  - if ul?(@person) || cmt?(@person) || ist?(@person) 
+  - if ul?(@person) || cmt?(@person)
+    = action_button(t('activerecord.buttons.show_data_agreement'),
+                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement",
+                :envelope,
+                target: "_blank",
+                remote: false,
+                method: :get,
+                rel: :tooltip,
+                title: t('activerecord.buttons.show_data_agreement'))
+  - if ul?(@person) || cmt?(@person) || ist?(@person)
     = action_button(t('activerecord.buttons.show_good_conduct'),
                 "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct",
                 :envelope,
@@ -92,7 +101,3 @@
                 method: :post,
                 rel: :tooltip,
                 title: t('activerecord.buttons.approve_documents'))
-
-
-
-
