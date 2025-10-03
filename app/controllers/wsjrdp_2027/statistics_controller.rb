@@ -84,7 +84,7 @@ module Wsjrdp2027::StatisticsController
     end
 
     def get_registration_verified_people_by_role(people)
-      final_verified_people = people.select { |p| p.status == "reviewed" }
+      final_verified_people = people.select { |p| p.status == "confirmed" }
       chart_data(role_counts(final_verified_people))
     end
 
