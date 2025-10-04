@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "iban-tools"
+require "geocoder"
 
 module Wsjrdp2027::Person
   include ContractHelper
@@ -10,6 +11,8 @@ module Wsjrdp2027::Person
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
   def self.included(base)
+    base.extend Geocoder::Model::Base
+
     # This hack is needed to make Person::GENDERS return the right value
     base.send(:remove_const, :GENDERS) if base.const_defined?(:GENDERS)
     base.const_set(:GENDERS, GENDERS)
@@ -28,6 +31,8 @@ module Wsjrdp2027::Person
       validate :validate_iban_format
       validate :validate_buddy_id_ul
       validate :validate_buddy_id_yp
+
+      before_save :geocode_full_address, if: :address_changed?
 
       private
 
@@ -81,6 +86,23 @@ module Wsjrdp2027::Person
         unless yp?(buddy)
           errors.add(:buddy_id_yp, :buddy_no_yp)
         end
+      end
+
+      def geocode_full_address
+        results = Geocoder.search(full_address)
+
+        if results.first
+          self.latitude = results.first.latitude
+          self.longitude = results.first.longitude
+        end
+      end
+
+      def full_address
+        [street, housenumber, zip_code, town, country].compact.join(", ")
+      end
+
+      def address_changed?
+        street_changed? || housenumber_changed? || zip_code_changed? || town_changed? || country_changed?
       end
     end
   end
