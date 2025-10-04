@@ -10,6 +10,10 @@ module Wsjrdp2027::Person
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
   def self.included(base)
+    rdp_attrs = [:rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group]
+    Person::PUBLIC_ATTRS += rdp_attrs
+    Person.used_attributes += rdp_attrs
+
     # This hack is needed to make Person::GENDERS return the right value
     base.send(:remove_const, :GENDERS) if base.const_defined?(:GENDERS)
     base.const_set(:GENDERS, GENDERS)
