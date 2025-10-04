@@ -232,6 +232,11 @@ RUN mkdir -p tmp/pids \
     && chmod a+w $HOME/db/schema.rb \
     && chmod a+w $HOME/vendor/wagons/*/db/seeds/
 
+# Create volume for file uploads and exports
+RUN mkdir -p $HOME/public/uploads/active_storage \
+    && chmod -R u+w,g=u $HOME/public
+VOLUME $HOME/public/uploads/active_storage
+
 # Install specific versions of dependencies
 # (not required with newer bundler versions)
 RUN gem install bundler:${BUNDLER_VERSION} --no-document
@@ -261,7 +266,6 @@ ENV BUILD_REPO="${BUILD_REPO}" \
 # Set runtime user (although OpenShift uses a custom user per project instead)
 USER 1001
 
-VOLUME $HOME/public/uploads/active_storage
 
 CMD ["bundle", "exec", "puma"]
 
