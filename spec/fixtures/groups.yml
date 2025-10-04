@@ -1,14 +1,15 @@
 root:
   parent:
   lft: 1
-  rgt: 2
+  rgt: 4
   name: Hauptgruppe
   type: Group::Root
-  email: root@example.net
-  street: Ophovener Str. 79a
-  zip_code: 28431
-  town: Neu Carlscheid
   layer_group_id: <%= ActiveRecord::FixtureSet.identify(:root) %>
 
-# TODO add more groups
-# you could generate a good setup manually and dump it with rake fixtures:groups
+empty_unit:
+  parent: root
+  lft: 2
+  rgt: 3
+  name: Empty Unit
+  type: Group::Unit
+  layer_group_id: <%= ActiveRecord::FixtureSet.identify(:empty_unit) %>
