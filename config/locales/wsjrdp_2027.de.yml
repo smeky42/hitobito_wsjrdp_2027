@@ -326,6 +326,13 @@ de:
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
       main_other_registration_info_link: "https://www.worldscoutjamboree.de/howto-anmeldung/"
 
+  table_displays:
+    person:
+      rdp_association: rdp Verband
+      rdp_association_region: rdp Land, Diözese
+      rdp_association_sub_region: rdp Bezirk, Region
+      rdp_association_group: rdp Stamm
+
   public:
     statistics:
       units_title: "Mögliche Units nach aktuellem Anmeldestand"
