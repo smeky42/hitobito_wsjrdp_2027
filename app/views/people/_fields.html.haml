@@ -19,16 +19,16 @@
       = field_set_tag do
         = f.labeled_input_fields(*entry.decorate.used_attributes(:first_name, :last_name))
     - else
-      = render_attrs(entry, :first_name, :last_name) 
+      = render_attrs(entry, :first_name, :last_name)
 
     - if (@person.status == 'registered')
       = field_set_tag do
         = f.labeled(:gender) do
           - (Person::GENDERS + ['']).each do |key|
             = f.inline_radio_button(:gender, key, entry.gender_label(key))
-    - else 
+    - else
       = render_attrs(entry,  :gender)
-      
+
     = field_set_tag do
       = f.labeled_input_field(:pronoun)
       = f.labeled_input_fields(*entry.decorate.used_attributes(:nickname))
@@ -37,7 +37,7 @@
 
     = render 'contactable/fields', f: f
 
-    -# = render 'picture_fields', f: f
+    = render 'picture_fields', f: f
 
     = render_extensions :fields, locals: { f: f }
 
@@ -52,7 +52,7 @@
 
   #additional_contact.tab-pane
     = render 'contactable/additional_contact_fields', f: f
-  
+
   #additional_info.tab-pane
     = render 'contactable/additional_info_fields', f: f
 
