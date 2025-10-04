@@ -16,7 +16,7 @@ module Wsjrdp2027::Wizards::Steps::NewUserForm
 
   def initialize(wizard, **params)
     params[:buddy_id] ||= get_random_spice
-    params[:birthday] ||= Date.new(2009, 7, 30)
+    params[:birthday] ||= Date.new(2009, 7, 31)
     super
   end
 
@@ -35,12 +35,17 @@ module Wsjrdp2027::Wizards::Steps::NewUserForm
     end
 
     # Youth Particpants: born after 30 July 2009 but not later than 30 July 2013
-    if birthday >= Date.new(2013, 7, 30)
+    if birthday > Date.new(2013, 7, 30)
       message = I18n.t("groups.self_registration.create.flash.to_young")
       errors.add(:base, message)
     end
 
-    if (wizard.role.type == "Group::Unit::Member") && birthday < Date.new(2009, 7, 30)
+    # Check that YPs are born before 30 July 2009
+    # From Bulletin 1 / Circular 01:
+    # "Youth Participants must be between the ages of 14 and 17 at the
+    #  time of the event (born after 30 July 2009 but not later than
+    #  30 July 2013)."
+    if (wizard.role.type == "Group::Unit::Member") && birthday <= Date.new(2009, 7, 30)
       message = I18n.t("groups.self_registration.create.flash.yp_to_old")
       errors.add(:base, message)
     end
