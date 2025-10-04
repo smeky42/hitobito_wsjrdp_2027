@@ -261,6 +261,8 @@ ENV BUILD_REPO="${BUILD_REPO}" \
 # Set runtime user (although OpenShift uses a custom user per project instead)
 USER 1001
 
+VOLUME $HOME/public/uploads/active_storage
+
 CMD ["bundle", "exec", "puma"]
 
 # Build NGINX for static content
