@@ -1,0 +1,49 @@
+-#  Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+
+- title(t('groups.map.title'))
+
+%link{rel: "stylesheet", href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=", crossorigin: ""}
+
+.container.my-4
+  .row
+    .col-12
+      #map{style: "height: 80vh;"}
+
+= yield
+
+%script{src: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", integrity: "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=", crossorigin: ""}
+
+:javascript
+  $(document).on('turbo:load', () => {
+     if ($('#map').length > 0) {
+      var container = L.DomUtil.get('map');
+      if(container != null){
+        container._leaflet_id = null;
+      }
+
+      var map = L.map('map').setView([50.9747134, 10.3193565], 6);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 13,
+          attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      var people = #{raw(@people.to_json)};
+
+      people.forEach((m, i) => {
+        const icon = L.divIcon({
+          className: "custom-map-marker",
+          iconSize: [32, 48],
+          iconAnchor: [16, 48],
+          popupAnchor: [0, -48],
+          html: '<span style="--marker-color: ' + (m.unit_code == null ? '#666666' : m.unit_code) + '"></span>'
+        });
+
+        var location = [m.latitude, m.longitude];
+        var marker = L.marker(location, { icon: icon }).addTo(map);
+        marker.bindPopup(`<b>${m.first_name} ${m.last_name}</b><br />${m.street} ${m.housenumber}<br />${m.zip_code} ${m.town}`);
+      });
+     }
+  });

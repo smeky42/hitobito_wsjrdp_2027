@@ -46,6 +46,8 @@ Rails.application.routes.draw do
           post "status/approve_documents" => "person/status#approve_documents"
         end
       end
+
+      get "map" => "group/map#index"
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
