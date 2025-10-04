@@ -36,6 +36,7 @@ module HitobitoWsjrdp2027
       Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass
       Sheet::Base.prepend Wsjrdp2027::Sheet::Base
       Sheet::Person.include Wsjrdp2027::Sheet::Person
+      Sheet::Group.include Wsjrdp2027::Sheet::Group
 
       # Abilities
       EventAbility.include Wsjrdp2027::EventAbility

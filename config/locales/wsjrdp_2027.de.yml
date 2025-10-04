@@ -280,6 +280,10 @@ de:
           cmt_to_young: "Als CMT musst du am Jamboree mindestens 18 Jahre alt sein. Also vor dem oder am 30.07.2009 geboren sein."
     self_inscription:
       impossible: 'Du bist bereits für das Deutsche Kontingent zum World Scout Jamboree 2027 registriert. Deswegen kannst du dich nicht für eine weitere Rolle registrieren. Wenn du eine andere Person registrieren möchtest, melde dich bitte zuerst ab. Wenn du deine Rolle ändern möchtest, kontaktiere uns bitte unter <a href="mailto:helpdesk@worldscoutjamboree.de">helpdesk@worldscoutjamboree.de</a>.'
+    map:
+      title: Karte
+    tabs:
+      map: Karte
 
   devise:
     mailer:
