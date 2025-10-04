@@ -151,3 +151,23 @@ body {
     color: $white;
   }
 }
+
+.custom-map-marker {
+  background: none;
+  border: none;
+
+  span {
+    display: block;
+    width: 32px;
+    height: 48px;
+    background: var(--marker-color); 
+
+    mask:
+      conic-gradient(from -30deg at bottom, #0000, #000 1deg 59deg, #0000 60deg) bottom/100% 50% no-repeat,
+      radial-gradient(circle at 50% calc(100% / 3), #0000 21.5%, #000 22% 44%, #0000 44.5%);
+
+    -webkit-mask:
+      conic-gradient(from -30deg at bottom, #0000, #000 1deg 59deg, #0000 60deg) bottom/100% 50% no-repeat,
+      radial-gradient(circle at 50% calc(100% / 3), #0000 21.5%, #000 22% 44%, #0000 44.5%);
+  }
+}
