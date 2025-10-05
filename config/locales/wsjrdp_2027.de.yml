@@ -282,6 +282,19 @@ de:
       impossible: 'Du bist bereits für das Deutsche Kontingent zum World Scout Jamboree 2027 registriert. Deswegen kannst du dich nicht für eine weitere Rolle registrieren. Wenn du eine andere Person registrieren möchtest, melde dich bitte zuerst ab. Wenn du deine Rolle ändern möchtest, kontaktiere uns bitte unter <a href="mailto:helpdesk@worldscoutjamboree.de">helpdesk@worldscoutjamboree.de</a>.'
     map:
       title: Karte
+      filters:
+        title: Filter
+        roles:
+          title: Rolle
+          yp: YP
+          ul: UL
+          ist: IST
+          cmt: CMT
+        regions:
+          title: Verband
+        unit-codes:
+          title: Unit-Code
+          none: -kein Unit-Code-
     tabs:
       map: Karte
 
