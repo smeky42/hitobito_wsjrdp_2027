@@ -6,11 +6,28 @@
 - title(t('groups.map.title'))
 
 %link{rel: "stylesheet", href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=", crossorigin: ""}
-
 .container.my-4
   .row
     .col-12
       #map{style: "height: 80vh;"}
+
+  .row.mt-3
+  .col-12
+    %h2 Filter
+    %h5 Rolle
+    %div
+      .form-check.form-check-inline
+        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Youth Participant", id: "roleYP", checked: true}
+        %label.form-check-label{for: "roleYP"} YP
+      .form-check.form-check-inline
+        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Unit Leader", id: "roleUL", checked: true}
+        %label.form-check-label{for: "roleUL"} UL
+      .form-check.form-check-inline
+        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "IST", id: "roleIST", checked: true}
+        %label.form-check-label{for: "roleIST"} IST
+      .form-check.form-check-inline
+        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "CMT", id: "roleCMT", checked: true}
+        %label.form-check-label{for: "roleCMT"} CMT
 
 = yield
 
@@ -18,7 +35,7 @@
 
 :javascript
   $(document).on('turbo:load', () => {
-     if ($('#map').length > 0) {
+    if ($('#map').length > 0) {
       var container = L.DomUtil.get('map');
       if(container != null){
         container._leaflet_id = null;
@@ -31,6 +48,7 @@
       }).addTo(map);
 
       var people = #{raw(@people.to_json)};
+      var allMarkers = [];
 
       people.forEach((m, i) => {
         var markerType;
@@ -60,7 +78,7 @@
         });
 
         var location = [m.latitude, m.longitude];
-        var marker = L.marker(location, { icon: icon }).addTo(map);
+        var marker = L.marker(location, { icon: icon });
         marker.bindPopup(`
           <a href="/groups/${m.primary_group_id}/people/${m.id}" target="_blank"><b>${m.first_name} ${m.last_name}</a></b><br />
           ${m.role}<br />
@@ -68,6 +86,26 @@
           ${m.rdp_association_sub_region} <br />
           ${m.rdp_association_group}
         `);
+
+        allMarkers.push({ role: m.role, marker: marker });
       });
-     }
+
+      function updateMapMarkers() {
+        var selectedRoles = $('.role-filter-checkbox:checked').map(function() {
+          return $(this).val();
+        }).get();
+
+        allMarkers.forEach(function(markerData) {
+          if (selectedRoles.includes(markerData.role)) {
+            markerData.marker.addTo(map);
+          } else {
+            markerData.marker.removeFrom(map);
+          }
+        });
+      }
+
+      $('.role-filter-checkbox').on('change', updateMapMarkers);
+
+      updateMapMarkers();
+    }
   });
