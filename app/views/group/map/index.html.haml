@@ -6,32 +6,59 @@
 - title(t('groups.map.title'))
 
 %link{rel: "stylesheet", href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=", crossorigin: ""}
+%script{src: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", integrity: "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=", crossorigin: ""}
+
 .container.my-4
   .row
     .col-12
-      #map{style: "height: 80vh;"}
+      #map{style: "height: 80vh; width: 100%;"}
 
   .row.mt-3
   .col-12
-    %h2 Filter
-    %h5 Rolle
+    %h2 
+      =t('groups.map.filters.title')
+    %h3 
+      =t('groups.map.filters.roles.title')
     %div
       .form-check.form-check-inline
         %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Youth Participant", id: "roleYP", checked: true}
-        %label.form-check-label{for: "roleYP"} YP
+        %label.form-check-label{for: "roleYP"} 
+          =t('groups.map.filters.roles.yp')
       .form-check.form-check-inline
         %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Unit Leader", id: "roleUL", checked: true}
-        %label.form-check-label{for: "roleUL"} UL
+        %label.form-check-label{for: "roleUL"} 
+          =t('groups.map.filters.roles.ul')
       .form-check.form-check-inline
         %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "IST", id: "roleIST", checked: true}
-        %label.form-check-label{for: "roleIST"} IST
+        %label.form-check-label{for: "roleIST"} 
+          =t('groups.map.filters.roles.ist')
       .form-check.form-check-inline
         %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "CMT", id: "roleCMT", checked: true}
-        %label.form-check-label{for: "roleCMT"} CMT
+        %label.form-check-label{for: "roleCMT"} 
+          =t('groups.map.filters.roles.cmt')
+    %h3.mt-3 
+      =t('groups.map.filters.regions.title')
+    %div
+      - @associations_and_regions.each do |association, regions|
+        %h6 #{association}
+        %div
+          - regions.each do |region|
+            .form-check.form-check-inline
+              %input.form-check-input.region-filter-checkbox{type: "checkbox", value: "#{association}_#{region}", id: "#{association.parameterize}_#{region.parameterize}", checked: true}
+              %label.form-check-label{for: "#{association.parameterize}_#{region.parameterize}"}= region
+    
+    %h3.mt-3 
+      =t('groups.map.filters.unit-codes.title')
+    %div
+      - @unit_codes.each do |unit_code|
+        .form-check.form-check-inline
+          %input.form-check-input.unit-code-filter-checkbox{type: "checkbox", value: unit_code, id: unit_code, checked: true}
+          %label.form-check-label{for: unit_code}= unit_code
+      %input.form-check-input.unit-code-filter-checkbox{type: "checkbox", value: "null", id: "unit_code_null", checked: true}
+      %label.form-check-label{for: "unit_code_null"} 
+        =t('groups.map.filters.unit-codes.none')
 
 = yield
-
-%script{src: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", integrity: "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=", crossorigin: ""}
 
 :javascript
   $(document).on('turbo:load', () => {
@@ -87,7 +114,13 @@
           ${m.rdp_association_group}
         `);
 
-        allMarkers.push({ role: m.role, marker: marker });
+        allMarkers.push({ 
+          role: m.role, 
+          marker: marker,
+          region: m.rdp_association_region,
+          association: m.rdp_association,
+          unit_code: m.unit_code
+        });
       });
 
       function updateMapMarkers() {
@@ -95,8 +128,26 @@
           return $(this).val();
         }).get();
 
+        var selectedRegions = $('.region-filter-checkbox:checked').map(function() {
+          return $(this).val();
+        }).get();
+
+        var selectedUnitCodes = $('.unit-code-filter-checkbox:checked').map(function() {
+          return $(this).val();
+        }).get();
+
         allMarkers.forEach(function(markerData) {
-          if (selectedRoles.includes(markerData.role)) {
+          const roleIsSelected = selectedRoles.includes(markerData.role);
+          const regionIsSelected = selectedRegions.includes(`${markerData.association}_${markerData.region}`);
+          let unitCodeIsSelected;
+          
+          if (markerData.unit_code === null) {
+            unitCodeIsSelected = selectedUnitCodes.includes("null");
+          } else {
+            unitCodeIsSelected = selectedUnitCodes.includes(markerData.unit_code);
+          }
+
+          if (roleIsSelected && regionIsSelected && unitCodeIsSelected) {
             markerData.marker.addTo(map);
           } else {
             markerData.marker.removeFrom(map);
@@ -105,6 +156,8 @@
       }
 
       $('.role-filter-checkbox').on('change', updateMapMarkers);
+      $('.region-filter-checkbox').on('change', updateMapMarkers);
+      $('.unit-code-filter-checkbox').on('change', updateMapMarkers);
 
       updateMapMarkers();
     }

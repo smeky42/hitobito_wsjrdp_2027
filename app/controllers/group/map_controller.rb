@@ -37,6 +37,21 @@ class Group::MapController < ApplicationController
         :rdp_association_sub_region, :rdp_association_group, :payment_role,
         "#{role_sql} AS role"
       )
+
+    association_combinations = @people.reorder(nil)
+      .distinct
+      .pluck(:rdp_association, :rdp_association_region)
+      .compact
+      .sort
+
+    @associations_and_regions = association_combinations.group_by(&:first)
+      .transform_values { |v| v.map(&:last) }
+
+    @unit_codes = @people.reorder(nil)
+      .distinct
+      .pluck(:unit_code)
+      .compact
+      .sort
   end
 
   private
