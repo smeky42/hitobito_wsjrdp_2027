@@ -16,14 +16,26 @@ class Group::MapController < ApplicationController
     allowed_statuses = ["printed", "upload", "in_review", "reviewed"]
     groups = @group.self_and_descendants
 
-    @people = ::Person.joins(:groups)
+    role_sql = <<~SQL.squish
+      CASE
+        WHEN payment_role LIKE '%::Unit::Member' THEN 'Youth Participant'
+        WHEN payment_role LIKE '%::Unit::Leader' THEN 'Unit Leader'
+        WHEN payment_role LIKE '%::Root::Member' OR payment_role LIKE '%::Root::Leader' THEN 'CMT'
+        WHEN payment_role LIKE '%::Ist::Member' THEN 'IST'
+        ELSE NULL
+      END
+    SQL
+
+    @people = ::Person.joins(:groups).joins(:roles)
       .where(groups: {id: groups.pluck(:id)})
       .where(status: allowed_statuses)
       .where.not(longitude: nil, latitude: nil)
       .distinct
       .select(
-        :first_name, :last_name, :zip_code, :town, :country,
-        :street, :housenumber, :longitude, :latitude, :unit_code
+        :first_name, :last_name, :longitude, :latitude, :unit_code,
+        :id, :primary_group_id, :rdp_association, :rdp_association_region,
+        :rdp_association_sub_region, :rdp_association_group, :payment_role,
+        "#{role_sql} AS role"
       )
   end
 

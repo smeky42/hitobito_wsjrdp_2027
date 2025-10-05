@@ -33,17 +33,41 @@
       var people = #{raw(@people.to_json)};
 
       people.forEach((m, i) => {
+        var markerType;
+        switch (m.role) {
+          case 'Youth Participant':
+            markerType = "custom-map-marker-yp";
+            break;
+          case 'Unit Leader':
+            markerType = "custom-map-marker-ul";
+            break;
+          case 'IST':
+            markerType = "custom-map-marker-ist";
+            break;
+          case 'CMT':
+            markerType = "custom-map-marker-cmt";
+            break;
+          default:
+            markerType = "custom-map-marker";s
+        }
+
         const icon = L.divIcon({
-          className: "custom-map-marker",
+          className: markerType,
           iconSize: [32, 48],
           iconAnchor: [16, 48],
           popupAnchor: [0, -48],
-          html: '<span style="--marker-color: ' + (m.unit_code == null ? '#666666' : m.unit_code) + '"></span>'
+          html: '<div style="--marker-color: ' + (m.unit_code == null ? '#666666' : m.unit_code) + '" class="marker-pin"><div class="icon"></div></div>',
         });
 
         var location = [m.latitude, m.longitude];
         var marker = L.marker(location, { icon: icon }).addTo(map);
-        marker.bindPopup(`<b>${m.first_name} ${m.last_name}</b><br />${m.street} ${m.housenumber}<br />${m.zip_code} ${m.town}`);
+        marker.bindPopup(`
+          <a href="/groups/${m.primary_group_id}/people/${m.id}" target="_blank"><b>${m.first_name} ${m.last_name}</a></b><br />
+          ${m.role}<br />
+          ${m.rdp_association} ${m.rdp_association_region} <br />
+          ${m.rdp_association_sub_region} <br />
+          ${m.rdp_association_group}
+        `);
       });
      }
   });
