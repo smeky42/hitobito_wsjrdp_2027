@@ -12,7 +12,8 @@ class Person::StatusController < ApplicationController
     :last_name,
     :print_at,
     :contract_upload_at,
-    :complete_document_upload_at
+    :complete_document_upload_at,
+    :unit_code
   ]
 
   def show
