@@ -15,7 +15,7 @@ class Public::StatisticsController < ApplicationController
   include ContractHelper
 
   def index
-    people = Person.all
+    people = Person.where.not(status: "registered")
 
     @ist_count = people.count { |person| ist?(PersonDecorator.new(person)) }
     @yp_count = people.count { |person| yp?(PersonDecorator.new(person)) }
