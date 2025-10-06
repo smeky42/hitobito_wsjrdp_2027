@@ -39,6 +39,8 @@ class Group::MapController < ApplicationController
       )
 
     association_combinations = @people.reorder(nil)
+      .where.not(rdp_association: nil)
+      .where.not(rdp_association_region: nil)
       .distinct
       .pluck(:rdp_association, :rdp_association_region)
       .compact
