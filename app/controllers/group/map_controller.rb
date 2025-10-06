@@ -43,7 +43,6 @@ class Group::MapController < ApplicationController
       .where.not(rdp_association_region: nil)
       .distinct
       .pluck(:rdp_association, :rdp_association_region)
-      .compact
       .sort
 
     @associations_and_regions = association_combinations.group_by(&:first)
