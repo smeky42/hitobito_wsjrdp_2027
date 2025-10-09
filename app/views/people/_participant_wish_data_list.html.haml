@@ -1,0 +1,14 @@
+- unless wish_persons.empty?
+  %div
+    %div
+      %strong=list_title
+    - wish_persons.each do |p_wish|
+      %div(style="width:100%; border-radius: 10px; background-color: #F8F9FA; padding: 2px 8px; margin: 4px auto;")
+        %small
+          %strong
+            = link_to_if(can?(:show, p_wish), "#{p_wish.first_name} #{p_wish.last_name}", group_person_path(p_wish.primary_group_id, p_wish.id))
+          %span="(#{mail_to(p_wish.email)})"
+          %br
+          %span.muted(style="padding-left: 20px;")="#{p_wish.buddy_id}-#{p_wish.id}"
+          %br
+          %span.muted(style="padding-left: 20px;")="Status: #{Settings.status[p_wish.status]}"
