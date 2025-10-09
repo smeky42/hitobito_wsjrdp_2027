@@ -100,6 +100,12 @@ module ContractHelper
       person.payment_role.ends_with?("Ist::Member")
     end
 
+    def select_person_for_buddy_id(buddy_id)
+      return [] if buddy_id.blank?
+      spice, _, id = buddy_id.rpartition("-")
+      Person.where(id: id, buddy_id: spice).to_a
+    end
+
     def early_payer?(person)
       if person.payment_role.nil?
         person.payment_role = build_payment_role(person)

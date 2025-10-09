@@ -1,17 +1,18 @@
+- if yp?(@person)
+  - ul_buddy = select_person_for_buddy_id(entry.buddy_id_ul)
+  - yp_buddy = select_person_for_buddy_id(entry.buddy_id_yp)
+  = render 'participant_wish_data_list', list_title: t('.header_wish_ul'), wish_persons: ul_buddy
+  = render 'participant_wish_data_list', list_title: t('.header_wish_yp_buddy'), wish_persons: yp_buddy
+
+- if ul?(@person)
+  - ul_buddy = select_person_for_buddy_id(entry.buddy_id_ul)
+  = render 'participant_wish_data_list', list_title: t('.header_wish_ul_buddy'), wish_persons: ul_buddy
+
 - if yp?(@person) || ul?(@person)
-  %h4= t('.header')
-  %table
-    - if ul?(@person)
-      %tr
-        %th(colspan="2")=t('.header_ul')
-      - Person.where(buddy_id_ul: entry.buddy_id).each do |participant_wish|
-        %tr
-          %td(style="padding-right: 2px")= "#{participant_wish.first_name} #{participant_wish.last_name}"
-          %td(style="padding-left: 2px")= participant_wish.email
-    %tr
-      %th(colspan="2")=t('.header_yp')
-    - Person.where(buddy_id_yp: entry.buddy_id).each do |participant_wish|
-      %tr
-        %td(style="padding-right: 2px")= "#{participant_wish.first_name} #{participant_wish.last_name}"
-        %td(style="padding-left: 2px")= participant_wish.email
-  
+  - buddy_persons = Person.where(buddy_id_ul: entry.buddy_id) + Person.where(buddy_id_yp: entry.buddy_id)
+  - buddy_persons.delete_if {|p| p.status == "deregistration_noted" || p.status == "deregistered"}
+  - if yp?(@person)
+    = render 'participant_wish_data_list', list_title: t('.header_wished_yp_buddy'), wish_persons: buddy_persons.select {|p| yp?(p)}
+  - if ul?(@person)
+    = render 'participant_wish_data_list', list_title: t('.header_wished_ul_buddy'), wish_persons: buddy_persons.select {|p| ul?(p)}
+    = render 'participant_wish_data_list', list_title: t('.header_wished_ul'), wish_persons: buddy_persons.select {|p| yp?(p)}

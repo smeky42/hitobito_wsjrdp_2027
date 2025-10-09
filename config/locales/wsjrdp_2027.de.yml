@@ -192,9 +192,12 @@ de:
       rdp_association_header: Verbandszugehörigkeit
       buddy_id_help: 'Mit der Buddy-ID kannst du dir eine*n Unit Leader*in bzw. eine*n Freund*in wünschen. <br/> Die jeweilige Buddy-ID erfährst du von deinem Buddy. <br/> Du kannst deine Buddy-ID auch weitergeben und findest sie oben auf dieser Seite.  <br/>Wenn du eine Buddy-ID angibst sieht dein Buddy in seinem Profil, deinen Namen und E-Mailadresse.'
     participant_wish_data:
-      header: Die folgenden Personen haben deine Buddy-ID angegeben und
-      header_ul: wünschen sich dich als Unit Leader
-      header_yp: wünschen sich dich als Buddy
+      header_wish_ul: Du wünscht dir als Unit Leader
+      header_wish_yp_buddy: Du wünscht dir als Buddy
+      header_wish_ul_buddy: Du wünscht dir als Buddy im UL-Team
+      header_wished_yp_buddy: Wünschen sich dich als Buddy
+      header_wished_ul_buddy: Wünschen sich dich als Buddy im UL-Team
+      header_wished_ul: Wünschen sich dich als Unit Leader
     buttons:
       copy_data: aus Teilnehmer*in Daten übernehmen
       print_preview: Vorschau drucken
