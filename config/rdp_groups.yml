@@ -1218,7 +1218,7 @@ development:
         Dortmund-Lütgendortmund:
         Dortmund-Mitte, St. Franziskus:
         Dortmund-Obereving, St. Marien:
-        Dortmund-Soelde, St. Marien:
+        Dortmund-Sölde, St. Marien:
         Dortmund-Wambel, St. Meinolfus:
       Bezirk Herne-Castrop Rauxel:
         Castrop-Rauxel, St. Lambertus:
@@ -2275,6 +2275,7 @@ development:
         St. Jakobus:
         Stamm Eisvogel:
         Stamm Gebirgsfalken:
+        Stamm Lausa:
         Stamm Morgenstern:
         Stamm Räuberhauptmann Karasek:
         Stamm Steinadler:
@@ -3659,7 +3660,7 @@ production:
         Dortmund-Mitte, St. Franziskus:
         Dortmund-Obereving, St. Marien:
         Dortmund-Scharnhorst, St. Franziskus:
-        Dortmund-Soelde, St. Marien:
+        Dortmund-Sölde, St. Marien:
         Dortmund-Wambel, St. Meinolfus:
         Herne, Amelungen:
         Herne-Eickel, Franziskus:
@@ -4702,6 +4703,7 @@ production:
         St. Jakobus:
         Stamm Eisvogel:
         Stamm Gebirgsfalken:
+        Stamm Lausa:
         Stamm Morgenstern:
         Stamm Räuberhauptmann Karasek:
         Stamm Steinadler:
