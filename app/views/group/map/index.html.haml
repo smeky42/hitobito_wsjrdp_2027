@@ -25,48 +25,60 @@
   .col-12
     %h2
       =t('groups.map.filters.title')
-    %h3
-      =t('groups.map.filters.roles.title')
-    %div
-      .form-check.form-check-inline
-        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Youth Participant", id: "roleYP", checked: true}
-        %label.form-check-label{for: "roleYP"}
-          =t('groups.map.filters.roles.yp')
-      .form-check.form-check-inline
-        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Unit Leader", id: "roleUL", checked: true}
-        %label.form-check-label{for: "roleUL"}
-          =t('groups.map.filters.roles.ul')
-      .form-check.form-check-inline
-        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "IST", id: "roleIST", checked: true}
-        %label.form-check-label{for: "roleIST"}
-          =t('groups.map.filters.roles.ist')
-      .form-check.form-check-inline
-        %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "CMT", id: "roleCMT", checked: true}
-        %label.form-check-label{for: "roleCMT"}
-          =t('groups.map.filters.roles.cmt')
-    %h3.mt-3
-      =t('groups.map.filters.regions.title')
-    %div
-      - @associations_and_regions.each do |association, regions|
-        %h6 #{association}
-        %div
-          - regions.each do |region|
-            .form-check.form-check-inline
-              %input.form-check-input.region-filter-checkbox{type: "checkbox", value: "#{association}_#{region}", id: "#{association.parameterize}_#{region.parameterize}", checked: true}
-              %label.form-check-label{for: "#{association.parameterize}_#{region.parameterize}"}= region
 
-    %h3.mt-3
-      =t('groups.map.filters.unit-codes.title')
-    %div
-      - @unit_codes.each do |unit_code|
+    .card.my-2.p-2
+      %h3
+        %input.form-check-input{type: "checkbox", id: "allRoles", checked: true}
+        %label.form-check-label{for: "allRoles"}
+          =t('groups.map.filters.roles.title')
+      %div.ml-3
         .form-check.form-check-inline
-          %input.form-check-input.unit-code-filter-checkbox{type: "checkbox", value: unit_code, id: unit_code, checked: true}
-          %label.form-check-label{for: unit_code}
-            %div.color-box{ :style => "background-color: #{unit_code};" }
-            = unit_code
-      %input.form-check-input.unit-code-filter-checkbox{type: "checkbox", value: "null", id: "unit_code_null", checked: true}
-      %label.form-check-label{for: "unit_code_null"}
-        =t('groups.map.filters.unit-codes.none')
+          %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Youth Participant", id: "roleYP", checked: true}
+          %label.form-check-label{for: "roleYP"}
+            =t('groups.map.filters.roles.yp')
+        .form-check.form-check-inline
+          %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "Unit Leader", id: "roleUL", checked: true}
+          %label.form-check-label{for: "roleUL"}
+            =t('groups.map.filters.roles.ul')
+        .form-check.form-check-inline
+          %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "IST", id: "roleIST", checked: true}
+          %label.form-check-label{for: "roleIST"}
+            =t('groups.map.filters.roles.ist')
+        .form-check.form-check-inline
+          %input.form-check-input.role-filter-checkbox{type: "checkbox", value: "CMT", id: "roleCMT", checked: true}
+          %label.form-check-label{for: "roleCMT"}
+            =t('groups.map.filters.roles.cmt')
+    .card.my-2.p-2
+      %h3
+        %input.form-check-input{type: "checkbox", id: "allRegions", checked: true}
+        %label.form-check-label{for: "allRegions"}
+          =t('groups.map.filters.regions.title')
+      %div.ml-3
+        - @associations_and_regions.each do |association, regions|
+          %h6.mt-2
+            %input.form-check-input.association-filter-checkbox{type: "checkbox", id: association.parameterize, checked: true}
+            %label.form-check-label{for: association}
+              = association
+          %div.ml-3
+            - regions.each do |region|
+              .form-check.form-check-inline
+                %input.form-check-input.region-filter-checkbox{type: "checkbox", value: "#{association}_#{region}", id: "#{association.parameterize}_#{region.parameterize}", checked: true, class: "#{association.parameterize}-filter-checkbox"}
+                %label.form-check-label{for: "#{association.parameterize}_#{region.parameterize}"}= region
+    .card.my-2.p-2
+      %h3
+        %input.form-check-input{type: "checkbox", id: "allUnitCodes", checked: true}
+        %label.form-check-label{for: "allUnitCodes"}
+          =t('groups.map.filters.unit-codes.title')
+      %div.ml-3
+        - @unit_codes.each do |unit_code|
+          .form-check.form-check-inline
+            %input.form-check-input.unit-code-filter-checkbox{type: "checkbox", value: unit_code, id: unit_code, checked: true}
+            %label.form-check-label{for: unit_code}
+              %div.color-box{ :style => "background-color: #{unit_code};" }
+              = unit_code
+        %input.form-check-input.unit-code-filter-checkbox{type: "checkbox", value: "null", id: "unit_code_null", checked: true}
+        %label.form-check-label{for: "unit_code_null"}
+          =t('groups.map.filters.unit-codes.none')
 
 = yield
 
@@ -164,6 +176,31 @@
       $('.role-filter-checkbox').on('change', updateMapMarkers);
       $('.region-filter-checkbox').on('change', updateMapMarkers);
       $('.unit-code-filter-checkbox').on('change', updateMapMarkers);
+
+      $('#allRoles').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        $('.role-filter-checkbox').prop('checked', isChecked);
+        updateMapMarkers();
+      });
+      
+      $('#allRegions').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        $('.region-filter-checkbox').prop('checked', isChecked);
+        updateMapMarkers();
+      });
+
+      $('#allUnitCodes').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        $('.unit-code-filter-checkbox').prop('checked', isChecked);
+        updateMapMarkers();
+      });
+
+      $('.association-filter-checkbox').on('change', function() {
+        var association = $(this).attr('id');
+        var isChecked = $(this).is(':checked');
+        $(`.${association}-filter-checkbox`).prop('checked', isChecked);
+        updateMapMarkers();
+      });
 
       updateMapMarkers();
     }
