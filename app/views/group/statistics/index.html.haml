@@ -53,6 +53,12 @@
   .row.mb-4
     .col-12
       %p
+        %strong Anmeldung von TN abgeschlossen - (nach Datum Upload vollständig):
+      #chart-completion-date.chart-container.loading
+
+  .row.mb-4
+    .col-12
+      %p
         %strong Bestätigt durch CMT:
       #chart-registration-verified.chart-container.loading
 
@@ -69,6 +75,7 @@
         renderLineChart("chart-registration-date", data.people_by_registration_date, {library: {title: "Registrierung über Zeit"}});
         renderColumnChart("chart-role", data.people_by_role, {library: {title: "Personen nach Rolle"}});
         renderColumnChart("chart-registration-completed", data.registration_completed_people_by_role, {library: {title: "Registrierung abgeschlossen"}});
+        renderLineChart("chart-completion-date", data.people_by_completion_date, {library: {title: "Dokumenten-Upload über Zeit"}});
         renderColumnChart("chart-registration-verified", data.registration_verified_people_by_role, {library: {title: "Bestätigte Anmeldungen"}});
       })
       .catch(error => {
