@@ -51,7 +51,9 @@ de:
     attributes:
       person:
         nickname: Spitzname / Fahrtenname
-        buddy_id: Buddy ID
+        buddy_id: Buddy-ID
+        unit_code_display: Unit code
+        unit_code: Unit code
         buddy_id_ul: Unit Leader Buddy ID
         buddy_id_yp: Youth Participant Buddy ID
         genders:

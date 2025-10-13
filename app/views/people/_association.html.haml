@@ -8,4 +8,7 @@
 = render_attrs(entry, :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group, :rdp_association_number)
 
 - entry.buddy_id = "#{entry.buddy_id}-#{entry.id}"
-= render_attrs(entry, :buddy_id)
+- if can?(:log, entry)
+  = render_attrs(entry, :buddy_id, :unit_code_display)
+- else
+  = render_attrs(entry, :buddy_id)
