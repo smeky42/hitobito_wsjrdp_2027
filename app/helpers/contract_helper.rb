@@ -106,6 +106,23 @@ module ContractHelper
       Person.where(id: id, buddy_id: spice).to_a
     end
 
+    def full_rdp_association_group(person)
+      [
+        person.rdp_association,
+        person.rdp_association_region,
+        person.rdp_association_sub_region,
+        person.rdp_association_group
+      ].map { |s| s.presence || "Nicht gesetzt" }.join(" - ")
+    end
+
+    def valid_unit_code?(unit_code)
+      if unit_code.blank?
+        false
+      else
+        !!(/^#[0-9A-Fa-f]{3,6}$/ =~ unit_code)
+      end
+    end
+
     def early_payer?(person)
       if person.payment_role.nil?
         person.payment_role = build_payment_role(person)

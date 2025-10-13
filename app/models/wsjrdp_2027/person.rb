@@ -39,6 +39,15 @@ module Wsjrdp2027::Person
 
       before_save :geocode_full_address, if: :address_changed?
 
+      def unit_code_display
+        if valid_unit_code?(unit_code)
+          color_marker = "<span style=\"display: inline-block; width: 12px; background-color: #{unit_code};'\">&nbsp;</span>".html_safe
+          color_marker + " " + unit_code
+        else
+          unit_code
+        end
+      end
+
       private
 
       def validate_iban_format
