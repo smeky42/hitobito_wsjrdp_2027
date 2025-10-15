@@ -11,39 +11,44 @@ module Wsjrdp2027::StatisticsController
     include ContractHelper
 
     def index
-      @group = Group.find(params[:group_id])
+      @count = Rails.cache.fetch("statistics/group#{@group.id}/counts", expires_in: 1.hour) do
+        groups = @group.self_and_descendants
+        people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct.includes(roles: [:group])
+        people = people_relation.to_a
+        decorated = people.map { |p| PersonDecorator.new(p) }
 
-      groups = @group.self_and_descendants
-      people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct.includes(:roles => [:group])
-
-      @total_count = people_relation.count
-      people = people_relation.to_a
-      decorated = people.map { |p| PersonDecorator.new(p) }
-
-      @ist_count = decorated.count { |d| ist?(d) }
-      @yp_count = decorated.count { |d| yp?(d) }
-      @ul_count = decorated.count { |d| ul?(d) }
-      @cmt_count = decorated.count { |d| cmt?(d) }
+        {
+          total: people_relation.count,
+          ist: decorated.count { |d| ist?(d) },
+          yp: decorated.count { |d| yp?(d) },
+          ul: decorated.count { |d| ul?(d) },
+          cmt: decorated.count { |d| cmt?(d) }
+        }
+      end
     end
 
     def statistics_data
-      groups = @group.self_and_descendants
-      people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct.includes(:roles => [:group])
-      people = people_relation.to_a
+      stats = Rails.cache.fetch("statistics/group#{@group.id}/data", expires_in: 1.hour) do
+        groups = @group.self_and_descendants
+        people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct.includes(roles: [:group])
+        people = people_relation.to_a
 
-      start_date = Date.parse("2025-05-01")
-      end_date = Time.zone.today
+        start_date = Date.parse("2025-05-01")
+        end_date = Time.zone.today
 
-      date_aggregations = get_people_by_date_aggregations(people, start_date, end_date)
+        date_aggregations = get_people_by_date_aggregations(people, start_date, end_date)
 
-      render json: {
-        people_by_registration_date: date_aggregations[:registration],
-        people_by_completion_date: date_aggregations[:completion],
-        people_by_status: get_people_by_status(people_relation),
-        people_by_role: get_people_by_role(people),
-        registration_completed_people_by_role: get_registration_completed_people_by_role(people),
-        registration_verified_people_by_role: get_registration_verified_people_by_role(people)
-      }
+        {
+          people_by_registration_date: date_aggregations[:registration],
+          people_by_completion_date: date_aggregations[:completion],
+          people_by_status: get_people_by_status(people_relation),
+          people_by_role: get_people_by_role(people),
+          registration_completed_people_by_role: get_registration_completed_people_by_role(people),
+          registration_verified_people_by_role: get_registration_verified_people_by_role(people)
+        }
+      end
+
+      render json: stats
     end
 
     private

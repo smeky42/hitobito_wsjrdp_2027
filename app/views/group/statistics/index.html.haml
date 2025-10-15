@@ -10,23 +10,23 @@
     .col-md-2.col-6.mb-3
       .stat-card.card-total.loading
         %div.label Gesamt
-        %div.value= @total_count
+        %div.value= @count[:total]
     .col-md-2.col-6.mb-3
       .stat-card.loading
         %div.label YP
-        %div.value= @yp_count
+        %div.value= @count[:yp]
     .col-md-2.col-6.mb-3
       .stat-card.loading
         %div.label UL
-        %div.value= @ul_count
+        %div.value= @count[:ul]
     .col-md-2.col-6.mb-3
       .stat-card.loading
         %div.label IST
-        %div.value= @ist_count
+        %div.value= @count[:ist]
     .col-md-2.col-6.mb-3
       .stat-card.loading
         %div.label CMT
-        %div.value= @cmt_count
+        %div.value= @count[:cmt]
 
   .row.mb-4
     .col-12
