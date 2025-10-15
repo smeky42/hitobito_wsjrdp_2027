@@ -159,6 +159,7 @@ de:
       print: Dokumente drucken
       medical: "Medizinische Angaben"
       status: Check Status
+      unit: Unit
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
       rdp_association: Verband & Buddy-ID

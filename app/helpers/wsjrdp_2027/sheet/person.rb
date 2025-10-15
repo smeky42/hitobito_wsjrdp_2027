@@ -16,6 +16,7 @@ module Wsjrdp2027::Sheet::Person
     "people.tabs.history",
     "people.tabs.log",
     "people.tabs.status",
+    "people.tabs.unit",
     "people.tabs.security_tools",
     "people.tabs.colleagues",
     "activerecord.models.assignment.other"
@@ -42,6 +43,12 @@ module Wsjrdp2027::Sheet::Person
     tab "people.tabs.status",
       :status_group_person_path,
       alt: [:status_edit_group_person_path],
+      if: (lambda do |view, _group, person|
+        view.can?(:log, person)
+      end)
+
+    tab "people.tabs.unit",
+      :unit_group_person_path,
       if: (lambda do |view, _group, person|
         view.can?(:log, person)
       end)
