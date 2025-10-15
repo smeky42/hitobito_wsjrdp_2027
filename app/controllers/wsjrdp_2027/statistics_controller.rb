@@ -14,7 +14,7 @@ module Wsjrdp2027::StatisticsController
       @group = Group.find(params[:group_id])
 
       groups = @group.self_and_descendants
-      people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct
+      people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct.includes(:roles => [:group])
 
       @total_count = people_relation.count
       people = people_relation.to_a
@@ -28,7 +28,7 @@ module Wsjrdp2027::StatisticsController
 
     def statistics_data
       groups = @group.self_and_descendants
-      people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct
+      people_relation = ::Person.joins(:groups).where(groups: {id: groups.pluck(:id)}).distinct.includes(:roles => [:group])
       people = people_relation.to_a
 
       start_date = Date.parse("2025-05-01")
