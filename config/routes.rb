@@ -44,6 +44,8 @@ Rails.application.routes.draw do
           put "status" => "person/status#update"
           post "status/review_documents" => "person/status#review_documents"
           post "status/approve_documents" => "person/status#approve_documents"
+
+          get "unit" => "person/unit#show"
         end
       end
 
