@@ -20,7 +20,7 @@ Rails.application.routes.draw do
           get "print/submit" => "person/print#submit"
 
           get "accounting" => "person/accounting#index"
-          put "accounting" => "person/accounting#index"
+          post "accounting" => "person/accounting#create"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
@@ -45,6 +45,8 @@ Rails.application.routes.draw do
           post "status/review_documents" => "person/status#review_documents"
           post "status/approve_documents" => "person/status#approve_documents"
         end
+
+        resources :accounting_entries, shallow: true, only: [:show, :update]
       end
 
       get "map" => "group/map#index"

@@ -10,17 +10,42 @@
 #																			#
 # It's strongly recommended that you check this file into your version control system.									# It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_05_27_090212) do											     |	ActiveRecord::Schema[7.1].define(version: 2025_10_04_103100) do
+ActiveRecord::Schema[7.1].define(version: 2025_05_27_090212) do											     |	ActiveRecord::Schema[7.1].define(version: 2025_10_17_080808) do
   # These are extensions that must be enabled in order to support this database										  # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"																  enable_extension "plpgsql"
 
-																		     >	  create_table "accounting_entries", id: :integer, default: nil, force: :cascade do |t|
-																		     >	    t.integer "subject_id", null: false
+																		     >	  create_table "accounting_entries", force: :cascade do |t|
+																		     >	    t.integer "person_id", null: false
 																		     >	    t.integer "author_id", null: false
-																		     >	    t.integer "ammount", null: false
-																		     >	    t.text "comment"
+																		     >	    t.integer "amount_cents", null: false
+																		     >	    t.text "description"
 																		     >	    t.datetime "created_at", precision: nil
-																		     >	    t.index ["subject_id"], name: "index_accounting_on_subject_id"
+																		     >	    t.bigint "payment_initiation_id"
+																		     >	    t.bigint "direct_debit_payment_info_id"
+																		     >	    t.text "comment", default: ""
+																		     >	    t.string "amount_currency", default: "EUR"
+																		     >	    t.datetime "updated_at"
+																		     >	    t.date "value_date"
+																		     >	    t.string "end_to_end_identifier"
+																		     >	    t.bigint "reversed_by_id"
+																		     >	    t.bigint "reverses_id"
+																		     >	    t.string "new_sepa_status", default: "ok"
+																		     >	    t.string "mandate_id"
+																		     >	    t.date "mandate_date"
+																		     >	    t.string "sepa_debit_type"
+																		     >	    t.string "cdtr_name"
+																		     >	    t.string "cdtr_iban"
+																		     >	    t.string "cdtr_bic"
+																		     >	    t.string "cdtr_address"
+																		     >	    t.string "dbtr_name"
+																		     >	    t.string "dbtr_iban"
+																		     >	    t.string "dbtr_bic"
+																		     >	    t.string "dbtr_address"
+																		     >	    t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
+																		     >	    t.index ["payment_initiation_id"], name: "index_accounting_entries_on_payment_initiation_id"
+																		     >	    t.index ["person_id"], name: "index_accounting_on_subject_id"
+																		     >	    t.index ["reversed_by_id"], name: "index_accounting_entries_on_reversed_by_id"
+																		     >	    t.index ["reverses_id"], name: "index_accounting_entries_on_reverses_id"
 																		     >	  end
 																		     >
   create_table "action_text_rich_texts", force: :cascade do |t|												  create_table "action_text_rich_texts", force: :cascade do |t|
@@ -1299,6 +1324,41 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_27_090212) do											     |
     t.index ["mutation_id"], name: "index_versions_on_mutation_id"											    t.index ["mutation_id"], name: "index_versions_on_mutation_id"
   end																			  end
 
+																		     >	  create_table "wsjrdp_direct_debit_payment_infos", force: :cascade do |t|
+																		     >	    t.datetime "created_at", null: false
+																		     >	    t.datetime "updated_at"
+																		     >	    t.bigint "payment_initiation_id"
+																		     >	    t.string "payment_information_identification", null: false
+																		     >	    t.boolean "batch_booking", default: true
+																		     >	    t.integer "number_of_transactions", null: false
+																		     >	    t.bigint "control_sum", null: false
+																		     >	    t.string "payment_type_instrument", default: "CORE"
+																		     >	    t.string "sequence_type", default: "OOFF"
+																		     >	    t.date "requested_collection_date", null: false
+																		     >	    t.string "cdtr_name", null: false
+																		     >	    t.string "cdtr_iban", null: false
+																		     >	    t.string "cdtr_bic"
+																		     >	    t.string "creditor_id", null: false
+																		     >	    t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_c4d3672197"
+																		     >	  end
+																		     >
+																		     >	  create_table "wsjrdp_payment_initiations", force: :cascade do |t|
+																		     >	    t.datetime "created_at", null: false
+																		     >	    t.datetime "updated_at"
+																		     >	    t.string "sepa_schema", null: false
+																		     >	    t.string "message_identification", null: false
+																		     >	    t.integer "number_of_transactions", null: false
+																		     >	    t.bigint "control_sum", null: false
+																		     >	    t.string "initiating_party_name", null: false
+																		     >	    t.string "initiating_party_iban", null: false
+																		     >	    t.string "initiating_party_bic"
+																		     >	  end
+																		     >
+																		     >	  add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
+																		     >	  add_foreign_key "accounting_entries", "accounting_entries", column: "reverses_id"
+																		     >	  add_foreign_key "accounting_entries", "people"
+																		     >	  add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
+																		     >	  add_foreign_key "accounting_entries", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"								  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"								  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade												  add_foreign_key "calendar_tags", "tags", on_delete: :cascade
@@ -1309,4 +1369,5 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_27_090212) do											     |
   add_foreign_key "people", "self_registration_reasons"													  add_foreign_key "people", "self_registration_reasons"
   add_foreign_key "subscription_tags", "subscriptions"													  add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"														  add_foreign_key "subscription_tags", "tags"
+																		     >	  add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
 end																			end

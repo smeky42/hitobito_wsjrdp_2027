@@ -127,6 +127,19 @@ de:
         can_swim: Ich kann schwimmen
         diet: Essensgewohnheiten
 
+      accounting_entry:
+        amount_eur: Betrag in Euro
+        amount_eur_display: Betrag in Euro
+        comment: Kommentar
+        created_at: Erstellt
+        description: Beschreibung
+        end_to_end_identifier: Kundenreferenz
+        sepa_status: Finanzstatus
+        new_sepa_status: Neuer Finanzstatus
+        new_sepa_status_display: Neuer Finanzstatus
+        updated_at: Geändert
+        value_date: Valuta
+
     buttons:
       show_contract: Anmeldung einsehen
       show_sepa: SEPA-Mandat einsehen
