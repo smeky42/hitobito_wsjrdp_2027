@@ -46,6 +46,8 @@ Rails.application.routes.draw do
           post "status/approve_documents" => "person/status#approve_documents"
 
           get "unit" => "person/unit#show"
+          post "unit/fill_cluster_code" => "person/unit#fill_cluster_code"
+          post "unit/clear_cluster_code" => "person/unit#clear_cluster_code"
         end
       end
 
