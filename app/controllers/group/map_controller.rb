@@ -6,6 +6,8 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2027.
 
 class Group::MapController < ApplicationController
+  include ContractHelper
+
   before_action :authorize_action
   before_action :redirect_to_layer
   prepend_before_action :group
@@ -32,10 +34,11 @@ class Group::MapController < ApplicationController
       .where.not(longitude: nil, latitude: nil)
       .distinct
       .select(
-        :first_name, :last_name, :longitude, :latitude, :unit_code,
+        :first_name, :last_name, :longitude, :latitude,
         :id, :primary_group_id, :rdp_association, :rdp_association_region,
         :rdp_association_sub_region, :rdp_association_group, :payment_role,
-        "#{role_sql} AS role"
+        "#{role_sql} AS role",
+        "COALESCE(unit_code, cluster_code) AS unit_code"
       )
 
     association_combinations = @people.reorder(nil)
@@ -48,11 +51,11 @@ class Group::MapController < ApplicationController
     @associations_and_regions = association_combinations.group_by(&:first)
       .transform_values { |v| v.map(&:last) }
 
-    @unit_codes = @people.reorder(nil)
-      .distinct
-      .pluck(:unit_code)
-      .compact
-      .sort
+    @people.each do |p|
+      p.unit_code = normalized_unit_code(p.unit_code)
+    end
+
+    @unit_codes = Set.new(@people.to_a.map { |p| p.unit_code }.select { |uc| uc }).to_a.sort
   end
 
   private

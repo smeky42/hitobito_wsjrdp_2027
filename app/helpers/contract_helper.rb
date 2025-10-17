@@ -100,6 +100,25 @@ module ContractHelper
       person.payment_role.ends_with?("Ist::Member")
     end
 
+    # rubocop:disable Metrics/MethodLength
+    def short_wsj_role(person)
+      if person.payment_role.nil?
+        person.payment_role = build_payment_role(person)
+      end
+      if person.payment_role.ends_with?("Unit::Member")
+        "YP"
+      elsif person.payment_role.ends_with?("Unit::Leader")
+        "UL"
+      elsif person.payment_role.ends_with?("Ist::Member")
+        "IST"
+      elsif person.payment_role.ends_with?("Root::Member")
+        "CMT"
+      else
+        "???"
+      end
+    end
+    # rubocop:enable Metrics/MethodLength
+
     def select_person_for_buddy_id(buddy_id)
       return [] if buddy_id.blank?
       spice, _, id = buddy_id.rpartition("-")
@@ -119,7 +138,31 @@ module ContractHelper
       if unit_code.blank?
         false
       else
-        !!(/^#[0-9A-Fa-f]{3,6}$/ =~ unit_code)
+        !!(/^#?[0-9A-Fa-f]{6}$/ =~ unit_code)
+      end
+    end
+
+    def normalized_unit_code_or_nil(unit_code)
+      if unit_code.nil? || unit_code.blank?
+        nil
+      elsif !!(/^#[0-9A-Fa-f]{6}$/ =~ unit_code)
+        unit_code.upcase
+      elsif !!(/^[0-9A-Fa-f]{6}$/ =~ unit_code)
+        "#" + unit_code.upcase
+      end
+    end
+
+    def normalized_unit_code(unit_code)
+      normalized_unit_code_or_nil(unit_code) || unit_code
+    end
+
+    def make_unit_code_display(unit_code)
+      norm_unit_code = normalized_unit_code_or_nil(unit_code)
+      if norm_unit_code
+        color_marker = "<span style=\"display: inline-block; width: 12px; background-color: #{norm_unit_code};'\">&nbsp;</span>".html_safe
+        color_marker + " " + norm_unit_code
+      else
+        unit_code
       end
     end
 
