@@ -1,6 +1,6 @@
 # frozen_text_literal: true
 
-class AddPeopleAttrsMap < ActiveRecord::Migration[4.2]
+class AddPeopleAttrsMap < ActiveRecord::Migration[7.1]
   def change
     add_column :people, :longitude, :string
     add_column :people, :latitude, :string
