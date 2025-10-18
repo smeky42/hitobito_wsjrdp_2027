@@ -35,7 +35,7 @@
                   = short_wsj_role(p)
               %td
                 %strong
-                  = link_to(p.short_full_name_with_nickname, "#{group_person_path(p.primary_group_id, p)}/unit")
+                  = link_to(p.short_full_name_with_nickname, "#{group_person_path(p.default_group_id, p)}/unit")
               %td= p.unit_code_display
               %td= p.cluster_code_display
               %td= p.status

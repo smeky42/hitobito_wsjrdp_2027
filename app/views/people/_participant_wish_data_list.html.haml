@@ -6,7 +6,7 @@
       %div(style="width:100%; border-radius: 10px; background-color: #F8F9FA; padding: 2px 8px; margin: 4px auto;")
         %small
           %strong
-            = link_to_if(can?(:show, p_wish), "#{p_wish.first_name} #{p_wish.last_name}", group_person_path(p_wish.primary_group_id, p_wish.id))
+            = link_to_if(can?(:show, p_wish), "#{p_wish.first_name} #{p_wish.last_name}", group_person_path(p_wish.default_group_id, p_wish.id))
           %span="(#{mail_to(p_wish.email)})"
           %br
           - if can?(:show, p_wish) and valid_unit_code?(p_wish.unit_code)
