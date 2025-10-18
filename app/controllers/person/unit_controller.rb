@@ -125,6 +125,7 @@ UNION
 SELECT FALSE AS "in_cluster", p.* FROM people p
 WHERE
       CONCAT(p.rdp_association, '<>', p.rdp_association_region, '<>', p.rdp_association_sub_region, '<>', p.rdp_association_group) IN (SELECT DISTINCT rdp_assoc FROM buddy_cluster)
+  AND rdp_association_group IS NOT NULL
   AND p.id NOT IN (SELECT DISTINCT "id" FROM buddy_cluster)
   AND p.status NOT IN ('deregistration_noted', 'deregistered')
 ORDER BY first_name, last_name
