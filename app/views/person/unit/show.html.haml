@@ -46,7 +46,7 @@
   %dl.container.dl-horizontal
     %div.labeled-grid
       %dt.muted Buddy-ID
-      %dd= @person.buddy_id + "-" + @person.id.to_s
+      %dd= "#{@person.buddy_id}-#{@person.id}"
     %div.labeled-grid
       %dt.muted Unit-code
       - if @person.unit_code_display
