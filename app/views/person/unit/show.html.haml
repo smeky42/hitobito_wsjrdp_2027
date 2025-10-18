@@ -1,72 +1,66 @@
-%h2= t("people.tabs.unit")
+:css
+  .thead-like {
+    background-color: var(--bs-body-bg) !important;
+    --bs-table-accent-bg: transparent !important;
+  }
 
 = standard_form(@person, { url: unit_group_person_path, method: :get }) do |f|
   = f.error_messages
 
 
-- if @people_in_cluster.total_count > 1
-  %div
-    %strong
-      = @people_in_cluster.total_count
-    Personen (UL + YP) in Buddy-ID Cluster von
-    %strong
-      = @person.to_s
 
-  -#= table(@people_in_cluster, data: { checkable: true }, class: "table table-striped table-hover") do |t|
-  = table(@people_in_cluster, class: "table table-striped table-hover") do |t|
-    -# - t.col(check_box_tag(:all, 0, false, { data: :multiselect })) do |i|
-    -#   - check_box_tag('ids[]', i.id, false, data: { multiselect: true })
-    - t.col("Rolle") do |p|
-      %span.muted
-        = short_wsj_role(p)
-    -# - t.col('') do |p|
-    -#   .profil= image_tag(upload_url(p, :picture, variant: :thumb, default: :profil), size: '32x32')
-    - t.col("Person") do |p|
-      %strong
-        -# Any person listed can be shown
-        = link_to(p.to_s(:list), group_person_path(p.primary_group_id, p))
-    - t.col("G") do |p|
-      = p.gender
-    - t.col("Unit-code") do |p|
-      = p.unit_code_display
-    - t.col("Cluster-code") do |p|
-      = p.cluster_code_display
-    - t.col("Status") do |p|
-      = p.status
-      -#= Settings.status[p.status]
-    - t.col("Verband") do |p|
-      = p.rdp_association
-    - t.col("Land") do |p|
-      = p.rdp_association_region
-    - t.col("Bezirk") do |p|
-      = p.rdp_association_sub_region
-    - t.col("Stamm") do |p|
-      = p.rdp_association_group
-    - t.col("Eigene Buddy-ID") do |p|
-      = "#{p.buddy_id}-#{p.id}"
-    - t.col("UL Buddy-ID") do |p|
-      = p.buddy_id_ul
-    - t.col("YP Buddy-ID") do |p|
-      = p.buddy_id_yp
+- if @people_in_cluster.size > 1
+  %div(style="padding-left: 20px;")
+    - gender_list = ["w", "m", "d"]
+    - status_list = ["registered", "printed", "upload", "in_review", "reviewed", "confirmed"]
+    %table.table.table-hover
+      %thead
+        %tr
+          %th Rolle
+          %th.right ∑
+          - gender_list.each do |g|
+            %th.right= t("activerecord.attributes.person.genders.#{g}")
+          - status_list.each do |s|
+            %th.right= Settings.status[s]
+      %tbody
+        - [[:UL, @ul_in_cluster], [:YP, @yp_in_cluster], ["Alle (UL und YP)", @people_in_cluster]].each do |role_and_people|
+          - role, people_in_role = role_and_people
+          %tr
+            %td= role
+            %td.right(width="9%")= people_in_role.size
+            - gender_list.each do |gender|
+              %td.right(width="9%")= people_in_role.count { |p| p.gender == gender }
+            - status_list.each do |status|
+              %td.right(width="9%")= people_in_role.count { |p| p.status == status }
 
-  %h3 Cluster-code
-  - if @common_ul_unit_code
-    %p
-      Gemeinsamer Unit-code alles ULs in diesem Cluster:
-      = make_unit_code_display(@common_ul_unit_code)
-      %span
-      = action_button("Für alle Personen Cluster-code auf #{@common_ul_unit_code} setzen",
-          "#{unit_group_person_path}/fill_cluster_code",
-          :copy, remote: false, method: :post)
-      = action_button("Für alle Personen Cluster-code löschen",
-          "#{unit_group_person_path}/clear_cluster_code",
-          :trash, remote: false, method: :post)
-  - else
-    %p
-      Hinweis: Es gibt keinen gemeinsamen Unit-code der ULs in diesem Cluster
+  = render 'list', title_people_list: [[nil, @people_in_cluster, render('cluster_actions')],
+      ["ULs und YPs nicht im Buddy-ID Cluster, aber aus Stämmen im Cluster", @ulyp_not_in_cluster],
+      ["CMTs aus Stämmen im Cluster", @cmt_not_in_cluster],
+      ["ISTs aus Stämmen im Cluster", @ist_not_in_cluster] ]
 
 - else
-  %div
+  %p
     %strong
       = @person.to_s
     ist nicht Teil eines Buddy-ID Clusters
+  %dl.container.dl-horizontal
+    %div.labeled-grid
+      %dt.muted Buddy-ID
+      %dd= @person.buddy_id + "-" + @person.id.to_s
+    %div.labeled-grid
+      %dt.muted Unit-code
+      - if @person.unit_code_display
+        %dd= @person.unit_code_display
+      - else
+        %dd.muted Nicht gesetzt
+    %div.labeled-grid
+      %dt.muted Cluster-code
+      - if @person.cluster_code_display
+        %dd= @person.cluster_code_display
+      - else
+        %dd.muted Nicht gesetzt
+
+  -# title_people_list = [["ULs und YPs aus dem gleichen Stamm", @ulyp_not_in_cluster], ["CMTs aus dem gleichen Stamm", @cmt_not_in_cluster], ["ISTs aus dem gleichen Stamm", @ist_not_in_cluster] ]
+  = render 'list', title_people_list: [["ULs und YPs aus dem gleichen Stamm", @ulyp_not_in_cluster],
+       ["CMTs aus dem gleichen Stamm", @cmt_not_in_cluster],
+       ["ISTs aus dem gleichen Stamm", @ist_not_in_cluster] ]

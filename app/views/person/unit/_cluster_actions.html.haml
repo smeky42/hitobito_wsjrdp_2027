@@ -1,0 +1,15 @@
+%div(style="padding-left: 2rem;")
+  - if @common_ul_unit_code
+    %p
+      %i.fas.fa-circle-info
+      Gemeinsamer Unit-code der ULs im Buddy-ID Cluster:
+      = make_unit_code_display(@common_ul_unit_code)
+    = action_button("Cluster-code auf #{@common_ul_unit_code} setzen (für ULs/YPs im Cluster)",
+          "#{unit_group_person_path}/fill_cluster_code",
+          :tag, remote: false, method: :post)
+    = action_button("Cluster-code löschen (für ULs/YPs im Cluster)",
+          "#{unit_group_person_path}/clear_cluster_code",
+          :trash, remote: false, method: :post)
+  - else
+    %p
+      Hinweis: Es gibt keinen gemeinsamen Unit-code der ULs im Buddy-ID Cluster

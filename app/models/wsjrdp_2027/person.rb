@@ -47,6 +47,28 @@ module Wsjrdp2027::Person
         make_unit_code_display(cluster_code)
       end
 
+      def short_full_name
+        first_names = first_name ? first_name.split : []
+        name_parts = if !nickname.blank? && Set.new(first_names).include?(nickname)
+          [nickname, last_name]
+        else
+          [first_names[0], last_name]
+        end
+        name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      def short_full_name_with_nickname
+        first_names = first_name ? first_name.split : []
+        name_parts = if !nickname.blank? && Set.new(first_names).include?(nickname)
+          [nickname, last_name]
+        elsif nickname.blank?
+          [first_names[0], last_name]
+        else
+          [first_names[0], last_name, "/", nickname]
+        end
+        name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
       private
 
       def validate_iban_format

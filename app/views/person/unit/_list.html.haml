@@ -1,0 +1,54 @@
+- p_all_size = 0
+- title_people_list.select! { |title_and_people| title_and_people[1].size > 0 }
+- title_people_list.each do |title_and_people|
+  - people_list = title_and_people[title_and_people.size > 1 ? 1 : 0]
+  - p_all_size += people_list.size
+
+- if p_all_size > 0
+  %table.table.table-striped.table-hover
+    - title_people_list.each_with_index do |title_and_people, idx|
+      - local_title = title_and_people.size > 1 ? title_and_people[0] : nil
+      - people_list = title_and_people[title_and_people.size > 1 ? 1 : 0]
+      - local_footer = title_and_people.size > 2 ? title_and_people[2] : nil
+      - if people_list.size > 0
+        - if local_title
+          %tbody
+            %tr
+              %th.thead-like(colspan="50" style="font-weight: var(--bs-body-font-weight); border-bottom: 0; padding: 0;")
+                %h3(style="margin-top: 1.6em; margin-bottom: 0.4rem;")= local_title
+        %tbody
+          %tr
+            %th.thead-like
+            %th.thead-like Person
+            %th.thead-like Unit-code
+            %th.thead-like Cluster-code
+            %th.thead-like Status
+            %th.thead-like Verband
+            %th.thead-like Land
+            %th.thead-like Bezirk
+            %th.thead-like Stamm
+        %tbody
+          - people_list.each do |p|
+            %tr
+              %td
+                %span.muted
+                  = short_wsj_role(p)
+              %td
+                %strong
+                  = link_to(p.short_full_name_with_nickname, "#{group_person_path(p.primary_group_id, p)}/unit")
+              %td= p.unit_code_display
+              %td= p.cluster_code_display
+              %td= p.status
+              %td= p.rdp_association
+              %td= p.rdp_association_region
+              %td= p.rdp_association_sub_region
+              %td= p.rdp_association_group
+              -# %td.small= "#{p.buddy_id}-#{p.id}"
+              -# %td.small= p.buddy_id_ul
+              -# %td.small= p.buddy_id_yp
+        - if local_footer
+          %tbody
+            %tr
+              %th.thead-like(colspan="50" style="font-weight: var(--bs-body-font-weight); border-bottom: 0")
+                %div(style="margin-bottom: 1rem;")
+                  = local_footer

@@ -44,9 +44,11 @@ class Person::UnitController < ApplicationController
 
     @people_in_cluster ||= people_in_cluster
 
-    @people_in_cluster.each do |p|
-      p.cluster_code = nil
-      p.save
+    Person.transaction do
+      @people_in_cluster.each do |p|
+        p.cluster_code = nil
+        p.save
+      end
     end
     redirect_back_or_to(unit_group_person_path)
   end
@@ -88,15 +90,16 @@ class Person::UnitController < ApplicationController
   end
 
   def fetch_people_in_cluster
-    p_list = Person.find_by_sql(
+    all_p = Person.find_by_sql(
       [
         %q(
-WITH RECURSIVE buddy_cluster ("id", "buddy_id", "buddy_id_ul", "buddy_id_yp", "ids") AS (
+WITH RECURSIVE buddy_cluster ("id", "buddy_id", "buddy_id_ul", "buddy_id_yp", "rdp_assoc", "ids") AS (
   SELECT
     p."id",
     CONCAT(p.buddy_id, '-', p."id"::CHARACTER VARYING),
     p.buddy_id_ul,
     p.buddy_id_yp,
+    CONCAT(p.rdp_association, '<>', p.rdp_association_region, '<>', p.rdp_association_sub_region, '<>', p.rdp_association_group),
     ARRAY[p."id"]
   FROM "people" p WHERE p."id" = ?
   UNION
@@ -105,6 +108,7 @@ WITH RECURSIVE buddy_cluster ("id", "buddy_id", "buddy_id_ul", "buddy_id_yp", "i
     CONCAT(p.buddy_id, '-', p."id"::CHARACTER VARYING),
     p.buddy_id_ul,
     p.buddy_id_yp,
+    CONCAT(p.rdp_association, '<>', p.rdp_association_region, '<>', p.rdp_association_sub_region, '<>', p.rdp_association_group),
     ids || p."id"
   FROM "people" p
   INNER JOIN buddy_cluster c ON
@@ -113,18 +117,31 @@ WITH RECURSIVE buddy_cluster ("id", "buddy_id", "buddy_id_ul", "buddy_id_yp", "i
     OR CONCAT(COALESCE(p.buddy_id, 'none'), '-', p."id"::CHARACTER VARYING) in (c.buddy_id_ul, c.buddy_id_yp)
   WHERE NOT (p."id" = ANY(c.ids))
 )
-SELECT * FROM people
+SELECT TRUE AS "in_cluster", p.* FROM people p
 WHERE
-  id IN (SELECT DISTINCT "id" FROM buddy_cluster)
-  AND status NOT IN ('deregistration_noted', 'deregistered')
+      p.id IN (SELECT DISTINCT "id" FROM buddy_cluster)
+  AND p.status NOT IN ('deregistration_noted', 'deregistered')
+UNION
+SELECT FALSE AS "in_cluster", p.* FROM people p
+WHERE
+      CONCAT(p.rdp_association, '<>', p.rdp_association_region, '<>', p.rdp_association_sub_region, '<>', p.rdp_association_group) IN (SELECT DISTINCT rdp_assoc FROM buddy_cluster)
+  AND p.id NOT IN (SELECT DISTINCT "id" FROM buddy_cluster)
+  AND p.status NOT IN ('deregistration_noted', 'deregistered')
 ORDER BY first_name, last_name
         ),
         person.id
       ]
     )
-    @ul_in_cluster = p_list.select { |p| ul?(p) }
-    @yp_in_cluster = p_list.select { |p| yp?(p) }
-    @people_in_cluster = Kaminari.paginate_array(@ul_in_cluster + @yp_in_cluster).page(params[:page].to_i)
+    p_in_cluster = all_p.select { |p| p.in_cluster }
+    @ul_in_cluster = p_in_cluster.select { |p| ul?(p) }
+    @yp_in_cluster = p_in_cluster.select { |p| yp?(p) }
+    @people_in_cluster = @ul_in_cluster + @yp_in_cluster
+    p_not_in_cluster = all_p.select { |p| !p.in_cluster }
+    @ul_not_in_cluster = p_not_in_cluster.select { |p| ul?(p) }
+    @yp_not_in_cluster = p_not_in_cluster.select { |p| yp?(p) }
+    @ist_not_in_cluster = p_not_in_cluster.select { |p| ist?(p) }
+    @cmt_not_in_cluster = p_not_in_cluster.select { |p| cmt?(p) }
+    @ulyp_not_in_cluster = @ul_not_in_cluster + @yp_not_in_cluster
     nil
   end
 end
