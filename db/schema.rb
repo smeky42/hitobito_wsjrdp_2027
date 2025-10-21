@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_17_214000) do
+ActiveRecord::Schema[7.1].define(version: 2025_10_21_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1300,6 +1300,22 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_17_214000) do
     t.index ["mutation_id"], name: "index_versions_on_mutation_id"
   end
 
+  create_table "wsj27_rdp_fee_rules", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.datetime "deleted_at"
+    t.bigint "people_id"
+    t.bigint "prev_rule_id", comment: "Previous (now marked as deleted) rule if any, to be used if installment plans and/or total fee reductions are updated"
+    t.string "custom_installments_comment"
+    t.string "custom_installments_issue", comment: "Link to helpdesk issue agreeing the custom installments, used in custom contract"
+    t.integer "custom_installments_starting_year", comment: "starting year for entires in custom_installments_cents"
+    t.integer "custom_installments_cents", comment: "list of custom monthly installments starting in January of custom_installments_year", array: true
+    t.string "total_fee_reduction_comment", comment: "Comment explaining the total fee reduction"
+    t.integer "total_fee_reduction_cents", default: 0, comment: "Reduction of the total fee in cents"
+    t.index ["people_id"], name: "index_wsj27_rdp_fee_rules_on_people_id"
+    t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade
@@ -1310,4 +1326,5 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_17_214000) do
   add_foreign_key "people", "self_registration_reasons"
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
+  add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"
 end
