@@ -20,7 +20,7 @@ Rails.application.routes.draw do
           get "print/submit" => "person/print#submit"
 
           get "accounting" => "person/accounting#index"
-          put "accounting" => "person/accounting#index"
+          post "accounting" => "person/accounting#create"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
@@ -49,6 +49,8 @@ Rails.application.routes.draw do
           post "unit/fill_cluster_code" => "person/unit#fill_cluster_code"
           post "unit/clear_cluster_code" => "person/unit#clear_cluster_code"
         end
+
+        resources :accounting_entries, shallow: true, only: [:show, :update]
       end
 
       get "map" => "group/map#index"

@@ -1,65 +1,33 @@
-.container
-  = standard_form(@person, { url: accounting_group_person_path, method: :get }) do |f|
+#main.row
+  = standard_form(@new_accounting_entry, {as: :accounting_entry, url: accounting_group_person_path, method: :post }) do |f|
     = f.error_messages
-  .col-md-6
-    %h3.mb-3 Buchungen
-    - if @accounting_entries.blank?
-      %p.text-muted Keine Buchungen
-    - else
-      %table.table.table-striped.table-bordered.table-sm.table-custom
-        %thead
-          %tr
-            %th Zeitstempel
-            %th Autor
-            %th Kommentar
-            %th.text-end Betrag
-        %tbody
-          %tr
-            %td
-            %td System
-            %td Teilnehmendenbetrag Gesamt
-            %td.text-end= @accounting_payment_value
-          - @accounting_entries.each do |entry|
-            %tr
-              %td= entry.created_at.strftime("%d.%m.%Y %H:%M:%S")
-              %td= Person.find(entry.author_id).full_name
-              %td= entry.comment
-              %td.text-end= accounting_value(entry.ammount)
-        %tfoot
-          %tr
-            %td
-            %td
-            %td.fw-bold.text-center Kontostand
-            %td.fw-bold.text-end.border-bottom.border-2= @accounting_balance
+
+    = render 'accounting_entries'
+
+    - if can_accounting?
+      = field_set_tag do
+        = f.labeled_input_field :amount_eur, {placeholder: "10000,00", step: 0.01, value: @new_accounting_entry.amount_eur_display, type: "number", lang: "de-DE", autocomplete: "off"}
+        = f.labeled_input_field :description, required: true
+        = f.labeled_input_field :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten'
+        = f.labeled_input_field :value_date, help_inline: 'Nur falls abweichend vom aktuellen Datum'
+        = f.labeled_input_field :end_to_end_identifier, help_inline: 'SEPA Ende-zu-Ende-Referenz'
+        = f.labeled_collection_select(:new_sepa_status, Settings.sepa_status, :first, :last, {})
+      = form_buttons(f, submit_label: "Buchung anlegen", cancel_url: accounting_group_person_path)
+
 
     - if @person.early_payer
       %h3.mt-3.mb-3 Kein Ratenplan - Einmalzahler
-    - else 
+    - else
       %h3.mt-3.mb-3 Ratenplan
-      %table.table.table-bordered.table-sm.table-custom
+      %table.table.table-striped.table-sm.table-custom
         %thead
           %tr
             %th Zeitpunkt
             %th.text-end Betrag
             %th.text-end Soll Kontostand
         %tbody
-          - @accounting_payment_array.each do |entry|
+          - get_accounting_payment_array.each do |entry|
             %tr
               %td= entry[:month]
-              %td.text-end= entry[:ammount]
+              %td.text-end= entry[:amount]
               %td.text-end= entry[:total]
-
-  - if @accounting
-    = form_with url: accounting_group_person_path, method: :put, local: true do |f|
-      .row.mt-4
-        .col-md-6
-          .mb-3
-            = f.label :accounting_ammount, "Betrag in Cent", class: "form-label"
-            = f.number_field :accounting_ammount, class: "form-control"
-          .mb-3
-            = f.label :accounting_comment, "Kommentar", class: "form-label"
-            = f.text_area :accounting_comment, class: "form-control", rows: 4
-          .mb-3
-            = f.label :sepa_status, "Status", class: "form-label"
-            = f.collection_select(:sepa_status, @possible_sepa_states, :to_s, :to_s, { selected: @person.sepa_status.to_s }, class: 'form-select form-select-sm')
-          = form_buttons(f, submit_label: "Buchung anlegen")

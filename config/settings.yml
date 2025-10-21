@@ -54,9 +54,12 @@ phone_number:
   default_country: DE
 
 sepa_status:
-  - OK
-  - In Überprüfung
-  - Zahlung ausstehend
+  ok: OK  # Automatischer Einzug, alles OK
+  in_review: In Überprüfung  # Fehler aufgetreten, wird geprüft
+  invalid_account: Zahlungs-Konto nicht mehr gültig  # Automatischer Einzug: Konto gibt es nicht mehr
+  missing: Zahlung ausstehend  # Automatischer Einzug, fehlender Betrag, z.B. wg. Rücklastschrift
+  individual_ok: Individueller Zahlungsplan (OK)  # Individueller Zahlungsplan, aktuell OK
+  individual_missing: Individueller Zahlungsplan (Zahlung ausstehend)  # Individueller Zahlungsplan, zu wenig Geldeingang
 
 shirt_size:
   - Größe auswählen
