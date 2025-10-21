@@ -10,17 +10,47 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_21_170000) do
+ActiveRecord::Schema[7.1].define(version: 2025_10_22_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
-  create_table "accounting_entries", id: :integer, default: nil, force: :cascade do |t|
+  create_table "accounting_entries", force: :cascade do |t|
     t.integer "subject_id", null: false
     t.integer "author_id", null: false
-    t.integer "ammount", null: false
-    t.text "comment"
+    t.integer "amount_cents", null: false
+    t.text "description"
     t.datetime "created_at", precision: nil
-    t.index ["subject_id"], name: "index_accounting_on_subject_id"
+    t.string "subject_type", default: "Person"
+    t.string "author_type", default: "Person"
+    t.bigint "payment_initiation_id"
+    t.bigint "direct_debit_payment_info_id"
+    t.bigint "direct_debit_pre_notification_id"
+    t.text "comment", default: "", null: false
+    t.string "amount_currency", default: "EUR", null: false
+    t.datetime "updated_at"
+    t.date "value_date"
+    t.string "end_to_end_identifier"
+    t.bigint "reversed_by_id"
+    t.bigint "reverses_id"
+    t.string "new_sepa_status", default: "ok"
+    t.string "mandate_id"
+    t.date "mandate_date"
+    t.string "debit_sequence_type"
+    t.string "cdtr_name"
+    t.string "cdtr_iban"
+    t.string "cdtr_bic"
+    t.string "cdtr_address"
+    t.string "dbtr_name"
+    t.string "dbtr_iban"
+    t.string "dbtr_bic"
+    t.string "dbtr_address"
+    t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
+    t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
+    t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
+    t.index ["payment_initiation_id"], name: "index_accounting_entries_on_payment_initiation_id"
+    t.index ["reversed_by_id"], name: "index_accounting_entries_on_reversed_by_id"
+    t.index ["reverses_id"], name: "index_accounting_entries_on_reverses_id"
+    t.index ["subject_type", "subject_id"], name: "index_accounting_entries_on_subject_type_and_subject_id"
   end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -1016,7 +1046,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_21_170000) do
     t.string "sepa_mail"
     t.string "sepa_iban"
     t.string "sepa_bic"
-    t.string "sepa_status"
+    t.string "sepa_status", default: "ok"
     t.boolean "early_payer"
     t.string "generated_registration_pdf"
     t.boolean "medical_stiko_vaccinations"
@@ -1316,6 +1346,78 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_21_170000) do
     t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
   end
 
+  create_table "wsjrdp_direct_debit_payment_infos", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.bigint "payment_initiation_id"
+    t.string "payment_information_identification"
+    t.boolean "batch_booking", default: true, null: false
+    t.integer "number_of_transactions"
+    t.bigint "control_sum"
+    t.string "payment_type_instrument", default: "CORE", null: false
+    t.string "sequence_type", default: "OOFF", null: false
+    t.date "requested_collection_date", null: false
+    t.string "cdtr_name"
+    t.string "cdtr_iban"
+    t.string "cdtr_bic"
+    t.string "creditor_id", default: "DE81WSJ00002017275", null: false
+    t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_c4d3672197"
+  end
+
+  create_table "wsjrdp_direct_debit_pre_notifications", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.bigint "payment_initiation_id", null: false
+    t.bigint "direct_debit_payment_info_id", null: false
+    t.bigint "subject_id"
+    t.string "subject_type", default: "Person"
+    t.bigint "author_id"
+    t.string "author_type", default: "Person"
+    t.boolean "try_skip", comment: "Use to request skipping of the notified payment"
+    t.string "payment_status", default: "pre_notified", null: false, comment: "One of pre_notified, skipped, xml_generated"
+    t.string "email_from", default: "anmeldung@worldscoutjamboree.de", null: false
+    t.string "email_to", array: true
+    t.string "email_cc", array: true
+    t.string "email_bcc", array: true
+    t.string "email_reply_to", array: true
+    t.string "dbtr_name", null: false
+    t.string "dbtr_iban", null: false
+    t.string "dbtr_bic"
+    t.string "dbtr_address"
+    t.string "amount_currency", default: "EUR", null: false
+    t.integer "amount_cents", null: false
+    t.string "sequence_type", default: "OOFF", null: false, comment: "One of OOFF, FRST, RCUR, FNAL"
+    t.date "collection_date"
+    t.string "mandate_id"
+    t.date "mandate_date"
+    t.string "description"
+    t.string "endtoend_id"
+    t.string "payment_role"
+    t.string "creditor_id", default: "DE81WSJ00002017275", null: false
+    t.index ["author_type", "author_id"], name: "idx_on_author_type_author_id_71103f7220"
+    t.index ["direct_debit_payment_info_id"], name: "idx_on_direct_debit_payment_info_id_48e9587e08"
+    t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_3f1ba63efb"
+    t.index ["subject_type", "subject_id"], name: "idx_on_subject_type_subject_id_89fd1c0005"
+  end
+
+  create_table "wsjrdp_payment_initiations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.string "status", default: "planned", null: false, comment: "One of planned, canceled, xml_generated"
+    t.string "sepa_schema"
+    t.string "message_identification"
+    t.integer "number_of_transactions"
+    t.bigint "control_sum"
+    t.string "initiating_party_name"
+    t.string "initiating_party_iban"
+    t.string "initiating_party_bic"
+  end
+
+  add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
+  add_foreign_key "accounting_entries", "accounting_entries", column: "reverses_id"
+  add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
+  add_foreign_key "accounting_entries", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id"
+  add_foreign_key "accounting_entries", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade
@@ -1327,4 +1429,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_21_170000) do
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
   add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"
+  add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
+  add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
+  add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_payment_initiations", column: "payment_initiation_id"
 end

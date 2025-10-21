@@ -1,0 +1,16 @@
+#main.row
+  - cancel_url = get_accounting_entry_cancel_url
+  = standard_form(accounting_entry, {url: get_accounting_entry_path, method: :put}) do |f|
+    = hidden_field_tag("return_url", get_accounting_entry_return_url)
+    = f.error_messages
+    = form_buttons(f, cancel_url: cancel_url)
+
+    .mt-3
+    = field_set_tag do
+      = form_like_render_attrs(accounting_entry, :created_at, :updated_at)
+      = form_like_render_attrs(accounting_entry, :amount_eur_display, :description)
+      - if can_accounting?
+        = f.labeled_input_field :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten'
+      = form_like_render_attrs(accounting_entry, :value_date, :end_to_end_identifier, :new_sepa_status_display)
+
+    = form_buttons(f, cancel_url: cancel_url)
