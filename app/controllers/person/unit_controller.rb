@@ -31,8 +31,8 @@ class Person::UnitController < ApplicationController
     if @common_ul_unit_code
       @people_in_cluster.each do |p|
         p.cluster_code = @common_ul_unit_code
-        p.save
       end
+      update_cluster_code_in_db(@people_in_cluster, "fill_cluster_code")
     end
     redirect_back_or_to(unit_group_person_path)
   end
@@ -44,12 +44,10 @@ class Person::UnitController < ApplicationController
 
     @people_in_cluster ||= people_in_cluster
 
-    Person.transaction do
-      @people_in_cluster.each do |p|
-        p.cluster_code = nil
-        p.save
-      end
+    @people_in_cluster.each do |p|
+      p.cluster_code = nil
     end
+    update_cluster_code_in_db(@people_in_cluster, "clear_cluster_code")
     redirect_back_or_to(unit_group_person_path)
   end
 
@@ -144,5 +142,15 @@ ORDER BY first_name, last_name
     @cmt_not_in_cluster = p_not_in_cluster.select { |p| cmt?(p) }
     @ulyp_not_in_cluster = @ul_not_in_cluster + @yp_not_in_cluster
     nil
+  end
+
+  def update_cluster_code_in_db(people, name = "update_cluster_code_in_db")
+    people.each do |p|
+      Person.connection.exec_update(
+        'UPDATE "people" SET "cluster_code" = $1 WHERE "people"."id" = $2',
+        name,
+        [p.cluster_code, p.id]
+      )
+    end
   end
 end
