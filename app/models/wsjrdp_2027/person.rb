@@ -11,7 +11,7 @@ module Wsjrdp2027::Person
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
   def self.included(base)
-    rdp_attrs = [:status, :early_payer, :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group]
+    rdp_attrs = [:status, :early_payer, :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group, :unit_code, :cluster_code]
     Person::PUBLIC_ATTRS += rdp_attrs
     Person::FILTER_ATTRS += rdp_attrs
     Person.used_attributes += rdp_attrs
