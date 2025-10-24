@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_22_190000) do
+ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1342,6 +1342,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_190000) do
     t.integer "custom_installments_cents", comment: "list of custom monthly installments starting in January of custom_installments_year", array: true
     t.string "total_fee_reduction_comment", comment: "Comment explaining the total fee reduction"
     t.integer "total_fee_reduction_cents", default: 0, comment: "Reduction of the total fee in cents"
+    t.string "status", default: "planned", null: false
+    t.datetime "activated_at"
+    t.index ["people_id", "status"], name: "index_wsj27_rdp_fee_rules_on_people_id_and_status", unique: true, where: "(deleted_at IS NULL)"
     t.index ["people_id"], name: "index_wsj27_rdp_fee_rules_on_people_id"
     t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
   end
