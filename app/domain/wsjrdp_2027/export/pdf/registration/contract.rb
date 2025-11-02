@@ -35,7 +35,7 @@ module Wsjrdp2027
         text "beim Ring deutscher Pfadfinder*innenverbände e.V (rdp) Chausseestraße 128/129, 10115 Berlin für das deutsche Kontingent zum 26. World Scout Jamboree 2027 in Polen."
 
         pdf.move_down 3.mm
-        text "Die Teilnahme, als #{person_payment_role_full_name(@person)}, im deutschen Kontingent kostet #{payment_value(@person)} € und beinhaltet #{role_type(@person).starts_with?("Group::Unit") ? "die Vor- und Nachbereitung in Deutschland, die Reise nach Polen, eine Vor- oder Nachtour " : "die Vor- und Nachbereitung in Deutschland "} und die Teilnahme am 26. World Scout Jamboree in Polen."
+        text "Die Teilnahme, als #{person_payment_role_full_name(@person)}, im deutschen Kontingent kostet #{get_full_regular_fee_eur(@person)} € und beinhaltet #{role_type(@person).starts_with?("Group::Unit") ? "die Vor- und Nachbereitung in Deutschland, die Reise nach Polen, eine Vor- oder Nachtour " : "die Vor- und Nachbereitung in Deutschland "} und die Teilnahme am 26. World Scout Jamboree in Polen."
 
         pdf.move_down 3.mm
         text "Die Reise ist für den Zeitraum vom 20.07 bis 18.08.2027 geplant. Der Reisezeitraum variiert je nach gewähltem Paket und Lage der Sommerferien. Reisedauer sind #{role_type(@person).starts_with?("Group::Unit") ? "17 bis 21" : "15 bis 17"} Tage."
@@ -66,7 +66,7 @@ module Wsjrdp2027
 
         pdf.move_down 3.mm
         if early_payer?(@person)
-          text "Für die Zahlung des Teilnehmendenbeitrages #{of_legal_age ? "wünsche ich" : "wünschen wir"} Einmalzahlung im November 2025."
+          text "Für die Zahlung des Teilnehmendenbeitrages #{of_legal_age ? "wünsche ich" : "wünschen wir"} Einmalzahlung im Januar 2026."
         else
           text "Für die Zahlung des Teilnehmendenbeitrages #{of_legal_age ? "wünsche ich" : "wünschen wir"} Ratenzahlung nach dem in den Reisebedingungen aufgeführten Ratenplan."
         end
