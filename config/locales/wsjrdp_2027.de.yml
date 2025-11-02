@@ -201,7 +201,7 @@ de:
     finance_fields:
       sepa_header: Kontaktdaten Kontoinhaber*in
       sepa_info: werden für das SEPA Lastschriftmandat und bei Fragen rund um den Zahlungsverkehr verwendet
-      early_payer_help: Wenn du das Zahlungsmodell Einmalzahlung (Early Payer) auswählst, unterstützt du uns bei der Durchführung des Jamborees. <br/> Nach Überprüfung deiner Anmeldung wird der komplette Teilnehmendenbeitrag im November von deinem Konto abgebucht.
+      early_payer_help: Wenn du das Zahlungsmodell Einmalzahlung (Early Payer) auswählst, unterstützt du uns bei der Durchführung des Jamborees. <br/> Nach Überprüfung deiner Anmeldung wird der komplette Teilnehmendenbeitrag im Januar 2026 von deinem Konto abgebucht.
       invalid_iban: ist keine gültige IBAN
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
