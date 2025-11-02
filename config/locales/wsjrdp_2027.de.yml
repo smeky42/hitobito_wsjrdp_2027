@@ -126,6 +126,16 @@ de:
         uniform_size: Tracht- bzw. Klufthemdgröße
         can_swim: Ich kann schwimmen
         diet: Essensgewohnheiten
+        active_total_fee_reduction_display: Reduktion Beitrag
+        planned_total_fee_reduction_display: Reduktion Beitrag (in Vorbereitung)
+        active_custom_installments_display: Ratenplan
+        active_custom_installments_issue_display: Vorgang Ratenplan
+        active_custom_installments_comment: Kommentar Ratenplan
+        planned_custom_installments_display: Ratenplan (in Vorbereitung)
+        planned_custom_installments_string: Ratenplan (in Vorbereitung)
+        planned_custom_installments_issue: Vorgang Ratenplan (in Vorbereitung)
+        planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
+        planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
 
       accounting_entry:
         amount_eur: Betrag in Euro
@@ -153,6 +163,8 @@ de:
       show_good_conduct: Nachweis über das Führungszeugnis einsehen
       review_documents: TN in den Status "Dokumente in Überprüfung durch CMT" schalten.
       approve_documents: Ich habe alle Dokumente eingesehen und überprüft. TN in den Status "Dokumente vollständig überprüft" schalten.
+      activate_planned_custom_installments: Vorbereiteten Ratenplan aktivieren
+      delete_planned_custom_installments: Vorbereiteten Ratenplan löschen
 
     fields:
       upload_contract_pdf: Anmeldung hochladen
@@ -195,6 +207,14 @@ de:
       contract: Überprüfe für die folgenden Dokumente, dass <br/> die ID zur Person passt, <br/> alle Felder unterschrieben sind, <br/> Name und Geburstdatum mit der Anmeldung und Ausweis übereinstimmen, <br/> Rolle und Alter passen.
       sepa: Überprüfe für das SEPA, dass die ID zur Person passt, <br/> eine valide Unterschrift auf dem Dokument ist.
       external: Überprüfe für folgende Dokumente die Validität.
+      edit_custom_installments_help: |
+        Hier kannst das Finance-Team einen individuellen Ratenplan anlegen und editieren.<br/>
+        Achtung: Beim aktivieren des Ratenplans muss geprüft werden, dass die Angaben in Hitobito zum hochgeladenen Scan passen!
+      activate_custom_installments_help: |
+        Hier kannst das Finance-Team einen individuellen Ratenplan aktivieren oder löschen.
+        Achtung: Vor dem aktivieren des Ratenplans muss geprüft werden,
+        dass die Angaben in Hitobito zum hochgeladenen Scan passen!
+      no_active_custom_installments: Reguläre Einmal- oder Ratenzahlung / kein individueller Ratenplan
     contact_fields:
       format_birthday: (dd.mm.yyyy)
       no_sensitive_information: ""
