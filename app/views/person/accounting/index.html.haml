@@ -22,12 +22,12 @@
       %table.table.table-striped.table-sm.table-custom
         %thead
           %tr
-            %th Zeitpunkt
+            %th(style="text-align: right;") Zeitpunkt
             %th.text-end Betrag
             %th.text-end Soll Kontostand
         %tbody
-          - get_accounting_payment_array.each do |entry|
+          - get_installments_table_entries.each do |entry|
             %tr
-              %td= entry[:month]
+              %td(style="text-align: right;")= entry[:date]
               %td.text-end= entry[:amount]
               %td.text-end= entry[:total]

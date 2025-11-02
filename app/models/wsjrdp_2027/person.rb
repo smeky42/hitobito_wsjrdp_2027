@@ -38,6 +38,7 @@ module Wsjrdp2027::Person
       validate :validate_buddy_id_yp
 
       before_save :geocode_full_address, if: :address_changed?
+      after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
       def unit_code_display
         make_unit_code_display(unit_code)
@@ -67,6 +68,139 @@ module Wsjrdp2027::Person
           [first_names[0], last_name, "/", nickname]
         end
         name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      #
+      # active fee rule
+      #
+
+      def _maybe_fetch_fee_rules
+        if !@fee_rules_fetched
+          active_fee_rule, planned_fee_rule = fetch_fee_rules(self)
+          @active_fee_rule ||= active_fee_rule
+          @planned_fee_rule ||= planned_fee_rule
+          @fee_rules_fetched = true
+        end
+      end
+
+      def active_fee_rule
+        _maybe_fetch_fee_rules
+        @active_fee_rule
+      end
+
+      def active_total_fee_reduction?
+        active_fee_rule&.total_fee_reduction?
+      end
+
+      def active_total_fee_reduction_cents
+        active_fee_rule&.total_fee_reduction_cents || 0
+      end
+
+      def active_total_fee_reduction_display
+        active_fee_rule&.total_fee_reduction_display || ""
+      end
+
+      def active_custom_installments?
+        active_fee_rule&.custom_installments?
+      end
+
+      def active_custom_installments_display
+        active_fee_rule&.custom_installments_display || ""
+      end
+
+      def active_custom_installments_string
+        active_fee_rule&.custom_installments_string
+      end
+
+      def active_custom_installments_issue_display
+        active_fee_rule&.custom_installments_issue_display || ""
+      end
+
+      def active_custom_installments_comment
+        active_fee_rule&.custom_installments_comment
+      end
+
+      #
+      # planned fee rule
+      #
+
+      def planned_fee_rule
+        _maybe_fetch_fee_rules
+        @planned_fee_rule
+      end
+
+      def ensure_planned_fee_rule
+        _maybe_fetch_fee_rules
+        if @planned_fee_rule.nil?
+          @planned_fee_rule = Wsj27RdpFeeRule.new(people_id: id, status: "planned")
+        end
+        @planned_fee_rule
+      end
+
+      def planned_total_fee_reduction?
+        planned_fee_rule&.total_fee_reduction?
+      end
+
+      def planned_total_fee_reduction_cents
+        planned_fee_rule&.total_fee_reduction_cents || 0
+      end
+
+      def planned_total_fee_reduction_display
+        planned_fee_rule&.total_fee_reduction_display || ""
+      end
+
+      def planned_custom_installments?
+        planned_fee_rule&.custom_installments?
+      end
+
+      # planned_custom_installments_string
+
+      def planned_custom_installments_display
+        planned_fee_rule&.custom_installments_display || ""
+      end
+
+      def planned_custom_installments_string
+        planned_fee_rule&.custom_installments_string
+      end
+
+      def planned_custom_installments_string=(value)
+        ensure_planned_fee_rule.custom_installments_string = value
+      end
+
+      def planned_custom_installments_string_changed?
+        planned_fee_rule&.custom_installments_string_changed?
+      end
+
+      # planned_custom_installments_issue
+
+      def planned_custom_installments_issue_display
+        planned_fee_rule&.custom_installments_issue_display || ""
+      end
+
+      def planned_custom_installments_issue
+        planned_fee_rule&.custom_installments_issue
+      end
+
+      def planned_custom_installments_issue=(value)
+        ensure_planned_fee_rule.custom_installments_issue = value.presence
+      end
+
+      def planned_custom_installments_issue_changed?
+        planned_fee_rule&.custom_installments_issue_changed?
+      end
+
+      # planned_custom_installments_comment
+
+      def planned_custom_installments_comment
+        planned_fee_rule&.custom_installments_comment
+      end
+
+      def planned_custom_installments_comment=(value)
+        ensure_planned_fee_rule.custom_installments_comment = value.presence
+      end
+
+      def planned_custom_installments_comment_changed?
+        planned_fee_rule&.custom_installments_comment_changed?
       end
 
       private
@@ -138,6 +272,22 @@ module Wsjrdp2027::Person
 
       def address_changed?
         street_changed? || housenumber_changed? || zip_code_changed? || town_changed? || country_changed?
+      end
+
+      def planned_fee_rule_changed?
+        if @planned_fee_rule.nil?
+          false
+        else
+          @planned_fee_rule.changes.keys.any? { |k| k != "people_id" && k != "status" }
+        end
+      end
+
+      def _save_planned_fee_rule
+        rule = planned_fee_rule
+        if rule.people_id.nil?
+          rule.people_id = id
+        end
+        rule.save
       end
     end
   end

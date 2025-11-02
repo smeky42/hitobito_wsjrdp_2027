@@ -1,7 +1,62 @@
 # frozen_string_literal: true
 
 module ContractHelper
+  include ActionView::Helpers::NumberHelper
+
   extend ActiveSupport::Concern
+
+  # rubocop:disable Layout/ExtraSpacing
+  # rubocop:disable Layout/SpaceInsideArrayLiteralBrackets
+  # rubocop:disable Layout/HashAlignment
+  PAYMENT_ROLE_TO_INSTALLMENTS_CENTS = {
+    "RegularPayer::Group::Unit::Member" => [
+      [[2025, 12].freeze, 30000].freeze,
+      [[2026,  1].freeze, 50000].freeze,
+      [[2026,  2].freeze, 50000].freeze,
+      [[2026,  3].freeze, 50000].freeze,
+      [[2026,  8].freeze, 40000].freeze,
+      [[2026, 11].freeze, 40000].freeze,
+      [[2027,  2].freeze, 40000].freeze,
+      [[2027,  5].freeze, 40000].freeze
+    ].freeze,
+    "RegularPayer::Group::Unit::Leader" => [
+      [[2025, 12].freeze, 15000].freeze,
+      [[2026,  1].freeze, 35000].freeze,
+      [[2026,  2].freeze, 35000].freeze,
+      [[2026,  3].freeze, 35000].freeze,
+      [[2026,  8].freeze, 30000].freeze,
+      [[2026, 11].freeze, 30000].freeze,
+      [[2027,  2].freeze, 30000].freeze,
+      [[2027,  5].freeze, 30000].freeze
+    ].freeze,
+    "RegularPayer::Group::Ist::Member" => [
+      [[2025, 12].freeze, 20000].freeze,
+      [[2026,  1].freeze, 40000].freeze,
+      [[2026,  2].freeze, 40000].freeze,
+      [[2026,  3].freeze, 40000].freeze,
+      [[2026,  8].freeze, 30000].freeze,
+      [[2026, 11].freeze, 30000].freeze,
+      [[2027,  2].freeze, 30000].freeze,
+      [[2027,  5].freeze, 30000].freeze
+    ].freeze,
+    "RegularPayer::Group::Root::Member" => [
+      [[2025, 12].freeze,  5000].freeze,
+      [[2026,  1].freeze, 25000].freeze,
+      [[2026,  2].freeze, 25000].freeze,
+      [[2026,  3].freeze, 25000].freeze,
+      [[2026,  8].freeze, 20000].freeze,
+      [[2026, 11].freeze, 20000].freeze,
+      [[2027,  2].freeze, 20000].freeze,
+      [[2027,  5].freeze, 20000].freeze
+    ].freeze,
+    "EarlyPayer::Group::Unit::Member" => [ [[2025, 8].freeze, 340000].freeze ].freeze,
+    "EarlyPayer::Group::Unit::Leader" => [ [[2025, 8].freeze, 240000].freeze ].freeze,
+    "EarlyPayer::Group::Ist::Member" =>  [ [[2025, 8].freeze, 260000].freeze ].freeze,
+    "EarlyPayer::Group::Root::Member" => [ [[2025, 8].freeze, 160000].freeze ].freeze
+  }.freeze
+  # rubocop:enable Layout/ExtraSpacing
+  # rubocop:enable Layout/SpaceInsideArrayLiteralBrackets
+  # rubocop:enable Layout/HashAlignment
 
   included do
     # rubocop:disable Metrics/MethodLength
@@ -194,6 +249,35 @@ module ContractHelper
       payment_array_by(person)[1]
     end
 
+    def get_full_regular_fee_cents(person)
+      payment_array_by(person)[1].to_i * 100
+    end
+
+    def get_total_fee_cents(person, fee_rule = nil)
+      full_regular_fee = payment_array_by(person)[1].to_i * 100
+      total_fee = full_regular_fee
+      if fee_rule && fee_rule.status == "active" && fee_rule.person == person
+        total_fee -= fee_rule.total_fee_reduction_cents || 0
+      end
+      total_fee
+    end
+
+    def regular_installments_cents_for(person)
+      role = (person.payment_role.nil? ? build_payment_role(person) : person.payment_role)
+      PAYMENT_ROLE_TO_INSTALLMENTS_CENTS[role]
+    end
+
+    def get_installments_cents(person, fee_rule = nil)
+      installments = fee_rule&.get_installments_cents_if_active
+      if installments
+        installments
+      elsif person.early_payer
+        [[[2025, 8], get_total_fee_cents(person, fee_rule)]]
+      else
+        regular_installments_cents_for(person).dup
+      end
+    end
+
     # rubocop:disable Metrics/MethodLength
     def payment_array_sepa
       array = []
@@ -231,5 +315,31 @@ module ContractHelper
 
       [payment_array[0], array]
     end
+
+    def format_cents_de(cents, currency = "EUR")
+      if currency == "EUR"
+        currency = "€"
+      end
+      number = cents.to_f / 100.0
+      number_to_currency(number, separator: ",", delimiter: ".", unit: currency, format: "%n %u").sub(",00", ",—")
+    end
+
+    # rubocop:disable Metrics/MethodLength
+    def fetch_fee_rules(person)
+      active_fee_rule = nil
+      planned_fee_rule = nil
+      fee_rules = Wsj27RdpFeeRule.where(people_id: person.id, deleted_at: nil)
+      fee_rules.each do |fee_rule|
+        if fee_rule.status == "active"
+          active_fee_rule = fee_rule
+        elsif fee_rule.status == "planned"
+          planned_fee_rule = fee_rule
+        else
+          Rails.logger.warning "Unsupported status in fee_rule: #{fee_rule.inspect}"
+        end
+      end
+      [active_fee_rule, planned_fee_rule]
+    end
+    # rubocop:enable Metrics/MethodLength
   end
 end

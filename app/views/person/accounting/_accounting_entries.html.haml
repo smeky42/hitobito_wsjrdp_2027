@@ -1,7 +1,11 @@
 - balance_cents = sum_entries_amount_cents(@accounting_entries)
 - balance_eur_display = format_cents_de(balance_cents)
 %div.my-3
-  %div.fa-2x.fw-semibold= balance_eur_display
+  %div.fa-2x.fw-semibold
+    - if balance_cents > 0
+      %span= balance_eur_display
+    - else
+      %span= balance_eur_display
   %div.form-text Kontostand
 
 %table.table.table-striped.table-sm.table-custom

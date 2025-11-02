@@ -1,7 +1,20 @@
 - content_for(:toolbar, render('actions_show'))
 
 #main.row
-  = render_attrs(@person, :birthday, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role, :unit_code)
+  - extra_render_attrs = []
+  - if @person.active_total_fee_reduction?
+    - extra_render_attrs << :active_total_fee_reduction_display
+  - if @person.active_custom_installments?
+    - extra_render_attrs << :active_custom_installments_issue_display
+    - extra_render_attrs << :active_custom_installments_display
+    - extra_render_attrs << :active_custom_installments_comment
+  - if @person.planned_total_fee_reduction?
+    - extra_render_attrs << :planned_total_fee_reduction_display
+  - if @person.planned_custom_installments?
+    - extra_render_attrs << :planned_custom_installments_issue_display
+    - extra_render_attrs << :planned_custom_installments_display
+    - extra_render_attrs << :planned_custom_installments_comment
+  = render_attrs(@person, :birthday, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role, :unit_code_display, *extra_render_attrs)
 - if @person.status == 'upload'
   %br
   %br
@@ -101,3 +114,21 @@
                 method: :post,
                 rel: :tooltip,
                 title: t('activerecord.buttons.approve_documents'))
+
+- if @person.planned_custom_installments?
+  #main.row-fluid(style="margin-top: 25px")
+    %div.muted(style="margin-bottom:5px;")
+      = raw(t('people.check_status_help.activate_custom_installments_help'))
+    = action_button(t("activerecord.buttons.activate_planned_custom_installments"),
+       :status_activate_planned_custom_installments_group_person,
+       nil,
+       method: :post,
+       data: {confirm: "Soll der Ratenplan wirklich aktiviert werden?"},
+       title: t('activerecord.buttons.activate_planned_custom_installments'))
+    = action_button(t("activerecord.buttons.delete_planned_custom_installments"),
+       :status_delete_planned_custom_installments_group_person,
+       "trash-alt",
+       method: :post,
+       class: "btn-danger",
+       data: {confirm: "Soll der geplante Ratenplan wirklich gelöscht werden?"},
+       title: t('activerecord.buttons.delete_planned_custom_installments'))

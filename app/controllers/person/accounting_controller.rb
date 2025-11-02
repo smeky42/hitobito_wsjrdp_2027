@@ -2,7 +2,6 @@
 
 class Person::AccountingController < ApplicationController
   include ContractHelper
-  include ActionView::Helpers::NumberHelper
 
   before_action :authorize_action
   decorates :group, :person
@@ -10,7 +9,7 @@ class Person::AccountingController < ApplicationController
   helper_method :get_accounting_entry_path
   helper_method :can_accounting?
   helper_method :format_cents_de
-  helper_method :get_accounting_payment_array
+  helper_method :get_installments_table_entries
   helper_method :sum_entries_amount_cents
 
   def index
@@ -121,42 +120,48 @@ class Person::AccountingController < ApplicationController
   end
 
   def accounting_entries
-    entries = AccountingEntry.where(subject: @person).to_a
-    entries << AccountingEntry.new(
+    active_fee_rule = @person.active_fee_rule
+    total_fee_reduction_cents = active_fee_rule&.total_fee_reduction_cents || 0
+    description = "Ausstehender Teilnahmebetrag"
+    if total_fee_reduction_cents != 0
+      fee_reduction_display = format_cents_de(total_fee_reduction_cents)
+      reduction_comment = "reduziert um #{fee_reduction_display}"
+      if !active_fee_rule&.total_fee_reduction_comment.blank?
+        reduction_comment = "#{active_fee_rule.total_fee_reduction_comment}: #{reduction_comment}"
+      end
+      description += " (#{reduction_comment})"
+    end
+    total_fee_entry = AccountingEntry.new(
       created_at: @person.created_at,
       subject: @person,
       author: nil,
-      description: "Teilnahmebetrag Gesamt",
-      amount_cents: -(payment_value(@person).to_f * 100).round,
+      description: description,
+      amount_cents: -get_total_fee_cents(@person, active_fee_rule),
       amount_currency: "EUR"
     )
+    total_fee_entry.readonly!
+    entries = AccountingEntry.where(subject: @person).to_a
     entries.sort_by! { |elt| elt.created_at }
+    entries.unshift(total_fee_entry)
     entries
   end
 
-  def get_accounting_payment_array
-    array = []
-    total = -payment_value_cents(@person)
-    payment_array_table = payment_array_table(@person).dup
-    payment_array_table[0].each_index { |x|
-      if payment_array_table[0][x] != "Rolle" && payment_array_table[0][x] != "Gesamt"
-        total += (payment_array_table[1][x].to_i * 100)
-        array.push({
-          month: payment_array_table[0][x],
-          amount: format_cents_de(payment_array_table[1][x].to_i * 100),
-          total: format_cents_de(total)
-        })
-      end
-    }
-    array
-  end
-
-  def format_cents_de(cents, currency = "EUR")
-    if currency == "EUR"
-      currency = "€"
+  def get_installments_table_entries
+    active_fee_rule = @person.active_fee_rule
+    total = -get_total_fee_cents(@person, active_fee_rule)
+    installments = get_installments_cents(@person, active_fee_rule)
+    entries = []
+    installments.each do |item|
+      cents = item[1]
+      total += cents
+      date = Date.new(item[0][0], item[0][1], 5)
+      entries << {
+        date: I18n.l(date, format: "%b %Y"),
+        amount: format_cents_de(cents),
+        total: format_cents_de(total)
+      }
     end
-    number = cents.to_f / 100.0
-    number_to_currency(number, separator: ",", delimiter: ".", unit: currency, format: "%n %u")
+    entries
   end
 
   def sum_entries_amount_cents(entries)

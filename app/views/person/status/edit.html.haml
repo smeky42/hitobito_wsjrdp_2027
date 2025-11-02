@@ -8,7 +8,8 @@
     = field_set_tag do
       = f.labeled_collection_select(:status, Settings.status, :first, :last, {}, class: 'span2')
       = f.labeled_input_fields :birthday, :first_name, :last_name, :print_at, :contract_upload_at, :complete_document_upload_at, :unit_code
+    = field_set_tag do
+      = render_attrs(@person, :active_custom_installments_issue_display, :active_custom_installments_display, :active_custom_installments_comment)
+      = f.labeled_input_fields :planned_custom_installments_issue, :planned_custom_installments_string, :planned_custom_installments_comment
+      = f.help_block(raw(t('people.check_status_help.edit_custom_installments_help')))
     = form_buttons(f, cancel_url: status_group_person_path)
-
-
-
