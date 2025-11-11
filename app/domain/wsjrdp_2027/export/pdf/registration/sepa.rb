@@ -55,7 +55,7 @@ module Wsjrdp2027
         pdf.move_down 3.mm
 
         if early_payer?(@person)
-          text "Der Einzug des Gesamtbetrages von #{get_full_regular_fee_eur(@person)} € erfolgt am 5. Januar 2025."
+          text "Der Einzug des Gesamtbetrages von #{get_full_regular_fee_eur(@person)} € erfolgt am 5. Januar 2026."
         else
           text "Der Einzug erfolgt am 5. des jeweiligen Monats bzw. am darauffolgenden Werktag nach folgendem Ratenplan:"
           pdf.make_table(payment_array_table(@person), cell_style: {padding: 1,
