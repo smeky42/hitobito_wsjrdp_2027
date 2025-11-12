@@ -15,7 +15,7 @@
       = form_buttons(f, submit_label: "Buchung anlegen", cancel_url: accounting_group_person_path)
 
 
-    - if @person.early_payer
+    - if @person.early_payer && @person.active_custom_installments_string.blank?
       %h3.mt-3.mb-3 Kein Ratenplan - Einmalzahler
     - else
       %h3.mt-3.mb-3 Ratenplan
