@@ -207,6 +207,7 @@ de:
       contract: Überprüfe für die folgenden Dokumente, dass <br/> die ID zur Person passt, <br/> alle Felder unterschrieben sind, <br/> Name und Geburstdatum mit der Anmeldung und Ausweis übereinstimmen, <br/> Rolle und Alter passen.
       sepa: Überprüfe für das SEPA, dass die ID zur Person passt, <br/> eine valide Unterschrift auf dem Dokument ist.
       external: Überprüfe für folgende Dokumente die Validität.
+      upload_good_conduct_missing: Nachweis über das Führungszeugnis nicht hochgeladen!
       edit_custom_installments_help: |
         Hier kannst das Finance-Team einen individuellen Ratenplan anlegen und editieren.<br/>
         Achtung: Beim aktivieren des Ratenplans muss geprüft werden, dass die Angaben in Hitobito zum hochgeladenen Scan passen!
