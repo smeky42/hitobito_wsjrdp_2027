@@ -38,6 +38,7 @@ module Wsjrdp2027::Person
       validate :validate_buddy_id_yp
 
       before_save :geocode_full_address, if: :address_changed?
+      before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
       def unit_code_display
@@ -68,6 +69,33 @@ module Wsjrdp2027::Person
           [first_names[0], last_name, "/", nickname]
         end
         name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      def upload_complete?
+        # Checks if the upload is complete
+        #
+        # New since 2025-11-14: The good conduct document is not
+        # required for IST to consider the upload to be complete.
+        if ul?(self) || cmt?(self)
+          if upload_good_conduct_pdf.nil?
+            return false
+          end
+        end
+
+        if ul?(self) || cmt?(self)
+          if upload_data_agreement_pdf.nil?
+            return false
+          end
+        end
+
+        if ul?(self)
+          if upload_recommendation_pdf.nil?
+            return false
+          end
+        end
+
+        %i[upload_contract_pdf upload_sepa_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
+          .all? { |fld| public_send(fld).present? }
       end
 
       #
@@ -263,6 +291,34 @@ module Wsjrdp2027::Person
         if results.first
           self.latitude = results.first.latitude
           self.longitude = results.first.longitude
+        end
+      end
+
+      def tag_good_conduct_missing
+        unless ist?(self) || ul?(self) || cmt?(self)
+          return
+        end
+        Rails.logger.tagged("#{id} #{short_full_name}") do
+          tag_name = "eFZ-Einsicht-fehlt"
+          Rails.logger.debug { "status=#{status.inspect}" }
+          Rails.logger.debug { "upload_good_conduct_pdf.nil?=#{upload_good_conduct_pdf.nil?.inspect}" }
+          if upload_good_conduct_pdf.nil?
+            # Before save: If self changes to "in_review", "reviewed"
+            # or "confirmed" and the good conduct document is missing,
+            # we ensure that the eFZ-Einsicht-fehlt tag is set.
+            if %w[in_review reviewed confirmed].any?(status)
+              Rails.logger.debug ActiveSupport::LogSubscriber.new.send(:color, "Add tag #{tag_name.inspect}", :magenta)
+              tag_list.add(tag_name)
+            end
+          else
+            # # Before save: If self changes to "reviewed" and some good
+            # # conduct document is present, we ensure that the
+            # # eFZ-Einsicht-fehlt tag is not set.
+            # if %w[reviewed].any?(status)
+            #   Rails.logger.debug ActiveSupport::LogSubscriber.new.send(:color, "Remove tag #{tag_name.inspect}", :magenta)
+            #   tag_list.remove(tag_name)
+            # end
+          end
         end
       end
 

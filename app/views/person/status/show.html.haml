@@ -97,14 +97,20 @@
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_data_agreement'))
   - if ul?(@person) || cmt?(@person) || ist?(@person)
-    = action_button(t('activerecord.buttons.show_good_conduct'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct",
-                :envelope,
-                target: "_blank",
-                remote: false,
-                method: :get,
-                rel: :tooltip,
-                title: t('activerecord.buttons.show_good_conduct'))
+    - if @person.upload_good_conduct_pdf.nil?
+      %div.btn-group
+        %span.btn.btn-sm.disabled(style="--bs-btn-disabled-border-color: #adb5bd;")
+          %span.muted
+            = raw(t("people.check_status_help.upload_good_conduct_missing"))
+    - else
+      = action_button(t('activerecord.buttons.show_good_conduct'),
+                  "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct",
+                  :envelope,
+                  target: "_blank",
+                  remote: false,
+                  method: :get,
+                  rel: :tooltip,
+                  title: t('activerecord.buttons.show_good_conduct'))
   %br
   %br
   = action_button(t('activerecord.buttons.approve_documents'),

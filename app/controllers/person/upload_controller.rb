@@ -115,32 +115,19 @@ class Person::UploadController < ApplicationController
       @person.save
     end
 
-    if %i[upload_contract_pdf upload_sepa_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
-        .all? { |fld| @person.public_send(fld).present? }
-
-      if ul?(@person) || ist?(@person) || cmt?(@person)
-        if @person.upload_good_conduct_pdf.nil?
-          return
-        end
-      end
-
-      if ul?(@person) || cmt?(@person)
-        if @person.upload_data_agreement_pdf.nil?
-          return
-        end
-      end
-
-      if ul?(@person)
-        if @person.upload_recommendation_pdf.nil?
-          return
-        end
-      end
-
+    if @person.upload_complete?
       if @person.complete_document_upload_at.nil?
         @person.complete_document_upload_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
       end
-
-      @person.status = "upload"
+      # Set status to "upload" only if
+      # - there is some actual upload
+      # - OR the current status is "printed"
+      #
+      # This way, just clicking "Dokumente hochladen" without having
+      # selected any files does not change the status in most cases.
+      if !params[:person].nil? || @person.status == "printed"
+        @person.status = "upload"
+      end
       @person.save
     end
   end
