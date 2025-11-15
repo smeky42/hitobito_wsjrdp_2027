@@ -158,6 +158,8 @@ de:
       show_recommendation: Empfehlungsschreiben einsehen
       show_medical: Medizinbogen einsehen
       review_hint: Dokument einsehen
+      delete_hint: Dokument löschen
+      delete_confirm: Soll das Dokument wirklich gelöscht werden?
       upload_documents: Dokumente hochladen
       show_photo_permission: Fotoeinwilligung einsehen
       show_good_conduct: Nachweis über das Führungszeugnis einsehen

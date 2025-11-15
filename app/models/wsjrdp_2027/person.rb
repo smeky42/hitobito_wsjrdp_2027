@@ -299,7 +299,7 @@ module Wsjrdp2027::Person
           return
         end
         Rails.logger.tagged("#{id} #{short_full_name}") do
-          tag_name = "eFZ-Einsicht-fehlt"
+          tag_name = ContractHelper::GOOD_CONDUCT_MISSING_TAG
           Rails.logger.debug { "status=#{status.inspect}" }
           Rails.logger.debug { "upload_good_conduct_pdf.nil?=#{upload_good_conduct_pdf.nil?.inspect}" }
           if upload_good_conduct_pdf.nil?

@@ -11,6 +11,12 @@ class Person::UploadController < ApplicationController
 
   include ContractHelper
 
+  ALL_UPLOAD_ATTRS_SYMS = %i[
+    upload_contract_pdf upload_data_agreement_pdf upload_good_conduct_pdf
+    upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf
+    upload_recommendation_pdf upload_sepa_pdf
+  ]
+
   def index
     @group ||= Group.find(params[:group_id])
     @person ||= group.people.find(params[:id])
@@ -37,6 +43,42 @@ class Person::UploadController < ApplicationController
       @person.save
     end
     download_file(@person.generated_registration_pdf)
+  end
+
+  def destroy
+    @person ||= group.people.find(params[:id])
+    unless request.delete? && can?(:log, @person)
+      redirect_back_or_to(upload_group_person_path,
+        alert: "Du darfst keine Dokumente löschen!")
+      return
+    end
+    what = params[:what].to_sym
+    unless ALL_UPLOAD_ATTRS_SYMS.any?(what)
+      redirect_back_or_to(upload_group_person_path,
+        alert: "Du darfst #{what} nicht löschen!")
+      return
+    end
+    Rails.logger.tagged("#{@person.id} #{@person.short_full_name}") do
+      val = @person.send(what)
+      Rails.logger.debug { "old value of #{what}: #{val.inspect}" }
+      @person.send(:"#{what}=", nil)
+      if @person.upload_complete?
+        # after deletion still upload_complete? => we are in a special
+        # case, e.g., deletion of the good conduct document.
+        if what == :upload_good_conduct_pdf && %w[in_review reviewed confirmed].any?(@person.status)
+          tag_name = ContractHelper::GOOD_CONDUCT_MISSING_TAG
+          Rails.logger.debug ActiveSupport::LogSubscriber.new.send(:color, "Add tag #{tag_name.inspect}", :magenta)
+          @person.tag_list.add(tag_name)
+        end
+      else
+        # Upload no longer complete => set status back to "printed"
+        @person.status = "printed"
+      end
+      @person.save!
+      val = @person.send(what)
+      Rails.logger.debug { "new value of #{what}: #{val.inspect}" }
+    end
+    redirect_to upload_group_person_path
   end
 
   def show_contract

@@ -11,7 +11,7 @@
       field: :upload_contract_pdf,
       button_label: t('activerecord.buttons.show_contract'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_contract"
-    
+
     = render 'person/upload/upload_pdf_field',
       f:f,
       label: t("activerecord.fields.upload_sepa_pdf"),
@@ -25,7 +25,7 @@
       field: :upload_medical_pdf,
       button_label: t('activerecord.buttons.show_medical'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_medical"
-    
+
     - if ul?(@person)
       = render 'person/upload/upload_pdf_field',
         f:f,
@@ -41,7 +41,7 @@
         field: :upload_data_agreement_pdf,
         button_label: t('activerecord.buttons.show_data_agreement'),
         button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement"
-    
+
     = render 'person/upload/upload_pdf_field',
       f:f,
       label: t("activerecord.fields.upload_photo_permission_pdf"),
@@ -71,7 +71,7 @@
         field: :upload_good_conduct_pdf,
         button_label: t('activerecord.buttons.show_good_conduct'),
         button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct"
-      
+
     = form_buttons(f, submit_label: t('activerecord.buttons.upload_documents') , cancel_url: person_path(@person))
 - else
   = raw(t("people.status_help.#{@person.status}", default: 'Unknown Status'))
