@@ -58,6 +58,8 @@ module ContractHelper
   # rubocop:enable Layout/SpaceInsideArrayLiteralBrackets
   # rubocop:enable Layout/HashAlignment
 
+  GOOD_CONDUCT_MISSING_TAG = "eFZ-Einsicht-fehlt"
+
   included do
     # rubocop:disable Metrics/MethodLength
     def payment_array

@@ -1,11 +1,19 @@
 .row
   %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
     = label
-  .col 
+  .col
     .d-flex.flex-row.mb-2
       .pb-2
         = f.file_field(field)
       - if @person.send(field).present?
+        - if @person.send(field).present? && can?(:log, @person)
+          = action_button("", "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/delete/#{field}",
+                          :trash, remote: false,
+                          method: :delete,
+                          class: "btn-danger",
+                          data: {confirm: t('activerecord.buttons.delete_confirm')},
+                          title: t('activerecord.buttons.delete_hint'),
+                          )
         = action_button(button_label,
                         button_path,
                         :envelope,
