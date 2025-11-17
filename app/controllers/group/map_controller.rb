@@ -15,7 +15,7 @@ class Group::MapController < ApplicationController
   decorates :group
 
   def index
-    allowed_statuses = ["printed", "upload", "in_review", "reviewed"]
+    allowed_statuses = ["confirmed", "in_review", "reviewed"]
     groups = @group.self_and_descendants
 
     role_sql = <<~SQL.squish
