@@ -6,6 +6,7 @@ tmp/
 pkg/
 doc/rdoc
 db/*.sqlite3
+db/schema.rb.diff
 zeus.json
 .sass-cache
 .project
