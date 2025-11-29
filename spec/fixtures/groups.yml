@@ -1,8 +1,8 @@
 root:
   parent:
   lft: 1
-  rgt: 4
-  name: Hauptgruppe
+  rgt: 12
+  name: German Contingent
   type: Group::Root
   layer_group_id: <%= ActiveRecord::FixtureSet.identify(:root) %>
 
@@ -13,3 +13,35 @@ empty_unit:
   name: Empty Unit
   type: Group::Unit
   layer_group_id: <%= ActiveRecord::FixtureSet.identify(:empty_unit) %>
+
+unit_a:
+  parent: root
+  lft: 4
+  rgt: 5
+  name: Unit A
+  type: Group::Unit
+  layer_group_id: <%= ActiveRecord::FixtureSet.identify(:unit_a) %>
+
+unit_b:
+  parent: root
+  lft: 6
+  rgt: 7
+  name: Unit B
+  type: Group::Unit
+  layer_group_id: <%= ActiveRecord::FixtureSet.identify(:unit_b) %>
+
+ist_a:
+  parent: root
+  lft: 8
+  rgt: 9
+  name: IST A
+  type: Group::Ist
+  layer_group_id: <%= ActiveRecord::FixtureSet.identify(:ist_a) %>
+
+ist_b:
+  parent: root
+  lft: 10
+  rgt: 11
+  name: IST B
+  type: Group::Ist
+  layer_group_id: <%= ActiveRecord::FixtureSet.identify(:ist_b) %>
