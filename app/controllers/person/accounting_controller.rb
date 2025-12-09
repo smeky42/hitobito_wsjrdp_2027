@@ -154,7 +154,9 @@ class Person::AccountingController < ApplicationController
     total_fee_entry.readonly!
     entries = AccountingEntry.where(subject: @person).to_a
     entries.sort_by! { |elt| elt.created_at }
-    entries.unshift(total_fee_entry)
+    if @person.status != "deregistered"
+      entries.unshift(total_fee_entry)
+    end
     entries
   end
 
