@@ -136,6 +136,7 @@ de:
         planned_custom_installments_issue: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
+        tag_list: Tags
 
       accounting_entry:
         amount_eur: Betrag in Euro
@@ -380,3 +381,6 @@ de:
       balanced: "Mit der aktuellen Anzahl an Youth Participants und Unit Leader bekommen wir genau %{count} Units zusammen."
       yp_bar_label: "YP: %{count} Units"
       ul_bar_label: "UL: %{count} Units"
+
+  version:
+    block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
