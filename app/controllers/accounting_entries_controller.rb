@@ -58,7 +58,7 @@ class AccountingEntriesController < ApplicationController
   end
 
   def authorize_action
-    authorize!(:edit, person)
+    authorize!(:log, person)
   end
 
   def form_like_labeled_attrs(obj, *attrs)
