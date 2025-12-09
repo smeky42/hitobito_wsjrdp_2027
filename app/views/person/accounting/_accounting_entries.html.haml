@@ -25,13 +25,14 @@
               - if created_at.to_date != value_date
                 %span= " • Valuta: " + value_date.strftime("%d.%m.%Y")
             %div.fw-semibold= entry.description
-            - if can_accounting? && ! entry.comment.blank?
-              %div.fst-italic= entry.comment
-            %div.fw-light
-              - if !entry.author.blank? && entry.author.id > 0
-                = Person.find(entry.author_id).full_name
-              - else
-                Automatische Buchung
+            - if can_accounting?
+              - if !entry.comment.blank?
+                %div.fst-italic= entry.comment
+              %div.fw-light
+                - if !entry.author.blank? && entry.author.id > 0
+                  = Person.find(entry.author_id).full_name
+                - else
+                  Automatische Buchung
           %td.text-end.fw-semibold(style="white-space:nowrap;")= format_cents_de(entry.amount_cents)
           %td.pl-1
             - if can_accounting? && !entry.id.blank?

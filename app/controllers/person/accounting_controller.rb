@@ -112,7 +112,19 @@ class Person::AccountingController < ApplicationController
   end
 
   def can_accounting?
-    can?(:log, person)
+    # For testing and to imitate output without accounting rights,
+    # accounting rights can be disabled using the can_accounting query
+    # parameter. Important: It is not possible to gain accounting
+    # rights this way.
+    if @can_accounting.nil?
+      can_accounting_param = (params[:can_accounting] || "").downcase
+      @can_accounting = if ["false", "0", "no"].any?(can_accounting_param)
+        false
+      else
+        can?(:log, person)
+      end
+    end
+    @can_accounting
   end
 
   def authorize_action
