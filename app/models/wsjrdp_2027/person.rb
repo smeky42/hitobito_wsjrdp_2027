@@ -45,8 +45,16 @@ module Wsjrdp2027::Person
         make_unit_code_display(unit_code)
       end
 
+      def unit_code_with_search_link_display
+        make_unit_code_display(unit_code, search_link: true)
+      end
+
       def cluster_code_display
         make_unit_code_display(cluster_code)
+      end
+
+      def cluster_code_with_search_link_display
+        make_unit_code_display(cluster_code, search_link: true, attribute: "cluster_code")
       end
 
       def short_full_name
