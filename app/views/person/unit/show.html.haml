@@ -50,7 +50,7 @@
     %div.labeled-grid
       %dt.muted Unit-code
       - if @person.unit_code_display
-        %dd= @person.unit_code_display
+        %dd= @person.unit_code_with_search_link_display
       - else
         %dd.muted Nicht gesetzt
     %div.labeled-grid

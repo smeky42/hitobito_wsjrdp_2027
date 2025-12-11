@@ -3,7 +3,7 @@
     %p
       %i.fas.fa-circle-info
       Gemeinsamer Unit-code der ULs im Buddy-ID Cluster:
-      = make_unit_code_display(@common_ul_unit_code)
+      = make_unit_code_display(@common_ul_unit_code, search_link: true)
     = action_button("Cluster-code auf #{@common_ul_unit_code} setzen (für ULs/YPs im Cluster)",
           "#{unit_group_person_path}/fill_cluster_code",
           :tag, remote: false, method: :post)
