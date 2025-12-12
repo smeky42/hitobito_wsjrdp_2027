@@ -213,14 +213,33 @@ module ContractHelper
       normalized_unit_code_or_nil(unit_code) || unit_code
     end
 
-    def make_unit_code_display(unit_code)
+    # rubocop:disable Metrics/MethodLength
+    def make_unit_code_display(unit_code, search_link: false, attribute: "unit_code")
       norm_unit_code = normalized_unit_code_or_nil(unit_code)
       if norm_unit_code
         color_marker = "<span style=\"display: inline-block; width: 12px; background-color: #{norm_unit_code};'\">&nbsp;</span>".html_safe
-        color_marker + " " + norm_unit_code
+        if search_link
+          unit_code_search_link = attribute_search_path(1, attribute, unit_code)
+          "<a href=\"#{unit_code_search_link}\" style=\"color: inherit;\">#{color_marker} <span style=\"text-decoration: underline;\">#{unit_code}</span></a>".html_safe
+        else
+          color_marker + " " + unit_code
+        end
       else
         unit_code
       end
+    end
+    # rubocop:enable Metrics/MethodLength
+
+    def attribute_search_path(group, key, value, constraint = "equal")
+      quoted_key = URI.encode_uri_component key
+      quoted_value = URI.encode_uri_component value
+      "/groups/#{group}/people?filters[attributes][0][constraint]=#{constraint}&filters[attributes][0][key]=#{quoted_key}&filters[attributes][0][value]=#{quoted_value}&filters[role][kind]=active_today&range=deep"
+    end
+
+    def tag_search_path(group, tag)
+      tag_name = tag.to_s
+      quoted_tag_name = URI.encode_uri_component tag_name
+      "/groups/#{group}/people?filters[role][kind]=active_today&filters[tag][names][]=#{quoted_tag_name}&range=deep"
     end
 
     def early_payer?(person)
