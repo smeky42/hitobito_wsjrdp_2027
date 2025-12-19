@@ -1,0 +1,16 @@
+- if @person.early_payer && @person.active_custom_installments_string.blank?
+  %h3.mt-3.mb-3 Kein Ratenplan - Einmalzahler
+- else
+  %h3.mt-3.mb-3 Ratenplan
+  %table.table.table-striped.table-sm.table-custom
+    %thead
+      %tr
+        %th(style="text-align: right;") Zeitpunkt
+        %th.text-end Betrag
+        %th.text-end Soll Kontostand
+    %tbody
+      - get_installments_table_entries.each do |entry|
+        %tr
+          %td(style="text-align: right;")= entry[:date]
+          %td.text-end= entry[:amount]
+          %td.text-end= entry[:total]

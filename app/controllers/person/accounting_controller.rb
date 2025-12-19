@@ -6,17 +6,17 @@ class Person::AccountingController < ApplicationController
   before_action :authorize_action
   decorates :group, :person
 
-  helper_method :get_accounting_entry_path
+  helper_method :get_entry_path
   helper_method :can_accounting?
-  helper_method :format_cents_de
   helper_method :get_installments_table_entries
-  helper_method :sum_entries_amount_cents
+  helper_method :permitted_attrs
 
   def index
     @person ||= person
     @group ||= group
 
     @accounting_entries = accounting_entries
+    @direct_debit_pre_notifications = direct_debit_pre_notifications
     @new_accounting_entry = new_accounting_entry(params)
 
     render :index
@@ -60,7 +60,7 @@ class Person::AccountingController < ApplicationController
         @warnings << new_sepa_status_msg
       end
       unless @person.save
-        @warnings.concat @person.errors.full_messages
+        @warnings.concat @person.errors.full_messages.map { |p| "Person: #{p}" }
       end
     end
 
@@ -70,28 +70,47 @@ class Person::AccountingController < ApplicationController
     redirect_back_or_to(accounting_group_person_path)
   end
 
+  def permitted_attrs
+    [
+      :amount_eur,
+      :amount_cents,
+      :amount_currency,
+      :description,
+      :comment,
+      :endtoend_id,
+      :new_sepa_status,
+      :value_date,
+      :dbtr_name,
+      :dbtr_iban,
+      :dbtr_bic,
+      :dbtr_address,
+      :cdtr_name,
+      :cdtr_iban,
+      :cdtr_bic,
+      :cdtr_address,
+      :mandate_id,
+      :mandate_date,
+      :debit_sequence_type
+    ]
+  end
+
   def new_accounting_entry(params)
     if params[:accounting_entry].blank?
       entry = AccountingEntry.new(
         subject: @person,
         author: current_user,
         amount_currency: "EUR",
-        new_sepa_status: @person.sepa_status
+        new_sepa_status: @person.sepa_status,
+        additional_info: {}
       )
     else
-      acc_entry_params = params[:accounting_entry].permit(
-        :amount_eur,
-        :amount_currency,
-        :description,
-        :comment,
-        :end_to_end_identifier,
-        :new_sepa_status,
-        :value_date
-      )
+      acc_entry_params = params[:accounting_entry].permit(permitted_attrs)
       entry = AccountingEntry.new(
         subject: @person,
         author: current_user,
-        amount_currency: "EUR", **acc_entry_params
+        amount_currency: "EUR",
+        additional_info: {},
+        **acc_entry_params
       )
     end
     entry
@@ -107,8 +126,12 @@ class Person::AccountingController < ApplicationController
     @group ||= person.primary_group
   end
 
-  def get_accounting_entry_path(entry)
-    accounting_entry_path(entry)
+  def get_entry_path(entry)
+    if entry.class.name.demodulize == WsjrdpDirectDebitPreNotification.name.demodulize
+      wsjrdp_direct_debit_pre_notification_path(entry)
+    else
+      accounting_entry_path(entry)
+    end
   end
 
   def can_accounting?
@@ -132,38 +155,21 @@ class Person::AccountingController < ApplicationController
   end
 
   def accounting_entries
-    active_fee_rule = @person.active_fee_rule
-    total_fee_reduction_cents = active_fee_rule&.total_fee_reduction_cents || 0
-    description = "Ausstehender Teilnahmebetrag"
-    if total_fee_reduction_cents != 0
-      fee_reduction_display = format_cents_de(total_fee_reduction_cents)
-      reduction_comment = "reduziert um #{fee_reduction_display}"
-      if !active_fee_rule&.total_fee_reduction_comment.blank?
-        reduction_comment = "#{active_fee_rule.total_fee_reduction_comment}: #{reduction_comment}"
-      end
-      description += " (#{reduction_comment})"
-    end
-    total_fee_entry = AccountingEntry.new(
-      created_at: @person.created_at,
-      subject: @person,
-      author: nil,
-      description: description,
-      amount_cents: -get_total_fee_cents(@person, active_fee_rule),
-      amount_currency: "EUR"
-    )
-    total_fee_entry.readonly!
-    entries = AccountingEntry.where(subject: @person).to_a
-    entries.sort_by! { |elt| elt.created_at }
-    if @person.status != "deregistered"
-      entries.unshift(total_fee_entry)
-    end
-    entries
+    @accounting_entries ||= person.accounting_entries.sort_by { |e| e.value_date }.reverse
+  end
+
+  def direct_debit_pre_notifications
+    shown_payment_status = %w[pre_notified skipped]
+    @direct_debit_pre_notifications ||= person.direct_debit_pre_notifications.select { |pn|
+      shown_payment_status.any?(pn.payment_status)
+    }.sort_by { |e|
+      e.collection_date
+    }.reverse
   end
 
   def get_installments_table_entries
-    active_fee_rule = @person.active_fee_rule
-    total = -get_total_fee_cents(@person, active_fee_rule)
-    installments = get_installments_cents(@person, active_fee_rule)
+    installments = person.installments_cents
+    total = 0
     entries = []
     installments.each do |item|
       cents = item[1]
@@ -176,13 +182,5 @@ class Person::AccountingController < ApplicationController
       }
     end
     entries
-  end
-
-  def sum_entries_amount_cents(entries)
-    balance = 0
-    entries.each { |e|
-      balance += e.amount_cents
-    }
-    balance
   end
 end

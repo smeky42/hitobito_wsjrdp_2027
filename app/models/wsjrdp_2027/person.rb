@@ -15,6 +15,8 @@ module Wsjrdp2027::Person
     Person::PUBLIC_ATTRS += rdp_attrs
     Person::FILTER_ATTRS += rdp_attrs
     Person.used_attributes += rdp_attrs
+    Person::PUBLIC_ATTRS << :additional_info
+    Person.used_attributes << :additional_info
 
     base.extend Geocoder::Model::Base
 
@@ -107,17 +109,83 @@ module Wsjrdp2027::Person
       end
 
       #
-      # active fee rule
+      # Accounting support
       #
 
-      def _maybe_fetch_fee_rules
-        if !@fee_rules_fetched
-          active_fee_rule, planned_fee_rule = fetch_fee_rules(self)
-          @active_fee_rule ||= active_fee_rule
-          @planned_fee_rule ||= planned_fee_rule
-          @fee_rules_fetched = true
+      ##
+      # Regular full fee in cents based on payment role.
+      def regular_full_fee_cents
+        get_full_regular_fee_cents(self)
+      end
+
+      ##
+      # Total fee (reduced by custom fee reduction) in cents.
+      def total_fee_cents
+        reduction = active_fee_rule&.total_fee_reduction_cents || 0
+        [get_full_regular_fee_cents(self) - reduction, 0].max
+      end
+
+      ##
+      # Label for displaying total_fee_cents.
+      #
+      # The label gives some hints about a fee reduction if any applies.
+      def total_fee_label(comment_sep: " ", space: " ")
+        reduction = active_fee_rule&.total_fee_reduction_cents || 0
+        if reduction != 0
+          reduction_display = format_cents_de(reduction, space: "", zero_cents: "")
+          comment = active_fee_rule&.total_fee_reduction_comment
+          comment_sep = ERB::Util.html_escape(comment_sep)
+          space = ERB::Util.html_escape(space)
+          reduction_comment = "reduziert um #{reduction_display}"
+          if !comment.blank?
+            reduction_comment = "#{comment}: #{reduction_comment}"
+          end
+          reduction_comment = reduction_comment.gsub(/\s+/, space).html_safe
+          "Beitrag#{comment_sep}(#{reduction_comment})".html_safe
+        else
+          "Beitrag".html_safe
         end
       end
+
+      def accounting_entries
+        entries = AccountingEntry.where(subject: self).to_a
+        entries.sort_by! { |elt| elt.created_at }
+        entries
+      end
+
+      def direct_debit_pre_notifications
+        entries = WsjrdpDirectDebitPreNotification.where(subject: self).to_a
+        entries.sort_by! { |elt| elt.created_at }
+        entries
+      end
+
+      ##
+      # amount paid in cents
+      def amount_paid_cents
+        accounting_entries.map { |e| e.amount_cents }.sum
+      end
+
+      ##
+      # Array of all installments
+      #
+      # Each entry of the returned array has two elements:
+      # * An array of year and month
+      # * The installment amount in cents
+      #
+      # Examples:
+      # [[[2025, 8], 340000] - YP august 2025 early payer installments
+      def installments_cents
+        installments = active_fee_rule&.get_installments_cents
+        if !installments.nil?
+          installments
+        else
+          regular_installments_cents_for(self).dup
+        end
+      end
+
+      #
+      # active fee rule
+      #
 
       def active_fee_rule
         _maybe_fetch_fee_rules
@@ -343,6 +411,15 @@ module Wsjrdp2027::Person
           false
         else
           @planned_fee_rule.changes.keys.any? { |k| k != "people_id" && k != "status" }
+        end
+      end
+
+      def _maybe_fetch_fee_rules
+        if !@fee_rules_fetched
+          active_fee_rule, planned_fee_rule = fetch_fee_rules(self)
+          @active_fee_rule ||= active_fee_rule
+          @planned_fee_rule ||= planned_fee_rule
+          @fee_rules_fetched = true
         end
       end
 

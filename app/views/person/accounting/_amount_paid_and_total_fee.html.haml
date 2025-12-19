@@ -1,0 +1,17 @@
+%div.my-3(style="display: grid; grid-template-columns: 1fr 1fr; align-items: first baseline;")
+  %span
+    %div.fa-2x.fw-semibold
+      - balance_eur_display = format_cents_de(@person.amount_paid_cents)
+      - if @person.amount_paid_cents == @person.total_fee_cents
+        %span(style="color: #00a030;")= balance_eur_display
+      - elsif @person.amount_paid_cents > @person.total_fee_cents
+        %span(style="color: var(--bs-orange);")= balance_eur_display
+      - elsif @person.amount_paid_cents >= 0
+        %span= balance_eur_display
+      - else
+        %span(style="color: var(--bs-red);")= balance_eur_display
+    %div.form-text Kontostand
+  %span(style="text-align: right;")
+    %div.fa-2x.fw-light.muted
+      = format_cents_de(@person.total_fee_cents)
+    %div.form-text= @person.total_fee_label(comment_sep: " ", space: " ")

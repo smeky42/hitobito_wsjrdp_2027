@@ -242,6 +242,17 @@ module ContractHelper
       "/groups/#{group}/people?filters[role][kind]=active_today&filters[tag][names][]=#{quoted_tag_name}&range=deep"
     end
 
+    def html_escape_multiline(s)
+      html_escape(s).gsub(/(?:\n\r?|\r\n?)/, "<br/>\n").html_safe
+    end
+
+    def auto_link_escaped_multiline(s)
+      escaped_s = html_escape_multiline(s).gsub(/\b(?:FIN|HELP)-[0-9]+\b/, "https://helpdesk.worldscoutjamboree.de/browse/\\&")
+      auto_link(escaped_s, sanitize: false, html: {target: "_blank"}) do |href|
+        href.gsub(%r{https://helpdesk.worldscoutjamboree.de/browse/}, "")
+      end.html_safe
+    end
+
     def early_payer?(person)
       if person.payment_role.nil?
         person.payment_role = build_payment_role(person)
@@ -337,12 +348,12 @@ module ContractHelper
       [payment_array[0], array]
     end
 
-    def format_cents_de(cents, currency = "EUR")
+    def format_cents_de(cents, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ")
       if currency == "EUR"
         currency = "€"
       end
       number = cents.to_f / 100.0
-      number_to_currency(number, separator: ",", delimiter: ".", unit: currency, format: "%n %u").sub(",00", ",—")
+      number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: "%n#{space}%u").sub(",00", zero_cents)
     end
 
     # rubocop:disable Metrics/MethodLength
@@ -351,6 +362,9 @@ module ContractHelper
       planned_fee_rule = nil
       fee_rules = Wsj27RdpFeeRule.where(people_id: person.id, deleted_at: nil)
       fee_rules.each do |fee_rule|
+        # Set fee_rule.person so that we do not need to load it later
+        # on access.
+        fee_rule.person = person
         if fee_rule.status == "active"
           active_fee_rule = fee_rule
         elsif fee_rule.status == "planned"

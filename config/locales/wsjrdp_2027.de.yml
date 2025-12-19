@@ -139,18 +139,61 @@ de:
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
         tag_list: Tags
 
+      # de.activerecord.attributes.accounting_entry
       accounting_entry:
+        created_at: Erstellt
+        updated_at: Geändert
         amount_eur: Betrag in Euro
         amount_eur_display: Betrag in Euro
+        pre_notified_amount_eur: Vorab informierter Betrag in Euro
+        pre_notified_amount_eur_display: Vorab informierter Betrag in Euro
+        description: Verwendungszweck
         comment: Kommentar
-        created_at: Erstellt
-        description: Beschreibung
-        end_to_end_identifier: Kundenreferenz
+        endtoend_id: Kundenreferenz
         sepa_status: Finanzstatus
         new_sepa_status: Neuer Finanzstatus
         new_sepa_status_display: Neuer Finanzstatus
-        updated_at: Geändert
         value_date: Valuta
+        mandate_id: Mandatsreferenz
+        mandate_date: Datum des SEPA Mandates
+        debit_sequence_type: Lastschrift Sequenz-Typ
+        dbtr_name: Debitor Name
+        dbtr_iban: Debitor IBAN
+        dbtr_bic: Debitor BIC
+        dbtr_address: Debitor Adresse
+        cdtr_name: Kreditor Name
+        cdtr_iban: Kreditor IBAN
+        cdtr_bic: Kreditor BIC
+        cdtr_address: Kreditor Adresse
+        creditor_id: Gläubiger-Identifikationsnummer
+        fill_in_rdp_account_44_as_creditor: rdp Konto 44 (Jamboree Konto) als Kreditor einfügen
+
+      # de.activerecord.attributes.wsjrdp_direct_debit_pre_notification
+      wsjrdp_direct_debit_pre_notification:
+        created_at: Erstellt
+        updated_at: Geändert
+        try_skip: Einzug aussetzen (best effort)
+        payment_status: Status
+        amount_eur: Betrag in Euro
+        amount_eur_display: Betrag in Euro
+        pre_notified_amount_eur: Vorab informierter Betrag in Euro
+        pre_notified_amount_eur_display: Vorab informierter Betrag in Euro
+        description: Verwendungszweck
+        comment: Kommentar
+        endtoend_id: Kundenreferenz
+        collection_date: Fälligkeitsdatum
+        mandate_id: Mandatsreferenz
+        mandate_date: Datum des SEPA Mandates
+        debit_sequence_type: Lastschrift Sequenz-Typ
+        dbtr_name: Debitor Name
+        dbtr_iban: Debitor IBAN
+        dbtr_bic: Debitor BIC
+        dbtr_address: Debitor Adresse
+        cdtr_name: Kreditor Name
+        cdtr_iban: Kreditor IBAN
+        cdtr_bic: Kreditor BIC
+        cdtr_address: Kreditor Adresse
+        creditor_id: Gläubiger-Identifikationsnummer
 
     buttons:
       show_contract: Anmeldung einsehen

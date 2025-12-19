@@ -1,16 +1,8 @@
-:javascript
-  function fill_in_rdp_account_44_as_creditor() {
-    $('#accounting_entry_cdtr_name').val('Ring deutscher Pfadfinder*innenverbände e.V.');
-    $('#accounting_entry_cdtr_iban').val('DE13370601932001939044');
-    $('#accounting_entry_cdtr_bic').val('GENODED1PAX');
-    $('#accounting_entry_cdtr_address').val('Chausseestraße 128/129, 10115 Berlin');
-  }
-
 #main.row
   - permitted_attrs_set = Set.new(permitted_attrs)
-  - cancel_url = get_accounting_entry_cancel_url
-  = standard_form(accounting_entry, {url: get_accounting_entry_path, method: :put}) do |f|
-    = hidden_field_tag("return_url", get_accounting_entry_return_url)
+  - cancel_url = get_pre_notification_cancel_url
+  = standard_form(pre_notification, {url: get_pre_notification_path, method: :put}) do |f|
+    = hidden_field_tag("return_url", get_pre_notification_return_url)
     = f.error_messages
     = form_buttons(f, cancel_url: cancel_url)
 
@@ -19,7 +11,13 @@
       %div.border-top.py-2
       = input_or_render_attrs(f, :created_at, :updated_at)
       %div.border-top.py-2
-      = input_or_render_attrs(f, :new_sepa_status_display)
+      - try_skip_help = "Wichtig: \"Einzug aussetzen\" hat keine Auswirkung, wenn die SEPA XML Datei für die Übermittlung zur Bank bereits erzeugt wurde."
+      - try_skip_disabled = (f.object.payment_status != "pre_notified")
+      = input_or_render_attrs(f, :try_skip, help_inline: try_skip_help, disabled: try_skip_disabled)
+      - if permitted_attrs_set.include?(:payment_status)
+        = f.labeled_collection_select(:payment_status, Settings.pre_notification_payment_status, :first, :last, {})
+      - else
+        = input_or_render_attrs(f, :payment_status)
       %div.border-top.py-2
       = input_or_render_attrs(f, :amount_eur)
       - if !f.object.pre_notified_amount_cents.nil? && (f.object.pre_notified_amount_cents != f.object.amount_cents)
@@ -27,16 +25,11 @@
       = input_or_render_attrs(f, :description)
       = input_or_render_attrs(f, :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten')
       %div.border-top.py-2
-      = input_or_render_attrs(f, :value_date, :debit_sequence_type, :endtoend_id)
+      = input_or_render_attrs(f, :collection_date, :debit_sequence_type, :endtoend_id)
       %div.border-top.py-2
       = input_or_render_attrs(f, :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
       = input_or_render_attrs(f, :mandate_id, :mandate_date)
       %div.border-top.py-2
-      %div.row.mb-2.mt-0
-        %div.offset-md-3.offset-xl-2
-          %div.btn-group
-            %button.btn.btn-sm.btn-primary.mt-2{ type: 'button', onclick: 'fill_in_rdp_account_44_as_creditor()' }
-              = t('activerecord.attributes.accounting_entry.fill_in_rdp_account_44_as_creditor')
       = input_or_render_attrs(f, :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address)
       = input_or_render_attrs(f, :creditor_id)
 

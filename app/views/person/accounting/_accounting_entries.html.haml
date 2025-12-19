@@ -1,17 +1,8 @@
-- balance_cents = sum_entries_amount_cents(@accounting_entries)
-- balance_eur_display = format_cents_de(balance_cents)
-%div.my-3
-  %div.fa-2x.fw-semibold
-    - if balance_cents > 0
-      %span= balance_eur_display
-    - else
-      %span= balance_eur_display
-  %div.form-text Kontostand
-
+-# input: entries
 %table.table.table-striped.table-sm.table-custom
   %tbody
-    - @accounting_entries.each do |entry|
-      - if can_accounting? || entry.amount_cents != 0
+    - entries.each do |entry|
+      - if entry.amount_cents != 0 || can_accounting?
         - created_at = entry.created_at
         - value_date = entry.value_date || created_at.to_date
         %tr
@@ -19,22 +10,59 @@
           -# .fa-xs font-size: 0.75em;
           -# .fa-sm font-size: 0.875em;
           %td
-            %div.fw-light.fa-sm(style="color:#6c757d;")
+            -#
+            -#
+            %div.fw-light.fa-sm(style="color:var(--bs-gray);")
+            - if entry.skipped?
+              %span(style="color:var(--bs-orange);")= "Einzug ausgesetzt"
+            - elsif entry.pre_booked?
+              %span(style="color:var(--bs-indigo);")= "Vorgemerkt"
+            - else
               %span= created_at.strftime("%d.%m.%Y")
               %span.fw-lighter= created_at.strftime("%H:%M:%S")
-              - if created_at.to_date != value_date
+            - if !entry.value_date.nil?
+              - if (created_at.to_date != value_date) || entry.skipped? || entry.pre_booked?
                 %span= " • Valuta: " + value_date.strftime("%d.%m.%Y")
-            %div.fw-semibold= entry.description
+            - if entry.pre_booked? && entry.try_skip?
+              %span= " • "
+              %span.fw-semibold(style="color: var(--bs-red);")= "Einzug aussetzen angefragt"
+            -#
+            -#
+            %div= can_accounting? ? auto_link_escaped_multiline(entry.description) : html_escape_multiline(entry.description)
             - if can_accounting?
               - if !entry.comment.blank?
-                %div.fst-italic= entry.comment
+                %div.fw-light.fst-italic= auto_link_escaped_multiline(entry.comment)
+            - if !entry.short_dbtr.blank?
+              %div
+                %span.fw-light.muted= "Zahlungsbeteiligt: "
+                %span.fw-light= entry.short_dbtr
+            - if !entry.endtoend_id.blank?
+              %div
+                %span.fw-light.muted= "#{t('activerecord.attributes.accounting_entry.endtoend_id')}: "
+                %span.fw-light= entry.endtoend_id
+            - if can_accounting? && !entry.author_full_name.blank?
               %div.fw-light
-                - if !entry.author.blank? && entry.author.id > 0
-                  = Person.find(entry.author_id).full_name
-                - else
-                  Automatische Buchung
-          %td.text-end.fw-semibold(style="white-space:nowrap;")= format_cents_de(entry.amount_cents)
-          %td.pl-1
-            - if can_accounting? && !entry.id.blank?
-              %a{href: get_accounting_entry_path(entry)}
-                %span.fa.fa-info-circle(aria-label="info" role="img")
+                %span.fw-light.muted= "Erstellt von: "
+                %span.fw-light= entry.author_full_name
+          %td.text-end
+            %table(width="100%")
+              %tr
+                %td.text-end(width="100%" style="padding: 0;")
+                  %div(style="white-space: nowrap;")
+                    - if entry.skipped?
+                      %s.fw-light.muted= format_cents_de(entry.amount_cents)
+                    - elsif entry.pre_booked? || entry.try_skip?
+                      %span.fw-light.muted= format_cents_de(entry.amount_cents)
+                    - else
+                      %span.fw-bold= format_cents_de(entry.amount_cents)
+                %td.pl-1(style="padding: 0;")
+                  - if can_accounting? && !entry.id.blank?
+                    %a{href: get_entry_path(entry)}
+                      %span.fa.fa-info-circle(aria-label="info" role="img")
+              %tr
+                %td(colspan="2" style="padding: 0; vertical-align: top;")
+                  %div.fa-xs.fw-light.muted(style="font-size: 0.75em; line-height: 1.1em; white-space: nowrap;")
+                    - if entry.pre_booked?
+                      (vorgemerkt)
+                    - elsif entry.skipped?
+                      (nicht gebucht)
