@@ -6,12 +6,16 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2027.
 
 module Sheet
-  class AccountingEntry < Base
+  class WsjrdpDirectDebitPreNotification < Base
     self.parent_sheet = Sheet::Person
 
     def title
-      "Transaktion #{entry.id}"
+      "Lastschrift Pre-Notification #{entry.id}"
     end
+
+    # def model_name
+    #   "direct_debit_pre_notification"
+    # end
 
     def current_parent_nav_path
       view.accounting_group_person_path(entry.group, entry.person)

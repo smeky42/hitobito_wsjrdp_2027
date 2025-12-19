@@ -61,6 +61,11 @@ sepa_status:
   individual_ok: Individueller Zahlungsplan (OK)  # Individueller Zahlungsplan, aktuell OK
   individual_missing: Individueller Zahlungsplan (Zahlung ausstehend)  # Individueller Zahlungsplan, zu wenig Geldeingang
 
+pre_notification_payment_status:
+  pre_notified: Pre-Notification verschickt (pre_notified)
+  skipped: Einzug ausgesetzt (skipped)
+  xml_generated: SEPA XML erzeugt (xml_generated)
+
 shirt_size:
   - Größe auswählen
   - XXS

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AccountingEntry < ActiveRecord::Base
-  include ActionView::Helpers::NumberHelper
+  include WsjrdpNumberHelper
 
   belongs_to :subject, polymorphic: true
   belongs_to :author, polymorphic: true
@@ -13,10 +13,11 @@ class AccountingEntry < ActiveRecord::Base
   belongs_to :reversed_by, inverse_of: "reverses", optional: true, class_name: "AccountingEntry"
   belongs_to :reverses, inverse_of: "reversed_by", optional: true, class_name: "AccountingEntry"
 
-  attribute :amount_eur, :float
+  has_many :notes, dependent: :destroy, as: :subject, class_name: "WsjrdpNote"
 
+  validates :amount_eur, presence: true
   validates :description, presence: true
-  validates :new_sepa_status, presence: true
+  validates :new_sepa_status, presence: true, on: :create
 
   around_save :around_save_callback
 
@@ -28,33 +29,51 @@ class AccountingEntry < ActiveRecord::Base
     @group ||= (person.primary_group_id.nil? ? Group.find(person.default_group_id) : person.primary_group)
   end
 
-  def to_s
-    "Transaktion #{id}"
-  end
-
-  def amount_eur
-    if amount_cents.nil?
-      nil
-    else
-      amount_cents.to_f / 100.0
-    end
-  end
-
-  def amount_eur=(value)
-    self.amount_cents = value.blank? ? nil : (value.to_f * 100.0).round
-  end
-
-  def amount_eur_display
-    if amount_cents.nil?
-      nil
-    else
-      eur = amount_cents.to_f / 100.0
-      number_to_currency(eur, separator: ",", delimiter: ".", format: "%n")
-    end
-  end
+  eur_attribute :amount_eur, cents_attr: :amount_cents
+  eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
 
   def new_sepa_status_display
     Settings.sepa_status[new_sepa_status]
+  end
+
+  def short_dbtr
+    s = [dbtr_name, dbtr_address, dbtr_iban].select { |e| !e.blank? }.join(", ")
+    s.presence
+  end
+
+  def author_full_name
+    if author_id.blank? || author_type != "Person" || author_id < 2
+      nil
+    else
+      fall_back = "Unbekannte Person (id #{author_id})"
+      begin
+        if author.blank?
+          fall_back
+        else
+          author.full_name
+        end
+      rescue
+        fall_back
+      end
+    end
+  rescue
+    nil
+  end
+
+  ##
+  # Return false
+  #
+  # Exists to have a common interface with WsjrdpDirectDebitPreNotification
+  def try_skip?
+    false
+  end
+
+  def pre_booked?
+    false
+  end
+
+  def skipped?
+    false
   end
 
   private
@@ -72,8 +91,8 @@ class AccountingEntry < ActiveRecord::Base
     if value_date.nil?
       self.value_date = created_at.getlocal("+02:00").to_date
     end
-    if end_to_end_identifier.blank?
-      self.end_to_end_identifier = nil
+    if endtoend_id.blank?
+      self.endtoend_id = nil
     end
     yield
   end

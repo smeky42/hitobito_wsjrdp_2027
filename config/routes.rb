@@ -54,6 +54,7 @@ Rails.application.routes.draw do
         end
 
         resources :accounting_entries, shallow: true, only: [:show, :update]
+        resources :wsjrdp_direct_debit_pre_notifications, path: "/direct_debit_pre_notifications", shallow: true, only: [:show, :update]
       end
 
       get "map" => "group/map#index"

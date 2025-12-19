@@ -1,4 +1,7 @@
+# frozen_string_literal: true
+
 class AccountingEntriesController < ApplicationController
+  include WsjrdpFormHelper
   include FormatHelper
   include UtilityHelper
   include ::ActionView::Helpers::TagHelper
@@ -12,11 +15,13 @@ class AccountingEntriesController < ApplicationController
   helper_method :get_accounting_entry_path
   helper_method :get_accounting_entry_return_url
   helper_method :person
+  helper_method :permitted_attrs
 
   def show
     @group ||= group
     @person ||= person
     @accounting_entry ||= accounting_entry
+    @permitted_attrs ||= permitted_attrs
     render "person/accounting_entries/show"
   end
 
@@ -24,17 +29,34 @@ class AccountingEntriesController < ApplicationController
     @group ||= group
     @person ||= person
     @accounting_entry ||= accounting_entry
+    @permitted_attrs ||= permitted_attrs
+
+    authorize!(:log, person)
 
     unless params[:accounting_entry].blank?
-      new_comment = params[:accounting_entry][:comment]
-      new_comment ||= ""
-      accounting_entry.comment = new_comment
+      accounting_entry.attributes = params.require(:accounting_entry).permit(permitted_attrs)
       unless accounting_entry.save
         render "person/accounting_entries/show", status: :bad_request
         return
       end
     end
     redirect_to get_accounting_entry_return_url
+  end
+
+  def permitted_attrs
+    if can_accounting_admin?
+      [
+        :amount_cents, :amount_eur,
+        # :pre_notified_amount_cents, :pre_notified_amount_eur,
+        :description, :comment,
+        :value_date, :endtoend_id,
+        :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address,
+        :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address,
+        :mandate_id, :mandate_date, :debit_sequence_type
+      ]
+    else
+      [:comment]
+    end
   end
 
   def accounting_entry
@@ -46,42 +68,24 @@ class AccountingEntriesController < ApplicationController
   end
 
   def group
-    @group ||= person.primary_group
+    @group ||= accounting_entry.group
   end
 
   def get_accounting_entry_path(entry = nil)
-    accounting_entry_path(accounting_entry)
+    accounting_entry_path(entry.nil? ? accounting_entry : entry)
   end
 
   def can_accounting?
     can?(:log, person)
   end
 
+  def can_accounting_admin?
+    can_accounting? && [1, 2, 65, 1309].any?(current_user.id)
+  end
+
   def authorize_action
     authorize!(:log, person)
   end
-
-  def form_like_labeled_attrs(obj, *attrs)
-    safe_join(attrs.map { |a| form_like_labelled_attr(obj, a) })
-  end
-
-  def form_like_labeled_attr(obj, attr, display_link: true)
-    key = captionize(attr, object_class(obj))
-    val = format_attr(obj, attr, display_link: display_link)
-    key_content = content_tag(:span, key, class: "col-md-3 col-xl-2 text-md-end")
-    val_content = content_tag(:span, val, class: "labeled pb-1 col-md-9 col-lg-8 col-xl-8 mw-63ch")
-    content_tag(:div, key_content + val_content, class: "row mb-2")
-  end
-
-  def form_like_render_attrs(obj, *attrs, display_link: true)
-    return if attrs.blank?
-
-    content = safe_join(attrs) do |a|
-      form_like_labeled_attr(obj, a, display_link: display_link) if !block_given? || yield(a)
-    end
-    content_tag(:div, content, class: "dl-horizontal m-0 p-2 border-top") if content.present?
-  end
-  helper_method :form_like_render_attrs
 
   private
 

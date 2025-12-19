@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
+ActiveRecord::Schema[7.1].define(version: 2025_12_20_100400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -18,7 +18,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.integer "subject_id", null: false
     t.integer "author_id", null: false
     t.integer "amount_cents", null: false
-    t.text "description"
+    t.string "description", null: false
     t.datetime "created_at", precision: nil
     t.string "subject_type", default: "Person"
     t.string "author_type", default: "Person"
@@ -29,13 +29,13 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "amount_currency", default: "EUR", null: false
     t.datetime "updated_at"
     t.date "value_date"
-    t.string "end_to_end_identifier"
+    t.string "endtoend_id"
     t.bigint "reversed_by_id"
     t.bigint "reverses_id"
     t.string "new_sepa_status", default: "ok"
     t.string "mandate_id"
     t.date "mandate_date"
-    t.string "debit_sequence_type"
+    t.string "debit_sequence_type", comment: "SEPA direct debit sequence type"
     t.string "cdtr_name"
     t.string "cdtr_iban"
     t.string "cdtr_bic"
@@ -44,6 +44,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "dbtr_iban"
     t.string "dbtr_bic"
     t.string "dbtr_address"
+    t.integer "pre_notified_amount_cents"
+    t.string "creditor_id"
+    t.jsonb "additional_info", default: {}
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
@@ -543,6 +546,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "address_care_of"
     t.string "postbox"
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((COALESCE((name)::text, ''::text) || ' '::text) || COALESCE((short_name)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)))", stored: true
+    t.jsonb "additional_info", default: {}
     t.index ["layer_group_id"], name: "index_groups_on_layer_group_id"
     t.index ["lft", "rgt"], name: "index_groups_on_lft_and_rgt"
     t.index ["parent_id"], name: "index_groups_on_parent_id"
@@ -1032,7 +1036,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "additional_contact_adress_b"
     t.string "additional_contact_email_b"
     t.string "additional_contact_phone_b"
-    t.boolean "additional_contact_single"
+    t.boolean "additional_contact_single", default: false, null: false
     t.string "upload_contract_pdf"
     t.string "upload_data_agreement_pdf"
     t.string "upload_passport_pdf"
@@ -1046,7 +1050,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "sepa_mail"
     t.string "sepa_iban"
     t.string "sepa_bic"
-    t.string "sepa_status", default: "ok"
+    t.string "sepa_status", default: "ok", null: false
     t.boolean "early_payer"
     t.string "generated_registration_pdf"
     t.boolean "medical_stiko_vaccinations"
@@ -1083,8 +1087,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "longitude"
     t.string "latitude"
     t.string "unit_code"
-    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) ||\nCASE\n    WHEN (birthday IS NOT NULL) THEN (((((EXTRACT(year FROM birthday))::text || '-'::text) || lpad((EXTRACT(month FROM birthday))::text, 2, '0'::text)) || '-'::text) || lpad((EXTRACT(day FROM birthday))::text, 2, '0'::text))\n    ELSE ''::text\nEND) || ' '::text) || COALESCE(additional_information, ''::text)))", stored: true
     t.string "cluster_code"
+    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) ||\nCASE\n    WHEN (birthday IS NOT NULL) THEN (((((EXTRACT(year FROM birthday))::text || '-'::text) || lpad((EXTRACT(month FROM birthday))::text, 2, '0'::text)) || '-'::text) || lpad((EXTRACT(day FROM birthday))::text, 2, '0'::text))\n    ELSE ''::text\nEND) || ' '::text) || COALESCE(additional_information, ''::text)))", stored: true
+    t.jsonb "additional_info", default: {}
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true
     t.index ["email"], name: "index_people_on_email", unique: true
@@ -1349,6 +1354,14 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
   end
 
+  create_table "wsjrdp_configs", id: :serial, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.boolean "active", default: true, null: false
+    t.jsonb "config", default: {}, null: false
+    t.index ["active"], name: "index_wsjrdp_configs_on_active", unique: true, where: "active"
+  end
+
   create_table "wsjrdp_direct_debit_payment_infos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -1356,14 +1369,15 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "payment_information_identification"
     t.boolean "batch_booking", default: true, null: false
     t.integer "number_of_transactions"
-    t.bigint "control_sum"
+    t.bigint "control_sum_cents"
     t.string "payment_type_instrument", default: "CORE", null: false
-    t.string "sequence_type", default: "OOFF", null: false
+    t.string "debit_sequence_type", default: "OOFF", null: false
     t.date "requested_collection_date", null: false
     t.string "cdtr_name"
     t.string "cdtr_iban"
     t.string "cdtr_bic"
     t.string "creditor_id", default: "DE81WSJ00002017275", null: false
+    t.string "cdtr_address"
     t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_c4d3672197"
   end
 
@@ -1376,9 +1390,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "subject_type", default: "Person"
     t.bigint "author_id"
     t.string "author_type", default: "Person"
-    t.boolean "try_skip", comment: "Use to request skipping of the notified payment"
+    t.boolean "try_skip", default: false, null: false, comment: "Use to request skipping of the notified payment"
     t.string "payment_status", default: "pre_notified", null: false, comment: "One of pre_notified, skipped, xml_generated"
-    t.string "email_from", default: "anmeldung@worldscoutjamboree.de", null: false
+    t.string "email_from", default: "info@worldscoutjamboree.de", null: false
     t.string "email_to", array: true
     t.string "email_cc", array: true
     t.string "email_bcc", array: true
@@ -1389,18 +1403,62 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "dbtr_address"
     t.string "amount_currency", default: "EUR", null: false
     t.integer "amount_cents", null: false
-    t.string "sequence_type", default: "OOFF", null: false, comment: "One of OOFF, FRST, RCUR, FNAL"
+    t.string "debit_sequence_type", default: "OOFF", null: false, comment: "One of OOFF, FRST, RCUR, FNAL"
     t.date "collection_date"
     t.string "mandate_id"
     t.date "mandate_date"
-    t.string "description"
+    t.string "description", null: false
     t.string "endtoend_id"
     t.string "payment_role"
     t.string "creditor_id", default: "DE81WSJ00002017275", null: false
+    t.integer "pre_notified_amount_cents"
+    t.text "comment", default: "", null: false
+    t.string "cdtr_name", default: "Ring deutscher Pfadfinder*innenverbände e.V.", null: false
+    t.string "cdtr_iban", default: "DE13370601932001939044", null: false
+    t.string "cdtr_bic", default: "GENODED1PAX", null: false
+    t.string "cdtr_address", default: "Chausseestraße 128/129, 10115 Berlin", null: false
+    t.jsonb "additional_info", default: {}, null: false
     t.index ["author_type", "author_id"], name: "idx_on_author_type_author_id_71103f7220"
     t.index ["direct_debit_payment_info_id"], name: "idx_on_direct_debit_payment_info_id_48e9587e08"
     t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_3f1ba63efb"
     t.index ["subject_type", "subject_id"], name: "idx_on_subject_type_subject_id_89fd1c0005"
+  end
+
+  create_table "wsjrdp_documents", id: :serial, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.datetime "deleted_at"
+    t.bigint "subject_id"
+    t.string "subject_type", default: "Person"
+    t.bigint "author_id"
+    t.string "author_type", default: "Person"
+    t.string "key", null: false
+    t.string "secondary_key", default: "", null: false
+    t.string "storage_file_path", null: false
+    t.string "filename", null: false
+    t.string "content_encoding"
+    t.string "content_type", default: "application/octet-stream", null: false
+    t.bigint "byte_size", null: false
+    t.text "comment"
+    t.jsonb "additional_info", default: {}
+    t.index ["author_type", "author_id"], name: "index_wsjrdp_documents_on_author_type_and_author_id"
+    t.index ["subject_id", "subject_type", "deleted_at"], name: "idx_on_subject_id_subject_type_deleted_at_5207dd0233"
+    t.index ["subject_id", "subject_type", "key", "secondary_key"], name: "idx_on_subject_id_subject_type_key_secondary_key_390fd9927a", unique: true, where: "(deleted_at IS NULL)"
+  end
+
+  create_table "wsjrdp_notes", id: :serial, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.datetime "deleted_at"
+    t.bigint "subject_id"
+    t.string "subject_type"
+    t.bigint "author_id"
+    t.string "author_type", default: "Person"
+    t.string "key", default: "generic", null: false
+    t.string "secondary_key", default: "", null: false
+    t.text "text"
+    t.index ["author_id", "author_type"], name: "index_wsjrdp_notes_on_author_id_and_author_type"
+    t.index ["subject_id", "subject_type", "deleted_at", "key", "secondary_key"], name: "idx_on_subject_id_subject_type_deleted_at_key_secon_563e2f683e"
   end
 
   create_table "wsjrdp_payment_initiations", force: :cascade do |t|
@@ -1410,10 +1468,11 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080808) do
     t.string "sepa_schema"
     t.string "message_identification"
     t.integer "number_of_transactions"
-    t.bigint "control_sum"
+    t.bigint "control_sum_cents"
     t.string "initiating_party_name"
     t.string "initiating_party_iban"
     t.string "initiating_party_bic"
+    t.jsonb "additional_info", default: {}
   end
 
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
