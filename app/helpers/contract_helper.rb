@@ -247,6 +247,7 @@ module ContractHelper
     end
 
     def auto_link_escaped_multiline(s)
+      s = s.gsub(%r{https://helpdesk.worldscoutjamboree.de/(?:browse|projects/HELP/queues/custom/[0-9]+)/([a-zA-Z0-]+-[0-9]+)}, "\\1")
       escaped_s = html_escape_multiline(s).gsub(/\b(?:FIN|HELP)-[0-9]+\b/, "https://helpdesk.worldscoutjamboree.de/browse/\\&")
       auto_link(escaped_s, sanitize: false, html: {target: "_blank"}) do |href|
         href.gsub(%r{https://helpdesk.worldscoutjamboree.de/browse/}, "")
