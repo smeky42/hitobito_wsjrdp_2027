@@ -155,7 +155,9 @@ class Person::AccountingController < ApplicationController
   end
 
   def accounting_entries
-    @accounting_entries ||= person.accounting_entries.sort_by { |e| e.value_date }.reverse
+    @accounting_entries ||= person.accounting_entries.sort_by { |e|
+      e.value_date || e.created_at.to_date
+    }.reverse
   end
 
   def direct_debit_pre_notifications
@@ -163,7 +165,7 @@ class Person::AccountingController < ApplicationController
     @direct_debit_pre_notifications ||= person.direct_debit_pre_notifications.select { |pn|
       shown_payment_status.any?(pn.payment_status)
     }.sort_by { |e|
-      e.collection_date
+      e.collection_date || e.created_at.to_date
     }.reverse
   end
 
