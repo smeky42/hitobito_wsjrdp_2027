@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 class WsjrdpDirectDebitPreNotificationsController < ApplicationController
-  # include FormatHelper
   include WsjrdpFormHelper
-  # include UtilityHelper
-  # include ::ActionView::Helpers::TagHelper
+  include WsjrdpFinHelper
 
   before_action :authorize_action
   # decorates :group, :person
 
   # helper_method :person, :group
+  helper_method :can_fin?
+  helper_method :can_fin_admin?
   helper_method :pre_notification
   helper_method :permitted_attrs
   helper_method :get_pre_notification_cancel_url, :get_pre_notification_return_url
@@ -57,12 +57,14 @@ class WsjrdpDirectDebitPreNotificationsController < ApplicationController
     authorize!(:log, person)
   end
 
-  def can_accounting?
-    can?(:log, person)
+  def can_fin?
+    @can_fin = get_can_fin(person, params: params) if @can_fin.nil?
+    @can_fin
   end
 
-  def can_accounting_admin?
-    can_accounting? && [1, 2, 65, 1309].any?(current_user.id)
+  def can_fin_admin?
+    @can_fin_admin = get_can_fin_admin(person, params: params) if @can_fin_admin.nil?
+    @can_fin_admin
   end
 
   private
@@ -92,7 +94,7 @@ class WsjrdpDirectDebitPreNotificationsController < ApplicationController
   end
 
   def permitted_attrs
-    if can_accounting_admin?
+    if can_fin_admin?
       [
         :try_skip,
         # :payment_status,
@@ -107,7 +109,9 @@ class WsjrdpDirectDebitPreNotificationsController < ApplicationController
         :payment_role
       ]
     else
-      [:comment]
+      [
+        :try_skip, :comment
+      ]
     end
   end
 end

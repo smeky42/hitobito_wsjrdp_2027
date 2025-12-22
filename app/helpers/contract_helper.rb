@@ -242,6 +242,11 @@ module ContractHelper
       "/groups/#{group}/people?filters[role][kind]=active_today&filters[tag][names][]=#{quoted_tag_name}&range=deep"
     end
 
+    def pre_notification_url(pn_id, admin: false)
+      base_url = "/direct_debit_pre_notifications/#{pn_id}"
+      admin ? "#{base_url}?fin_admin=true" : base_url
+    end
+
     def html_escape_multiline(s)
       html_escape(s).gsub(/(?:\n\r?|\r\n?)/, "<br/>\n").html_safe
     end

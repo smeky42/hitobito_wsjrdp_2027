@@ -7,9 +7,18 @@
   }
 
 #main.row
+
+  - pn_id = accounting_entry.direct_debit_pre_notification_id
+  - unless pn_id.nil?
+    %div
+      Ursprung: SEPA Pre-Notification
+      %a{ href: pre_notification_url(pn_id, admin: can_fin_admin?) }
+        = pn_id
+
   - permitted_attrs_set = Set.new(permitted_attrs)
   - cancel_url = get_accounting_entry_cancel_url
   = standard_form(accounting_entry, {url: get_accounting_entry_path, method: :put}) do |f|
+    = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", get_accounting_entry_return_url)
     = f.error_messages
     = form_buttons(f, cancel_url: cancel_url)
@@ -32,11 +41,12 @@
       = input_or_render_attrs(f, :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
       = input_or_render_attrs(f, :mandate_id, :mandate_date)
       %div.border-top.py-2
-      %div.row.mb-2.mt-0
-        %div.offset-md-3.offset-xl-2
-          %div.btn-group
-            %button.btn.btn-sm.btn-primary.mt-2{ type: 'button', onclick: 'fill_in_rdp_account_44_as_creditor()' }
-              = t('activerecord.attributes.accounting_entry.fill_in_rdp_account_44_as_creditor')
+      - if can_fin_admin?
+        %div.row.mb-2.mt-0
+          %div.offset-md-3.offset-xl-2
+            %div.btn-group
+              %button.btn.btn-sm.btn-primary.mt-2{ type: 'button', onclick: 'fill_in_rdp_account_44_as_creditor()' }
+                = t('activerecord.attributes.accounting_entry.fill_in_rdp_account_44_as_creditor')
       = input_or_render_attrs(f, :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address)
       = input_or_render_attrs(f, :creditor_id)
 

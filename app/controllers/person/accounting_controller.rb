@@ -2,12 +2,14 @@
 
 class Person::AccountingController < ApplicationController
   include ContractHelper
+  include WsjrdpFinHelper
 
   before_action :authorize_action
   decorates :group, :person
 
   helper_method :get_entry_path
-  helper_method :can_accounting?
+  helper_method :can_fin?
+  helper_method :can_fin_admin?
   helper_method :get_installments_table_entries
   helper_method :permitted_attrs
 
@@ -26,7 +28,7 @@ class Person::AccountingController < ApplicationController
     @person ||= person
     @group ||= group
 
-    unless can_accounting?
+    unless can_fin?
       redirect_back_or_to(accounting_group_person_path,
         alert: "Du darfst keine Buchungen anlegen!")
       return
@@ -134,20 +136,14 @@ class Person::AccountingController < ApplicationController
     end
   end
 
-  def can_accounting?
-    # For testing and to imitate output without accounting rights,
-    # accounting rights can be disabled using the can_accounting query
-    # parameter. Important: It is not possible to gain accounting
-    # rights this way.
-    if @can_accounting.nil?
-      can_accounting_param = (params[:can_accounting] || "").downcase
-      @can_accounting = if ["false", "0", "no"].any?(can_accounting_param)
-        false
-      else
-        can?(:log, person)
-      end
-    end
-    @can_accounting
+  def can_fin?
+    @can_fin = get_can_fin(person, params: params) if @can_fin.nil?
+    @can_fin
+  end
+
+  def can_fin_admin?
+    @can_fin_admin = get_can_fin_admin(person, params: params) if @can_fin_admin.nil?
+    @can_fin_admin
   end
 
   def authorize_action

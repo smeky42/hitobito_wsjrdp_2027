@@ -2,6 +2,7 @@
   - permitted_attrs_set = Set.new(permitted_attrs)
   - cancel_url = get_pre_notification_cancel_url
   = standard_form(pre_notification, {url: get_pre_notification_path, method: :put}) do |f|
+    = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", get_pre_notification_return_url)
     = f.error_messages
     = form_buttons(f, cancel_url: cancel_url)

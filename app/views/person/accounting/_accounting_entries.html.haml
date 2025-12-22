@@ -2,7 +2,7 @@
 %table.table.table-striped.table-sm.table-custom
   %tbody
     - entries.each do |entry|
-      - if entry.amount_cents != 0 || can_accounting?
+      - if entry.amount_cents != 0 || can_fin?
         - created_at = entry.created_at
         - value_date = entry.value_date || created_at.to_date
         %tr
@@ -28,8 +28,8 @@
               %span.fw-semibold(style="color: var(--bs-red);")= "Einzug aussetzen angefragt"
             -#
             -#
-            %div= can_accounting? ? auto_link_escaped_multiline(entry.description) : html_escape_multiline(entry.description)
-            - if can_accounting?
+            %div= can_fin? ? auto_link_escaped_multiline(entry.description) : html_escape_multiline(entry.description)
+            - if can_fin?
               - if !entry.comment.blank?
                 %div.fw-light.fst-italic= auto_link_escaped_multiline(entry.comment)
             - if !entry.short_dbtr.blank?
@@ -40,7 +40,7 @@
               %div
                 %span.fw-light.muted= "#{t('activerecord.attributes.accounting_entry.endtoend_id')}: "
                 %span.fw-light= entry.endtoend_id
-            - if can_accounting? && !entry.author_full_name.blank?
+            - if can_fin? && !entry.author_full_name.blank?
               %div.fw-light
                 %span.fw-light.muted= "Erstellt von: "
                 %span.fw-light= entry.author_full_name
@@ -56,7 +56,7 @@
                     - else
                       %span.fw-bold= format_cents_de(entry.amount_cents)
                 %td.pl-1(style="padding: 0;")
-                  - if can_accounting? && !entry.id.blank?
+                  - if can_fin? && !entry.id.blank?
                     %a{href: get_entry_path(entry)}
                       %span.fa.fa-info-circle(aria-label="info" role="img")
               %tr
