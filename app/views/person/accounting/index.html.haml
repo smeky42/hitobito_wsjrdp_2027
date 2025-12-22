@@ -12,7 +12,7 @@
 
     = render 'amount_paid_and_total_fee'
     = render 'accounting_entries', entries: @direct_debit_pre_notifications + @accounting_entries
-    - if can_accounting?
+    - if can_fin?
       = render 'new_entry', f: f
 
     = render 'installments'

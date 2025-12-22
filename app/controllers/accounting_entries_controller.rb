@@ -2,6 +2,7 @@
 
 class AccountingEntriesController < ApplicationController
   include WsjrdpFormHelper
+  include WsjrdpFinHelper
   include FormatHelper
   include UtilityHelper
   include ::ActionView::Helpers::TagHelper
@@ -10,7 +11,8 @@ class AccountingEntriesController < ApplicationController
   decorates :group, :person
 
   helper_method :accounting_entry
-  helper_method :can_accounting?
+  helper_method :can_fin?
+  helper_method :can_fin_admin?
   helper_method :get_accounting_entry_cancel_url
   helper_method :get_accounting_entry_path
   helper_method :get_accounting_entry_return_url
@@ -28,10 +30,9 @@ class AccountingEntriesController < ApplicationController
   def update
     @group ||= group
     @person ||= person
+    authorize!(:log, person)
     @accounting_entry ||= accounting_entry
     @permitted_attrs ||= permitted_attrs
-
-    authorize!(:log, person)
 
     unless params[:accounting_entry].blank?
       accounting_entry.attributes = params.require(:accounting_entry).permit(permitted_attrs)
@@ -44,7 +45,7 @@ class AccountingEntriesController < ApplicationController
   end
 
   def permitted_attrs
-    if can_accounting_admin?
+    if can_fin_admin?
       [
         :amount_cents, :amount_eur,
         # :pre_notified_amount_cents, :pre_notified_amount_eur,
@@ -71,20 +72,18 @@ class AccountingEntriesController < ApplicationController
     @group ||= accounting_entry.group
   end
 
-  def get_accounting_entry_path(entry = nil)
-    accounting_entry_path(entry.nil? ? accounting_entry : entry)
-  end
-
-  def can_accounting?
-    can?(:log, person)
-  end
-
-  def can_accounting_admin?
-    can_accounting? && [1, 2, 65, 1309].any?(current_user.id)
-  end
-
   def authorize_action
     authorize!(:log, person)
+  end
+
+  def can_fin?
+    @can_fin = get_can_fin(person, params: params) if @can_fin.nil?
+    @can_fin
+  end
+
+  def can_fin_admin?
+    @can_fin_admin = get_can_fin_admin(person, params: params) if @can_fin_admin.nil?
+    @can_fin_admin
   end
 
   private
@@ -94,6 +93,10 @@ class AccountingEntriesController < ApplicationController
       array = array.collect(&block).compact
     end
     super(array, sep)
+  end
+
+  def get_accounting_entry_path(entry = nil)
+    accounting_entry_path(entry.nil? ? accounting_entry : entry)
   end
 
   def _url_host_allowed?(url)

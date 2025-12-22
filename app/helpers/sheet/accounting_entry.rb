@@ -10,7 +10,7 @@ module Sheet
     self.parent_sheet = Sheet::Person
 
     def title
-      "Transaktion #{entry.id}"
+      "Buchung #{entry.id}"
     end
 
     def current_parent_nav_path
