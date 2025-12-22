@@ -94,24 +94,25 @@ class WsjrdpDirectDebitPreNotificationsController < ApplicationController
   end
 
   def permitted_attrs
-    if can_fin_admin?
+    if pre_notification.payment_status == "pre_notified"
       [
         :try_skip,
-        # :payment_status,
+        # :payment_status,  # forbidden to not screw up states
         :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address,
         :amount_cents, :amount_eur,
-        :debit_sequence_type,
-        :collection_date,
-        # :mandate_id, :mandate_date,
+        # :debit_sequence_type,  # in PmtInf
+        # :collection_date,  # in PmtInf
+        # :mandate_id  # constant for the whole jamboree
+        :mandate_date,  # allow writing in case a new mandate was issued
         :description,
         :comment,
-        # :endtoend_id,
+        :endtoend_id,
+        # :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address,  # in PmtInf
+        # :creditor_id,  # in GrpHdr
         :payment_role
       ]
     else
-      [
-        :try_skip, :comment
-      ]
+      [:comment]
     end
   end
 end
