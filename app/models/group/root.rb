@@ -10,12 +10,17 @@ class Group::Root < ::Group
   ### ROLES
   # Developers and Administrators
   class Admin < ::Role
-    self.permissions = %i[layer_and_below_full admin]
+    self.permissions = %i[layer_and_below_full admin finance]
   end
 
-  # HoC, Finance
+  # Leader (HoC, Unit Managers, ...)
   class Leader < ::Role
     self.permissions = [:layer_and_below_full]
+  end
+
+  # Finance (includes Leader permissions)
+  class Finance < ::Role
+    self.permissions = [:layer_and_below_full, :finance]
   end
 
   # CMT Member
@@ -23,5 +28,5 @@ class Group::Root < ::Group
     self.permissions = []
   end
 
-  roles Admin, Leader, Member
+  roles Admin, Leader, Member, Finance
 end
