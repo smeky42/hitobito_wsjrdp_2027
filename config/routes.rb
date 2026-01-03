@@ -53,13 +53,18 @@ Rails.application.routes.draw do
           post "unit/clear_cluster_code" => "person/unit#clear_cluster_code"
         end
 
-        resources :accounting_entries, shallow: true, only: [:show, :update]
-        resources :wsjrdp_direct_debit_pre_notifications, path: "/direct_debit_pre_notifications", shallow: true, only: [:show, :update]
+        resources :accounting_entries, path: "/fin/ae", shallow: true, only: [:show, :update]
+        resources :wsjrdp_direct_debit_pre_notifications, path: "/fin/pn", shallow: true, only: [:show, :update]
       end
 
       get "map" => "group/map#index"
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
+  end
+
+  namespace :fin do
+    resources :wsjrdp_camt_transactions, path: "tx", shallow: true, only: [:show, :update]
+    resources :wsjrdp_fin_accounts, path: "acc", shallow: true, only: [:show, :update]
   end
 end

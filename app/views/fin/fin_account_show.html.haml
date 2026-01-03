@@ -1,0 +1,74 @@
+:css
+  .amount {
+    text-align: right;
+    padding-right: 12px !important;
+  }
+  .info-col {
+    padding-left: 0.25rem !important;
+    padding: 0;
+  }
+
+#main.row
+  %table.table.table-striped.table-sm.table-custom
+    %thead
+      %tr
+        %th Valuta
+        %th.amount Betrag
+        %th Beschreibung
+        %th
+    %tbody
+      %tr
+        %td
+        %td.amount= closing_balance_eur_display
+        %td Aktuelles Saldo
+        %td
+      - transactions.each do |tx|
+        %tr
+          %td= tx.value_date
+          %td.amount= tx.amount_eur_display
+          %td
+            - if !tx.return_reason.blank?
+              %div(style="color:var(--bs-orange);")
+                %span.fw-ligh Retoure mit Rückgabe-Grund
+                %span.fw-semibold= tx.return_reason
+            %div= tx.description
+            - if !tx.subject.blank?
+              %div
+                %span.fw-light.muted Person:
+                %span= link_to(tx.subject.short_full_name_with_nickname, group_person_path(tx.subject.default_group_id, tx.subject))
+          %td.info-col
+            %a{href: fin_wsjrdp_camt_transaction_path(tx)}
+              %span.fa.fa-info-circle(aria-label="info" role="img")
+      %tr
+        %td
+        %td.amount
+          = fin_account.opening_balance_eur_display
+        %td Eröffnungs-Saldo
+        %td
+
+  = standard_form(fin_account, {url: fin_account_path, method: :put, data: {turbo: false}}) do |f|
+    = hidden_field_tag("fin_admin", can_fin_admin?)
+    = hidden_field_tag("return_url", fin_account_return_url)
+    = f.error_messages
+    = form_buttons(f, cancel_url: fin_account_return_url)
+
+    .mt-3
+    = field_set_tag do
+      %div.border-top.py-2
+      = input_or_render_attrs(f, :short_name)
+      = input_or_render_attrs(f, :account_identification)
+      = input_or_render_attrs(f, :opening_balance_eur, :opening_balance_currency)
+      = input_or_render_attrs(f, :opening_balance_date)
+      = input_or_render_attrs(f, :description)
+      %div.border-top.py-2
+      = input_or_render_attrs(f, :iban)
+      = input_or_render_attrs(f, :owner_name)
+      = input_or_render_attrs(f, :owner_address)
+      = input_or_render_attrs(f, :servicer_name)
+      = input_or_render_attrs(f, :servicer_bic)
+      = input_or_render_attrs(f, :servicer_address)
+      %div.border-top.py-2
+      = input_or_render_attrs(f, :created_at, :updated_at)
+      = input_or_render_attrs(f, :status)
+
+    = form_buttons(f, cancel_url: fin_account_return_url)

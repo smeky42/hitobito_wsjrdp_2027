@@ -7,5 +7,17 @@ module Wsjrdp2027::VariousAbility
     on(LabelFormat) do
       class_side(:index).if_admin
     end
+
+    on(WsjrdpCamtTransaction) do
+      permission(:finance).may(:fin_admin, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(WsjrdpFinAccount) do
+      permission(:finance).may(:fin_admin, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    def if_finance_on_root
+      user_context.permission_layer_ids(:finance).include?(Group.root.id)
+    end
   end
 end

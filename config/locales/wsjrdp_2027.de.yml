@@ -170,6 +170,52 @@ de:
         creditor_id: Gläubiger-Identifikationsnummer
         fill_in_rdp_account_44_as_creditor: rdp Konto 44 (Jamboree Konto) als Kreditor einfügen
 
+      # de.activerecord.attributes.wsjrdp_camt_transaction
+      wsjrdp_camt_transaction:
+        camt_type: CAMT-Typ
+        account_identification: Konto
+        account_servicer_reference: Bankreferenz
+        credit_debit_indication: Kredit/Debit
+        amount_eur: Betrag in Euro
+        amount_eur_display: Betrag in Euro
+        amount_currency: Währung
+        value_date: Valuta
+        description: Verwendungszweck
+        # message
+        message_identification: Message-ID
+        message_creation_date_time: Nachricht Erstellt
+        # Rpt
+        report_identification: Report-ID
+        report_electronic_sequence_number: elektronische Auszugsnummer
+        report_legal_sequence_number: Papierhafte Auszugnummer
+        report_page_number: Seitenzahl
+        report_creation_date_time: Report Erstellt
+        # Ntry
+        status: Status
+        additional_entry_info: Zusatz-Information
+        booking_date: Buchungsdatum
+        # TxDtls
+        transaction_details_index: Index
+        comment: Kommentar
+        references: Referenzen
+        endtoend_id: Kundenreferenz
+        mandate_id: Mandatsreferenz
+        bank_transaction_code: Geschäftsvorfall
+        bank_transaction_code_dk: Geschäftsvorfall nach DK
+        return_reason: Rückgabe-Grund
+        cdtr_name: Kreditor Name
+        cdtr_iban: Kreditor IBAN
+        cdtr_bic: Kreditor BIC
+        cdtr_address: Kreditor Adresse
+        dbtr_name: Debitor Name
+        dbtr_iban: Debitor IBAN
+        dbtr_bic: Debitor BIC
+        dbtr_address: Debitor Adresse
+        # metadata
+        created_at: Erstellt
+        updated_at: Geändert
+        deleted_at: Gelöscht
+
       # de.activerecord.attributes.wsjrdp_direct_debit_pre_notification
       wsjrdp_direct_debit_pre_notification:
         created_at: Erstellt
@@ -196,6 +242,28 @@ de:
         cdtr_bic: Kreditor BIC
         cdtr_address: Kreditor Adresse
         creditor_id: Gläubiger-Identifikationsnummer
+
+      # de.activerecord.attributes.wsjrdp_fin_account
+      wsjrdp_fin_account:
+        account_identification: Konto
+        opening_balance_eur: Eröffnungs-Saldo in Euro
+        opening_balance_eur_display: Eröffnungs-Saldo in Euro
+        opening_balance_currency: Währung
+        opening_balance_date: Eröffnung
+        #
+        iban: IBAN
+        short_name: Name
+        description: Beschreibung
+        owner_name: Kontoinhaber Name
+        owner_address: Kontoinhaber Adresse
+        servicer_name: Bank Name
+        servicer_bic: Bank BIC
+        servicer_address: Bank Adresse
+        # metadata
+        created_at: Erstellt
+        updated_at: Geändert
+        deleted_at: Gelöscht
+        status: Status
 
     buttons:
       show_contract: Anmeldung einsehen
