@@ -11,7 +11,7 @@ module Wsjrdp2027::Sheet::Person
     # "people.tabs.subscriptions",
     "people.tabs.print",
     "people.tabs.upload",
-    "people.tabs.invoices",
+    # "people.tabs.invoices",  # 2026-01-03 - no invoices in Hitobito at the moment
     # "activerecord.models.message.other",
     "people.tabs.history",
     "people.tabs.log",

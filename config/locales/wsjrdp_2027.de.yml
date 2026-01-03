@@ -23,6 +23,8 @@ de:
         one: Leader
       group/root/member:
         one: CMT
+      group/root/finance:
+        one: Finance
 
       group/ist/leader:
         one: IST Manager

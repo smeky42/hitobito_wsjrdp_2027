@@ -37,6 +37,7 @@ module HitobitoWsjrdp2027
       Sheet::Base.prepend Wsjrdp2027::Sheet::Base
       Sheet::Person.include Wsjrdp2027::Sheet::Person
       Sheet::Group.include Wsjrdp2027::Sheet::Group
+      NavigationHelper.include Wsjrdp2027::NavigationHelper
 
       # Abilities
       EventAbility.include Wsjrdp2027::EventAbility
