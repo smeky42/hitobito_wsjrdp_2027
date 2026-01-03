@@ -243,7 +243,7 @@ module ContractHelper
     end
 
     def pre_notification_url(pn_id, admin: false)
-      base_url = "/direct_debit_pre_notifications/#{pn_id}"
+      base_url = "/fin/pn/#{pn_id}"
       admin ? "#{base_url}?fin_admin=true" : base_url
     end
 
@@ -354,12 +354,11 @@ module ContractHelper
       [payment_array[0], array]
     end
 
-    def format_cents_de(cents, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ")
-      if currency == "EUR"
-        currency = "€"
-      end
+    def format_cents_de(cents, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ", format: nil)
+      currency = "€" if currency == "EUR"
+      format = "%n#{space}%u" if format.blank?
       number = cents.to_f / 100.0
-      number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: "%n#{space}%u").sub(",00", zero_cents)
+      number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: format).sub(",00", zero_cents)
     end
 
     # rubocop:disable Metrics/MethodLength

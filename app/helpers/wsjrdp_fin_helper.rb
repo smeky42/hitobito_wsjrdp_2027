@@ -20,8 +20,8 @@ module WsjrdpFinHelper
       can?(:log, person) && !param_is_false(params, :can_fin)
     end
 
-    def get_can_fin_admin(person, params: nil)
-      can?(:log, person) && [1, 2, 65, 1309].any?(current_user.id) && param_is_true(params, :fin_admin)
+    def get_can_fin_admin(subject, params: nil)
+      can?(:fin_admin, subject) && param_is_true(params, :fin_admin)
     end
   end
 

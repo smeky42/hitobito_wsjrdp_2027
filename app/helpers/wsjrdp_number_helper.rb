@@ -50,7 +50,7 @@ module WsjrdpNumberHelper
         cents = eur_to_cents_or_nil(value)
         send(:"#{cents_attr}=", cents)
       end
-      attribute name.to_sym, :float
+      # attribute name.to_sym, :float
       define_method(:"#{name}_display") do
         cents = send(cents_attr)
         cents_to_eur_display_or_nil(cents)

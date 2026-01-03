@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_12_30_100100) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_03_100100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -47,6 +47,10 @@ ActiveRecord::Schema[7.1].define(version: 2025_12_30_100100) do
     t.integer "pre_notified_amount_cents"
     t.string "creditor_id"
     t.jsonb "additional_info", default: {}
+    t.string "return_reason"
+    t.bigint "camt52_entry_id"
+    t.bigint "camt53_entry_id"
+    t.bigint "camt54_entry_id"
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
@@ -1354,6 +1358,68 @@ ActiveRecord::Schema[7.1].define(version: 2025_12_30_100100) do
     t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
   end
 
+  create_table "wsjrdp_camt_transactions", id: :serial, force: :cascade do |t|
+    t.string "camt_type", null: false
+    t.string "account_identification", null: false
+    t.string "account_servicer_reference", null: false, comment: "<AcctSvcrRef>"
+    t.string "credit_debit_indication", null: false, comment: "<CdtDbtInd>"
+    t.integer "amount_cents", null: false
+    t.string "amount_currency", default: "EUR", null: false
+    t.date "value_date", null: false
+    t.string "description", null: false
+    t.string "message_identification", comment: "<MsgId>"
+    t.datetime "message_creation_date_time", comment: "<CreDtTm>"
+    t.string "report_identification", comment: "<Stmt><Id>|<Rpt>..."
+    t.integer "report_electronic_sequence_number", comment: "<Stmt><ElctrncSeqNb>|<Rpt>..."
+    t.integer "report_legal_sequence_number", comment: "<Stmt><LglSeqNb>|<Rpt>..."
+    t.integer "report_page_number", comment: "<Stmt><StmtPgntn><PgNb>|<Rpt>..."
+    t.datetime "report_creation_date_time", comment: "<Stmt><CreDtTm>|<Rpt>..."
+    t.string "status", default: "NULL", null: false, comment: "<Ntry><Sts><Cd>"
+    t.string "additional_entry_info", comment: "<AddtlNtryInf>"
+    t.date "booking_date"
+    t.integer "number_of_transactions", default: 1, null: false, comment: "Number of <Ntry><NtryDtls><TxDtls>"
+    t.integer "transaction_details_index", default: 0, null: false
+    t.text "comment", default: "", null: false
+    t.jsonb "references", default: {}, null: false, comment: "<Ntry><NtryDtls><TxDtls><Refs>"
+    t.string "endtoend_id"
+    t.string "mandate_id"
+    t.string "bank_transaction_code", comment: "<BkTxCd>"
+    t.string "bank_transaction_code_dk"
+    t.string "return_reason", comment: "<Ntry><NtryDtls><TxDtls><RtrInf><Rsn><Cd>"
+    t.string "cdtr_name"
+    t.string "cdtr_iban"
+    t.string "cdtr_bic"
+    t.string "cdtr_address"
+    t.string "dbtr_name"
+    t.string "dbtr_iban"
+    t.string "dbtr_bic"
+    t.string "dbtr_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.datetime "deleted_at"
+    t.bigint "entry_id", comment: "the entry this transaction belongs to"
+    t.bigint "replaced_by_id", comment: "for soft delete"
+    t.bigint "replaces_id", comment: "for soft delete"
+    t.bigint "reversed_by_id", comment: "for reversal bookings"
+    t.bigint "reverses_id", comment: "for reversal bookings"
+    t.bigint "partially_reverses_id", comment: "for partial reversals"
+    t.bigint "subject_id"
+    t.string "subject_type"
+    t.bigint "fin_account_id"
+    t.bigint "payment_initiation_id"
+    t.bigint "partially_reverses_payment_initiation_id"
+    t.bigint "direct_debit_payment_info_id"
+    t.bigint "accounting_entry_id"
+    t.bigint "camt52_entry_id"
+    t.bigint "camt53_entry_id"
+    t.jsonb "ntry", comment: "<Ntry>"
+    t.jsonb "tx_dtls", comment: "<TxDtls>"
+    t.jsonb "additional_info", default: {}
+    t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
+    t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
+    t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
+  end
+
   create_table "wsjrdp_configs", id: :serial, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -1446,6 +1512,27 @@ ActiveRecord::Schema[7.1].define(version: 2025_12_30_100100) do
     t.index ["subject_id", "subject_type", "key", "secondary_key"], name: "idx_on_subject_id_subject_type_key_secondary_key_390fd9927a", unique: true, where: "(deleted_at IS NULL)"
   end
 
+  create_table "wsjrdp_fin_accounts", id: :serial, force: :cascade do |t|
+    t.string "account_identification", null: false
+    t.integer "opening_balance_cents", null: false
+    t.string "opening_balance_currency", null: false
+    t.date "opening_balance_date", null: false
+    t.string "iban"
+    t.string "short_name"
+    t.text "description", default: "", null: false
+    t.string "owner_name"
+    t.string "owner_address"
+    t.string "servicer_name"
+    t.string "servicer_bic"
+    t.string "servicer_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at"
+    t.datetime "deleted_at"
+    t.string "status", default: "active", null: false, comment: "active, closed, deleted"
+    t.jsonb "additional_info", default: {}
+    t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
+  end
+
   create_table "wsjrdp_notes", id: :serial, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -1473,6 +1560,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_12_30_100100) do
     t.string "initiating_party_iban"
     t.string "initiating_party_bic"
     t.jsonb "additional_info", default: {}
+    t.bigint "camt52_entry_id"
+    t.bigint "camt53_entry_id"
   end
 
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
