@@ -10,13 +10,31 @@ module Wsjrdp2027::Person
   GENDERS = %w[m w d].freeze
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
+  WSJRDP_ATTRS = [
+    :status, :early_payer,
+    :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group,
+    :unit_code, :cluster_code,
+    :additional_info,
+    :zero_padded_id
+  ].freeze
+
+  WSJRDP_SEARCHABLE_ATTRS = [
+    :id,
+    :additional_contact_name_a, :additional_contact_adress_a, :additional_contact_email_a, :additional_contact_phone_a,
+    :additional_contact_name_b, :additional_contact_adress_b, :additional_contact_email_b, :additional_contact_phone_b,
+    :sepa_name, :sepa_address, :sepa_mail, :sepa_iban
+  ]
+
   def self.included(base)
-    rdp_attrs = [:status, :early_payer, :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group, :unit_code, :cluster_code]
-    Person::PUBLIC_ATTRS += rdp_attrs
-    Person::FILTER_ATTRS += rdp_attrs
-    Person.used_attributes += rdp_attrs
-    Person::PUBLIC_ATTRS << :additional_info
-    Person.used_attributes << :additional_info
+    # Be careful to modify existing variables instead of re-assigning
+    # them to avoid Ruby warnings.
+    Person::PUBLIC_ATTRS.concat(WSJRDP_ATTRS)
+    Person::FILTER_ATTRS.concat(WSJRDP_ATTRS)
+    Person.used_attributes.concat(WSJRDP_ATTRS)
+    # Searching for birthdays interferes too much with searching for a
+    # persons id, so we remove :birthday from SEARCHABLE_ATTRS.
+    Person::SEARCHABLE_ATTRS.delete :birthday
+    Person::SEARCHABLE_ATTRS.concat(WSJRDP_SEARCHABLE_ATTRS)
 
     base.extend Geocoder::Model::Base
 

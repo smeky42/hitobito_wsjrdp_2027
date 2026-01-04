@@ -31,6 +31,10 @@ module HitobitoWsjrdp2027
       PeopleController.include Wsjrdp2027::PeopleController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
       Group::StatisticsController.include Wsjrdp2027::StatisticsController
+      Person::QueryController.include Wsjrdp2027::Person::QueryController
+
+      # Decorators
+      PersonDecorator.prepend Wsjrdp2027::PersonDecorator
 
       # Helpers
       Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass
