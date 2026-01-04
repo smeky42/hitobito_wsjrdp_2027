@@ -10,7 +10,7 @@ module Wsjrdp2027::GroupAbility
         .may(:index_events, :"index_event/courses", :index_mailing_lists)
         .nobody
       permission(:group_read)
-        .may(:index_events, :"index_event/courses", :index_mailing_lists)
+        .may # :index_events, :"index_event/courses", :index_mailing_lists can be reinstated later if needed
         .in_same_group
       permission(:group_and_below_read)
         .may(:index_events, :"index_event/courses", :index_mailing_lists)

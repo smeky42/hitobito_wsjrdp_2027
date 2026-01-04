@@ -1,0 +1,22 @@
+-#  Copyright (c) 2012-2013, Jungwacht Blauring Schweiz. This file is part of
+-#  hitobito and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito.
+- if can?(:new, @group.roles.new)
+  = action_button(t('.add_person'), new_group_role_path(@group), :plus)
+
+- if can?(:create_invoices_from_list, @group)
+  = invoice_button(filter: list_filter_args, group: @group)
+
+= render_extensions :actions_index
+
+- if can?(:new, @group.roles.new)
+  = action_button(t('.import_list'), new_group_csv_imports_path, :upload)
+
+- if can?(:new, @group.roles.new)
+  = dropdown_people_export(index_full_ability?)
+
+  = action_button(t('global.button.print'), 'javascript:window.print();', :print)
+
+- if can?(:manage_person_duplicates, @group)
+  = action_button(t('.person_duplicate_list'), group_person_duplicates_path(@group), :'user-friends')
