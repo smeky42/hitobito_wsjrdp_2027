@@ -7,7 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Fin::WsjrdpFinAccountsController < ApplicationController
+class WsjrdpFinAccountsController < ApplicationController
   include WsjrdpFormHelper
   include WsjrdpFinHelper
   include WsjrdpNumberHelper
@@ -53,7 +53,7 @@ class Fin::WsjrdpFinAccountsController < ApplicationController
   end
 
   def fin_account_path(entry = nil)
-    fin_wsjrdp_fin_account_path(entry.nil? ? fin_account : entry)
+    url_for(entry.nil? ? fin_account : entry)
   end
 
   def fin_account_return_url(entry = nil)

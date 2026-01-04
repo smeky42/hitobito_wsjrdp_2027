@@ -6,11 +6,9 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2027.
 
 module Sheet
-  module Fin
-    class WsjrdpCamtTransaction < Base
-      def title
-        "Transaktion #{entry.id}"
-      end
+  class WsjrdpCamtTransaction < Base
+    def title
+      "Transaktion #{entry.id}"
     end
   end
 end

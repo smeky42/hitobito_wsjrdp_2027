@@ -173,6 +173,7 @@ de:
       # de.activerecord.attributes.wsjrdp_camt_transaction
       wsjrdp_camt_transaction:
         camt_type: CAMT-Typ
+        fin_account: Konto
         account_identification: Konto
         account_servicer_reference: Bankreferenz
         credit_debit_indication: Kredit/Debit
@@ -215,6 +216,9 @@ de:
         created_at: Erstellt
         updated_at: Geändert
         deleted_at: Gelöscht
+        subject: Beteiligte Person
+        accounting_entry: Assoziierte Buchung
+        accounting_entry_id: Assoziierte Buchung
 
       # de.activerecord.attributes.wsjrdp_direct_debit_pre_notification
       wsjrdp_direct_debit_pre_notification:

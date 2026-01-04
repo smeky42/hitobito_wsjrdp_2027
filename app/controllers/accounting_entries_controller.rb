@@ -44,6 +44,14 @@ class AccountingEntriesController < ApplicationController
     redirect_to get_accounting_entry_return_url
   end
 
+  def destroy
+    @accounting_entry ||= accounting_entry
+    authorize!(:destroy, @accounting_entry)
+    raise "Missing fin_admin to destroy accounting_entry" unless can_fin_admin?
+    @accounting_entry.destroy!
+    redirect_to "#{accounting_group_person_path(group, person)}?fin_admin=1"
+  end
+
   def permitted_attrs
     if can_fin_admin?
       [
@@ -115,7 +123,7 @@ class AccountingEntriesController < ApplicationController
     elsif request.referer && _url_host_allowed?(request.referer)
       request.referer
     else
-      "#{group_person_path(group, person)}/accounting"
+      accounting_group_person_path(group, person)
     end
   end
 end

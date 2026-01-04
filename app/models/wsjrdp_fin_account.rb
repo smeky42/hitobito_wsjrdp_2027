@@ -17,4 +17,8 @@ class WsjrdpFinAccount < ActiveRecord::Base
     dependent: :restrict_with_error
 
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
+
+  def to_s
+    "#{short_name} / #{account_identification}"
+  end
 end

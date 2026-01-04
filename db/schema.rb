@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_04_100100) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_04_100200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -28,7 +28,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_04_100100) do
     t.text "comment", default: "", null: false
     t.string "amount_currency", default: "EUR", null: false
     t.datetime "updated_at"
-    t.date "value_date"
+    t.date "value_date", null: false
     t.string "endtoend_id"
     t.bigint "reversed_by_id"
     t.bigint "reverses_id"
@@ -48,9 +48,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_04_100100) do
     t.string "creditor_id"
     t.jsonb "additional_info", default: {}
     t.string "return_reason"
-    t.bigint "camt52_entry_id"
-    t.bigint "camt53_entry_id"
-    t.bigint "camt54_entry_id"
+    t.bigint "camt_transaction_id"
+    t.date "booking_date", null: false
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
@@ -1410,12 +1409,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_04_100100) do
     t.bigint "payment_initiation_id"
     t.bigint "partially_reverses_payment_initiation_id"
     t.bigint "direct_debit_payment_info_id"
-    t.bigint "accounting_entry_id"
-    t.bigint "camt52_entry_id"
-    t.bigint "camt53_entry_id"
     t.jsonb "ntry", comment: "<Ntry>"
     t.jsonb "tx_dtls", comment: "<TxDtls>"
     t.jsonb "additional_info", default: {}
+    t.string "entry_or_details", default: "entry", null: false, comment: "'entry' (Ntry) or 'details' (TxDtls)"
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"

@@ -7,12 +7,5 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-module Wsjrdp2027::NavigationHelper
-  extend ActiveSupport::Concern
-
-  included do
-    # Remove :invoices tab for the time being. We do not use it and it
-    # is visible to people with the :finance permission.
-    NavigationHelper::MAIN.delete_if { |e| e["label"] == :invoices }
-  end
+class WsjrdpNote < ActiveRecord::Base
 end

@@ -7,7 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Fin::WsjrdpCamtTransactionsController < ApplicationController
+class WsjrdpCamtTransactionsController < ApplicationController
   include WsjrdpFormHelper
   include WsjrdpFinHelper
 
@@ -18,6 +18,7 @@ class Fin::WsjrdpCamtTransactionsController < ApplicationController
   helper_method :permitted_attrs
   helper_method :camt_transaction_return_url
   helper_method :camt_transaction_path
+  helper_method :matching_accounting_entries
 
   def show
     @wsjrdp_camt_transaction ||= camt_transaction
@@ -27,7 +28,8 @@ class Fin::WsjrdpCamtTransactionsController < ApplicationController
   def update
     @wsjrdp_camt_transaction ||= camt_transaction
     authorize!(:update, camt_transaction)
-    camt_transaction.attributes = params.require(:wsjrdp_camt_transaction).permit(permitted_attrs)
+    permitted = _transform_tx_params(params.require(:wsjrdp_camt_transaction).permit(permitted_attrs))
+    camt_transaction.attributes = permitted
     if camt_transaction.save
       if camt_transaction_return_url == camt_transaction_path
         flash.now[:notice] = "Transaktion #{camt_transaction.id} erfolgreich aktualisiert."
@@ -44,26 +46,46 @@ class Fin::WsjrdpCamtTransactionsController < ApplicationController
     @camt_transaction ||= WsjrdpCamtTransaction.find(params[:id])
   end
 
-  def authorize_action
-    authorize!(:show, camt_transaction)
-  end
-
   def can_fin_admin?
     @can_fin_admin = get_can_fin_admin(camt_transaction, params: params) if @can_fin_admin.nil?
     @can_fin_admin
   end
 
+  def matching_accounting_entries
+    @matching_accounting_entries ||= camt_transaction.accounting_entries_for_subject.select { |e|
+      e.amount_cents == camt_transaction.amount_cents
+    }
+  end
+
   private
 
+  def authorize_action
+    authorize!(:show, camt_transaction)
+  end
+
   def camt_transaction_path(entry = nil)
-    fin_wsjrdp_camt_transaction_path(entry.nil? ? camt_transaction : entry)
+    url_for(entry.nil? ? camt_transaction : entry)
   end
 
   def camt_transaction_return_url(entry = nil)
     params[:return_url].presence || camt_transaction_path(entry)
   end
 
+  def _transform_tx_params(params)
+    if params[:subject].blank? || params[:subject_id].blank?
+      params[:subject_id] = nil
+      params[:subject_type] = nil
+    elsif params[:subject_type].blank?
+      params[:subject_type] = "Person"
+    end
+    params.except(:subject)
+  end
+
   def permitted_attrs
-    [:comment]
+    [
+      :comment,
+      :subject, :subject_id, :subject_type,
+      :accounting_entry, :accounting_entry_id
+    ]
   end
 end

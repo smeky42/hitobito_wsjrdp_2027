@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class AccountingEntry < ActiveRecord::Base
+  include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
 
   belongs_to :subject, polymorphic: true
@@ -9,6 +10,7 @@ class AccountingEntry < ActiveRecord::Base
   belongs_to :direct_debit_payment_info, optional: true, class_name: "WsjrdpDirectDebitPaymentInfo"
   belongs_to :direct_debit_pre_notification, optional: true, class_name: "WsjrdpDirectDebitPreNotification"
   belongs_to :payment_initiation, optional: true, class_name: "WsjrdpPaymentInitiation"
+  belongs_to :camt_transaction, optional: true, class_name: "WsjrdpCamtTransaction"
 
   belongs_to :reversed_by, inverse_of: "reverses", optional: true, class_name: "AccountingEntry"
   belongs_to :reverses, inverse_of: "reversed_by", optional: true, class_name: "AccountingEntry"
@@ -20,6 +22,10 @@ class AccountingEntry < ActiveRecord::Base
   validates :new_sepa_status, presence: true, on: :create
 
   around_save :around_save_callback
+  before_destroy :_before_destroy_callback
+
+  eur_attribute :amount_eur, cents_attr: :amount_cents
+  eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
 
   def person
     @person ||= ((subject_type == "Person") ? subject : Person.root)
@@ -29,8 +35,14 @@ class AccountingEntry < ActiveRecord::Base
     @group ||= (person.primary_group_id.nil? ? Group.find(person.default_group_id) : person.primary_group)
   end
 
-  eur_attribute :amount_eur, cents_attr: :amount_cents
-  eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
+  def to_s
+    d = value_date || created_at.to_date
+    "#{id} #{truncate(description, length: 60)} (#{amount_eur_display}) #{d}"
+  end
+
+  def link_name(length: 80)
+    "#{id} #{truncate(description, length: length)} (#{amount_eur_display})"
+  end
 
   def new_sepa_status_display
     Settings.sepa_status[new_sepa_status]
@@ -91,9 +103,22 @@ class AccountingEntry < ActiveRecord::Base
     if value_date.nil?
       self.value_date = created_at.getlocal("+02:00").to_date
     end
+    if booking_date.nil?
+      self.booking_date = created_at.getlocal("+02:00").to_date
+    end
     if endtoend_id.blank?
       self.endtoend_id = nil
     end
     yield
+  end
+
+  def _before_destroy_callback
+    if reversed_by_id.present?
+      ae = AccountingEntry.find_by(id: reversed_by_id)
+      if ae.present?
+        ae.reverses_id = nil
+        ae.save!
+      end
+    end
   end
 end
