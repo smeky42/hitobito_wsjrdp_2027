@@ -8,6 +8,10 @@ module Wsjrdp2027::VariousAbility
       class_side(:index).if_admin
     end
 
+    on(AccountingEntry) do
+      permission(:finance).may(:fin_admin, :log, :manage, :show, :update, :destroy).if_finance_on_root
+    end
+
     on(WsjrdpCamtTransaction) do
       permission(:finance).may(:fin_admin, :log, :manage, :show, :update).if_finance_on_root
     end

@@ -57,7 +57,9 @@
                       %span.fw-bold= format_cents_de(entry.amount_cents)
                 %td.pl-1(style="padding: 0;")
                   - if can_fin? && !entry.id.blank?
-                    %a{href: get_entry_path(entry)}
+                    - ae_url = get_entry_path(entry)
+                    - ae_url = "#{ae_url}?fin_admin=1" if can_fin_admin?
+                    %a{href: ae_url}
                       %span.fa.fa-info-circle(aria-label="info" role="img")
               %tr
                 %td(colspan="2" style="padding: 0; vertical-align: top;")

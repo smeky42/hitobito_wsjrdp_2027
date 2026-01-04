@@ -53,7 +53,7 @@ Rails.application.routes.draw do
           post "unit/clear_cluster_code" => "person/unit#clear_cluster_code"
         end
 
-        resources :accounting_entries, path: "/fin/ae", shallow: true, only: [:show, :update]
+        resources :accounting_entries, path: "/fin/ae", shallow: true, only: [:show, :update, :destroy]
         resources :wsjrdp_direct_debit_pre_notifications, path: "/fin/pn", shallow: true, only: [:show, :update]
       end
 
@@ -63,8 +63,11 @@ Rails.application.routes.draw do
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
   end
 
-  namespace :fin do
-    resources :wsjrdp_camt_transactions, path: "tx", shallow: true, only: [:show, :update]
+  scope "/fin" do
+    resources :wsjrdp_camt_transactions, path: "tx", shallow: true, only: [:show, :update] do
+      post "create_accounting_entry", to: "camt_transaction/actions#create_accounting_entry"
+      post "link_accounting_entry/:accounting_entry_id", to: "camt_transaction/actions#link_accounting_entry"
+    end
     resources :wsjrdp_fin_accounts, path: "acc", shallow: true, only: [:show, :update]
   end
 end

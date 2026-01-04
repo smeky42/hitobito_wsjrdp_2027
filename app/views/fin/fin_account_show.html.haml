@@ -7,6 +7,9 @@
     padding-left: 0.25rem !important;
     padding: 0;
   }
+  .ae-linked {
+    color: #00a030;
+  }
 
 #main.row
   %table.table.table-striped.table-sm.table-custom
@@ -35,9 +38,24 @@
             - if !tx.subject.blank?
               %div
                 %span.fw-light.muted Person:
-                %span= link_to(tx.subject.short_full_name_with_nickname, group_person_path(tx.subject.default_group_id, tx.subject))
+                %span= link_to(tx.subject.short_full_name_with_nickname, url_for(tx.subject))
+                - if !tx.accounting_entry.blank?
+                  - ae = tx.accounting_entry
+                  %span.ae-linked
+                    = " • Verknüpfte Buchung: #{link_to(tx.accounting_entry.link_name, url_for(tx.accounting_entry))}"
+              - if tx.accounting_entry.blank?
+                %div
+                  - accounting_entries = tx.accounting_entries_for_subject_with_matching_amount
+                  - if accounting_entries.size == 1
+                    - entry = accounting_entries[0]
+                    = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(tx)}/link_accounting_entry/#{entry.id}",
+                                    :plus, method: :post, remote: false,
+                                    data: { confirm: "Transaktion #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
+                  = action_button("Erzeuge Buchung", "#{url_for(tx)}/create_accounting_entry",
+                                  :plus, method: :post, remote: false,
+                                  data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
           %td.info-col
-            %a{href: fin_wsjrdp_camt_transaction_path(tx)}
+            %a{href: url_for(tx), target: "_blank"}
               %span.fa.fa-info-circle(aria-label="info" role="img")
       %tr
         %td

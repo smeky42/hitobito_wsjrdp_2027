@@ -6,11 +6,9 @@
 #  https://github.com/hitobito/hitobito_wsjrdp_2027.
 
 module Sheet
-  module Fin
-    class WsjrdpFinAccount < Base
-      def title
-        "#{entry.short_name} (Konto #{entry.id})"
-      end
+  class WsjrdpFinAccount < Base
+    def title
+      "#{entry.short_name} (Konto #{entry.id})"
     end
   end
 end
