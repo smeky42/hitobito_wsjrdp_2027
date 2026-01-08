@@ -11,13 +11,13 @@ describe PersonAbility do
       let(:other_ul) { people(:ul_a_1) }
 
       context "on other youth participant" do
-        it_behaves_like "only allow actions", {allowed: []} do
+        it_behaves_like "only allow person actions", {allowed: []} do
           let(:other) { other_yp }
         end
       end
 
       context "on unit leader" do
-        it_behaves_like "only allow actions", {allowed: []} do
+        it_behaves_like "only allow person actions", {allowed: []} do
           let(:other) { other_ul }
         end
       end
@@ -28,13 +28,13 @@ describe PersonAbility do
       let(:other_ul) { people(:ul_b_1) }
 
       context "on youth participant" do
-        it_behaves_like "only allow actions", {allowed: []} do
+        it_behaves_like "only allow person actions", {allowed: []} do
           let(:other) { other_yp }
         end
       end
 
       context "on unit leader" do
-        it_behaves_like "only allow actions", {allowed: []} do
+        it_behaves_like "only allow person actions", {allowed: []} do
           let(:other) { other_ul }
         end
       end
@@ -44,7 +44,7 @@ describe PersonAbility do
       let(:cmt) { people(:cmt_member1) }
 
       context "on CMT member" do
-        it_behaves_like "only allow actions", {allowed: []} do
+        it_behaves_like "only allow person actions", {allowed: []} do
           let(:other) { cmt }
         end
       end
@@ -54,7 +54,7 @@ describe PersonAbility do
       let(:ist) { people(:ist_a_1) }
 
       context "on IST member" do
-        it_behaves_like "only allow actions", {allowed: []} do
+        it_behaves_like "only allow person actions", {allowed: []} do
           let(:other) { ist }
         end
       end
