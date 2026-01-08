@@ -17,6 +17,13 @@ on:
       - 'doc/**'
       - '**.md'
 
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+    inputs:
+      hitobito_version:
+        description: 'Hitobito core version (git branch or tag)'
+        required: false
+
 jobs:
   define-matrix:
     runs-on: ubuntu-latest
@@ -30,6 +37,9 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             # For pushes, only tests against the deployed branch
             echo "core_refs=[\"${DEPLOYED_REF}\"]" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.hitobito_version }}" ]; then
+            # For manual runs with specified version, only test that version
+            echo "core_refs=[\"${{ inputs.hitobito_version }}\"]" >> "$GITHUB_OUTPUT"
           else
             # Test deployed branch and master
             echo "core_refs=[\"${DEPLOYED_REF}\", \"master\"]" >> "$GITHUB_OUTPUT"
