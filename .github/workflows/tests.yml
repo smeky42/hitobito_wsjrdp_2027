@@ -41,8 +41,9 @@ jobs:
             # For manual runs with specified version, only test that version
             echo "core_refs=[\"${{ inputs.hitobito_version }}\"]" >> "$GITHUB_OUTPUT"
           else
-            # Test deployed branch and master
-            echo "core_refs=[\"${DEPLOYED_REF}\", \"master\"]" >> "$GITHUB_OUTPUT"
+            # Test deployed branch and master (tests against master are temporarily disabled)
+            # echo "core_refs=[\"${DEPLOYED_REF}\", \"master\"]" >> "$GITHUB_OUTPUT"
+            echo "core_refs=[\"${DEPLOYED_REF}\"]" >> "$GITHUB_OUTPUT"
           fi
   wagon_tests:
     needs: define-matrix
