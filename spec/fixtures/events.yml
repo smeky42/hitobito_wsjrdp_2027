@@ -1,11 +1,11 @@
-top_event:
-  groups: root
+event_unit_a:
+  groups: unit_a
 
-top_course:
-  groups: root
-  type: Event::Course
-  kind: dummy
-  priorization: true
-  requires_approval: true
-  external_applications: true
+event_unit_b:
+  groups: unit_b
 
+event_ist_a:
+  groups: ist_a
+
+event_ist_b:
+  groups: ist_b

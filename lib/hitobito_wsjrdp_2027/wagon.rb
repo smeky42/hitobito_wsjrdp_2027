@@ -23,6 +23,7 @@ module HitobitoWsjrdp2027
       # Models
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
+      Event.include Wsjrdp2027::Event
 
       # Concerns
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
