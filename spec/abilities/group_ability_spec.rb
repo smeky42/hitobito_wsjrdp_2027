@@ -7,7 +7,7 @@ describe GroupAbility do
     subject { Ability.new(yp.reload) }
 
     context "on their own unit" do
-      it_behaves_like "only allow group actions", {allowed: [:read]} do
+      it_behaves_like "only allow group actions", {allowed: [:read, :index_events]} do
         let(:group) { groups(:unit_a) }
       end
     end
@@ -38,7 +38,7 @@ describe GroupAbility do
 
     context "on their own unit" do
       it_behaves_like "only allow group actions", {allowed: [:read, :show_details, :index_people,
-        :index_local_people, :show_statistics, :index_mailing_lists]} do
+        :index_local_people, :show_statistics, :index_mailing_lists, :index_events]} do
         let(:group) { groups(:unit_a) }
       end
     end
@@ -68,7 +68,7 @@ describe GroupAbility do
     subject { Ability.new(ist.reload) }
 
     context "on their own IST group" do
-      it_behaves_like "only allow group actions", {allowed: [:read]} do
+      it_behaves_like "only allow group actions", {allowed: [:read, :index_events]} do
         let(:group) { groups(:ist_a) }
       end
     end
