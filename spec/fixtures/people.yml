@@ -1,20 +1,89 @@
 admin:
   first_name: Chief
   last_name: Admin
-  email: admin@hitobito.example.com
-  gender: m
+  email: admin@wsjrdp.example.com
   contact_data_visible: true
   primary_group: root
 
-leader:
-  first_name: A
-  last_name: Leader
-  email: a.leader@hitobito.example.com
+cmt_leader:
+  first_name: Leader
+  last_name: CMT
+  email: leader.cmt@wsjrdp.example.com
   contact_data_visible: true
   primary_group: root
 
-member:
-  first_name: My
-  last_name: Member
-  email: member0@hitobito.example.com
+cmt_member1:
+  first_name: Member1
+  last_name: CMT
+  email: member1.cmt@wsjrdp.example.com
   primary_group: root
+
+cmt_member2:
+  first_name: Member2
+  last_name: CMT
+  email: member2.cmt@wsjrdp.example.com
+  primary_group: root
+
+
+
+ul_a_1:
+  first_name: UL1
+  last_name: UnitA
+  email: ul1.unita@wsjrdp.example.com
+  primary_group: unit_a
+
+ul_a_2:
+  first_name: UL2
+  last_name: UnitA
+  email: ul2.unita@wsjrdp.example.com
+  primary_group: unit_a
+
+yp_a_1:
+  first_name: YP1
+  last_name: UnitA
+  email: yp1.unita@wsjrdp.example.com
+  primary_group: unit_a
+
+yp_a_2:
+  first_name: YP2
+  last_name: UnitA
+  email: yp2.unita@wsjrdp.example.com
+  primary_group: unit_a
+
+
+
+ul_b_1:
+  first_name: UL1
+  last_name: UnitB
+  email: ul1.unitb@wsjrdp.example.com
+  primary_group: unit_b
+
+yp_b_1:
+  first_name: YP1
+  last_name: UnitB
+  email: yp1.unitb@wsjrdp.example.com
+  primary_group: unit_b
+
+ist_a_1:
+  first_name: IST1
+  last_name: IstA
+  email: ist1.ista@wsjrdp.example.com
+  primary_group: ist_a
+
+ist_a_2:
+  first_name: IST2
+  last_name: IstA
+  email: ist2.ista@wsjrdp.example.com
+  primary_group: ist_a
+
+ist_b_1:
+  first_name: IST1
+  last_name: IstB
+  email: ist1.istb@wsjrdp.example.com
+  primary_group: ist_b
+
+ist_b_2:
+  first_name: IST2
+  last_name: IstB
+  email: ist2.istb@wsjrdp.example.com
+  primary_group: ist_b

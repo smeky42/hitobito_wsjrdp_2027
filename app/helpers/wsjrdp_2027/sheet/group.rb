@@ -24,7 +24,7 @@ module Wsjrdp2027::Sheet::Group
   included do
     tab "groups.tabs.map",
       :group_map_path,
-      if: :show
+      if: :show_statistics
 
     tabs.select! { |t| shown_tabs.include? t.label_key }
     tabs.sort_by! { |t| shown_tabs.index t.label_key }

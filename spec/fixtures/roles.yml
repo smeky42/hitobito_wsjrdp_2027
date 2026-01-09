@@ -3,14 +3,73 @@ admin:
   group: root
   type: Group::Root::Leader
 
-# TODO use group and type of the main base leader
-leader:
-  person: leader
+cmt_leader:
+  person: cmt_leader
   group: root
   type: Group::Root::Leader
 
-# TODO use group and type of the main base member
-member:
-  person: member
+cmt_member1:
+  person: cmt_member1
   group: root
   type: Group::Root::Member
+
+cmt_member2:
+  person: cmt_member2
+  group: root
+  type: Group::Root::Member
+
+
+
+ul_a_1:
+  person: ul_a_1
+  group: unit_a
+  type: Group::Unit::Leader
+
+ul_a_2:
+  person: ul_a_2
+  group: unit_a
+  type: Group::Unit::Leader
+
+yp_a_1:
+  person: yp_a_1
+  group: unit_a
+  type: Group::Unit::Member
+
+yp_a_2:
+  person: yp_a_2
+  group: unit_a
+  type: Group::Unit::Member
+
+
+
+ul_b_1:
+  person: ul_b_1
+  group: unit_b
+  type: Group::Unit::Leader
+
+yp_b_1:
+  person: yp_b_1
+  group: unit_b
+  type: Group::Unit::Member
+
+
+
+ist_a_1:
+  person: ist_a_1
+  group: ist_a
+  type: Group::Ist::Member
+
+ist_a_2:
+  person: ist_a_2
+  group: ist_a
+  type: Group::Ist::Member
+
+ist_b_1:
+  person: ist_b_1
+  group: ist_b
+  type: Group::Ist::Member
+
+ist_b_2:
+  person: ist_b_2
+  group: ist_b
+  type: Group::Ist::Member
