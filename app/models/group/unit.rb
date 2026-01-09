@@ -12,7 +12,7 @@ class Group::Unit < ::Group
 
   # Unit Leader
   class Leader < ::Role
-    self.permissions = [:group_read]
+    self.permissions = [:group_full]
   end
 
   # Unapproved Unit Leader

@@ -100,6 +100,9 @@ uniform_size:
   - Kluftbluse 46
   - Kluftbluse 48
 
+event:
+  globally_visible_by_default: false
+
   # non UI languages for assigning to person#language
   # additional_languages:
   #   en: Englisch

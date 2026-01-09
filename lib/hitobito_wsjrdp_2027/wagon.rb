@@ -48,6 +48,7 @@ module HitobitoWsjrdp2027
       GroupAbility.include Wsjrdp2027::GroupAbility
       PersonAbility.include Wsjrdp2027::PersonAbility
       VariousAbility.include Wsjrdp2027::VariousAbility
+      MailingListAbility.include Wsjrdp2027::MailingListAbility
 
       # Other
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
