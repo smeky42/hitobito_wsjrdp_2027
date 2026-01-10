@@ -47,14 +47,16 @@ end
 
 shared_examples "only allow person actions" do |params|
   it "can perform allowed actions" do
-    params[:allowed].each do |action|
-      is_expected.to be_able_to(action, other)
+    allowed_actions = PERSON_ACTIONS.select do |action|
+      subject.can?(action, other)
     end
+    expect(allowed_actions).to match_array(params[:allowed])
   end
 
   it "can not perform other actions" do
-    (PERSON_ACTIONS - params[:allowed]).each do |action|
-      is_expected.to_not be_able_to(action, other)
+    forbidden_actions = PERSON_ACTIONS.select do |action|
+      subject.cannot?(action, other)
     end
+    expect(forbidden_actions).to match_array(PERSON_ACTIONS - params[:allowed])
   end
 end

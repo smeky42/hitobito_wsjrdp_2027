@@ -57,14 +57,16 @@ end
 
 shared_examples "only allow group actions" do |params|
   it "can perform allowed actions" do
-    params[:allowed].each do |action|
-      is_expected.to be_able_to(action, group)
+    allowed_actions = GROUP_ACTIONS.select do |action|
+      subject.can?(action, group)
     end
+    expect(allowed_actions).to match_array(params[:allowed])
   end
 
   it "can not perform other actions" do
-    (GROUP_ACTIONS - params[:allowed]).each do |action|
-      is_expected.to_not be_able_to(action, group)
+    forbidden_actions = GROUP_ACTIONS.select do |action|
+      subject.cannot?(action, group)
     end
+    expect(forbidden_actions).to match_array(GROUP_ACTIONS - params[:allowed])
   end
 end
