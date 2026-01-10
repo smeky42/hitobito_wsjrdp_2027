@@ -13,10 +13,7 @@
 - if can?(:new, @group.roles.new)
   = action_button(t('.import_list'), new_group_csv_imports_path, :upload)
 
-- if can?(:new, @group.roles.new)
-  = dropdown_people_export(index_full_ability?)
-
-  = action_button(t('global.button.print'), 'javascript:window.print();', :print)
+= dropdown_people_export(index_full_ability?)
 
 - if can?(:manage_person_duplicates, @group)
   = action_button(t('.person_duplicate_list'), group_person_duplicates_path(@group), :'user-friends')
