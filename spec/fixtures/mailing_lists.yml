@@ -1,0 +1,23 @@
+unit_a_ml_all:
+  group: unit_a
+  name: Unit A Mailing List
+  mail_name: unita
+  subscribable_for: nobody
+
+unit_b_ml_all:
+  group: unit_b
+  name: Unit B Mailing List
+  mail_name: unitb
+  subscribable_for: nobody
+
+ist_a_ml:
+  group: ist_a
+  name: IST A Mailing List
+  mail_name: ista
+  subscribable_for: nobody
+
+ist_b_ml:
+  group: ist_b
+  name: IST B Mailing List
+  mail_name: istb
+  subscribable_for: nobody
