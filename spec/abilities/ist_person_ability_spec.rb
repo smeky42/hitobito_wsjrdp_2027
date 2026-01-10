@@ -7,49 +7,56 @@ describe PersonAbility do
     subject { Ability.new(ist.reload) }
 
     context "in the same ist group" do
-      let(:other_ist) { people(:ist_a_2) }
-
       context "on other ist member" do
         it_behaves_like "only allow person actions", {allowed: []} do
-          let(:other) { other_ist }
+          let(:other) { people(:ist_a_2) }
         end
+      end
+
+      it_behaves_like "only allow role actions", {allowed: []} do
+        let(:role) { Role.new(person: people(:ul_a_1), group: groups(:ist_a)) }
       end
     end
 
     context "in a different ist group" do
-      let(:other_ist) { people(:ist_b_1) }
-
       context "on ist member" do
         it_behaves_like "only allow person actions", {allowed: []} do
-          let(:other) { other_ist }
+          let(:other) { people(:ist_b_1) }
         end
+      end
+
+      it_behaves_like "only allow role actions", {allowed: []} do
+        let(:role) { Role.new(person: people(:ul_a_1), group: groups(:ist_b)) }
       end
     end
 
     context "in normal unit" do
-      let(:other_yp) { people(:yp_a_1) }
-      let(:other_ul) { people(:ul_a_1) }
-
       context "on youth participant" do
         it_behaves_like "only allow person actions", {allowed: []} do
-          let(:other) { other_yp }
+          let(:other) { people(:yp_a_1) }
         end
       end
 
       context "on unit leader" do
         it_behaves_like "only allow person actions", {allowed: []} do
-          let(:other) { other_ul }
+          let(:other) { people(:ul_a_1) }
         end
+      end
+
+      it_behaves_like "only allow role actions", {allowed: []} do
+        let(:role) { Role.new(person: people(:ul_a_1), group: groups(:unit_b)) }
       end
     end
 
     context "CMT" do
-      let(:cmt) { people(:cmt_member1) }
-
       context "on CMT member" do
         it_behaves_like "only allow person actions", {allowed: []} do
-          let(:other) { cmt }
+          let(:other) { people(:cmt_member1) }
         end
+      end
+
+      it_behaves_like "only allow role actions", {allowed: []} do
+        let(:role) { Role.new(person: people(:ul_a_1), group: groups(:root)) }
       end
     end
   end

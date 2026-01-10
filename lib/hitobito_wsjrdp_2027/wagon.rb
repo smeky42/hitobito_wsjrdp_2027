@@ -52,6 +52,7 @@ module HitobitoWsjrdp2027
       VariousAbility.include Wsjrdp2027::VariousAbility
       MailingListAbility.include Wsjrdp2027::MailingListAbility
       SubscriptionAbility.include Wsjrdp2027::SubscriptionAbility
+      RoleAbility.include Wsjrdp2027::RoleAbility
 
       # Other
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
