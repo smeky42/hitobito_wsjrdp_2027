@@ -10,17 +10,32 @@ describe MailingListAbility do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:unit_a_ml_all) }
       end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:unit_a_ml_all) }
+        let(:subscription) { mailing_list.subscriptions.new }
+      end
     end
 
     context "on mailing list in a different unit" do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:unit_b_ml_all) }
       end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:unit_b_ml_all) }
+        let(:subscription) { mailing_list.subscriptions.new }
+      end
     end
 
     context "on IST mailing list" do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:ist_a_ml) }
+      end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:ist_a_ml) }
+        let(:subscription) { mailing_list.subscriptions.new }
       end
     end
   end
@@ -34,17 +49,32 @@ describe MailingListAbility do
       it_behaves_like "only allow mailing list actions", {allowed: [:show, :index_subscriptions]} do
         let(:mailing_list) { mailing_lists(:unit_a_ml_all) }
       end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:unit_a_ml_all) }
+        let(:subscription) { mailing_list.subscriptions.new }
+      end
     end
 
     context "on mailing list in a different unit" do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:unit_b_ml_all) }
       end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:unit_b_ml_all) }
+        let(:subscription) { mailing_list.subscriptions.new }
+      end
     end
 
     context "on IST mailing list" do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:ist_a_ml) }
+      end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:ist_a_ml) }
+        let(:subscription) { mailing_list.subscriptions.new }
       end
     end
   end
@@ -58,17 +88,32 @@ describe MailingListAbility do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:ist_a_ml) }
       end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:ist_a_ml) }
+        let(:subscription) { mailing_list.subscriptions.new }
+      end
     end
 
     context "on mailing list in a different IST group" do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:ist_b_ml) }
       end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:ist_b_ml) }
+        let(:subscription) { mailing_list.subscriptions.new }
+      end
     end
 
     context "on mailing list in a normal unit" do
       it_behaves_like "only allow mailing list actions", {allowed: []} do
         let(:mailing_list) { mailing_lists(:unit_a_ml_all) }
+      end
+
+      it_behaves_like "only allow mailing list subscription actions", {allowed: []} do
+        let(:mailing_list) { mailing_lists(:unit_a_ml_all) }
+        let(:subscription) { mailing_list.subscriptions.new }
       end
     end
   end
