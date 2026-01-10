@@ -23,6 +23,6 @@ module Wsjrdp2027::GroupAbility
         .in_same_layer_or_below
       permission(:group_full).may(:log, :index_mailing_lists).nobody
       permission(:group_full).may(:show_statistics).in_same_group
-      end
+    end
   end
 end
