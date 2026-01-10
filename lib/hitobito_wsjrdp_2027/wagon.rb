@@ -31,6 +31,7 @@ module HitobitoWsjrdp2027
       PeopleController.include Wsjrdp2027::PeopleController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
       Group::StatisticsController.include Wsjrdp2027::StatisticsController
+      MailingListsController.include Wsjrdp2027::MailingListsController
       Person::QueryController.include Wsjrdp2027::Person::QueryController
 
       # Decorators
