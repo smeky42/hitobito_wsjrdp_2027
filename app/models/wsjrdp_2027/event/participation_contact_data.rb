@@ -7,8 +7,8 @@ module Wsjrdp2027::Event::ParticipationContactData
   extend ActiveSupport::Concern
 
   included do
-    self.contact_attrs = [:first_name, :last_name, :nickname, :email,
-      :address_care_of, :street, :housenumber, :zip_code, :town,
-      :country, :gender, :birthday]
+    self.mandatory_contact_attrs = []
+    self.contact_associations = []
+    self.contact_attrs = []
   end
 end
