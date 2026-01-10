@@ -11,13 +11,15 @@ describe PersonAbility do
       let(:other_ul) { people(:ul_a_2) }
 
       context "on youth participant" do
-        it_behaves_like "only allow person actions", {allowed: [:show, :show_details]} do
+        it_behaves_like "only allow person actions", {allowed: [:show, :show_details, :show_full,
+          :update, :send_password_instructions]} do
           let(:other) { other_yp }
         end
       end
 
       context "on other unit leader" do
-        it_behaves_like "only allow person actions", {allowed: [:show, :show_details]} do
+        it_behaves_like "only allow person actions", {allowed: [:show, :show_details, :show_full,
+          :update, :send_password_instructions]} do
           let(:other) { other_ul }
         end
       end
