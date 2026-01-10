@@ -13,6 +13,6 @@ module Wsjrdp2027::MailingListAbility
       # permission(:group_full)
       #   .may(:export_subscriptions)
       #   .in_same_group_if_no_subscriptions_in_below_groups
-      end
+    end
   end
 end
