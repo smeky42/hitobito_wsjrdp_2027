@@ -33,7 +33,9 @@ module Wsjrdp2027::PersonAbility
       #   .non_restricted_in_same_group
       # permission(:group_full).may(:update_email).if_permissions_in_all_capable_groups
       # permission(:group_full).may(:create).all # restrictions are on Roles
-      permission(:group_full).may(:log, :history, :security, :update_email, :update_settings, :create).nobody
+      permission(:group_full)
+        .may(:log, :history, :security, :update_email, :update_settings, :create, :index_tags,
+          :manage_tags, :primary_group).nobody
       permission(:group_full).may(:show_full).in_same_group
       # permission(:group_full)
       #   .may(:update, :primary_group)
