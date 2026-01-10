@@ -32,6 +32,15 @@ PERSON_ACTIONS = [
   :primary_group
 ]
 
+ROLE_ACTIONS = [
+  :_all,
+  :create,
+  :create_in_subgroup,
+  :destroy,
+  :terminate,
+  :update
+]
+
 describe "PERSON_ACTIONS" do
   it "has complete list of actions" do
     defined_actions = Set.new
@@ -42,6 +51,19 @@ describe "PERSON_ACTIONS" do
     end
 
     expect(PERSON_ACTIONS).to match_array(defined_actions)
+  end
+end
+
+describe "ROLE_ACTIONS" do
+  it "has complete list of actions" do
+    defined_actions = Set.new
+    Ability.store.configs.values.each do |config|
+      if config.subject_class == Role && config.permission != :_class_side
+        defined_actions.add(config.action)
+      end
+    end
+
+    expect(ROLE_ACTIONS).to match_array(defined_actions)
   end
 end
 
@@ -58,5 +80,21 @@ shared_examples "only allow person actions" do |params|
       subject.cannot?(action, other)
     end
     expect(forbidden_actions).to match_array(PERSON_ACTIONS - params[:allowed])
+  end
+end
+
+shared_examples "only allow role actions" do |params|
+  it "can perform allowed actions" do
+    allowed_actions = ROLE_ACTIONS.select do |action|
+      subject.can?(action, role)
+    end
+    expect(allowed_actions).to match_array(params[:allowed])
+  end
+
+  it "can not perform other actions" do
+    forbidden_actions = ROLE_ACTIONS.select do |action|
+      subject.cannot?(action, role)
+    end
+    expect(forbidden_actions).to match_array(ROLE_ACTIONS - params[:allowed])
   end
 end
