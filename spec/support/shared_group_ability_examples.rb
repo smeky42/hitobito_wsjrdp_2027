@@ -5,17 +5,28 @@ GROUP_ACTIONS = [
   :read,
   # show_details: show a few more details about the group
   :show_details,
+  # show_statistics: show statistics about the group and the map
+  :show_statistics,
 
   # index_people: list all people in the group
   :index_people,
   # index_local_people: list people in the group that are not visible from above (we don't have this)
   :index_local_people,
+  # index_full_people: show *all* columns in export and show all email + phone numbers in people list
+  :index_full_people,
+
+  # update: modify group settings (name, contact info, self-registration, letter/sms settings, etc.)
+  :update,
+
+  # reactivate: restore a deleted group
+  :reactivate,
+  # deleted_subgroups: list deleted subgroups
+  :deleted_subgroups,
 
   :activate_person_add_requests,
   :create,
   :create_invoices_from_list,
   :deactivate_person_add_requests,
-  :deleted_subgroups,
   :destroy,
   :"export_event/courses",
   :export_events,
@@ -25,7 +36,6 @@ GROUP_ACTIONS = [
   :index_deleted_people,
   :"index_event/courses",
   :index_events,
-  :index_full_people,
   :index_invoices,
   :index_mailing_lists,
   :index_notes,
@@ -36,10 +46,7 @@ GROUP_ACTIONS = [
   :manage_person_tags,
   :manually_delete_people,
   :modify_superior,
-  :reactivate,
-  :set_main_self_registration_group,
-  :show_statistics,
-  :update
+  :set_main_self_registration_group
 ]
 
 describe "GROUP_ACTIONS" do

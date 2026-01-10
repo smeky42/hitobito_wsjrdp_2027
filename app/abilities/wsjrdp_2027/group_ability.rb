@@ -21,7 +21,8 @@ module Wsjrdp2027::GroupAbility
       permission(:layer_and_below_read)
         .may(:index_events, :"index_event/courses", :index_mailing_lists)
         .in_same_layer_or_below
-      permission(:group_full).may(:log, :index_mailing_lists).nobody
+
+      permission(:group_full).may(:update, :index_full_people, :log, :deleted_subgroups, :reactivate).nobody
       permission(:group_full).may(:show_statistics).in_same_group
     end
   end
