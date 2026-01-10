@@ -10,6 +10,11 @@ MAILING_LIST_ACTIONS = [
   :update
 ]
 
+SUBSCRIPTION_ACTIONS = [
+  :_all,
+  :manage
+]
+
 describe "MAILING_LIST_ACTIONS" do
   it "has complete list of actions" do
     defined_actions = Set.new
@@ -20,6 +25,19 @@ describe "MAILING_LIST_ACTIONS" do
     end
 
     expect(MAILING_LIST_ACTIONS).to match_array(defined_actions)
+  end
+end
+
+describe "SUBSCRIPTION_ACTIONS" do
+  it "has complete list of actions" do
+    defined_actions = Set.new
+    Ability.store.configs.values.each do |config|
+      if config.subject_class == Subscription && config.permission != :_class_side
+        defined_actions.add(config.action)
+      end
+    end
+
+    expect(SUBSCRIPTION_ACTIONS).to match_array(defined_actions)
   end
 end
 
@@ -36,5 +54,21 @@ shared_examples "only allow mailing list actions" do |params|
       subject.cannot?(action, mailing_list)
     end
     expect(forbidden_actions).to match_array(MAILING_LIST_ACTIONS - params[:allowed])
+  end
+end
+
+shared_examples "only allow mailing list subscription actions" do |params|
+  it "can perform allowed actions" do
+    allowed_actions = SUBSCRIPTION_ACTIONS.select do |action|
+      subject.can?(action, subscription)
+    end
+    expect(allowed_actions).to match_array(params[:allowed])
+  end
+
+  it "can not perform other actions" do
+    forbidden_actions = SUBSCRIPTION_ACTIONS.select do |action|
+      subject.cannot?(action, subscription)
+    end
+    expect(forbidden_actions).to match_array(SUBSCRIPTION_ACTIONS - params[:allowed])
   end
 end
