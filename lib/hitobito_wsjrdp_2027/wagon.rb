@@ -53,6 +53,7 @@ module HitobitoWsjrdp2027
       # Other
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
       PersonSerializer.include Wsjrdp2027::PersonSerializer
+      Event::ParticipationContactData.include Wsjrdp2027::Event::ParticipationContactData
 
       ActiveSupport.on_load(:action_view) { include Chartkick::Helper }
     end
