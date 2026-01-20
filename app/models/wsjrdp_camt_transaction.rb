@@ -8,6 +8,7 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 class WsjrdpCamtTransaction < ActiveRecord::Base
+  include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
 
   belongs_to :subject, polymorphic: true, optional: true
@@ -24,6 +25,16 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   eur_attribute :amount_eur, cents_attr: :amount_cents
 
   attribute :accounting_entry_id, :integer
+
+  store_accessor :additional_info, :return_debit_status
+
+  def return_status
+    return_debit_status.presence || (return_reason.present? ? "in_review" : "none")
+  end
+
+  def return_status=(value)
+    self.return_debit_status = value
+  end
 
   def subject_input_field_options
     {input_field_type: "Person"}
@@ -75,6 +86,10 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
 
   def author_full_name
     nil
+  end
+
+  def link_name(length: 80)
+    "#{id} #{truncate(description, length: length)} (#{amount_eur_display})"
   end
 
   def short_dbtr

@@ -36,8 +36,8 @@
               %td
                 %strong
                   = link_to(p.short_full_name_with_nickname, "#{group_person_path(p.default_group_id, p)}/unit")
-              %td= p.unit_code_with_search_link_display
-              %td= p.cluster_code_with_search_link_display
+              %td= format_attr(p, :unit_code)
+              %td= format_attr(p, :cluster_code)
               %td= p.status
               %td= p.rdp_association
               %td= p.rdp_association_region

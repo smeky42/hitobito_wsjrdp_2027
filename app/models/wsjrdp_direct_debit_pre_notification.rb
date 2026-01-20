@@ -8,6 +8,7 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 class WsjrdpDirectDebitPreNotification < ActiveRecord::Base
+  include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
 
   belongs_to :direct_debit_payment_info,
@@ -40,6 +41,10 @@ class WsjrdpDirectDebitPreNotification < ActiveRecord::Base
 
   eur_attribute :amount_eur, cents_attr: :amount_cents
   eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
+
+  def link_name(length: 80)
+    "#{id} #{truncate(description, length: length)} (#{amount_eur_display})"
+  end
 
   def try_skip?
     try_skip

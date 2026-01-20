@@ -9,6 +9,11 @@
       = f.labeled_collection_select(:status, Settings.status, :first, :last, {}, class: 'span2')
       = f.labeled_input_fields :birthday, :first_name, :last_name, :print_at, :contract_upload_at, :complete_document_upload_at, :unit_code
     = field_set_tag do
+      - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
+      = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
+      - missing_installment_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.missing_installment_issue) unless @person.missing_installment_issue.blank?
+      = f.labeled_input_fields :missing_installment_issue, help_inline: missing_installment_issue_help
+    = field_set_tag do
       = render_attrs(@person, :active_custom_installments_issue_display, :active_custom_installments_display, :active_custom_installments_comment)
       = f.labeled_input_fields :planned_custom_installments_issue, :planned_custom_installments_string, :planned_custom_installments_comment
       = f.help_block(raw(t('people.check_status_help.edit_custom_installments_help')))

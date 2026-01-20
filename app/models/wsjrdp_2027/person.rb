@@ -61,21 +61,10 @@ module Wsjrdp2027::Person
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
-      def unit_code_display
-        make_unit_code_display(unit_code)
-      end
-
-      def unit_code_with_search_link_display
-        make_unit_code_display(unit_code, search_link: true)
-      end
-
-      def cluster_code_display
-        make_unit_code_display(cluster_code)
-      end
-
-      def cluster_code_with_search_link_display
-        make_unit_code_display(cluster_code, search_link: true, attribute: "cluster_code")
-      end
+      store_accessor :additional_info, :deregistration_issue
+      store_accessor :additional_info, :missing_installment_issue
+      store_accessor :additional_info, :wsjrdp_email
+      store_accessor :additional_info, :wsjrdp_email_created_at
 
       def short_full_name
         first_names = first_name ? first_name.split : []

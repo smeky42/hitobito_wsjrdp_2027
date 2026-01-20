@@ -1,0 +1,18 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- if entry.unit_code.present?
+  = render_attrs(entry, :unit_code)
+- if can?(:log, entry)
+  %dl.dl-horizontal.m-0.p-2.border-top
+    = labeled(captionize(:support_cmt_mail_addresses, object_class(entry))) do
+      = format_attr(entry, :support_cmt_mail_addresses)
+      %div.muted
+        E-Mail Adressen von CMT-Mitgliedern, die im Rahmen von individuellen TN-Support E-Mails
+        an Gruppen-Mitglieder in Blindkopie (Bcc) genommen werden.
+        Beispielweise bei individuellen Teilnahme-Bestätigungen und
+        Erinnerungen zu fehlenden Lastschriften
