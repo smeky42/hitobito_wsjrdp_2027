@@ -51,11 +51,12 @@ de:
           buddy_no_yp: "muss zu einer Person gehören, die Youth Participant ist."
 
     attributes:
+      group:
+        support_cmt_mail_addresses: E-Mail Adressen Support-CMT
+        support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
       person:
         nickname: Spitzname / Fahrtenname
         buddy_id: Buddy-ID
-        unit_code_display: Unit code
-        unit_code_with_search_link_display: Unit code
         unit_code: Unit code
         buddy_id_ul: Unit Leader Buddy ID
         buddy_id_yp: Youth Participant Buddy ID
@@ -140,6 +141,8 @@ de:
         planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
         tag_list: Tags
+        deregistration_issue: Helpdesk-Ticket Abmeldung
+        missing_installment_issue: FIN-Ticket Rücklastschrift
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:

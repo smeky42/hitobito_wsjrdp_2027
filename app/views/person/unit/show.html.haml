@@ -49,16 +49,10 @@
       %dd= "#{@person.buddy_id}-#{@person.id}"
     %div.labeled-grid
       %dt.muted Unit-code
-      - if @person.unit_code_display
-        %dd= @person.unit_code_with_search_link_display
-      - else
-        %dd.muted Nicht gesetzt
+      %dd= format_attr(@person, :unit_code)
     %div.labeled-grid
       %dt.muted Cluster-code
-      - if @person.cluster_code_display
-        %dd= @person.cluster_code_display
-      - else
-        %dd.muted Nicht gesetzt
+      %dd= format_attr(@person, :cluster_code)
 
   -# title_people_list = [["ULs und YPs aus dem gleichen Stamm", @ulyp_not_in_cluster], ["CMTs aus dem gleichen Stamm", @cmt_not_in_cluster], ["ISTs aus dem gleichen Stamm", @ist_not_in_cluster] ]
   = render 'list', title_people_list: [["ULs und YPs aus dem gleichen Stamm", @ulyp_not_in_cluster],

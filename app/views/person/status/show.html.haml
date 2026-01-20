@@ -14,7 +14,9 @@
     - extra_render_attrs << :planned_custom_installments_issue_display
     - extra_render_attrs << :planned_custom_installments_display
     - extra_render_attrs << :planned_custom_installments_comment
-  = render_attrs(@person, :birthday, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role, :unit_code_display, *extra_render_attrs)
+  = render_attrs(@person, :birthday, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role, :unit_code)
+  = render_attrs(@person, :deregistration_issue, :missing_installment_issue)
+  = render_attrs(@person, *extra_render_attrs)
 - if @person.status == 'upload'
   %br
   %br

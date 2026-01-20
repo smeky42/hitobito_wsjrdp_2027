@@ -66,6 +66,14 @@ pre_notification_payment_status:
   skipped: Einzug ausgesetzt (skipped)
   xml_generated: SEPA XML erzeugt (xml_generated)
 
+return_debit_status:
+  none: Keine Retoure
+  in_review: In Überprüfung
+  planned: Zahlung geplant
+  paid: Voll bezahlt
+  depreciated: Abgeschrieben
+  partially_depreciated: Teilweise abgeschrieben
+
 shirt_size:
   - Größe auswählen
   - XXS
@@ -80,8 +88,8 @@ shirt_size:
 
 uniform_size:
   - Größe auswählen
-  - Klufthemd XS 35/36 
-  - Klufthemd S 37/38 
+  - Klufthemd XS 35/36
+  - Klufthemd S 37/38
   - Klufthemd M 39/40
   - Klufthemd L 41/42
   - Klufthemd XL 43/44

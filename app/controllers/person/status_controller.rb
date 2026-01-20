@@ -19,7 +19,9 @@ class Person::StatusController < ApplicationController
     :cluster_code,
     :planned_custom_installments_string,
     :planned_custom_installments_issue,
-    :planned_custom_installments_comment
+    :planned_custom_installments_comment,
+    :deregistration_issue,
+    :missing_installment_issue
   ]
 
   def show

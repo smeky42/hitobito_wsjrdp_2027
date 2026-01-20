@@ -26,16 +26,30 @@
         %td Aktuelles Saldo
         %td
       - transactions.each do |tx|
+        - if tx.return_reason.present?
+          - return_msg = "#{Settings.return_debit_status[tx.return_status]}: Retoure mit Rückgabe-Grund #{tx.return_reason}"
+        - else
+          - return_msg = ""
         %tr
           %td= tx.value_date
           %td.amount= tx.amount_eur_display
           %td
-            - if !tx.return_reason.blank?
-              %div(style="color:var(--bs-orange);")
-                %span.fw-ligh Retoure mit Rückgabe-Grund
-                %span.fw-semibold= tx.return_reason
+            - if return_msg.present?
+              - if tx.return_status == "in_review"
+                %div.fw-semibold(style="color:var(--bs-danger);")= return_msg
+              - elsif tx.return_status == "planned"
+                %div.fw-semibold(style="color:var(--bs-indigo);")= return_msg
+              - elsif tx.return_status == "depreciated" || tx.return_status == "partially_depreciated"
+                %div(style="color:var(--bs-primary);")= return_msg
+              - elsif tx.return_status == "paid"
+                %div(style="color:var(--bs-secondary);")= return_msg
+              - else
+                %div= return_msg
             %div= tx.description
-            - if !tx.subject.blank?
+            - if tx.comment.present?
+              %div
+                %div.fw-light.fst-italic= auto_link_escaped_multiline(tx.comment)
+            - if tx.subject.present?
               %div
                 %span.fw-light.muted Person:
                 %span= link_to(tx.subject.short_full_name_with_nickname, url_for(tx.subject))

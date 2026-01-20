@@ -85,7 +85,8 @@ class WsjrdpCamtTransactionsController < ApplicationController
     [
       :comment,
       :subject, :subject_id, :subject_type,
-      :accounting_entry, :accounting_entry_id
+      :accounting_entry, :accounting_entry_id,
+      :return_status
     ]
   end
 end

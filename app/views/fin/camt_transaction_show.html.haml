@@ -32,6 +32,7 @@
       -# -#= input_or_render_attrs(f, :bank_transaction_code)
       -# = input_or_render_attrs(f, :bank_transaction_code_dk)
       = input_or_render_attrs(f, :return_reason)
+      = f.labeled_collection_select(:return_status, Settings.return_debit_status, :first, :last, {})
       %div.border-top.py-2
       = input_or_render_attrs(f, :status, :additional_entry_info)
       %div.border-top.py-2

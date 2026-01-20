@@ -30,6 +30,7 @@ module HitobitoWsjrdp2027
 
       # Controllers
       PeopleController.include Wsjrdp2027::PeopleController
+      GroupsController.prepend Wsjrdp2027::GroupsController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
       Group::StatisticsController.include Wsjrdp2027::StatisticsController
       MailingListsController.include Wsjrdp2027::MailingListsController
@@ -44,6 +45,7 @@ module HitobitoWsjrdp2027
       Sheet::Person.include Wsjrdp2027::Sheet::Person
       Sheet::Group.include Wsjrdp2027::Sheet::Group
       NavigationHelper.include Wsjrdp2027::NavigationHelper
+      StandardFormBuilder.include Wsjrdp2027::StandardFormBuilder
 
       # Abilities
       EventAbility.include Wsjrdp2027::EventAbility

@@ -40,6 +40,14 @@
               %div
                 %span.fw-light.muted= "#{t('activerecord.attributes.accounting_entry.endtoend_id')}: "
                 %span.fw-light= entry.endtoend_id
+            - if can_fin? && entry.camt_transaction.present?
+              %div
+                %span.fw-light.muted= "Kontobewegung: "
+                %span.fw-light= link_to(entry.camt_transaction.link_name, url_for(entry.camt_transaction))
+            - if can_fin? && entry.direct_debit_pre_notification.present?
+              %div
+                %span.fw-light.muted= "Pre-Notification: "
+                %span.fw-light= link_to(entry.direct_debit_pre_notification.link_name, url_for(entry.direct_debit_pre_notification))
             - if can_fin? && !entry.author_full_name.blank?
               %div.fw-light
                 %span.fw-light.muted= "Erstellt von: "
@@ -49,12 +57,13 @@
               %tr
                 %td.text-end(width="100%" style="padding: 0;")
                   %div(style="white-space: nowrap;")
-                    - if entry.skipped?
-                      %s.fw-light.muted= format_cents_de(entry.amount_cents)
-                    - elsif entry.pre_booked? || entry.try_skip?
-                      %span.fw-light.muted= format_cents_de(entry.amount_cents)
-                    - else
-                      %span.fw-bold= format_cents_de(entry.amount_cents)
+                    - if entry.amount_cents != 0
+                      - if entry.skipped?
+                        %s.fw-light.muted= format_cents_de(entry.amount_cents)
+                      - elsif entry.pre_booked? || entry.try_skip?
+                        %span.fw-light.muted= format_cents_de(entry.amount_cents)
+                      - else
+                        %span.fw-bold= format_cents_de(entry.amount_cents)
                 %td.pl-1(style="padding: 0;")
                   - if can_fin? && !entry.id.blank?
                     - ae_url = get_entry_path(entry)

@@ -2,6 +2,7 @@
 
 module ContractHelper
   include ActionView::Helpers::NumberHelper
+  include ActionView::Helpers::TextHelper
 
   extend ActiveSupport::Concern
 
@@ -214,7 +215,7 @@ module ContractHelper
     end
 
     # rubocop:disable Metrics/MethodLength
-    def make_unit_code_display(unit_code, search_link: false, attribute: "unit_code")
+    def make_unit_code_display(unit_code, search_link: false, attribute: "unit_code", not_set_text: nil)
       norm_unit_code = normalized_unit_code_or_nil(unit_code)
       if norm_unit_code
         color_marker = "<span style=\"display: inline-block; width: 12px; background-color: #{norm_unit_code};'\">&nbsp;</span>".html_safe
@@ -224,6 +225,8 @@ module ContractHelper
         else
           color_marker + " " + unit_code
         end
+      elsif unit_code.blank? && not_set_text.present?
+        "<span class=\"muted\">#{not_set_text}</span>".html_safe
       else
         unit_code
       end
