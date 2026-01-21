@@ -25,6 +25,14 @@ module Wsjrdp2027::Person
     :sepa_name, :sepa_address, :sepa_mail, :sepa_iban
   ]
 
+  DELETE_IF_BLANK_ATTRS = [
+    :deregistration_issue,
+    :missing_installment_issue,
+    :wsjrdp_email,
+    :wsjrdp_email_created_at
+  ].freeze
+  STRIP_ATTRS = DELETE_IF_BLANK_ATTRS.dup
+
   def self.included(base)
     # Be careful to modify existing variables instead of re-assigning
     # them to avoid Ruby warnings.
@@ -65,6 +73,8 @@ module Wsjrdp2027::Person
       store_accessor :additional_info, :missing_installment_issue
       store_accessor :additional_info, :wsjrdp_email
       store_accessor :additional_info, :wsjrdp_email_created_at
+
+      before_save :normalize_additional_info_attrs
 
       def short_full_name
         first_names = first_name ? first_name.split : []
@@ -436,6 +446,16 @@ module Wsjrdp2027::Person
           rule.people_id = id
         end
         rule.save
+      end
+
+      def normalize_additional_info_attrs
+        STRIP_ATTRS.each do |attr|
+          val = send(attr)
+          send(:"#{attr}=", val.strip) if val.respond_to?(:strip)
+        end
+        DELETE_IF_BLANK_ATTRS.each do |attr|
+          additional_info.delete(attr.to_s) if send(attr).blank?
+        end
       end
     end
   end
