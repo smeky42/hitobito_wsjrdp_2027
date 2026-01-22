@@ -40,11 +40,11 @@
               %div
                 %span.fw-light.muted= "#{t('activerecord.attributes.accounting_entry.endtoend_id')}: "
                 %span.fw-light= entry.endtoend_id
-            - if can_fin? && entry.camt_transaction.present?
+            - if can_fin? && entry.respond_to?(:camt_transaction) && entry.camt_transaction.present?
               %div
                 %span.fw-light.muted= "Kontobewegung: "
                 %span.fw-light= link_to(entry.camt_transaction.link_name, url_for(entry.camt_transaction))
-            - if can_fin? && entry.direct_debit_pre_notification.present?
+            - if can_fin? && entry.respond_to?(:direct_debit_pre_notification) && entry.direct_debit_pre_notification.present?
               %div
                 %span.fw-light.muted= "Pre-Notification: "
                 %span.fw-light= link_to(entry.direct_debit_pre_notification.link_name, url_for(entry.direct_debit_pre_notification))
