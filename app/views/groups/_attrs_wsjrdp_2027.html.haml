@@ -8,11 +8,9 @@
 - if entry.unit_code.present?
   = render_attrs(entry, :unit_code)
 - if can?(:log, entry)
-  %dl.dl-horizontal.m-0.p-2.border-top
-    = labeled(captionize(:support_cmt_mail_addresses, object_class(entry))) do
-      = format_attr(entry, :support_cmt_mail_addresses)
-      %div.muted
-        E-Mail Adressen von CMT-Mitgliedern, die im Rahmen von individuellen TN-Support E-Mails
-        an Gruppen-Mitglieder in Blindkopie (Bcc) genommen werden.
-        Beispielweise bei individuellen Teilnahme-Bestätigungen und
-        Erinnerungen zu fehlenden Lastschriften
+  = render_attrs_list do
+    = labeled_attr_with_help(entry, :support_cmt_mail_addresses) do
+      E-Mail Adressen von CMT-Mitgliedern, die im Rahmen von individuellen TN-Support E-Mails
+      an Gruppen-Mitglieder in Blindkopie (Bcc) genommen werden.
+      Beispielweise bei individuellen Teilnahme-Bestätigungen und
+      Erinnerungen zu fehlenden Lastschriften

@@ -141,8 +141,13 @@ de:
         planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
         tag_list: Tags
-        deregistration_issue: Helpdesk-Ticket Abmeldung
-        missing_installment_issue: FIN-Ticket Rücklastschrift
+        deregistration_issue: Ticket Abmeldung
+        deregistration_effective_date: Abmeldung zum
+        deregistration_contractual_compensation_cents: 'Entschädigung nach T&R'
+        deregistration_actual_compensation_cents: Entschädigung
+        deregistration_refund_cents: Rückzahlung
+        deregistration_open_cents: Ausstehender Beitrag
+        missing_installment_issue: Ticket Rücklastschrift
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:
