@@ -30,4 +30,24 @@ module Wsjrdp2027::PeopleHelper
   def format_person_missing_installment_issue(person)
     auto_link_escaped_multiline(person.missing_installment_issue) if person.missing_installment_issue.present?
   end
+
+  def format_person_deregistration_contractual_compensation_cents(person)
+    format_cents_de(person.deregistration_contractual_compensation_cents, zero_cents: "")
+  end
+
+  def format_person_deregistration_actual_compensation_cents(person)
+    format_cents_de(person.deregistration_actual_compensation_cents, zero_cents: "")
+  end
+
+  def format_person_deregistration_refund_cents(person)
+    format_cents_de(person.deregistration_refund_cents, zero_cents: "")
+  end
+
+  def format_person_deregistration_open_cents(person)
+    format_cents_de(person.deregistration_open_cents, zero_cents: "")
+  end
+
+  def format_person_amount_paid_cents(person)
+    format_cents_de(person.amount_paid_cents, zero_cents: "")
+  end
 end

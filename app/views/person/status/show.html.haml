@@ -15,7 +15,38 @@
     - extra_render_attrs << :planned_custom_installments_display
     - extra_render_attrs << :planned_custom_installments_comment
   = render_attrs(@person, :birthday, :status, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role, :unit_code)
-  = render_attrs(@person, :deregistration_issue, :missing_installment_issue)
+  = render_attrs_list do
+    = labeled_attr(@person, :deregistration_issue)
+    = labeled_attr(@person, :deregistration_effective_date)
+    = labeled_attr_with_help(@person, :deregistration_contractual_compensation_cents) do
+      Entschädigung nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen (T&R).
+      %br/
+      (bis 31.05.2026: 50%, bis 31.12.2026: 75%, bis 31.03.2027: 90%, danach 100%)
+    = labeled_attr_with_help(@person, :deregistration_actual_compensation_cents) do
+      Vorgeschlagene Entschädigung = Beitrag der trotz Abmeldung bezahlt werden muss.
+      Das Finance Team kann im Tab Buchhaltung einen Betrag abweichend von der
+      Pauschale nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen eintragen.
+    - if @person.deregistration_refund_cents > 0
+      = labeled(captionize(:deregistration_refund_cents, object_class(@person))) do
+        %span.fw-semibold
+          = format_attr(@person, :deregistration_refund_cents)
+        %span.muted(style="margin-left: 8px; margin-right: 8px;") =
+        %span.muted.label(style="white-space: nowrap;")
+          \#{format_attr(@person, :amount_paid_cents)} (Bereits bezahl)
+        %span.muted.label(style="white-space: nowrap;")
+          %span(style="margin-left: 4px; margin-right: 4px;") −
+          \#{format_attr(@person, :deregistration_actual_compensation_cents)} (Entschädigung)
+    - elsif @person.deregistration_open_cents > 0
+      = labeled(captionize(:deregistration_open_cents, object_class(@person))) do
+        %span.fw-semibold(style="color: var(--bs-red);")
+          = format_attr(@person, :deregistration_open_cents)
+        %span.muted(style="margin-left: 8px; margin-right: 8px;") =
+        %span.muted.label(style="white-space: nowrap;")
+          \#{format_attr(@person, :deregistration_actual_compensation_cents)} (Entschädigung)
+        %span.muted.label(style="white-space: nowrap;")
+          %span(style="margin-left: 4px; margin-right: 4px;") −
+          \#{format_attr(@person, :amount_paid_cents)} (Bereits bezahl)
+  = render_attrs(@person, :missing_installment_issue)
   = render_attrs(@person, *extra_render_attrs)
 - if @person.status == 'upload'
   %br

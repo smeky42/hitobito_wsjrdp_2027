@@ -27,6 +27,8 @@ module Wsjrdp2027::Person
 
   DELETE_IF_BLANK_ATTRS = [
     :deregistration_issue,
+    :deregistration_effective_date,
+    :deregistration_actual_compensation_cents,
     :missing_installment_issue,
     :wsjrdp_email,
     :wsjrdp_email_created_at
@@ -69,10 +71,14 @@ module Wsjrdp2027::Person
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
-      store_accessor :additional_info, :deregistration_issue
       store_accessor :additional_info, :missing_installment_issue
       store_accessor :additional_info, :wsjrdp_email
       store_accessor :additional_info, :wsjrdp_email_created_at
+
+      store_accessor :additional_info, :deregistration_issue
+      store_accessor :additional_info, :deregistration_effective_date
+      store_accessor :additional_info, :deregistration_actual_compensation_cents
+      attribute :deregistration_effective_date, :date
 
       before_save :normalize_additional_info_attrs
 
@@ -322,6 +328,31 @@ module Wsjrdp2027::Person
 
       def planned_custom_installments_comment_changed?
         planned_fee_rule&.custom_installments_comment_changed?
+      end
+
+      def deregistration_effective_date
+        super&.to_date
+      end
+
+      def deregistration_effective_date=(value)
+        value = value.to_date if value.respond_to?(:to_date)
+        super(value&.to_fs(:iso8601))
+      end
+
+      def deregistration_contractual_compensation_cents(today: nil)
+        compute_contractual_compensation_cents(total_fee_cents, today: today)
+      end
+
+      def deregistration_actual_compensation_cents
+        super || deregistration_contractual_compensation_cents
+      end
+
+      def deregistration_refund_cents
+        [amount_paid_cents - deregistration_actual_compensation_cents, 0].max
+      end
+
+      def deregistration_open_cents
+        [deregistration_actual_compensation_cents - amount_paid_cents, 0].max
       end
 
       private

@@ -96,5 +96,20 @@ module WsjrdpFormHelper
         end
       end
     end
+
+    def render_attrs_list(&block)
+      content = capture(&block)
+      content_tag(:dl, content, class: "dl-horizontal m-0 p-2 border-top")
+    end
+
+    def labeled_attr_with_help(entry, attr, display_link: true, help_text: nil, &block)
+      help_content = capture(&block)
+      label = captionize(attr, object_class(entry))
+      content = safe_join([
+        format_attr(entry, attr),
+        content_tag(:div, help_content, class: "muted")
+      ])
+      labeled(label, content)
+    end
   end
 end

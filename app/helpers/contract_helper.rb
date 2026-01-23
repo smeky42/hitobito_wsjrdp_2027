@@ -303,6 +303,20 @@ module ContractHelper
       total_fee
     end
 
+    def compute_contractual_compensation_cents(cents, today: nil) # rubocop:disable Metrics/MethodLength
+      today = Time.zone.today if today.nil?
+      today_i = today.strftime("%Y%m%d").to_i
+      if today_i >= 20270331
+        cents
+      elsif today_i >= 20263112
+        (0.9 * cents).to_i
+      elsif today_i >= 20263105
+        (0.75 * cents).to_i
+      else
+        (0.5 * cents).to_i
+      end
+    end
+
     def regular_installments_cents_for(person)
       role = (person.payment_role.nil? ? build_payment_role(person) : person.payment_role)
       PAYMENT_ROLE_TO_INSTALLMENTS_CENTS[role]
@@ -358,6 +372,7 @@ module ContractHelper
     end
 
     def format_cents_de(cents, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ", format: nil)
+      return nil if cents.blank?
       currency = "€" if currency == "EUR"
       format = "%n#{space}%u" if format.blank?
       number = cents.to_f / 100.0
