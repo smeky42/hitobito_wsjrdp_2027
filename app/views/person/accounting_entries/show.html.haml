@@ -16,10 +16,9 @@
         = pn_id
 
   - permitted_attrs_set = Set.new(permitted_attrs)
-  - cancel_url = get_accounting_entry_cancel_url
   = standard_form(accounting_entry, {url: url_for(accounting_entry), method: :put}) do |f|
     = hidden_field_tag("fin_admin", can_fin_admin?)
-    = hidden_field_tag("return_url", get_accounting_entry_return_url)
+    = hidden_field_tag("return_url", return_url)
     = f.error_messages
     = button_toolbar(f, toolbar_class: nil) do
       = submit_button(f, ti(:"button.save"))

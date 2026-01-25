@@ -7,7 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class WsjrdpFinAccountsController < ApplicationController
+class Fin::WsjrdpFinAccountsController < ApplicationController
   include WsjrdpFormHelper
   include WsjrdpFinHelper
   include WsjrdpNumberHelper

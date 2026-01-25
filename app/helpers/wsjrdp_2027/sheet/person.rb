@@ -32,7 +32,8 @@ module Wsjrdp2027::Sheet::Person
       if: :show
 
     tab "people.tabs.accounting",
-      :accounting_group_person_path,
+      :person_accounting_path_with_group,
+      alt: [:accounting_group_person_path],
       if: :show
 
     tab "people.tabs.medical",

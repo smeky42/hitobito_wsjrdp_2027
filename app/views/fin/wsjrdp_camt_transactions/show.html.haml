@@ -1,9 +1,9 @@
 #main.row
   = standard_form(camt_transaction, {url: camt_transaction_path, method: :put, data: {turbo: false}}) do |f|
     = hidden_field_tag("fin_admin", can_fin_admin?)
-    = hidden_field_tag("return_url", camt_transaction_return_url)
+    = hidden_field_tag("return_url", return_url)
     = f.error_messages
-    = form_buttons(f, cancel_url: camt_transaction_return_url)
+    = form_buttons(f, cancel_url: cancel_url)
 
     .mt-3
     = field_set_tag do
@@ -42,4 +42,4 @@
       -# %div.border-top.py-2
       -# = input_or_render_attrs(f, :created_at, :updated_at)
 
-    = form_buttons(f, cancel_url: camt_transaction_return_url)
+    = form_buttons(f, cancel_url: cancel_url)

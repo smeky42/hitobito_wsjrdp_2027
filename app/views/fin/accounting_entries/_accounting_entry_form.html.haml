@@ -1,0 +1,36 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# input: f - form
+
+= field_set_tag do
+  -# = f.labeled_collection_select(:new_sepa_status, Settings.sepa_status, :first, :last, {})
+  -# %div.border-top.py-2
+  - if f.object.subject_id.present?
+    = f.hidden_field :subject_id
+    = form_like_labeled_attr(f.object, :subject_id, display_link: false)
+  - else
+    = f.labeled_person_field :subject
+  = input_or_render_attrs(f, :amount_eur)
+  = f.labeled_input_field :description
+  = f.labeled_input_field :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten'
+  %div.border-top.py-2
+  = f.labeled_input_field :value_date, help_inline: 'Nur falls abweichend vom aktuellen Datum'
+  = f.labeled_input_field :endtoend_id, help_inline: 'SEPA Ende-zu-Ende-Referenz'
+  %div.border-top.py-2
+  = f.labeled_input_fields :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address
+  %div.border-top.py-2
+  %div.row.mb-2.mt-0
+    %div.offset-md-3.offset-xl-2
+      %div.btn-group
+        %button.btn.btn-sm.btn-outline-primary.mt-2{ type: 'button', onclick: 'fill_in_rdp_account_44_as_creditor()' }
+          = t('activerecord.attributes.accounting_entry.fill_in_rdp_account_44_as_creditor')
+      %div.btn-group
+        %button.btn.btn-sm.btn-outline-primary.mt-2{ type: 'button', onclick: 'clear_creditor()' }
+          = t('activerecord.attributes.accounting_entry.clear_creditor')
+  = f.labeled_input_fields :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address
+  %div.border-top.py-2

@@ -226,7 +226,7 @@ module ContractHelper
           color_marker + " " + unit_code
         end
       elsif unit_code.blank? && not_set_text.present?
-        "<span class=\"muted\">#{not_set_text}</span>".html_safe
+        "<span class=\"muted fw-light\">#{not_set_text}</span>".html_safe
       else
         unit_code
       end

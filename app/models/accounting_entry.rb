@@ -4,7 +4,7 @@ class AccountingEntry < ActiveRecord::Base
   include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
 
-  belongs_to :subject, polymorphic: true
+  belongs_to :subject, polymorphic: true, optional: true
   belongs_to :author, polymorphic: true
 
   belongs_to :direct_debit_payment_info, optional: true, class_name: "WsjrdpDirectDebitPaymentInfo"
@@ -17,9 +17,9 @@ class AccountingEntry < ActiveRecord::Base
 
   has_many :notes, dependent: :destroy, as: :subject, class_name: "WsjrdpNote"
 
+  validates :subject_id, presence: true
   validates :amount_eur, presence: true
   validates :description, presence: true
-  validates :new_sepa_status, presence: true, on: :create
 
   around_save :around_save_callback
   before_destroy :_before_destroy_callback

@@ -1,0 +1,20 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+:javascript
+  function fill_in_rdp_account_44_as_creditor() {
+    $('#accounting_entry_cdtr_name').val('Ring deutscher Pfadfinder*innenverbände e.V.');
+    $('#accounting_entry_cdtr_iban').val('DE13370601932001939044');
+    $('#accounting_entry_cdtr_bic').val('GENODED1PAX');
+    $('#accounting_entry_cdtr_address').val('Chausseestraße 128/129, 10115 Berlin');
+  }
+  function clear_creditor() {
+    $('#accounting_entry_cdtr_name').val('');
+    $('#accounting_entry_cdtr_iban').val('');
+    $('#accounting_entry_cdtr_bic').val('');
+    $('#accounting_entry_cdtr_address').val('');
+  }

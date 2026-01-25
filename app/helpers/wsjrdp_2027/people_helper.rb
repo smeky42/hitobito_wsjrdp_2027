@@ -10,6 +10,10 @@
 module Wsjrdp2027::PeopleHelper
   include ContractHelper
 
+  def person_accounting_path_with_group(group, person, params)
+    person_accounting_path(person, params)
+  end
+
   def format_person_unit_code(person)
     make_unit_code_display(person.unit_code, not_set_text: "Nicht gesetzt", search_link: true)
   end
@@ -19,8 +23,11 @@ module Wsjrdp2027::PeopleHelper
   end
 
   def format_person_status(person)
-    status_de = Settings.status[person.status]
-    status_de.blank? ? person.status : "#{person.status} (#{status_de})"
+    Settings.status[person.status].presence || person.status
+  end
+
+  def format_person_sepa_status(person)
+    Settings.sepa_status[person.sepa_status].presence || person.sepa_status
   end
 
   def format_person_deregistration_issue(person)
@@ -36,7 +43,14 @@ module Wsjrdp2027::PeopleHelper
   end
 
   def format_person_deregistration_actual_compensation_cents(person)
-    format_cents_de(person.deregistration_actual_compensation_cents, zero_cents: "")
+    cents = person.deregistration_actual_compensation_cents
+    if cents.present?
+      eur = format_cents_de(person.deregistration_actual_compensation_cents, zero_cents: "")
+      "#{eur} (Eingetragener Vorschlag)"
+    else
+      eur = format_cents_de(person.deregistration_contractual_compensation_cents, zero_cents: "")
+      "#{eur} (nach Teilnahme- und Reisebedingungen)"
+    end
   end
 
   def format_person_deregistration_refund_cents(person)

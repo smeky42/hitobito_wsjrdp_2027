@@ -19,8 +19,7 @@ Rails.application.routes.draw do
           get "print/preview" => "person/print#preview"
           get "print/submit" => "person/print#submit"
 
-          get "accounting" => "person/accounting#index"
-          post "accounting" => "person/accounting#create"
+          get "accounting" => "person/accounting#show"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
@@ -52,22 +51,28 @@ Rails.application.routes.draw do
           post "unit/fill_cluster_code" => "person/unit#fill_cluster_code"
           post "unit/clear_cluster_code" => "person/unit#clear_cluster_code"
         end
-
-        resources :accounting_entries, path: "/fin/ae", shallow: true, only: [:show, :update, :destroy]
-        resources :wsjrdp_direct_debit_pre_notifications, path: "/fin/pn", shallow: true, only: [:show, :update]
       end
 
       get "map" => "group/map#index"
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
-  end
 
-  scope "/fin" do
-    resources :wsjrdp_camt_transactions, path: "tx", shallow: true, only: [:show, :update] do
-      post "create_accounting_entry", to: "camt_transaction/actions#create_accounting_entry"
-      post "link_accounting_entry/:accounting_entry_id", to: "camt_transaction/actions#link_accounting_entry"
+    resources :people, only: [] do
+      resource :accounting, controller: "person/accounting", only: [:show]
+      resource :deregistration, controller: "person/deregistration", only: [:edit, :update]
     end
-    resources :wsjrdp_fin_accounts, path: "acc", shallow: true, only: [:show, :update]
+
+    scope "fin", module: "fin" do
+      get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
+      post :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
+      resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]
+      resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
+        post "create_accounting_entry", to: "wsjrdp_camt_transactions#create_accounting_entry"
+        post "link_accounting_entry/:accounting_entry_id", to: "wsjrdp_camt_transactions#link_accounting_entry"
+      end
+      resources :wsjrdp_fin_accounts, path: "acc", only: [:show, :update]
+      resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]
+    end
   end
 end

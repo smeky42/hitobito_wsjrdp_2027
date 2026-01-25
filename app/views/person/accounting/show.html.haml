@@ -1,0 +1,36 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- content_for :head do
+  = javascript_include_tag 'hitobito_wsjrdp_2027/turbo_stream_actions', 'data-turbo-track': true
+
+:css
+  .new-accounting-entry, .new-sepa-status, .deregistration {
+    border: none;
+    background: var(--bs-light);
+    border-radius: 6px;
+    padding: 4px;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  }
+
+#main.row
+  - if can_fin?
+    %div
+      = action_button("Neue Buchung", @new_accounting_entry_path,
+                      :plus, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
+      = action_button("Finanzstatus ändern", @new_sepa_status_path,
+                      :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
+      = action_button("Abmeldung vorbereiten", @edit_deregistration_path,
+                      :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
+      = turbo_frame_tag(extra_entry_turbo_frame) do
+        %span
+
+  = standard_form(@new_accounting_entry, {as: :accounting_entry, url: person_accounting_path(@person), method: :post }) do |f|
+    = f.error_messages
+    = render 'amount_paid_and_total_fee'
+    = render 'accounting_entries', entries: @direct_debit_pre_notifications + @accounting_entries
+    = render 'installments'
