@@ -25,16 +25,6 @@ module Wsjrdp2027::Person
     :sepa_name, :sepa_address, :sepa_mail, :sepa_iban
   ]
 
-  DELETE_IF_BLANK_ATTRS = [
-    :deregistration_issue,
-    :deregistration_effective_date,
-    :deregistration_actual_compensation_cents,
-    :missing_installment_issue,
-    :wsjrdp_email,
-    :wsjrdp_email_created_at
-  ].freeze
-  STRIP_ATTRS = DELETE_IF_BLANK_ATTRS.dup
-
   def self.included(base)
     # Be careful to modify existing variables instead of re-assigning
     # them to avoid Ruby warnings.
@@ -53,6 +43,7 @@ module Wsjrdp2027::Person
     base.const_set(:GENDERS, GENDERS)
 
     base.class_eval do
+      include WsjrdpJsonbHelper
       include WsjrdpNumberHelper
 
       # We need to remove the existing validator with just two genders first
@@ -73,18 +64,17 @@ module Wsjrdp2027::Person
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
-      store_accessor :additional_info, :missing_installment_issue
-      store_accessor :additional_info, :wsjrdp_email
-      store_accessor :additional_info, :wsjrdp_email_created_at
+      jsonb_accessor :additional_info, :missing_installment_issue, strip: true
+      jsonb_accessor :additional_info, :wsjrdp_email, strip: true
+      jsonb_accessor :additional_info, :wsjrdp_email_created_at
 
-      store_accessor :additional_info, :deregistration_issue
-      store_accessor :additional_info, :deregistration_effective_date
-      store_accessor :additional_info, :deregistration_actual_compensation_cents
+      jsonb_accessor :additional_info, :deregistration_issue, strip: true
+      jsonb_accessor :additional_info, :deregistration_effective_date
+      jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_effective_date, :date
+      attribute :deregistration_actual_compensation_cents, :integer
 
       eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
-
-      before_save :normalize_additional_info_attrs
 
       def short_full_name
         first_names = first_name ? first_name.split : []
@@ -348,20 +338,7 @@ module Wsjrdp2027::Person
 
       def deregistration_effective_date=(value)
         value = value.to_date if value.respond_to?(:to_date)
-        if value.blank?
-          additional_info.delete("deregistration_effective_date")
-        else
-          super(value&.to_fs(:iso8601))
-        end
-      end
-
-      def deregistration_issue=(value)
-        value = value.strip
-        if value.blank?
-          additional_info.delete("deregistration_issue")
-        else
-          super
-        end
+        super(value&.to_fs(:iso8601))
       end
 
       def deregistration_contractual_compensation_cents(today: nil)
@@ -500,16 +477,6 @@ module Wsjrdp2027::Person
           rule.people_id = id
         end
         rule.save
-      end
-
-      def normalize_additional_info_attrs
-        STRIP_ATTRS.each do |attr|
-          val = send(attr)
-          send(:"#{attr}=", val.strip) if val.respond_to?(:strip)
-        end
-        DELETE_IF_BLANK_ATTRS.each do |attr|
-          additional_info.delete(attr.to_s) if send(attr).blank?
-        end
       end
     end
   end

@@ -1,9 +1,16 @@
 # frozen_string_literal: true
 
+#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+#
+#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+#  Affero General Public License version 3 or later. See the COPYING
+#  file at the top-level directory or at
+#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
 module Wsjrdp2027::Group
   extend ActiveSupport::Concern
 
-  DELETE_IF_BLANK_ATTRS = [:support_cmt_mail_addresses, :unit_code].freeze
+  include WsjrdpJsonbHelper
 
   included do
     # Define additional used attributes
@@ -12,10 +19,8 @@ module Wsjrdp2027::Group
 
     root_types Group::Root
 
-    store_accessor :additional_info, :unit_code
-    store_accessor :additional_info, :support_cmt_mail_addresses
-
-    before_save :normalize_additional_info_attrs
+    jsonb_accessor :additional_info, :unit_code, strip: true
+    jsonb_accessor :additional_info, :support_cmt_mail_addresses
 
     def support_cmt_mail_addresses_string
       support_cmt_mail_addresses&.join("\n")
@@ -23,23 +28,7 @@ module Wsjrdp2027::Group
 
     def support_cmt_mail_addresses_string=(value)
       addresses = (value || "").tr("\n", ",").split(",").map { |s| s.strip.presence }.compact
-      if addresses.blank?
-        additional_info.delete("support_cmt_mail_addresses")
-      else
-        self.support_cmt_mail_addresses = addresses
-      end
-    end
-
-    private
-
-    def normalize_additional_info_attrs
-      [:unit_code].each do |attr|
-        val = send(attr)
-        send(:"#{attr}=", val.strip) if val.respond_to?(:strip)
-      end
-      DELETE_IF_BLANK_ATTRS.each do |attr|
-        additional_info.delete(attr.to_s) if send(attr).blank?
-      end
+      self.support_cmt_mail_addresses = addresses
     end
   end
 end
