@@ -64,7 +64,7 @@ module Wsjrdp2027::Person
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
-      jsonb_accessor :additional_info, :missing_installment_issue, strip: true
+      jsonb_accessor :additional_info, :debit_return_issue, strip: true
       jsonb_accessor :additional_info, :wsjrdp_email, strip: true
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
 

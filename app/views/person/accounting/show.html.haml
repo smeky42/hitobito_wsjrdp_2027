@@ -26,6 +26,8 @@
                       :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
       = action_button("Abmeldung vorbereiten", @edit_deregistration_path,
                       :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
+      = action_button("Rücklastschriften", @edit_debit_return_path,
+                      :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
       = turbo_frame_tag(extra_entry_turbo_frame) do
         %span
 

@@ -150,7 +150,7 @@ de:
         deregistration_actual_compensation_eur: Entschädigung
         deregistration_refund_cents: Rückzahlung
         deregistration_open_cents: Ausstehender Beitrag
-        missing_installment_issue: Ticket Rücklastschrift
+        debit_return_issue: Ticket Rücklastschrift
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:

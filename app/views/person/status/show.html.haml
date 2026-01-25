@@ -46,7 +46,6 @@
         %span.muted.label(style="white-space: nowrap;")
           %span(style="margin-left: 4px; margin-right: 4px;") −
           \#{format_attr(@person, :amount_paid_cents)} (Bereits bezahl)
-  = render_attrs(@person, :missing_installment_issue)
   = render_attrs(@person, *extra_render_attrs)
 - if @person.status == 'upload'
   %br

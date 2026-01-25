@@ -61,6 +61,7 @@ Rails.application.routes.draw do
     resources :people, only: [] do
       resource :accounting, controller: "person/accounting", only: [:show]
       resource :deregistration, controller: "person/deregistration", only: [:edit, :update]
+      resource :debit_return, controller: "person/debit_return", only: [:edit, :update]
     end
 
     scope "fin", module: "fin" do
