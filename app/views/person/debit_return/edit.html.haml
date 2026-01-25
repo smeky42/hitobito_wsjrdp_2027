@@ -8,7 +8,7 @@
 #main.row
   = turbo_frame_tag_if_frame_request(target_turbo_frame) do
     %div.deregistration
-      = standard_form @person, url: person_deregistration_path, method: :put do |f|
+      = standard_form @person, url: person_debit_return_path, method: :put do |f|
         .mt-3
         = form_buttons(f, cancel_url: return_url)
         = f.error_messages
