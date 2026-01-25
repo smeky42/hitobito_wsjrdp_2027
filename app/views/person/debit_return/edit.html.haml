@@ -1,0 +1,20 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main.row
+  = turbo_frame_tag_if_frame_request(target_turbo_frame) do
+    %div.deregistration
+      = standard_form @person, url: person_deregistration_path, method: :put do |f|
+        .mt-3
+        = form_buttons(f, cancel_url: return_url)
+        = f.error_messages
+        = hidden_field_tag 'target_turbo_frame', target_turbo_frame
+        = hidden_field_tag 'return_url', return_url
+        = field_set_tag do
+          - debit_return_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.debit_return_issue) unless @person.debit_return_issue.blank?
+          = f.labeled_input_fields :debit_return_issue, help_inline: debit_return_issue_help
+        = form_buttons(f, cancel_url: return_url)

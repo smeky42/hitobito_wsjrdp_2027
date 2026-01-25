@@ -22,7 +22,7 @@ class Person::StatusController < ApplicationController
     :planned_custom_installments_comment,
     :deregistration_issue,
     :deregistration_effective_date,
-    :missing_installment_issue
+    :debit_return_issue
   ]
 
   def show
