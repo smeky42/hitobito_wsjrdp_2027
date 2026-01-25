@@ -14,7 +14,7 @@ module Sheet
     end
 
     def current_parent_nav_path
-      view.accounting_group_person_path(entry.group, entry.person)
+      view.accounting_person_path(entry.person)
     end
   end
 end

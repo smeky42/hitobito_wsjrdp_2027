@@ -78,6 +78,7 @@ module HitobitoWsjrdp2027
     initializer "wsjrdp_2027.assets.precompile" do |app|
       app.config.assets.precompile += %w[
         hitobito_wsjrdp_2027/application.js
+        hitobito_wsjrdp_2027/turbo_stream_actions.js
       ]
     end
 

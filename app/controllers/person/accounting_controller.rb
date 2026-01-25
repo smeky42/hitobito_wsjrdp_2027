@@ -1,9 +1,17 @@
 # frozen_string_literal: true
 
+#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+#
+#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+#  Affero General Public License version 3 or later. See the COPYING
+#  file at the top-level directory or at
+#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
 class Person::AccountingController < ApplicationController
   include ContractHelper
   include WsjrdpFinHelper
 
+  before_action :map_id_to_person_id
   before_action :authorize_action
   decorates :group, :person
 
@@ -12,64 +20,29 @@ class Person::AccountingController < ApplicationController
   helper_method :can_fin_admin?
   helper_method :get_installments_table_entries
   helper_method :permitted_attrs
+  helper_method :extra_entry_turbo_frame
 
-  def index
+  def show
     @person ||= person
     @group ||= group
 
     @accounting_entries = accounting_entries
     @direct_debit_pre_notifications = direct_debit_pre_notifications
     @new_accounting_entry = new_accounting_entry(params)
-
-    render :index
-  end
-
-  def create
-    @person ||= person
-    @group ||= group
-
-    unless can_fin?
-      redirect_back_or_to(accounting_group_person_path,
-        alert: "Du darfst keine Buchungen anlegen!")
-      return
-    end
-
-    @alerts = []
-    @warnings = []
-    @notices = []
-    @new_accounting_entry = new_accounting_entry(params)
-    @accounting_entries = accounting_entries
-
-    unless @new_accounting_entry.save
-      # Errors in @new_accounting_entry.errors are automatically shown
-      # as part of the form and do not need to be put into the flash.
-      flash.now[:alert] = @alerts.join("\n")
-      flash.now[:notice] = @notices.join("\n")
-      flash.now[:warning] = @warnings.join("\n")
-      render :index, status: :bad_request
-      return
-    end
-
-    @notices << "Neue Buchung in Höhe von #{@new_accounting_entry.amount_eur_display} € erfolgreich angelegt."
-
-    new_sepa_status = @new_accounting_entry.new_sepa_status
-    if new_sepa_status != @person.sepa_status
-      @person.sepa_status = new_sepa_status
-      new_sepa_status_msg = "Finanzstatus auf #{Settings.sepa_status[new_sepa_status]} gesetzt."
-      if new_sepa_status == "ok"
-        @notices << new_sepa_status_msg
-      else
-        @warnings << new_sepa_status_msg
-      end
-      unless @person.save
-        @warnings.concat @person.errors.full_messages.map { |p| "Person: #{p}" }
-      end
-    end
-
-    flash[:alert] = @alerts.join("\n")
-    flash[:notice] = @notices.join("\n")
-    flash[:warning] = @warnings.join("\n")
-    redirect_back_or_to(accounting_group_person_path)
+    @new_accounting_entry_path = new_accounting_entry_path + "?" + URI.encode_www_form({
+      "accounting_entry[subject_id]": @person.id,
+      target_turbo_frame: extra_entry_turbo_frame
+    })
+    @new_sepa_status_path = new_sepa_status_path + "?" + URI.encode_www_form({
+      "accounting_entry[subject_id]": @person.id,
+      "accounting_entry[amount_cents]": 0,
+      "accounting_entry[new_sepa_status]": @person.sepa_status,
+      target_turbo_frame: extra_entry_turbo_frame
+    })
+    @edit_deregistration_path = edit_person_deregistration_path(person) + "?" + URI.encode_www_form({
+      target_turbo_frame: extra_entry_turbo_frame
+    })
+    render :show
   end
 
   def permitted_attrs
@@ -121,7 +94,7 @@ class Person::AccountingController < ApplicationController
   private
 
   def person
-    @person ||= Person.find(params[:id])
+    @person ||= Person.find(params[:person_id])
   end
 
   def group
@@ -148,6 +121,10 @@ class Person::AccountingController < ApplicationController
 
   def authorize_action
     authorize!(:edit, person)
+  end
+
+  def map_id_to_person_id
+    params[:person_id] = params[:id] unless params.key?(:person_id)
   end
 
   def accounting_entries
@@ -180,5 +157,9 @@ class Person::AccountingController < ApplicationController
       }
     end
     entries
+  end
+
+  def extra_entry_turbo_frame
+    :accounting_extra_entry
   end
 end

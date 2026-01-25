@@ -56,6 +56,8 @@ de:
         support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
       person:
         nickname: Spitzname / Fahrtenname
+        status: Anmeldestatus
+        status_log_display: Anmeldestatus
         buddy_id: Buddy-ID
         unit_code: Unit code
         buddy_id_ul: Unit Leader Buddy ID
@@ -145,6 +147,7 @@ de:
         deregistration_effective_date: Abmeldung zum
         deregistration_contractual_compensation_cents: 'Entschädigung nach T&R'
         deregistration_actual_compensation_cents: Entschädigung
+        deregistration_actual_compensation_eur: Entschädigung
         deregistration_refund_cents: Rückzahlung
         deregistration_open_cents: Ausstehender Beitrag
         missing_installment_issue: Ticket Rücklastschrift
@@ -153,6 +156,8 @@ de:
       accounting_entry:
         created_at: Erstellt
         updated_at: Geändert
+        subject: Person
+        subject_id: Person
         amount_eur: Betrag in Euro
         amount_eur_display: Betrag in Euro
         pre_notified_amount_eur: Vorab informierter Betrag in Euro
@@ -177,6 +182,7 @@ de:
         cdtr_address: Kreditor Adresse
         creditor_id: Gläubiger-Identifikationsnummer
         fill_in_rdp_account_44_as_creditor: rdp Konto 44 (Jamboree Konto) als Kreditor einfügen
+        clear_creditor: Kreditor löschen
 
       # de.activerecord.attributes.wsjrdp_camt_transaction
       wsjrdp_camt_transaction:
@@ -323,6 +329,7 @@ de:
       additional_info: Weitere Informationen
       finance: SEPA
     status: Anmeldestatus
+    status_log_display: Anmeldestatus
     status_help:
       registered: Um mit deiner Anmeldung fortzufahren musst du alle Daten (über Info->Bearbeiten) und den Medizinbogen (über Medizinische Angaben->Bearbeiten) vollständig ausfüllen. <br/> Danach kannst du dein Anmeldung drucken, unterschreiben und wieder hochladen.
       printed: Du hast deine Anmeldung erfolgreich gedruckt. </br> Der nächste Schritt ist das Hochladen der Dokumente. </br> Diese müssen vollständig unterschrieben und getrennt gescannt als PDF (im Tab Dokumente hochladen) hochgeladen werden.

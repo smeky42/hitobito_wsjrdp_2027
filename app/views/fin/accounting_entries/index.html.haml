@@ -1,0 +1,15 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main.row
+  %div
+    = turbo_frame_tag(:new_accounting_entry_frame, target: "_top") do
+      = action_button("Neue Buchung", new_accounting_entry_path,
+                      :plus, remote: false, data: {turbo_frame: "new_accounting_entry_frame"})
+
+  %h1 Buchungen
+  = render 'person/accounting/accounting_entries', entries: @accounting_entries

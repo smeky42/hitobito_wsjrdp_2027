@@ -53,6 +53,8 @@ module Wsjrdp2027::Person
     base.const_set(:GENDERS, GENDERS)
 
     base.class_eval do
+      include WsjrdpNumberHelper
+
       # We need to remove the existing validator with just two genders first
       _validators[:gender].reject! { |v| v.is_a? ActiveModel::Validations::InclusionValidator }
       # ...and the callback for the validator
@@ -80,6 +82,8 @@ module Wsjrdp2027::Person
       store_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_effective_date, :date
 
+      eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
+
       before_save :normalize_additional_info_attrs
 
       def short_full_name
@@ -90,6 +94,14 @@ module Wsjrdp2027::Person
           [first_names[0], last_name]
         end
         name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      def status_log_display
+        [Settings.status[status].presence, "(#{status})"].compact.join(" ")
+      end
+
+      def sepa_status_log_display
+        [Settings.sepa_status[sepa_status].presence, "(#{sepa_status})"].compact.join(" ")
       end
 
       def short_full_name_with_nickname
@@ -171,7 +183,7 @@ module Wsjrdp2027::Person
       end
 
       def accounting_entries
-        entries = AccountingEntry.where(subject: self).to_a
+        entries = AccountingEntry.where(subject: self).includes([:author, :direct_debit_pre_notification, :camt_transaction]).to_a
         entries.sort_by! { |elt| elt.created_at }
         entries
       end
@@ -336,23 +348,34 @@ module Wsjrdp2027::Person
 
       def deregistration_effective_date=(value)
         value = value.to_date if value.respond_to?(:to_date)
-        super(value&.to_fs(:iso8601))
+        if value.blank?
+          additional_info.delete("deregistration_effective_date")
+        else
+          super(value&.to_fs(:iso8601))
+        end
+      end
+
+      def deregistration_issue=(value)
+        value = value.strip
+        if value.blank?
+          additional_info.delete("deregistration_issue")
+        else
+          super
+        end
       end
 
       def deregistration_contractual_compensation_cents(today: nil)
         compute_contractual_compensation_cents(total_fee_cents, today: today)
       end
 
-      def deregistration_actual_compensation_cents
-        super || deregistration_contractual_compensation_cents
+      def deregistration_refund_cents(today: nil)
+        compensation_cents = deregistration_actual_compensation_cents || deregistration_contractual_compensation_cents(today: today)
+        [amount_paid_cents - compensation_cents, 0].max
       end
 
-      def deregistration_refund_cents
-        [amount_paid_cents - deregistration_actual_compensation_cents, 0].max
-      end
-
-      def deregistration_open_cents
-        [deregistration_actual_compensation_cents - amount_paid_cents, 0].max
+      def deregistration_open_cents(today: nil)
+        compensation_cents = deregistration_actual_compensation_cents || deregistration_contractual_compensation_cents(today: today)
+        [compensation_cents - amount_paid_cents, 0].max
       end
 
       private

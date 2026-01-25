@@ -70,6 +70,12 @@ module WsjrdpFormHelper
     @help_texts ||= HelpTexts::Renderer.new(form.template)
   end
 
+  def _url_host_allowed?(url)
+    URI(url.to_s).host == request.host
+  rescue ArgumentError, URI::Error
+    false
+  end
+
   included do
     def form_like_labeled_attr(obj, attr, display_link: true)
       key = captionize(attr, object_class(obj))
@@ -110,6 +116,41 @@ module WsjrdpFormHelper
         content_tag(:div, help_content, class: "muted")
       ])
       labeled(label, content)
+    end
+
+    # Returns the value of the Turbo-Frame header (the frame's ID)
+    def turbo_frame_request_id
+      request.headers["Turbo-Frame"]
+    end
+
+    def turbo_frame_request?
+      turbo_frame_request_id.present?
+    end
+
+    def turbo_frame_if(condition, id, &block)
+      if condition
+        turbo_frame_tag(id, &block)
+      else
+        capture(&block)
+      end
+    end
+
+    def turbo_frame_tag_if_frame_request(id, &block)
+      if turbo_frame_request?
+        turbo_frame_tag(id, &block)
+      else
+        capture(&block)
+      end
+    end
+
+    def return_url_or_fallback(fallback)
+      if params[:return_url].present?
+        params[:return_url]
+      elsif request.referer && _url_host_allowed?(request.referer)
+        request.referer
+      else
+        fallback
+      end
     end
   end
 end
