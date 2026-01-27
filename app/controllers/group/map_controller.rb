@@ -28,15 +28,18 @@ class Group::MapController < ApplicationController
       END
     SQL
 
+    selected_cols = [
+      :first_name, :last_name, :longitude, :latitude,
+      :id, :primary_group_id, :rdp_association, :rdp_association_region,
+      :rdp_association_sub_region, :rdp_association_group, :payment_role
+    ]
     @people = ::Person.joins(:groups).joins(:roles)
       .where(groups: {id: groups.pluck(:id)})
       .where(status: allowed_statuses)
       .where.not(longitude: nil, latitude: nil)
       .distinct
       .select(
-        :first_name, :last_name, :longitude, :latitude,
-        :id, :primary_group_id, :rdp_association, :rdp_association_region,
-        :rdp_association_sub_region, :rdp_association_group, :payment_role,
+        *selected_cols,
         "#{role_sql} AS role",
         "COALESCE(unit_code, cluster_code) AS unit_code"
       )
@@ -56,6 +59,9 @@ class Group::MapController < ApplicationController
     end
 
     @unit_codes = Set.new(@people.to_a.map { |p| p.unit_code }.select { |uc| uc }).to_a.sort
+    @people_json = @people.to_json(only: [*selected_cols, "role", "unit_code"])
+
+    render :index
   end
 
   private
