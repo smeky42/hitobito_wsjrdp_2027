@@ -98,7 +98,7 @@
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
-      var people = #{raw(@people.to_json(except: [:tag_list]))};
+      var people = #{raw(@people_json)};
       var allMarkers = [];
 
       people.forEach((m, i) => {
