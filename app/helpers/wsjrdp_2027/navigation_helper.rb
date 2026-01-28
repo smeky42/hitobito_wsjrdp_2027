@@ -14,7 +14,7 @@ module Wsjrdp2027::NavigationHelper
     label: :finance,
     url: :fin_path,
     icon_name: "money-bill",
-    if: ->(_) { can?(:fin_admin, Group.root) },
+    if: ->(_) { can?(:fin_admin, WsjrdpFinAccount) },
     active_for: %w[/acc]
   }
 
