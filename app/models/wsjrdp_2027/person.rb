@@ -74,6 +74,8 @@ module Wsjrdp2027::Person
       attribute :deregistration_effective_date, :date
       attribute :deregistration_actual_compensation_cents, :integer
 
+      eur_attribute :total_fee_eur, cents_attr: :total_fee_cents
+      eur_attribute :amount_paid_eur, cents_attr: :amount_paid_cents
       eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
 
       def short_full_name

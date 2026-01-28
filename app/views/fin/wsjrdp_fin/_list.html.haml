@@ -1,0 +1,57 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- p_all_size = 0
+- title_people_list.select! { |title_and_people| title_and_people[1].size > 0 }
+- title_people_list.each do |title_and_people|
+  - people_list = title_and_people[title_and_people.size > 1 ? 1 : 0]
+  - p_all_size += people_list.size
+
+- if p_all_size > 0
+  %table.table.table-striped.table-hover
+    - title_people_list.each_with_index do |title_and_people, idx|
+      - local_title = title_and_people.size > 1 ? title_and_people[0] : nil
+      - people_list = title_and_people[title_and_people.size > 1 ? 1 : 0]
+      - local_footer = title_and_people.size > 2 ? title_and_people[2] : nil
+      - if people_list.size > 0
+        - if local_title
+          %tbody
+            %tr
+              %th.thead-like(colspan="50" style="font-weight: var(--bs-body-font-weight); border-bottom: 0; padding: 0;")
+                - if idx == 0
+                  %h3(style="margin-bottom: 0.4rem;")= local_title
+                - else
+                  %h3(style="margin-top: 1.6em; margin-bottom: 0.4rem;")= local_title
+        %tbody
+          %tr
+            %th.thead-like Rolle
+            %th.thead-like Id
+            %th.thead-like Person
+            %th.thead-like Gruppe
+            %th.thead-like Status
+            %th.thead-like Finanz-Status
+            %th.right.thead-like Beitrag
+            %th.right.thead-like Bezahlt
+        %tbody
+          - people_list.each do |p|
+            %tr
+              %td
+                %span.muted= short_wsj_role(p)
+              %td= p.id
+              %td
+                %strong= link_to(p.short_full_name_with_nickname, person_path(p))
+              %td= p.primary_group.group_code_or_short_name
+              %td= p.status
+              %td= p.sepa_status
+              %td.right= p.total_fee_eur_display
+              %td.right= p.amount_paid_eur_display
+        - if local_footer
+          %tbody
+            %tr
+              %th.thead-like(colspan="50" style="font-weight: var(--bs-body-font-weight); border-bottom: 0")
+                %div(style="margin-bottom: 1rem;")
+                  = local_footer

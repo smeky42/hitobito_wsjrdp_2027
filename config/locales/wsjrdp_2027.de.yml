@@ -517,3 +517,6 @@ de:
 
   version:
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
+
+  navigation:
+    finance: Finanzen

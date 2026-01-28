@@ -30,5 +30,10 @@ module Wsjrdp2027::Group
       addresses = (value || "").tr("\n", ",").split(",").map { |s| s.strip.presence }.compact
       self.support_cmt_mail_addresses = addresses
     end
+
+    def group_code_or_short_name
+      group_code = (additional_info || {})["group_code"]
+      group_code or short_name
+    end
   end
 end

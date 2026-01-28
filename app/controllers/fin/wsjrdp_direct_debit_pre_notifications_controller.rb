@@ -21,11 +21,16 @@ class Fin::WsjrdpDirectDebitPreNotificationsController < ApplicationController
   helper_method :get_pre_notification_path
 
   def show
+    @wsjrdp_direct_debit_pre_notification = pre_notification
+    @person = person
+    @group = group
     render :show
   end
 
   def update
-    @pre_notification = pre_notification
+    @wsjrdp_direct_debit_pre_notification = pre_notification
+    @person = person
+    @group = group
     authorize!(:log, person)
     pre_notification.attributes = permitted_params
 
@@ -37,7 +42,7 @@ class Fin::WsjrdpDirectDebitPreNotificationsController < ApplicationController
   end
 
   def pre_notification
-    @pre_notification ||= WsjrdpDirectDebitPreNotification.find(params[:id])
+    @wsjrdp_direct_debit_pre_notification ||= WsjrdpDirectDebitPreNotification.find(params[:id])
   end
 
   def person
