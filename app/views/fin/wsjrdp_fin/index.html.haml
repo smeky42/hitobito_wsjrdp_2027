@@ -1,0 +1,28 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+:css
+  .thead-like {
+    background-color: var(--bs-body-bg) !important;
+    --bs-table-accent-bg: transparent !important;
+  }
+
+#main.row
+  %h1 Konten
+  %div
+  - @wsjrdp_fin_accounts.each do |acc|
+    %p
+      %a{ href: url_for(acc) }
+        = acc.to_s
+      %br/
+      Aktuelles Saldo:
+      = format_cents_de(acc.closing_balance_cents)
+
+  %h1 Personen
+  %div
+    = render "list", title_people_list: [["Bestätigte Personen mit Finanzstatus nicht OK", confirmed_people_sepa_status_not_ok],
+                                       ["Nicht bestätigte Personen in bestätigten Gruppen", not_confirmed_people_in_confirmed_groups]]

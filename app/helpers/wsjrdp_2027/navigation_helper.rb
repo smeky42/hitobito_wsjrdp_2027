@@ -10,9 +10,20 @@
 module Wsjrdp2027::NavigationHelper
   extend ActiveSupport::Concern
 
+  WSJRDP_MAIN_FIN = {
+    label: :finance,
+    url: :fin_path,
+    icon_name: "money-bill",
+    if: ->(_) { can?(:fin_admin, Group.root) },
+    active_for: %w[/acc]
+  }
+
   included do
     # Remove :invoices tab for the time being. We do not use it and it
     # is visible to people with the :finance permission.
-    NavigationHelper::MAIN.delete_if { |e| e["label"] == :invoices }
+    NavigationHelper::MAIN.delete_if { |e| e[:label] == :invoices }
+    if NavigationHelper::MAIN.find_index { |e| e[:label] == :finance }.nil?
+      NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_FIN)
+    end
   end
 end

@@ -17,28 +17,34 @@ class Fin::WsjrdpFinAccountsController < ApplicationController
   before_action :authorize_action
 
   helper_method :can_fin_admin?
-  helper_method :fin_account, :transactions
-  helper_method :closing_balance_cents, :closing_balance_eur, :closing_balance_eur_display
+  helper_method :fin_account, :ordered_transactions
   helper_method :permitted_attrs
-  helper_method :fin_account_return_url
+  helper_method :cancel_url, :return_url
   helper_method :fin_account_path
 
   def show
     @wsjrdp_fin_account ||= fin_account
-    @transactions ||= transactions
-    render "fin/fin_account_show"
+    @ordered_transactions ||= ordered_transactions
+    render :show
+  end
+
+  def update
+    @wsjrdp_fin_account ||= fin_account
+    authorize!(:fin_admin, fin_account)
+    @wsjrdp_fin_account.attributes = permitted_params
+    if @wsjrdp_fin_account.save
+      redirect_to return_url
+    else
+      render :show, status: :bad_request
+    end
   end
 
   def fin_account
-    @fin_account ||= WsjrdpFinAccount.find(params[:id])
+    @wsjrdp_fin_account ||= WsjrdpFinAccount.find(params[:id])
   end
 
-  def transactions
-    @transactions ||= fin_account.transactions.sort_by { |t| [t.value_date, t.id] }.reverse
-  end
-
-  def closing_balance_cents
-    fin_account.opening_balance_cents + transactions.map { |e| e.amount_cents }.sum
+  def ordered_transactions
+    @ordered_transactions ||= fin_account.transactions.sort_by { |t| [t.value_date, t.id] }.reverse
   end
 
   def can_fin_admin?
@@ -52,15 +58,27 @@ class Fin::WsjrdpFinAccountsController < ApplicationController
     authorize!(:show, fin_account)
   end
 
+  def return_url
+    return_url_or_fallback url_for(fin_account)
+  end
+
+  def cancel_url
+    return_url
+  end
+
   def fin_account_path(entry = nil)
     url_for(entry.nil? ? fin_account : entry)
   end
 
-  def fin_account_return_url(entry = nil)
-    params[:return_url].presence || fin_account_path(entry)
+  def model_params
+    params.require(:wsjrdp_fin_account)
   end
 
   def permitted_attrs
     [:short_name, :description]
+  end
+
+  def permitted_params
+    model_params.permit(permitted_attrs)
   end
 end

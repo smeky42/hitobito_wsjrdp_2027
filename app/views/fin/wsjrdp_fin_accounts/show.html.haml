@@ -12,6 +12,8 @@
   }
 
 #main.row
+  %p
+    %a{ href: return_url} Zurück
   %table.table.table-striped.table-sm.table-custom
     %thead
       %tr
@@ -22,10 +24,10 @@
     %tbody
       %tr
         %td
-        %td.amount= closing_balance_eur_display
+        %td.amount= @wsjrdp_fin_account.closing_balance_eur_display
         %td Aktuelles Saldo
         %td
-      - transactions.each do |tx|
+      - ordered_transactions.each do |tx|
         - if tx.return_reason.present?
           - return_msg = "#{Settings.return_debit_status[tx.return_status]}: Retoure mit Rückgabe-Grund #{tx.return_reason}"
         - else
@@ -80,9 +82,9 @@
 
   = standard_form(fin_account, {url: fin_account_path, method: :put, data: {turbo: false}}) do |f|
     = hidden_field_tag("fin_admin", can_fin_admin?)
-    = hidden_field_tag("return_url", fin_account_return_url)
+    = hidden_field_tag("return_url", return_url)
     = f.error_messages
-    = form_buttons(f, cancel_url: fin_account_return_url)
+    = form_buttons(f, cancel_url: cancel_url)
 
     .mt-3
     = field_set_tag do
@@ -103,4 +105,4 @@
       = input_or_render_attrs(f, :created_at, :updated_at)
       = input_or_render_attrs(f, :status)
 
-    = form_buttons(f, cancel_url: fin_account_return_url)
+    = form_buttons(f, cancel_url: cancel_url)

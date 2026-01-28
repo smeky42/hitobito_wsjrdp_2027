@@ -17,8 +17,13 @@ class WsjrdpFinAccount < ActiveRecord::Base
     dependent: :restrict_with_error
 
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
+  eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
   def to_s
     "#{short_name} / #{account_identification}"
+  end
+
+  def closing_balance_cents
+    @closing_balance_cents ||= opening_balance_cents + transactions.map { |e| e.amount_cents }.sum
   end
 end

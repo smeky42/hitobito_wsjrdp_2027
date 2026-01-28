@@ -65,6 +65,7 @@ Rails.application.routes.draw do
     end
 
     scope "fin", module: "fin" do
+      get :fin, path: "", to: "wsjrdp_fin#index"
       get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       post :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]
