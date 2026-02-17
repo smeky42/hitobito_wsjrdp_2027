@@ -51,7 +51,9 @@ module Wsjrdp2027::PeopleController
       :uniform_size,
       :can_swim,
       :diet,
-      :medical_eating_disorders
+      :medical_eating_disorders,
+      :wsjrdp_email,
+      :moss_email
     ]
 
     # Override crud_controller

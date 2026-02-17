@@ -38,6 +38,7 @@ module HitobitoWsjrdp2027
 
       # Decorators
       PersonDecorator.prepend Wsjrdp2027::PersonDecorator
+      ContactableDecorator.prepend Wsjrdp2027::ContactableDecorator
 
       # Helpers
       Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass

@@ -151,6 +151,8 @@ de:
         deregistration_refund_cents: Rückzahlung
         deregistration_open_cents: Ausstehender Beitrag
         debit_return_issue: Ticket Rücklastschrift
+        wsjrdp_email: "Kontingents-E-Mail"
+        moss_email: "Moss-E-Mail"
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:

@@ -12,7 +12,7 @@ module WsjrdpJsonbHelper
   include ActiveRecord::Store
 
   module ClassMethods
-    def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true)
+    def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil)
       accessor_prefix =
         case prefix
         when String, Symbol
@@ -38,8 +38,19 @@ module WsjrdpJsonbHelper
         define_method(:"#{accessor_key}=") do |value|
           value = value&.strip if strip
           if delete_on_blank && value.blank?
-            send(store_attribute).delete(accessor_key)
+            send(store_attribute)&.delete(accessor_key)
           else
+            if created_at_key.present? || updated_at_key.present?
+              old_value = read_store_attribute(store_attribute, key)
+              now = Time.zone.now
+              if created_at_key.present?
+                old_created_at = read_store_attribute(store_attribute, created_at_key)
+                write_store_attribute(store_attribute, created_at_key, now) if old_created_at.nil?
+              end
+              if updated_at_key.present?
+                write_store_attribute(store_attribute, updated_at_key, now) if value != old_value
+              end
+            end
             write_store_attribute(store_attribute, key, value)
           end
         end

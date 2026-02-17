@@ -7,6 +7,8 @@ PERSON_ACTIONS = [
 
   :update,
   :update_email,
+  :update_wsjrdp_email,
+  :update_moss_email,
   :update_password,
   :update_settings,
 

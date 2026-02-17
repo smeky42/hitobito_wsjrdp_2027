@@ -65,8 +65,12 @@ module Wsjrdp2027::Person
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
       jsonb_accessor :additional_info, :debit_return_issue, strip: true
-      jsonb_accessor :additional_info, :wsjrdp_email, strip: true
+      jsonb_accessor :additional_info, :wsjrdp_email, strip: true, created_at_key: :wsjrdp_email_created_at, updated_at_key: :wsjrdp_email_updated_at
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
+      jsonb_accessor :additional_info, :wsjrdp_email_updated_at
+      jsonb_accessor :additional_info, :moss_email, strip: true, created_at_key: :moss_email_created_at, updated_at_key: :moss_email_updated_at
+      jsonb_accessor :additional_info, :moss_email_created_at
+      jsonb_accessor :additional_info, :moss_email_updated_at
 
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
       jsonb_accessor :additional_info, :deregistration_effective_date
