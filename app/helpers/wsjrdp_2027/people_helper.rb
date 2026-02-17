@@ -14,6 +14,26 @@ module Wsjrdp2027::PeopleHelper
     person_accounting_path(person, params)
   end
 
+  def format_person_sepa_mail(person)
+    format_email_or_nil(person.sepa_mail)
+  end
+
+  def format_person_additional_contact_email_a(person)
+    format_email_or_nil(person.additional_contact_email_a)
+  end
+
+  def format_person_additional_contact_email_b(person)
+    format_email_or_nil(person.additional_contact_email_b)
+  end
+
+  def format_person_wsjrdp_email(person)
+    format_email_or_nil(person.wsjrdp_email)
+  end
+
+  def format_person_moss_email(person)
+    format_email_or_nil(person.moss_email)
+  end
+
   def format_person_unit_code(person)
     make_unit_code_display(person.unit_code, not_set_text: "Nicht gesetzt", search_link: true)
   end
@@ -63,5 +83,11 @@ module Wsjrdp2027::PeopleHelper
 
   def format_person_amount_paid_cents(person)
     format_cents_de(person.amount_paid_cents, zero_cents: "")
+  end
+
+  private
+
+  def format_email_or_nil(email_addr)
+    mail_to(email_addr, email_addr) if email_addr.present?
   end
 end

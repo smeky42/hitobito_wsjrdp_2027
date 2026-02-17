@@ -1,7 +1,9 @@
--#  Copyright (c) 2025, German Contingent for the Worldscoutjamboree 2027. This file is part of
--#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
--#  or later. See the COPYING file at the top-level directory or at
--#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 = info_field_set_tag do
   = render 'contactable/address_fields', f: f
@@ -13,6 +15,13 @@
 
 = field_set_tag do
   = f.labeled_inline_fields_for :additional_emails, 'contactable/additional_email_fields'
+
+- if can?(:log, entry) && (can?(:update_wsjrdp_email, entry) || can?(:update_moss_email, entry))
+  = field_set_tag do
+    - if can?(:update_wsjrdp_email, entry)
+      = f.labeled_input_field :wsjrdp_email, help_inline: "Kontingents E-Mail Adresse", class: 'd-inline form-control form-control-sm'
+    - if can?(:update_moss_email, entry)
+      = f.labeled_input_field :moss_email, help_inline: "E-Mail für Moss SSO", class: 'd-inline form-control form-control-sm'
 
 = field_set_tag do
   = render 'contactable/phone_numbers_fields', f: f
