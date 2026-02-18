@@ -11,7 +11,7 @@ module Wsjrdp2027::ContactableDecorator
   def all_additional_emails(only_public = true)
     additional_emails_array = additional_emails.to_a
     emails = additional_emails_array.collect(&:email).compact_blank.map(&:downcase)
-    emails << email.downcase
+    emails << email.downcase if email.present?
     [[:sepa_mail, "SEPA", false], [:wsjrdp_email, "wsjrdp", false], [:moss_email, "Moss", false]].each do |attr, label, allow_duplicate|
       next unless respond_to?(attr)
       email_addr = send(attr)
