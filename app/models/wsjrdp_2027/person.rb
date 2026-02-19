@@ -64,6 +64,9 @@ module Wsjrdp2027::Person
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
 
+      jsonb_accessor :additional_info, :sepa_mandate_id, strip: true
+      attribute :sepa_mandate_id, :string
+
       jsonb_accessor :additional_info, :debit_return_issue, strip: true
       jsonb_accessor :additional_info, :wsjrdp_email, strip: true, created_at_key: :wsjrdp_email_created_at, updated_at_key: :wsjrdp_email_updated_at
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
@@ -142,6 +145,23 @@ module Wsjrdp2027::Person
       #
       # Accounting support
       #
+
+      def sepa_mandate_id
+        super.presence || "wsjrdp2027#{id}"
+      end
+
+      def sepa_mandate_id=(value)
+        super
+        super(nil) if value == "wsjrdp2027#{id}"
+      end
+
+      def sepa_mandate_id_change
+        super&.map { |e| e.presence || "wsjrdp2027#{id}" }
+      end
+
+      def saved_change_to_sepa_mandate_id
+        super&.map { |e| e.presence || "wsjrdp2027#{id}" }
+      end
 
       ##
       # Regular full fee in cents based on payment role.

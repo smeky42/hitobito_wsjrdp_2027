@@ -24,14 +24,14 @@
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_name')
-      .col 
+      .col
         .d-flex.flex-row.mb-2
           = f.input_field :sepa_name, input_html: { id: 'person_sepa_name' }
 
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_address')
-      .col 
+      .col
         .d-flex.flex-row.mb-2
           = f.input_field :sepa_address, input_html: { id: 'person_sepa_address' }
           %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_sepa_address")' }
@@ -39,7 +39,7 @@
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_mail')
-      .col 
+      .col
         .d-flex.flex-row.mb-2
           = f.input_field :sepa_mail, input_html: { id: 'person_sepa_mail' }
           %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyEmailToTargetId("#person_sepa_mail")' }
@@ -48,23 +48,32 @@
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_iban')
-      .col 
+      .col
         .d-flex.flex-row.mb-2
           = f.input_field :sepa_iban, input_html: { id: 'person_sepa_iban' }
 
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_bic')
-      .col 
+      .col
         .d-flex.flex-row.mb-2
           = f.input_field :sepa_bic, input_html: { id: 'person_sepa_bic' }
+    - if can?(:fin_admin, @person)
+      .row
+        %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
+          = t('activerecord.attributes.person.sepa_mandate_id')
+        .col
+          .d-flex.flex-row.mb-2
+            = f.input_field :sepa_mandate_id, input_html: { id: 'person_sepa_mandate_id' }
 
-  -else 
-    = render_attrs(entry,  :sepa_name,
+  -else
+    = render_attrs(entry,
+                    :sepa_name,
                     :sepa_address,
                     :sepa_mail,
                     :sepa_iban,
-                    :sepa_bic)
+                    :sepa_bic,
+                    :sepa_mandate_id)
 
 :javascript
   function copyAddressToTargetId(targetId) {

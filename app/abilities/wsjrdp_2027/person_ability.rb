@@ -44,6 +44,7 @@ module Wsjrdp2027::PersonAbility
       # permission(:group_full).may(:create).all # restrictions are on Roles
 
       permission(:finance).may(:fin_admin).if_finance_on_root
+      permission(:admin).may(:fin_admin).all
 
       permission(:admin).may(:update_wsjrdp_email, :update_moss_email).all
     end

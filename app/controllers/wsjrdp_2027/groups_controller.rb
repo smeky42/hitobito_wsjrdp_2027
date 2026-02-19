@@ -9,7 +9,7 @@
 
 module Wsjrdp2027::GroupsController
   def permitted_attrs
-    attrs = super
+    attrs = super.dup
     if can?(:log, entry)
       attrs += [:unit_code, :support_cmt_mail_addresses, :support_cmt_mail_addresses_string]
     end

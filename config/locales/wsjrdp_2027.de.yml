@@ -101,6 +101,7 @@ de:
         sepa: SEPA
         sepa_status: Finanzstatus
         early_payer: Zahlungsmodell
+        sepa_mandate_id: Mandatsreferenz
         medical_stiko_vaccinations: Impfungen nach STIKO-Empfehlung
         medical_additional_vaccinations: Weitere Impfungen
         medical_preexisting_conditions: Bekannte Vorerkrankungen / Operationen / Kinderkrankheiten
