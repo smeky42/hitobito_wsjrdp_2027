@@ -118,8 +118,6 @@ module Wsjrdp2027::Person
 
       jsonb_accessor :additional_info, :late_confirmation_issue, strip: true
       attribute :late_confirmation_issue, :string
-      jsonb_accessor :additional_info, :confirmed_at
-      attribute :confirmed_at, :datetime
 
       jsonb_accessor :additional_info, :short_last_name, strip: true
       attribute :short_last_name, :string
