@@ -62,6 +62,8 @@ module HitobitoWsjrdp2027
       PersonSerializer.include Wsjrdp2027::PersonSerializer
       Event::ParticipationContactData.include Wsjrdp2027::Event::ParticipationContactData
 
+      PaperTrail::Events::Base.include Wsjrdp2027::PaperTrail::Events::Base
+
       ActiveSupport.on_load(:action_view) { include Chartkick::Helper }
     end
 
