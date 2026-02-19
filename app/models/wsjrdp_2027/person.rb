@@ -10,12 +10,32 @@ module Wsjrdp2027::Person
   GENDERS = %w[m w d].freeze
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
-  WSJRDP_ATTRS = [
-    :status, :early_payer,
-    :rdp_association, :rdp_association_region, :rdp_association_sub_region, :rdp_association_group,
-    :unit_code, :cluster_code,
+  # Note: Do not include store_accessor attributes in FILTER_ATTRS
+  WSJRDP_FILTER_ATTRS = [
+    :status,
+    :early_payer,
+    :foto_permission,
+    :rdp_association, :rdp_association_region, :rdp_association_sub_region,
+    :rdp_association_group,
+    :unit_code
+  ].freeze
+
+  # Note: Do not include store_accessor attributes in PUBLIC_ATTRS
+  WSJRDP_PUBLIC_ATTRS = WSJRDP_FILTER_ATTRS + [
     :additional_info,
+    :cluster_code,
     :zero_padded_id
+  ].freeze
+
+  # internal attrs are not paper trailed
+  WSJRDP_INTERNAL_ATTRS = [
+    :additional_info,  # note: Also in WSJRDP_PUBLIC_ATTRS
+    :cluster_code,  # note: Also in WSJRDP_PUBLIC_ATTRS
+    :moss_email_created_at,
+    :moss_email_updated_at,
+    :wsjrdp_email_created_at,
+    :wsjrdp_email_updated_at,
+    :zero_padded_id  # note: Also in WSJRDP_PUBLIC_ATTRS
   ].freeze
 
   WSJRDP_SEARCHABLE_ATTRS = [
@@ -23,18 +43,23 @@ module Wsjrdp2027::Person
     :additional_contact_name_a, :additional_contact_adress_a, :additional_contact_email_a, :additional_contact_phone_a,
     :additional_contact_name_b, :additional_contact_adress_b, :additional_contact_email_b, :additional_contact_phone_b,
     :sepa_name, :sepa_address, :sepa_mail, :sepa_iban
+    # :zero_padded_id - can not be included as it is a generated column
   ]
 
   def self.included(base)
     # Be careful to modify existing variables instead of re-assigning
     # them to avoid Ruby warnings.
-    Person::PUBLIC_ATTRS.concat(WSJRDP_ATTRS)
-    Person::FILTER_ATTRS.concat(WSJRDP_ATTRS)
-    Person.used_attributes.concat(WSJRDP_ATTRS)
+    Person::FILTER_ATTRS.concat(WSJRDP_FILTER_ATTRS)
+    Person::PUBLIC_ATTRS.concat(WSJRDP_PUBLIC_ATTRS)
+    Person::INTERNAL_ATTRS.concat(WSJRDP_INTERNAL_ATTRS)
+    Person.used_attributes.concat(WSJRDP_PUBLIC_ATTRS)
+    Person.used_attributes.concat(WSJRDP_INTERNAL_ATTRS)
+    Person.used_attributes.uniq!
     # Searching for birthdays interferes too much with searching for a
     # persons id, so we remove :birthday from SEARCHABLE_ATTRS.
     Person::SEARCHABLE_ATTRS.delete :birthday
     Person::SEARCHABLE_ATTRS.concat(WSJRDP_SEARCHABLE_ATTRS)
+    base.paper_trail_options[:skip].concat(WSJRDP_INTERNAL_ATTRS.map(&:to_s))
 
     base.extend Geocoder::Model::Base
 
@@ -68,17 +93,27 @@ module Wsjrdp2027::Person
       attribute :sepa_mandate_id, :string
 
       jsonb_accessor :additional_info, :debit_return_issue, strip: true
+      attribute :debit_return_issue, :string
+
       jsonb_accessor :additional_info, :wsjrdp_email, strip: true, created_at_key: :wsjrdp_email_created_at, updated_at_key: :wsjrdp_email_updated_at
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
       jsonb_accessor :additional_info, :wsjrdp_email_updated_at
+      attribute :wsjrdp_email, :string
+      attribute :wsjrdp_created_at, :datetime
+      attribute :wsjrdp_updated_at, :datetime
+
       jsonb_accessor :additional_info, :moss_email, strip: true, created_at_key: :moss_email_created_at, updated_at_key: :moss_email_updated_at
       jsonb_accessor :additional_info, :moss_email_created_at
       jsonb_accessor :additional_info, :moss_email_updated_at
+      attribute :moss_email, :string
+      attribute :moss_created_at, :datetime
+      attribute :moss_updated_at, :datetime
 
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
+      attribute :deregistration_issue, :string
       jsonb_accessor :additional_info, :deregistration_effective_date
-      jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_effective_date, :date
+      jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_actual_compensation_cents, :integer
 
       eur_attribute :total_fee_eur, cents_attr: :total_fee_cents
