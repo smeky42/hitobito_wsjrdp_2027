@@ -520,6 +520,8 @@ de:
 
   version:
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
+    wsjrdp_add_tag: 'Tag <i>%{tag_name}</i> hinzugefügt'
+    wsjrdp_remove_tag: 'Tag <i>%{tag_name}</i> entfernt'
 
   navigation:
     finance: Finanzen

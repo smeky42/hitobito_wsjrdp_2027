@@ -24,6 +24,7 @@ module HitobitoWsjrdp2027
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
       Event.include Wsjrdp2027::Event
+      ActsAsTaggableOn::Tagging.include Wsjrdp2027::ActsAsTaggableOn::Tagging
 
       # Concerns
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
@@ -39,6 +40,7 @@ module HitobitoWsjrdp2027
       # Decorators
       PersonDecorator.prepend Wsjrdp2027::PersonDecorator
       ContactableDecorator.prepend Wsjrdp2027::ContactableDecorator
+      PaperTrail::VersionDecorator.prepend Wsjrdp2027::PaperTrail::VersionDecorator
 
       # Helpers
       Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass
