@@ -99,15 +99,15 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
       jsonb_accessor :additional_info, :wsjrdp_email_updated_at
       attribute :wsjrdp_email, :string
-      attribute :wsjrdp_created_at, :datetime
-      attribute :wsjrdp_updated_at, :datetime
+      attribute :wsjrdp_email_created_at, :datetime
+      attribute :wsjrdp_email_updated_at, :datetime
 
       jsonb_accessor :additional_info, :moss_email, strip: true, created_at_key: :moss_email_created_at, updated_at_key: :moss_email_updated_at
       jsonb_accessor :additional_info, :moss_email_created_at
       jsonb_accessor :additional_info, :moss_email_updated_at
       attribute :moss_email, :string
-      attribute :moss_created_at, :datetime
-      attribute :moss_updated_at, :datetime
+      attribute :moss_email_created_at, :datetime
+      attribute :moss_email_updated_at, :datetime
 
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
       attribute :deregistration_issue, :string
@@ -115,6 +115,14 @@ module Wsjrdp2027::Person
       attribute :deregistration_effective_date, :date
       jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_actual_compensation_cents, :integer
+
+      jsonb_accessor :additional_info, :late_confirmation_issue, strip: true
+      attribute :late_confirmation_issue, :string
+      jsonb_accessor :additional_info, :confirmed_at
+      attribute :confirmed_at, :datetime
+
+      jsonb_accessor :additional_info, :short_last_name, strip: true
+      attribute :short_last_name, :string
 
       eur_attribute :total_fee_eur, cents_attr: :total_fee_cents
       eur_attribute :amount_paid_eur, cents_attr: :amount_paid_cents

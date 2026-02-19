@@ -12,15 +12,25 @@ module Wsjrdp2027::Group
 
   include WsjrdpJsonbHelper
 
+  WSJRDP_INTERNAL_ATTRS = [
+    :additional_info
+  ].freeze
+
   included do
     # Define additional used attributes
     # self.used_attributes += [:website, :bank_account, :description]
     # self.superior_attributes = [:bank_account]
 
+    used_attributes.concat(WSJRDP_INTERNAL_ATTRS)
+    paper_trail_options[:skip].concat(WSJRDP_INTERNAL_ATTRS.map(&:to_s))
+
     root_types Group::Root
 
     jsonb_accessor :additional_info, :unit_code, strip: true
+    attribute :unit_code, :string
+
     jsonb_accessor :additional_info, :support_cmt_mail_addresses
+    attribute :support_cmt_mail_addresses, :string, array: true
 
     def support_cmt_mail_addresses_string
       support_cmt_mail_addresses&.join("\n")
