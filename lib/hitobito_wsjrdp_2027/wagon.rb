@@ -29,7 +29,7 @@ module HitobitoWsjrdp2027
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
 
       # Controllers
-      PeopleController.include Wsjrdp2027::PeopleController
+      PeopleController.prepend Wsjrdp2027::PeopleController
       GroupsController.prepend Wsjrdp2027::GroupsController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
       Group::StatisticsController.include Wsjrdp2027::StatisticsController
