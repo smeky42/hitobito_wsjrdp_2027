@@ -85,6 +85,10 @@ module Wsjrdp2027::PeopleHelper
     format_cents_de(person.amount_paid_cents, zero_cents: "")
   end
 
+  def format_person_diet(person)
+    Settings.diets[person.diet].presence || person.diet
+  end
+
   private
 
   def format_email_or_nil(email_addr)
