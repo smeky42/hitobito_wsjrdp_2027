@@ -15,6 +15,7 @@ module Wsjrdp2027::Person
     :status,
     :early_payer,
     :foto_permission,
+    :diet, :medical_eating_disorders,
     :rdp_association, :rdp_association_region, :rdp_association_sub_region,
     :rdp_association_group,
     :unit_code
