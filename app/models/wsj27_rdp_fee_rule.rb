@@ -96,7 +96,7 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
       installments = []
       list_of_cent_values.each do |cents|
         if cents != 0
-          installments << [[year, month], cents]
+          installments << Wsjrdp2027::YearMonthCents.new([year, month], cents)
         end
         month += 1
         if month > 12

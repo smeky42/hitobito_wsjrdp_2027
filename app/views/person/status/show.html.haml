@@ -8,6 +8,8 @@
     - extra_render_attrs << :active_custom_installments_issue_display
     - extra_render_attrs << :active_custom_installments_display
     - extra_render_attrs << :active_custom_installments_comment
+  - else
+    - extra_render_attrs << :installments_string
   - if @person.planned_total_fee_reduction?
     - extra_render_attrs << :planned_total_fee_reduction_display
   - if @person.planned_custom_installments?
