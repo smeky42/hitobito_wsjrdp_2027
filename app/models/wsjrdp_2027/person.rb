@@ -279,6 +279,21 @@ module Wsjrdp2027::Person
         end
       end
 
+      def installments_string
+        installments = installments_cents
+        return "2025: 0" if installments.blank?
+        first_installment = installments.min_by { |i| i.year_month }
+        start = first_installment.year_month.with(month: 1)
+        last_installment = installments.max_by { |i| i.year_month }
+        num_months = start.distance_in_months_to(last_installment)
+        cents_a = [0] * num_months
+        installments.each do |installment|
+          cents_a[start.distance_in_months_to(installment)] = installment.cents
+        end
+        cents_str = cents_a.map { |c| (c.to_f / 100).to_s.sub(/[.]0$/, "") }.join("; ")
+        "#{first_installment.year}: #{cents_str}"
+      end
+
       #
       # active fee rule
       #

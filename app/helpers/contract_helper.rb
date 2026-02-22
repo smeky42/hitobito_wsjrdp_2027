@@ -11,49 +11,49 @@ module ContractHelper
   # rubocop:disable Layout/HashAlignment
   PAYMENT_ROLE_TO_INSTALLMENTS_CENTS = {
     "RegularPayer::Group::Unit::Member" => [
-      [[2025, 12].freeze, 30000].freeze,
-      [[2026,  1].freeze, 50000].freeze,
-      [[2026,  2].freeze, 50000].freeze,
-      [[2026,  3].freeze, 50000].freeze,
-      [[2026,  8].freeze, 40000].freeze,
-      [[2026, 11].freeze, 40000].freeze,
-      [[2027,  2].freeze, 40000].freeze,
-      [[2027,  5].freeze, 40000].freeze
+      Wsjrdp2027::YearMonthCents.new([2025, 12], 30000),
+      Wsjrdp2027::YearMonthCents.new([2026,  1], 50000),
+      Wsjrdp2027::YearMonthCents.new([2026,  2], 50000),
+      Wsjrdp2027::YearMonthCents.new([2026,  3], 50000),
+      Wsjrdp2027::YearMonthCents.new([2026,  8], 40000),
+      Wsjrdp2027::YearMonthCents.new([2026, 11], 40000),
+      Wsjrdp2027::YearMonthCents.new([2027,  2], 40000),
+      Wsjrdp2027::YearMonthCents.new([2027,  5], 40000)
     ].freeze,
     "RegularPayer::Group::Unit::Leader" => [
-      [[2025, 12].freeze, 15000].freeze,
-      [[2026,  1].freeze, 35000].freeze,
-      [[2026,  2].freeze, 35000].freeze,
-      [[2026,  3].freeze, 35000].freeze,
-      [[2026,  8].freeze, 30000].freeze,
-      [[2026, 11].freeze, 30000].freeze,
-      [[2027,  2].freeze, 30000].freeze,
-      [[2027,  5].freeze, 30000].freeze
+      Wsjrdp2027::YearMonthCents.new([2025, 12], 15000),
+      Wsjrdp2027::YearMonthCents.new([2026,  1], 35000),
+      Wsjrdp2027::YearMonthCents.new([2026,  2], 35000),
+      Wsjrdp2027::YearMonthCents.new([2026,  3], 35000),
+      Wsjrdp2027::YearMonthCents.new([2026,  8], 30000),
+      Wsjrdp2027::YearMonthCents.new([2026, 11], 30000),
+      Wsjrdp2027::YearMonthCents.new([2027,  2], 30000),
+      Wsjrdp2027::YearMonthCents.new([2027,  5], 30000)
     ].freeze,
     "RegularPayer::Group::Ist::Member" => [
-      [[2025, 12].freeze, 20000].freeze,
-      [[2026,  1].freeze, 40000].freeze,
-      [[2026,  2].freeze, 40000].freeze,
-      [[2026,  3].freeze, 40000].freeze,
-      [[2026,  8].freeze, 30000].freeze,
-      [[2026, 11].freeze, 30000].freeze,
-      [[2027,  2].freeze, 30000].freeze,
-      [[2027,  5].freeze, 30000].freeze
+      Wsjrdp2027::YearMonthCents.new([2025, 12], 20000),
+      Wsjrdp2027::YearMonthCents.new([2026,  1], 40000),
+      Wsjrdp2027::YearMonthCents.new([2026,  2], 40000),
+      Wsjrdp2027::YearMonthCents.new([2026,  3], 40000),
+      Wsjrdp2027::YearMonthCents.new([2026,  8], 30000),
+      Wsjrdp2027::YearMonthCents.new([2026, 11], 30000),
+      Wsjrdp2027::YearMonthCents.new([2027,  2], 30000),
+      Wsjrdp2027::YearMonthCents.new([2027,  5], 30000)
     ].freeze,
     "RegularPayer::Group::Root::Member" => [
-      [[2025, 12].freeze,  5000].freeze,
-      [[2026,  1].freeze, 25000].freeze,
-      [[2026,  2].freeze, 25000].freeze,
-      [[2026,  3].freeze, 25000].freeze,
-      [[2026,  8].freeze, 20000].freeze,
-      [[2026, 11].freeze, 20000].freeze,
-      [[2027,  2].freeze, 20000].freeze,
-      [[2027,  5].freeze, 20000].freeze
+      Wsjrdp2027::YearMonthCents.new([2025, 12],  5000),
+      Wsjrdp2027::YearMonthCents.new([2026,  1], 25000),
+      Wsjrdp2027::YearMonthCents.new([2026,  2], 25000),
+      Wsjrdp2027::YearMonthCents.new([2026,  3], 25000),
+      Wsjrdp2027::YearMonthCents.new([2026,  8], 20000),
+      Wsjrdp2027::YearMonthCents.new([2026, 11], 20000),
+      Wsjrdp2027::YearMonthCents.new([2027,  2], 20000),
+      Wsjrdp2027::YearMonthCents.new([2027,  5], 20000)
     ].freeze,
-    "EarlyPayer::Group::Unit::Member" => [ [[2025, 8].freeze, 340000].freeze ].freeze,
-    "EarlyPayer::Group::Unit::Leader" => [ [[2025, 8].freeze, 240000].freeze ].freeze,
-    "EarlyPayer::Group::Ist::Member" =>  [ [[2025, 8].freeze, 260000].freeze ].freeze,
-    "EarlyPayer::Group::Root::Member" => [ [[2025, 8].freeze, 160000].freeze ].freeze
+    "EarlyPayer::Group::Unit::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 340000) ].freeze,
+    "EarlyPayer::Group::Unit::Leader" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 240000) ].freeze,
+    "EarlyPayer::Group::Ist::Member" =>  [ Wsjrdp2027::YearMonthCents.new([2025, 8], 260000) ].freeze,
+    "EarlyPayer::Group::Root::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 160000) ].freeze
   }.freeze
   # rubocop:enable Layout/ExtraSpacing
   # rubocop:enable Layout/SpaceInsideArrayLiteralBrackets

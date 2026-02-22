@@ -135,6 +135,7 @@ de:
         diet: Essensgewohnheiten
         active_total_fee_reduction_display: Reduktion Beitrag
         planned_total_fee_reduction_display: Reduktion Beitrag (in Vorbereitung)
+        installments_string: Ratenplan
         active_custom_installments_display: Ratenplan
         active_custom_installments_issue_display: Vorgang Ratenplan
         active_custom_installments_comment: Kommentar Ratenplan
