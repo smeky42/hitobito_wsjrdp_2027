@@ -86,6 +86,9 @@ module Wsjrdp2027::Person
       validate :validate_buddy_id_ul
       validate :validate_buddy_id_yp
 
+      # Overwrite addition_emails to establish a default ordering
+      has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy
+
       before_save :geocode_full_address, if: :address_changed?
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?

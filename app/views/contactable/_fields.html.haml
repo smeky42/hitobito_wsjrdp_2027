@@ -14,7 +14,9 @@
   = render 'email_field', f: f
 
 = field_set_tag do
-  = f.labeled_inline_fields_for :additional_emails, 'contactable/additional_email_fields'
+  = f.labeled_inline_fields_for :additional_emails, 'contactable/additional_email_fields',
+       show_element_if: -> (contactable) { contactable.can_show?(user: current_user) },
+       allow_destroy_if: -> (contactable) { contactable.can_destroy?(user: current_user) }
 
 - if can?(:log, entry) && (can?(:update_wsjrdp_email, entry) || can?(:update_moss_email, entry))
   = field_set_tag do

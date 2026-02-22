@@ -24,6 +24,7 @@ module HitobitoWsjrdp2027
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
       Event.include Wsjrdp2027::Event
+      AdditionalEmail.include Wsjrdp2027::AdditionalEmail
       ActsAsTaggableOn::Tagging.include Wsjrdp2027::ActsAsTaggableOn::Tagging
 
       # Concerns
@@ -48,7 +49,7 @@ module HitobitoWsjrdp2027
       Sheet::Person.include Wsjrdp2027::Sheet::Person
       Sheet::Group.include Wsjrdp2027::Sheet::Group
       NavigationHelper.include Wsjrdp2027::NavigationHelper
-      StandardFormBuilder.include Wsjrdp2027::StandardFormBuilder
+      StandardFormBuilder.prepend Wsjrdp2027::StandardFormBuilder
 
       # Abilities
       EventAbility.include Wsjrdp2027::EventAbility
