@@ -9,6 +9,8 @@
 
 module Wsjrdp2027
   YearMonthCents = Data.define(:year_month, :cents) do
+    alias_method :to_ary, :deconstruct
+
     def initialize(year_month:, cents:)
       if !year_month.is_a?(YearMonth)
         year_month = YearMonth.new(year_month[0], year_month[1])
@@ -27,6 +29,10 @@ module Wsjrdp2027
       end
     end
 
+    def first = year_month
+
+    def last = cents
+
     def eur
       (cents.to_f / 100)
     end
@@ -35,6 +41,6 @@ module Wsjrdp2027
       eur.to_s.sub(/[.]0$/, "")
     end
 
-    delegate :year, :month, :year_month_i, :distance_in_months_to, to: :year_month
+    delegate :year, :month, :year_month_i, :distance_in_months_to, :to_time_with_zone, to: :year_month
   end
 end

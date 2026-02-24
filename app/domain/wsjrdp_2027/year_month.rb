@@ -11,6 +11,8 @@ module Wsjrdp2027
   YearMonth = Data.define(:year, :month) do
     include Comparable
 
+    alias_method :to_ary, :deconstruct
+
     def [](index)
       case index
       when :year, "year", 0, -2
@@ -19,6 +21,10 @@ module Wsjrdp2027
         month
       end
     end
+
+    def first = year
+
+    def last = month
 
     def <=>(other)
       return unless other.is_a?(self.class)
@@ -31,6 +37,10 @@ module Wsjrdp2027
 
     def year_month_i
       year * 100 + month
+    end
+
+    def to_time_with_zone(day: 1)
+      Time.zone.local(year, month, day)
     end
   end
 end
