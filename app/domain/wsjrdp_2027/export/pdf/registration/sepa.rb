@@ -77,15 +77,15 @@ module Wsjrdp2027
 
           @person.installments_cents.each_slice(10).each do |installments_slice|
             pdf.move_down 1.mm
-            dates = installments_slice.map(&:first).map do |year, month|
+            dates = installments_slice.map do |installment|
               I18n.with_locale(:de) do
                 {
-                  content: I18n.l(Time.zone.local(year, month, 5), format: "%b") + " #{year}",
+                  content: I18n.l(installment.to_time_with_zone(day: 5), format: "%b") + " #{installment.year}",
                   width: 1.6.cm
                 }
               end
             end
-            euros = installments_slice.map { |a| format_cents_de(a[1], zero_cents: "") }
+            euros = installments_slice.map { |installment| format_cents_de(installment.cents, zero_cents: "") }
             pdf.make_table(
               [dates, euros],
               cell_style: {
