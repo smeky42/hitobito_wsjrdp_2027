@@ -12,5 +12,18 @@ module Wsjrdp2027::Person::QueryController
   included do
     # Add :zero_padded_id to the search columns.
     self.search_columns.push(:zero_padded_id)   # rubocop:disable Style/RedundantSelf
+
+    # Allow querying only people where user has edit permissions.
+    # To prevent leaking data in event invitation fields.
+    def index
+      people = []
+      if search_param.size >= 3
+        people = list_entries.limit(limit)
+        people = decorate(people)
+      end
+
+      people.select! { |p| can?(:edit, p) }
+      render json: people.collect { |p| p.public_send(serializer) }
+    end
   end
 end
