@@ -47,6 +47,7 @@ module Wsjrdp2027::PersonAbility
       permission(:admin).may(:fin_admin).all
 
       permission(:admin).may(:update_wsjrdp_email, :update_moss_email).all
+      permission(:admin).may(:show_keycloak_username, :update_keycloak_username).all
     end
 
     def if_finance_on_root

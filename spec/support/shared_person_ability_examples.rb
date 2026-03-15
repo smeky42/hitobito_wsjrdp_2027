@@ -4,11 +4,13 @@ PERSON_ACTIONS = [
   :show,
   :show_details,
   :show_full,
+  :show_keycloak_username,
 
   :update,
   :update_email,
   :update_wsjrdp_email,
   :update_moss_email,
+  :update_keycloak_username,
   :update_password,
   :update_settings,
 

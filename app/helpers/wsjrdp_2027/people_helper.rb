@@ -34,6 +34,10 @@ module Wsjrdp2027::PeopleHelper
     format_email_or_nil(person.moss_email)
   end
 
+  def format_person_moss_invited_at(person)
+    l(person.moss_invited_at)
+  end
+
   def format_person_unit_code(person)
     make_unit_code_display(person.unit_code, not_set_text: "Nicht gesetzt", search_link: true)
   end

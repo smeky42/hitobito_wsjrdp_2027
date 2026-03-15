@@ -102,16 +102,23 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :wsjrdp_email, strip: true, created_at_key: :wsjrdp_email_created_at, updated_at_key: :wsjrdp_email_updated_at
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
       jsonb_accessor :additional_info, :wsjrdp_email_updated_at
+      jsonb_accessor :additional_info, :wsjrdp_email_is_mailbox
       attribute :wsjrdp_email, :string
       attribute :wsjrdp_email_created_at, :datetime
       attribute :wsjrdp_email_updated_at, :datetime
+      attribute :wsjrdp_email_is_mailbox, :boolean
 
       jsonb_accessor :additional_info, :moss_email, strip: true, created_at_key: :moss_email_created_at, updated_at_key: :moss_email_updated_at
       jsonb_accessor :additional_info, :moss_email_created_at
       jsonb_accessor :additional_info, :moss_email_updated_at
+      jsonb_accessor :additional_info, :moss_invited_at
       attribute :moss_email, :string
       attribute :moss_email_created_at, :datetime
       attribute :moss_email_updated_at, :datetime
+      attribute :moss_invited_at, :datetime
+
+      jsonb_accessor :additional_info, :keycloak_username, strip: true
+      attribute :keycloak_username, :string
 
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
       attribute :deregistration_issue, :string
@@ -416,6 +423,15 @@ module Wsjrdp2027::Person
 
       def planned_custom_installments_comment_changed?
         planned_fee_rule&.custom_installments_comment_changed?
+      end
+
+      def moss_invited_at
+        super&.to_datetime
+      end
+
+      def moss_invited_at=(value)
+        value = value.to_datetime if value.respond_to?(:to_datetime)
+        super(value&.to_fs(:iso8601))
       end
 
       def deregistration_effective_date
