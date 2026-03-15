@@ -20,10 +20,20 @@
 
 - if can?(:log, entry) && (can?(:update_wsjrdp_email, entry) || can?(:update_moss_email, entry))
   = field_set_tag do
-    - if can?(:update_wsjrdp_email, entry)
-      = f.labeled_input_field :wsjrdp_email, help_inline: "Kontingents E-Mail Adresse", class: 'd-inline form-control form-control-sm'
-    - if can?(:update_moss_email, entry)
-      = f.labeled_input_field :moss_email, help_inline: "E-Mail für Moss SSO", class: 'd-inline form-control form-control-sm'
+    - if can?(:update_wsjrdp_email, entry) && entry.respond_to?(:wsjrdp_email)
+      = f.labeled(:wsjrdp_email) do
+        = f.input_field :wsjrdp_email, class: 'd-inline form-control form-control-sm'
+        = f.help_inline("Contingent E-Mail Adresse")
+        = f.check_box(:wsjrdp_email_is_mailbox, {disabled: true})
+        %span{'data-bs-toggle': 'tooltip', title: "Eigene Mailbox für Contingent E-Mail", class: 'disabled'}
+          Eigene Mailbox für Contingent E-Mail
+    - if can?(:update_moss_email, entry) && entry.respond_to?(:moss_email)
+      = f.labeled(:moss_email) do
+        = f.input_field :moss_email, class: 'd-inline form-control form-control-sm'
+        - if entry.moss_invited_at.present?
+          = f.help_inline("E-Mail für Moss SSO (eingeladen: #{format_attr(entry, :moss_invited_at)})")
+        - else
+          = f.help_inline("E-Mail für Moss SSO")
 
 = field_set_tag do
   = render 'contactable/phone_numbers_fields', f: f
