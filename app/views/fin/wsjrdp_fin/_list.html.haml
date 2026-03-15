@@ -44,7 +44,7 @@
               %td= p.id
               %td
                 %strong= link_to(p.short_full_name_with_nickname, person_path(p))
-              %td= p.primary_group.group_code_or_short_name
+              %td= p.primary_group.group_code_or_short_name_or_name
               %td= p.status
               %td= p.sepa_status
               %td.right= p.total_fee_eur_display

@@ -22,8 +22,8 @@
       -# %div.border-top.py-2
       -# = input_or_render_attrs(f, :status)
       %div.border-top.py-2
-      = input_or_render_attrs(f, :subject)
-      = input_or_render_attrs(f, :accounting_entry_id, display_link: true, list: matching_accounting_entries)
+      = input_or_render_attrs(f, :subject, show_previous_as_help_inline: true)
+      = input_or_render_attrs(f, :accounting_entry_id, show_previous_as_help_inline: true, display_link: true, list: matching_accounting_entries)
       %div.border-top.py-2
       -# = input_or_render_attrs(f, :transaction_details_index)
       -# -#= input_or_render_attrs(f, :references)
@@ -31,8 +31,9 @@
       = input_or_render_attrs(f, :mandate_id)
       -# -#= input_or_render_attrs(f, :bank_transaction_code)
       -# = input_or_render_attrs(f, :bank_transaction_code_dk)
-      = input_or_render_attrs(f, :return_reason)
-      = f.labeled_collection_select(:return_status, Settings.return_debit_status, :first, :last, {})
+      - if f.object.return_reason.present?
+        = input_or_render_attrs(f, :return_reason)
+        = f.labeled_collection_select(:return_status, Settings.return_debit_status, :first, :last, {})
       %div.border-top.py-2
       = input_or_render_attrs(f, :status, :additional_entry_info)
       %div.border-top.py-2

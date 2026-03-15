@@ -85,7 +85,7 @@ module WsjrdpFormHelper
       content_tag(:div, key_content + val_content, class: "row mb-2")
     end
 
-    def input_or_render_attrs(form, *attrs, display_link: true, **opts)
+    def input_or_render_attrs(form, *attrs, display_link: true, show_previous_as_help_inline: false, **opts)
       obj = form.object
       return if attrs.blank?
       permitted_attrs_set = permitted_attrs.to_set
@@ -93,8 +93,15 @@ module WsjrdpFormHelper
       safe_join(attrs) do |a|
         if permitted_attrs_set.include?(a)
           a_input_field_options = :"#{a}_input_field_options"
-          opts = obj.send(a_input_field_options).merge(opts) if obj.respond_to?(a_input_field_options)
-          wsjrdp_labeled_input_field(form, a, **opts)
+          a_opts = opts
+          a_opts = obj.send(a_input_field_options).merge(opts) if obj.respond_to?(a_input_field_options)
+          if show_previous_as_help_inline
+            current_val = obj.send(a)
+            if current_val.present?
+              a_opts[:help_inline] = "Bisheriger Wert: ".html_safe + format_attr(obj, a)
+            end
+          end
+          wsjrdp_labeled_input_field(form, a, **a_opts)
         elsif !block_given? || yield(a)
           a_display = :"#{a}_display"
           a = a_display if obj.respond_to?(a_display)

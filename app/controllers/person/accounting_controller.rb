@@ -26,8 +26,7 @@ class Person::AccountingController < ApplicationController
     @person ||= person
     @group ||= group
 
-    @accounting_entries = accounting_entries
-    @direct_debit_pre_notifications = direct_debit_pre_notifications
+    @journal_entries = journal_entries
     @new_accounting_entry = new_accounting_entry(params)
     @new_accounting_entry_path = new_accounting_entry_path + "?" + URI.encode_www_form({
       "accounting_entry[subject_id]": @person.id,
@@ -130,18 +129,12 @@ class Person::AccountingController < ApplicationController
     params[:person_id] = params[:id] unless params.key?(:person_id)
   end
 
-  def accounting_entries
-    @accounting_entries ||= person.accounting_entries.sort_by { |e|
-      e.value_date || e.created_at.to_date
-    }.reverse
-  end
-
-  def direct_debit_pre_notifications
-    shown_payment_status = %w[pre_notified skipped]
-    @direct_debit_pre_notifications ||= person.direct_debit_pre_notifications.select { |pn|
-      shown_payment_status.any?(pn.payment_status)
-    }.sort_by { |e|
-      e.collection_date || e.created_at.to_date
+  def journal_entries
+    @journal_entries ||= (
+      person.direct_debit_pre_notifications.where(payment_status: %w[pre_notified skipped]).to_a +
+      person.accounting_entries.to_a
+    ).sort_by { |e|
+      e.value_date || e.booking_date || e.created_at.to_date
     }.reverse
   end
 
