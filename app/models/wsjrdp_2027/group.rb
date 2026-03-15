@@ -43,7 +43,11 @@ module Wsjrdp2027::Group
 
     def group_code_or_short_name
       group_code = (additional_info || {})["group_code"]
-      group_code or short_name
+      group_code.presence || short_name.presence
+    end
+
+    def group_code_or_short_name_or_name
+      group_code_or_short_name || name.presence
     end
   end
 end

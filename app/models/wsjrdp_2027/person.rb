@@ -86,6 +86,9 @@ module Wsjrdp2027::Person
       validate :validate_buddy_id_ul
       validate :validate_buddy_id_yp
 
+      has_many :accounting_entries, -> { order(:created_at, :id) }, inverse_of: :subject, dependent: :destroy
+      has_many :direct_debit_pre_notifications, -> { order(:created_at, :id) }, inverse_of: :subject, class_name: "WsjrdpDirectDebitPreNotification", dependent: :destroy
+
       # Overwrite addition_emails to establish a default ordering
       has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy
 
@@ -248,18 +251,6 @@ module Wsjrdp2027::Person
         else
           "Beitrag".html_safe
         end
-      end
-
-      def accounting_entries
-        entries = AccountingEntry.where(subject: self).includes([:author, :direct_debit_pre_notification, :camt_transaction]).to_a
-        entries.sort_by! { |elt| elt.created_at }
-        entries
-      end
-
-      def direct_debit_pre_notifications
-        entries = WsjrdpDirectDebitPreNotification.where(subject: self).to_a
-        entries.sort_by! { |elt| elt.created_at }
-        entries
       end
 
       ##
