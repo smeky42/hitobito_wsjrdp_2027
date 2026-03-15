@@ -35,23 +35,34 @@ module Wsjrdp2027
         text "beim Ring deutscher Pfadfinder*innenverbände e.V (rdp) Chausseestraße 128/129, 10115 Berlin für das deutsche Kontingent zum 26. World Scout Jamboree 2027 in Polen."
 
         pdf.move_down 3.mm
-        text "Die Teilnahme, als #{person_payment_role_full_name(@person)}, im deutschen Kontingent kostet #{get_full_regular_fee_eur(@person)} € und beinhaltet #{role_type(@person).starts_with?("Group::Unit") ? "die Vor- und Nachbereitung in Deutschland, die Reise nach Polen, eine Vor- oder Nachtour " : "die Vor- und Nachbereitung in Deutschland "} und die Teilnahme am 26. World Scout Jamboree in Polen."
+        text "Die Teilnahme, als #{person_payment_role_full_name(@person)}, " \
+          "im deutschen Kontingent kostet #{get_full_regular_fee_eur(@person)} € " \
+          "und beinhaltet " \
+          "#{role_type(@person).starts_with?("Group::Unit") ? "die Vor- und Nachbereitung in Deutschland, die Reise nach Polen, eine Vor- oder Nachtour " : "die Vor- und Nachbereitung in Deutschland "} " \
+          "und die Teilnahme am 26. World Scout Jamboree in Polen."
 
         pdf.move_down 3.mm
-        text "Die Reise ist für den Zeitraum vom 20.07 bis 18.08.2027 geplant. Der Reisezeitraum variiert je nach gewähltem Paket und Lage der Sommerferien. Reisedauer sind #{role_type(@person).starts_with?("Group::Unit") ? "17 bis 21" : "15 bis 17"} Tage."
+        text "Die Reise ist für den Zeitraum vom 20.07 bis 18.08.2027 geplant. Der Reisezeitraum variiert je nach gewähltem Paket und Lage der Sommerferien. " \
+          "Reisedauer sind #{role_type(@person).starts_with?("Group::Unit") ? "17 bis 21" : "15 bis 17"} Tage."
 
         pdf.move_down 3.mm
-        text "Hiermit #{of_legal_age ? "melde ich mich" : "melden wir unser Kind"}, #{@person.full_name} geboren am #{@person.birthday.strftime("%d.%m.%Y")}, verbindlich mit dem Paket für #{person_payment_role_full_name(@person)} zur Teilnahme im Deutschen Kontingent zum 26. World Scout Jamboree 2027 an. Mit der Anmeldung #{of_legal_age ? "akzeptiere ich" : "akzeptieren wir"} die Reisebedingungen, die vom rdp als Veranstalter vorgegeben werden."
+        text "Hiermit #{of_legal_age ? "melde ich mich" : "melden wir unser Kind"}, #{@person.full_name} geboren am #{@person.birthday.strftime("%d.%m.%Y")}, " \
+          "verbindlich mit dem Paket für #{person_payment_role_full_name(@person)} zur Teilnahme im Deutschen Kontingent zum 26. World Scout Jamboree 2027 an. " \
+          "Mit der Anmeldung #{of_legal_age ? "akzeptiere ich" : "akzeptieren wir"} die Reisebedingungen, die vom rdp als Veranstalter vorgegeben werden."
 
         pdf.move_down 3.mm
         text "Der rdp behält sich das Recht vor, angekündigte Programminhalte durch andere zu ersetzen und notwendige Änderungen des Programms, unter Wahrung des Gesamtcharakters der Veranstaltung vorzunehmen."
 
         pdf.move_down 3.mm
-        text "Es besteht die Möglichkeit, dass der Veranstalter des Jamborees in Polen ergänzende Bedingungen für die Teilnahme stellt und/oder weitere Daten abfragt. Der rdp muss diese ergänzenden Bedingungen an alle Teilnehmer*innen weitergeben, obwohl er auf den Inhalt keinen Einfluss hat, weil sonst eine Teilnahme nicht möglich ist. Die Teilnehmer*innen werden über diese Änderungen in Textform unterrichtet. Sollte der*die Teilnehmer*in mit diesen ergänzenden Bedingungen nicht einverstanden sein, kann er*sie nach Maßgabe von Punkt 8. der Reisebedingungen zu diesem Vertrag zurücktreten."
+        text "Es besteht die Möglichkeit, dass der Veranstalter des Jamborees in Polen ergänzende Bedingungen für die Teilnahme stellt und/oder weitere Daten abfragt. " \
+          "Der rdp muss diese ergänzenden Bedingungen an alle Teilnehmer*innen weitergeben, obwohl er auf den Inhalt keinen Einfluss hat, weil sonst eine Teilnahme nicht möglich ist. " \
+          "Die Teilnehmer*innen werden über diese Änderungen in Textform unterrichtet. " \
+          "Sollte der*die Teilnehmer*in mit diesen ergänzenden Bedingungen nicht einverstanden sein, kann er*sie nach Maßgabe von Punkt 8. der Reisebedingungen zu diesem Vertrag zurücktreten."
 
         if !of_legal_age
           pdf.move_down 3.mm
-          text "Für die Dauer der Reise übertragen wir die Ausübung der Aufsichtspflicht und das Aufenthaltsbestimmungsrecht über unser Kind dem Reiseveranstalter. Wir sind damit einverstanden, dass die Ausübung im erforderlichen Ausmaß auf volljährige Betreuer*innen übertragen wird."
+          text "Für die Dauer der Reise übertragen wir die Ausübung der Aufsichtspflicht und das Aufenthaltsbestimmungsrecht über unser Kind dem Reiseveranstalter. " \
+            "Wir sind damit einverstanden, dass die Ausübung im erforderlichen Ausmaß auf volljährige Betreuer*innen übertragen wird."
         end
 
         pdf.move_down 3.mm

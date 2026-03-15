@@ -38,6 +38,14 @@ module Wsjrdp2027::PeopleHelper
     l(person.moss_invited_at)
   end
 
+  def format_person_buddy_id(person)
+    if person.buddy_id.present?
+      "#{person.buddy_id}-#{person.id}"
+    else
+      "<span class=\"muted fw-light\">Nicht gesetzt</span>".html_safe
+    end
+  end
+
   def format_person_unit_code(person)
     make_unit_code_display(person.unit_code, not_set_text: "Nicht gesetzt", search_link: true)
   end

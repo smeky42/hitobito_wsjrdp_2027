@@ -25,6 +25,6 @@
   %h1 Personen
   %div
     = render "list", title_people_list: [["Bestätigte Personen mit Finanzstatus nicht OK", confirmed_people_sepa_status_not_ok],
-                                         ["Nicht bestätigte Personen in bestätigten Gruppen", not_confirmed_people_in_confirmed_groups],
-                                         ["Buchhaltung ≠ 0 in nicht bestätigten Gruppen", other_people_with_nonzero_paid],
+                                         ["Nicht bestätigte Personen in WSJRDP Gruppen", not_confirmed_people_in_wsjrdp_groups],
+                                         ["Bezahlt ≠ 0 in nicht-WSJRDP Gruppen", other_people_with_nonzero_paid],
                                         ]

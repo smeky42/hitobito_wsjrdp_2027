@@ -6,6 +6,8 @@ class Group::Root < ::Group
 
   children Group::Unit
   children Group::Ist
+  children Group::Extern
+  children Group::Root
 
   ### ROLES
   # Developers and Administrators

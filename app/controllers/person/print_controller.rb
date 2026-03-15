@@ -22,7 +22,7 @@ class Person::PrintController < ApplicationController
 
   def preview
     if printable && (@person.status == "registered")
-      @person.payment_role = build_payment_role(@person)
+      @person.ensure_payment_role(rebuild: true)
       @person.save
 
       pdf = Wsjrdp2027::Export::Pdf::Registration.render(@person, true)
@@ -33,7 +33,7 @@ class Person::PrintController < ApplicationController
 
   def submit
     if printable && (@person.status == "registered")
-      @person.payment_role = build_payment_role(@person)
+      @person.ensure_payment_role(rebuild: true)
       @person.save
 
       pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
@@ -63,7 +63,7 @@ class Person::PrintController < ApplicationController
 
     attrs.each do |attr|
       if @person.public_send(attr).blank?
-        reason += "\n - #{I18n.t("activerecord.attributes.person.#{attr}")}"
+        reason += "\n - " + I18n.t("activerecord.attributes.person.#{attr}")
       end
     end
 

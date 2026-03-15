@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_22_090100) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_15_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -125,7 +125,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_22_090100) do
     t.boolean "public", default: true, null: false
     t.boolean "mailings", default: true, null: false
     t.boolean "invoices", default: false
-    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, COALESCE((email)::text, ''::text))", stored: true
     t.string "kind"
     t.boolean "sepa_mailings", default: false, null: false
     t.boolean "hidden", default: false, null: false
@@ -136,6 +135,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_22_090100) do
     t.boolean "destroy_is_disabled", default: false, null: false
     t.integer "position", default: 0, null: false
     t.jsonb "additional_info", default: {}
+    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, COALESCE((email)::text, ''::text))", stored: true
     t.index ["contactable_id", "contactable_type", "kind"], name: "index_additional_emails_on_on_contactable_and_kind", unique: true, where: "(kind IS NULL)"
     t.index ["contactable_id", "contactable_type"], name: "index_additional_emails_on_contactable_id_and_contactable_type"
     t.index ["contactable_id", "contactable_type"], name: "index_additional_emails_on_contactable_where_invoices_true", unique: true, where: "(invoices = true)"
@@ -551,6 +551,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_22_090100) do
     t.string "postbox"
     t.jsonb "additional_info", default: {}
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((COALESCE((name)::text, ''::text) || ' '::text) || COALESCE((short_name)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)))", stored: true
+    t.boolean "is_wsjrdp", default: true, null: false
     t.index ["layer_group_id"], name: "index_groups_on_layer_group_id"
     t.index ["lft", "rgt"], name: "index_groups_on_lft_and_rgt"
     t.index ["parent_id"], name: "index_groups_on_parent_id"

@@ -13,11 +13,8 @@ class Fin::WsjrdpFinController < ApplicationController
   before_action :authorize_action
 
   helper_method :confirmed_people_sepa_status_not_ok
-  helper_method :not_confirmed_people_in_confirmed_groups
+  helper_method :not_confirmed_people_in_wsjrdp_groups
   helper_method :other_people_with_nonzero_paid
-
-  CONFIRMED_OR_DEREGISTERED_STATUS = ["confirmed", "deregistration_noted", "deregistered"]
-  UNCONFIRMED_GROUPS = [5, 6, 7, 45, 46]
 
   def index
     @wsjrdp_fin_accounts = WsjrdpFinAccount.all
@@ -38,30 +35,30 @@ class Fin::WsjrdpFinController < ApplicationController
     people_sort!(@confirmed_people_sepa_status_not_ok)
   end
 
-  def not_confirmed_people_in_confirmed_groups
-    return @not_confirmed_people_in_confirmed_groups if @not_confirmed_people_in_confirmed_groups.present?
-    @not_confirmed_people_in_confirmed_groups = Person
+  def not_confirmed_people_in_wsjrdp_groups
+    return @not_confirmed_people_in_wsjrdp_groups if @not_confirmed_people_in_wsjrdp_groups.present?
+    @not_confirmed_people_in_wsjrdp_groups = Person
+      .joins(:primary_group)
+      .where(groups: {is_wsjrdp: true})
       .where.not(status: "confirmed")
-      .where.not(primary_group_id: UNCONFIRMED_GROUPS)
       .to_a
-    people_sort!(@not_confirmed_people_in_confirmed_groups)
+    people_sort!(@not_confirmed_people_in_wsjrdp_groups)
   end
 
   def other_people_with_nonzero_paid
     return @other_people_with_nonzero_paid if @other_people_with_nonzero_paid.present?
-    sum_expr = "SUM(COALESCE(accounting_entries.amount_cents, 0))"
     @other_people_with_nonzero_paid = Person
+      .joins(:primary_group)
+      .where(groups: {is_wsjrdp: [nil, false]})
       .left_outer_joins(:accounting_entries)
-      .select("people.*, #{sum_expr} AS accounting_entries_sum")
-      .having("#{sum_expr} <> 0")
-      .where(primary_group_id: UNCONFIRMED_GROUPS)
+      .having("SUM(COALESCE(accounting_entries.amount_cents, 0)) <> 0")
       .group("people.id")
       .to_a
     people_sort!(@other_people_with_nonzero_paid)
   end
 
   def people_sort!(people)
-    people.sort_by! { |p| [short_wsj_role(p), p.id] }
+    people.sort_by! { |p| [p.short_wsj_role, p.id] }
     people
   end
 end

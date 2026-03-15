@@ -45,7 +45,16 @@ module Wsjrdp2027::Person
     :additional_contact_name_b, :additional_contact_adress_b, :additional_contact_email_b, :additional_contact_phone_b,
     :sepa_name, :sepa_address, :sepa_mail, :sepa_iban
     # :zero_padded_id - can not be included as it is a generated column
-  ]
+  ].freeze
+
+  WSJRDP_ROLE_TYPES_TO_MAP = {
+    "Group::Extern::Member" => "Group::Extern::Member",
+    "Group::Ist::Member" => "Group::Ist::Member",
+    "Group::Root::Member" => "Group::Root::Member",
+    "Group::Unit::Leader" => "Group::Unit::Leader",
+    "Group::Unit::Member" => "Group::Unit::Member",
+    "Group::Unit::UnapprovedLeader" => "Group::Unit::Leader"
+  }.freeze
 
   def self.included(base)
     # Be careful to modify existing variables instead of re-assigning
@@ -168,6 +177,43 @@ module Wsjrdp2027::Person
           [first_names[0], last_name, "/", nickname]
         end
         name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      def role_type_for_payment_role
+        @role_type_for_payment_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPES_TO_MAP).compact.first
+      end
+
+      def build_payment_role
+        prefix = early_payer ? "EarlyPayer" : "RegularPayer"
+        "#{prefix}::#{role_type_for_payment_role}"
+      end
+
+      def ensure_payment_role(rebuild: false)
+        if rebuild || payment_role.nil?
+          self.payment_role = build_payment_role
+        end
+        payment_role
+      end
+
+      def short_wsj_role  # rubocop:disable Metrics/MethodLength
+        role = ensure_payment_role
+        if role.ends_with?("Unit::Member")
+          "YP"
+        elsif role.ends_with?("Unit::Leader")
+          "UL"
+        elsif role.ends_with?("Ist::Member")
+          "IST"
+        elsif role.ends_with?("Root::Member")
+          "CMT"
+        elsif role.ends_with?("Extern::Member")
+          "EXT"
+        else
+          "???"
+        end
+      end
+
+      def cmt?
+        ensure_payment_role.ends_with?("Root::Member")
       end
 
       def upload_complete?
