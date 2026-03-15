@@ -7,8 +7,12 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-module WsjrdpCamtTransactionHelper
-  def format_wsjrdp_camt_transaction_accounting_entry_id(tx)
-    link_to(tx.accounting_entry_id, url_for(tx.accounting_entry))
+class Group::Extern < ::Group
+  self.layer = true
+
+  class Member < ::Role
+    self.permissions = []
   end
+
+  roles Member
 end

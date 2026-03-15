@@ -50,10 +50,12 @@ module ContractHelper
       Wsjrdp2027::YearMonthCents.new([2027,  2], 20000),
       Wsjrdp2027::YearMonthCents.new([2027,  5], 20000)
     ].freeze,
+    "RegularPayer::Group::Extern::Member" => [].freeze,
     "EarlyPayer::Group::Unit::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 340000) ].freeze,
     "EarlyPayer::Group::Unit::Leader" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 240000) ].freeze,
     "EarlyPayer::Group::Ist::Member" =>  [ Wsjrdp2027::YearMonthCents.new([2025, 8], 260000) ].freeze,
-    "EarlyPayer::Group::Root::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 160000) ].freeze
+    "EarlyPayer::Group::Root::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 160000) ].freeze,
+    "EarlyPayer::Group::Extern::Member" => [].freeze
   }.freeze
   # rubocop:enable Layout/ExtraSpacing
   # rubocop:enable Layout/SpaceInsideArrayLiteralBrackets
@@ -73,7 +75,9 @@ module ContractHelper
         ["EarlyPayer::Group::Unit::Member", "3400", "", "", "", "", "", "", "", ""],
         ["EarlyPayer::Group::Unit::Leader", "2400", "", "", "", "", "", "", "", ""],
         ["EarlyPayer::Group::Ist::Member", "2600", "", "", "", "", "", "", "", ""],
-        ["EarlyPayer::Group::Root::Member", "1600", "", "", "", "", "", "", "", ""]
+        ["EarlyPayer::Group::Root::Member", "1600", "", "", "", "", "", "", "", ""],
+        ["RegularPayer::Group::Extern::Member", "0", "", "", "", "", "", "", "", ""],
+        ["EarlyPayer::Group::Extern::Member", "0", "", "", "", "", "", "", "", ""]
       ]
     end
     # rubocop:enable Metrics/MethodLength
@@ -104,78 +108,25 @@ module ContractHelper
     end
 
     def person_payment_role_full_name(person)
-      role = build_payment_role(person)
+      role = person.build_payment_role
       role_full_name(role.split("::", 2)[1])
     end
 
-    # rubocop:disable Metrics/MethodLength
-    def build_payment_role(person)
-      role = role_type(person)
-      payment_role_name = "RegularPayer"
-
-      if person.early_payer
-        payment_role_name = "EarlyPayer"
-      end
-
-      payment_role_name += if (role == "Group::Unit::UnapprovedLeader") || (role == "Group::Unit::Leader")
-        "::Group::Unit::Leader"
-      elsif role == "Group::Unit::Member"
-        "::Group::Unit::Member"
-      elsif role == "Group::Ist::Member"
-        "::Group::Ist::Member"
-      else
-        "::Group::Root::Member"
-      end
-      payment_role_name
-    end
-    # rubocop:enable Metrics/MethodLength
-
     def cmt?(person)
-      if person.payment_role.nil?
-        person.payment_role = build_payment_role(person)
-      end
-      person.payment_role.ends_with?("Root::Member")
+      person.ensure_payment_role.ends_with?("Root::Member")
     end
 
     def ul?(person)
-      if person.payment_role.nil?
-        person.payment_role = build_payment_role(person)
-      end
-      person.payment_role.ends_with?("Unit::Leader")
+      person.ensure_payment_role.ends_with?("Unit::Leader")
     end
 
     def yp?(person)
-      if person.payment_role.nil?
-        person.payment_role = build_payment_role(person)
-      end
-      person.payment_role.ends_with?("Unit::Member")
+      person.ensure_payment_role.ends_with?("Unit::Member")
     end
 
     def ist?(person)
-      if person.payment_role.nil?
-        person.payment_role = build_payment_role(person)
-      end
-      person.payment_role.ends_with?("Ist::Member")
+      person.ensure_payment_role.ends_with?("Ist::Member")
     end
-
-    # rubocop:disable Metrics/MethodLength
-    def short_wsj_role(person)
-      if person.payment_role.nil?
-        person.payment_role = build_payment_role(person)
-      end
-      if person.payment_role.ends_with?("Unit::Member")
-        "YP"
-      elsif person.payment_role.ends_with?("Unit::Leader")
-        "UL"
-      elsif person.payment_role.ends_with?("Ist::Member")
-        "IST"
-      elsif person.payment_role.ends_with?("Root::Member")
-        "CMT"
-      else
-        "???"
-      end
-    end
-    # rubocop:enable Metrics/MethodLength
 
     def select_person_for_buddy_id(buddy_id)
       return [] if buddy_id.blank?
@@ -263,18 +214,11 @@ module ContractHelper
     end
 
     def early_payer?(person)
-      if person.payment_role.nil?
-        person.payment_role = build_payment_role(person)
-      end
-      person.payment_role.start_with?("EarlyPayer")
+      person.ensure_payment_role.start_with?("EarlyPayer")
     end
 
     def payment_array_by(person)
-      role = if person.payment_role.nil?
-        build_payment_role(person)
-      else
-        person.payment_role
-      end
+      role = person.ensure_payment_role
       payment_array.find { |row| row[0] == role }
     end
 
@@ -318,7 +262,7 @@ module ContractHelper
     end
 
     def regular_installments_cents_for(person)
-      role = (person.payment_role.nil? ? build_payment_role(person) : person.payment_role)
+      role = person.ensure_payment_role
       PAYMENT_ROLE_TO_INSTALLMENTS_CENTS[role]
     end
 

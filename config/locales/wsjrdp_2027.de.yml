@@ -8,11 +8,14 @@ de:
         one: CMT
         other: CMT
       group/unit:
-          one: Unit
-          other: Units
+        one: Unit
+        other: Units
       group/ist:
-          one: IST
-          other: ISTs
+        one: IST
+        other: ISTs
+      group/extern:
+        one: Extern
+        other: Externe
 
 
       ### ROLES
@@ -39,6 +42,9 @@ de:
         one: Unit Leader (unbestätigt)
       group/unit/member:
         one: Youth Participant
+
+      group/extern/member:
+        one: Extern
 
     alert:
       only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
@@ -391,7 +397,7 @@ de:
       upload_passport_info: Wir benötigen hier eine Kopie eines gültigen Personalausweis oder Reisepass, auf dem wir Name und Geburtsdatum erkennen können. </br> Im Idealfall ist dieser Ausweis auch noch im August 2027 gültig.
       upload_good_conduct_info: Bitte lade hier NICHT das orginal Führungszeugnis hoch, sondern den Nachweis zur Einsichtnahme! </br> <a href="https://www.worldscoutjamboree.de/fuhrungszeugnis/">Hier findest du noch einmal eine ausführliche Erklärung dazu.</a>
     alerts:
-      print_missing_fields: Leider kannst du noch nicht drucken. Unter Kontaktdaten fehlen noch korrekte Angaben für folgende Felder
+      print_missing_fields: Leider kannst du noch nicht drucken. Es fehlen noch korrekte Angaben für folgende Felder
       iban: Deine IBAN ist fehlerhaft, bitte überprüfe diese noch einmal!
       sepa_mail: Deine Mailadrese für das SEPA Verfahren ist fehlerhaft, bitte überprüfe diese noch einmal!
       medical: Du hast nichts unter Medizinische Angaben eingetragen, bitte überprüfe diese noch mal auf Vollständigkeit!
@@ -413,6 +419,8 @@ de:
           Ist:
             Member: International Service Team Mitglied
             Leader: International Service Team Mitglied (Leader)
+          Extern:
+            Member: Externer Mitarbeitender
     medical_fields:
       vaccinations: Schutzimpfungen
       vaccinations_valid: Nur im Impfausweis dokumentierte Impfungen gelten als durchgeführt.
