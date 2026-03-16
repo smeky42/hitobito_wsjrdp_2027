@@ -58,6 +58,7 @@ de:
 
     attributes:
       group:
+        is_wsjrdp: WSJRDP Gruppe
         support_cmt_mail_addresses: E-Mail Adressen Support-CMT
         support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
       person:

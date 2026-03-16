@@ -26,7 +26,7 @@
       button_label: t('activerecord.buttons.show_medical'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_medical"
 
-    - if ul?(@person)
+    - if @person.ul?
       = render 'person/upload/upload_pdf_field',
         f:f,
         label: t("activerecord.fields.upload_recommendation_pdf"),
@@ -34,7 +34,7 @@
         button_label: t('activerecord.buttons.show_recommendation'),
         button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation"
 
-    - if ul?(@person) || cmt?(@person)
+    - if @person.ul? || @person.cmt?
       = render 'person/upload/upload_pdf_field',
         f:f,
         label: t("activerecord.fields.upload_data_agreement_pdf"),
@@ -60,7 +60,7 @@
       button_label: t('activerecord.buttons.show_passport'),
       button_path: "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport"
 
-    - if ul?(@person) || ist?(@person) || cmt?(@person)
+    - if @person.ul? || @person.ist? || @person.cmt?
       %br
       = raw(t('people.buttons.upload_good_conduct_info'))
       %br

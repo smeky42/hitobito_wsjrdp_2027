@@ -179,6 +179,10 @@ module Wsjrdp2027::Person
         name_parts.select { |s| !s.blank? }.join(" ")
       end
 
+      def full_buddy_id
+        "#{buddy_id}-#{id}" if buddy_id.present?
+      end
+
       def role_type_for_payment_role
         @role_type_for_payment_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPES_TO_MAP).compact.first
       end
@@ -216,24 +220,36 @@ module Wsjrdp2027::Person
         ensure_payment_role.ends_with?("Root::Member")
       end
 
+      def ul?
+        ensure_payment_role.ends_with?("Unit::Leader")
+      end
+
+      def yp?
+        ensure_payment_role.ends_with?("Unit::Member")
+      end
+
+      def ist?
+        ensure_payment_role.ends_with?("Ist::Member")
+      end
+
       def upload_complete?
         # Checks if the upload is complete
         #
         # New since 2025-11-14: The good conduct document is not
         # required for IST to consider the upload to be complete.
-        if ul?(self) || cmt?(self)
+        if ul? || cmt?
           if upload_good_conduct_pdf.nil?
             return false
           end
         end
 
-        if ul?(self) || cmt?(self)
+        if ul? || cmt?
           if upload_data_agreement_pdf.nil?
             return false
           end
         end
 
-        if ul?(self)
+        if ul?
           if upload_recommendation_pdf.nil?
             return false
           end
@@ -534,7 +550,7 @@ module Wsjrdp2027::Person
         buddy = validate_buddy_id(:buddy_id_ul)
         return if buddy.nil?
 
-        unless ul?(buddy)
+        unless buddy.ul?
           errors.add(:buddy_id_ul, :buddy_no_ul)
         end
       end
@@ -543,7 +559,7 @@ module Wsjrdp2027::Person
         buddy = validate_buddy_id(:buddy_id_yp)
         return if buddy.nil?
 
-        unless yp?(buddy)
+        unless buddy.yp?
           errors.add(:buddy_id_yp, :buddy_no_yp)
         end
       end
@@ -558,7 +574,7 @@ module Wsjrdp2027::Person
       end
 
       def tag_good_conduct_missing
-        unless ist?(self) || ul?(self) || cmt?(self)
+        unless ist? || ul? || cmt?
           return
         end
         Rails.logger.tagged("#{id} #{short_full_name}") do

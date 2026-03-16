@@ -112,22 +112,6 @@ module ContractHelper
       role_full_name(role.split("::", 2)[1])
     end
 
-    def cmt?(person)
-      person.ensure_payment_role.ends_with?("Root::Member")
-    end
-
-    def ul?(person)
-      person.ensure_payment_role.ends_with?("Unit::Leader")
-    end
-
-    def yp?(person)
-      person.ensure_payment_role.ends_with?("Unit::Member")
-    end
-
-    def ist?(person)
-      person.ensure_payment_role.ends_with?("Ist::Member")
-    end
-
     def select_person_for_buddy_id(buddy_id)
       return [] if buddy_id.blank?
       spice, _, id = buddy_id.rpartition("-")

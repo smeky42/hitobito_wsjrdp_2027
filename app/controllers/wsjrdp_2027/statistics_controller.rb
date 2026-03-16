@@ -19,10 +19,10 @@ module Wsjrdp2027::StatisticsController
 
         {
           total: people_relation.count,
-          ist: decorated.count { |d| ist?(d) },
-          yp: decorated.count { |d| yp?(d) },
-          ul: decorated.count { |d| ul?(d) },
-          cmt: decorated.count { |d| cmt?(d) }
+          ist: decorated.count { |d| d.ist? },
+          yp: decorated.count { |d| d.yp? },
+          ul: decorated.count { |d| d.ul? },
+          cmt: decorated.count { |d| d.cmt? }
         }
       end
     end

@@ -112,7 +112,7 @@
   %br
   = raw(t("people.check_status_help.external"))
   %br
-  - if ul?(@person)
+  - if @person.ul?
     = action_button(t('activerecord.buttons.show_recommendation'),
                 "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation",
                 :envelope,
@@ -121,7 +121,7 @@
                 method: :get,
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_recommendation'))
-  - if ul?(@person) || cmt?(@person)
+  - if @person.ul? || @person.cmt?
     = action_button(t('activerecord.buttons.show_data_agreement'),
                 "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement",
                 :envelope,
@@ -130,7 +130,7 @@
                 method: :get,
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_data_agreement'))
-  - if ul?(@person) || cmt?(@person) || ist?(@person)
+  - if @person.ul? || @person.cmt? || @person.ist?
     - if @person.upload_good_conduct_pdf.nil?
       %div.btn-group
         %span.btn.btn-sm.disabled(style="--bs-btn-disabled-border-color: #adb5bd;")
