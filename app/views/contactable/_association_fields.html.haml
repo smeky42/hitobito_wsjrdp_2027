@@ -6,16 +6,16 @@
 %br/
 - entry.buddy_id = "#{entry.buddy_id}-#{entry.id}"
 = render_attrs(entry, :buddy_id)
-- if yp?(@person) || ul?(@person)
+- if @person.yp? || @person.ul?
   %h2= t('people.association_fields.buddy_id_header')
   = f.labeled_input_fields :buddy_id_ul
-  - if yp?(@person)
+  - if @person.yp?
     = f.labeled_input_fields :buddy_id_yp
   = f.help_block(raw(t('people.association_fields.buddy_id_help')))
 %br/
 %h2= t('people.association_fields.rdp_association_header')
 = f.labeled_input_fields :rdp_association, :rdp_association_region, :rdp_association_sub_region
-= f.labeled_input_fields :rdp_association_group, :rdp_association_number 
+= f.labeled_input_fields :rdp_association_group, :rdp_association_number
 
 :css
   /* include inline to make stylesheet work -> https://rawgithub.com/indrimuska/jquery-editable-select/master/dist/jquery-editable-select.min.css */

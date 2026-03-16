@@ -91,11 +91,11 @@ module Wsjrdp2027
         end
 
         def sections
-          if ul?(@person)
+          if @person.ul?
             return [Contract, Sepa, Medical, Recommondation, DataProcessing, Foto, Travel]
           end
 
-          if cmt?(@person)
+          if @person.cmt?
             return [Contract, Sepa, Medical, DataProcessing, Foto, Travel]
           end
 

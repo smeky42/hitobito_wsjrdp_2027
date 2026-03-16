@@ -5,6 +5,7 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+= render_attrs(entry, :is_wsjrdp)
 - if entry.unit_code.present?
   = render_attrs(entry, :unit_code)
 - if can?(:log, entry)

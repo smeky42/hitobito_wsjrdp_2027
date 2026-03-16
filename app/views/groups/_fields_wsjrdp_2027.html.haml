@@ -7,5 +7,5 @@
 
 - if can?(:log, entry)
   = field_set_tag do
-    = f.labeled_input_fields(:unit_code)
+    = f.labeled_input_fields(:is_wsjrdp, :unit_code)
     = f.labeled_mail_addresses_field(:support_cmt_mail_addresses_string)

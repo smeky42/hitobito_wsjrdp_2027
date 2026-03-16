@@ -17,10 +17,10 @@ class Public::StatisticsController < ApplicationController
   def index
     people = Person.where.not(status: ["registered", "deregistration_noted", "deregistered"])
 
-    @ist_count = people.count { |person| ist?(PersonDecorator.new(person)) }
-    @yp_count = people.count { |person| yp?(PersonDecorator.new(person)) }
-    @ul_count = people.count { |person| ul?(PersonDecorator.new(person)) }
-    @cmt_count = people.count { |person| cmt?(PersonDecorator.new(person)) }
+    @ist_count = people.count { |person| person.ist? }
+    @yp_count = people.count { |person| person.yp? }
+    @ul_count = people.count { |person| person.ul? }
+    @cmt_count = people.count { |person| person.cmt? }
 
     @units_by_yp = (@yp_count / 36.0).floor
     @units_by_ul = (@ul_count / 4.0).floor

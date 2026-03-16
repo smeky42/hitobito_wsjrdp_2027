@@ -132,14 +132,14 @@ ORDER BY first_name, last_name
       ]
     )
     p_in_cluster = all_p.select { |p| p.in_cluster }
-    @ul_in_cluster = p_in_cluster.select { |p| ul?(p) }
-    @yp_in_cluster = p_in_cluster.select { |p| yp?(p) }
+    @ul_in_cluster = p_in_cluster.select { |p| p.ul? }
+    @yp_in_cluster = p_in_cluster.select { |p| p.yp? }
     @people_in_cluster = @ul_in_cluster + @yp_in_cluster
     p_not_in_cluster = all_p.select { |p| !p.in_cluster }
-    @ul_not_in_cluster = p_not_in_cluster.select { |p| ul?(p) }
-    @yp_not_in_cluster = p_not_in_cluster.select { |p| yp?(p) }
-    @ist_not_in_cluster = p_not_in_cluster.select { |p| ist?(p) }
-    @cmt_not_in_cluster = p_not_in_cluster.select { |p| cmt?(p) }
+    @ul_not_in_cluster = p_not_in_cluster.select { |p| p.ul? }
+    @yp_not_in_cluster = p_not_in_cluster.select { |p| p.yp? }
+    @ist_not_in_cluster = p_not_in_cluster.select { |p| p.ist? }
+    @cmt_not_in_cluster = p_not_in_cluster.select { |p| p.cmt? }
     @ulyp_not_in_cluster = @ul_not_in_cluster + @yp_not_in_cluster
     nil
   end
