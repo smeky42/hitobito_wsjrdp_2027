@@ -325,12 +325,13 @@ de:
 
   people:
     tabs:
-      accounting: Buchhaltung
+      accounting: Finanzen
+      finance: Finanzen
       info: Persönliche Informationen
       upload: Dokumente hochladen
       print: Dokumente drucken
-      medical: "Medizinische Angaben"
-      status: Check Status
+      medical: Medizin
+      status: Status
       unit: Unit-Bildung
     form_tabs:
       general: Kontaktdaten Teilnehmer*in
@@ -453,6 +454,10 @@ de:
       other_long: Es ist außerdem auf Folgendes zu achten
     additional_info_fields:
        foto_permission_help: '<p>Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoeinwilligung</a>.</p><p>Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.</p>'
+    finance:
+      tabs:
+        fee: Beiträge
+        spend: Ausgaben (Moss)
 
   groups:
     self_registration:

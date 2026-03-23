@@ -19,7 +19,7 @@ Rails.application.routes.draw do
           get "print/preview" => "person/print#preview"
           get "print/submit" => "person/print#submit"
 
-          get "accounting" => "person/accounting#show"
+          get "accounting" => "person/fee#show"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"
@@ -59,7 +59,10 @@ Rails.application.routes.draw do
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
 
     resources :people, only: [] do
-      resource :accounting, controller: "person/accounting", only: [:show]
+      resource :finance, controller: "person/fee", only: [:show]
+      resource :accounting, controller: "person/fee", only: [:show]
+      resource :fee, controller: "person/fee", only: [:show]
+      resource :spend, controller: "person/spend", only: [:show]
       resource :deregistration, controller: "person/deregistration", only: [:edit, :update]
       resource :debit_return, controller: "person/debit_return", only: [:edit, :update]
     end
