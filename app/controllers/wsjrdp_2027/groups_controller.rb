@@ -11,7 +11,12 @@ module Wsjrdp2027::GroupsController
   def permitted_attrs
     attrs = super.dup
     if can?(:log, entry)
-      attrs += [:unit_code, :support_cmt_mail_addresses, :support_cmt_mail_addresses_string]
+      attrs += [
+        :is_wsjrdp,
+        :unit_code,
+        :support_cmt_mail_addresses,
+        :support_cmt_mail_addresses_string
+      ]
     end
     attrs -= [:text_message_username, :text_message_password, :text_message_provider, :text_message_originator]
     attrs
