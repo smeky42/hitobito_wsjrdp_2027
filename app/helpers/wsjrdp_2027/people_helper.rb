@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-#  Copyright (c) 2025 German Contingent for the World Scout Jamboree 2027.
+#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
 #
 #  This file is part of hitobito_wsjrdp_2027 and licensed under the
 #  Affero General Public License version 3 or later. See the COPYING
@@ -10,8 +10,20 @@
 module Wsjrdp2027::PeopleHelper
   include ContractHelper
 
-  def person_accounting_path_with_group(group, person, params)
-    person_accounting_path(person, params)
+  def person_accounting_path_with_group(group, *args)
+    person_accounting_path(args[0], args[-1])
+  end
+
+  def person_fee_path_with_group(group, *args)
+    person_fee_path(args[0], args[-1])
+  end
+
+  def person_finance_path_with_group(group, *args)
+    person_finance_path(args[0], args[-1])
+  end
+
+  def person_spend_path_with_group(group, *args)
+    person_spend_path(args[0], args[-1])
   end
 
   def format_person_sepa_mail(person)

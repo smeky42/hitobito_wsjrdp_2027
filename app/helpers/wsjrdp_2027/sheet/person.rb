@@ -7,11 +7,11 @@ module Wsjrdp2027::Sheet::Person
   shown_tabs = [
     "global.tabs.info",
     "people.tabs.medical",
-    "people.tabs.accounting",
+    "people.tabs.finance",
+    # "people.tabs.invoices",  # 2026-01-03 - no invoices in Hitobito at the moment
     # "people.tabs.subscriptions",
     "people.tabs.print",
     "people.tabs.upload",
-    # "people.tabs.invoices",  # 2026-01-03 - no invoices in Hitobito at the moment
     # "activerecord.models.message.other",
     "people.tabs.history",
     "people.tabs.log",
@@ -31,9 +31,14 @@ module Wsjrdp2027::Sheet::Person
       :upload_group_person_path,
       if: :show
 
-    tab "people.tabs.accounting",
-      :person_accounting_path_with_group,
-      alt: [:accounting_group_person_path],
+    tab "people.tabs.finance",
+      :person_fee_path_with_group,
+      alt: [
+        :accounting_group_person_path,
+        :person_accounting_path_with_group,
+        :person_finance_path_with_group,
+        :person_spend_path_with_group
+      ],
       if: :show
 
     tab "people.tabs.medical",

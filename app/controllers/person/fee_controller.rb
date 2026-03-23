@@ -7,13 +7,12 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Person::AccountingController < ApplicationController
+class Person::FeeController < ApplicationController
+  include PersonInPrimaryGroup
   include ContractHelper
   include WsjrdpFinHelper
 
-  before_action :map_id_to_person_id
   before_action :authorize_action
-  decorates :group, :person
 
   helper_method :get_entry_path
   helper_method :can_fin?
@@ -95,14 +94,6 @@ class Person::AccountingController < ApplicationController
 
   private
 
-  def person
-    @person ||= Person.find(params[:person_id])
-  end
-
-  def group
-    @group ||= person.primary_group
-  end
-
   def get_entry_path(entry)
     if entry.class.name.demodulize == WsjrdpDirectDebitPreNotification.name.demodulize
       wsjrdp_direct_debit_pre_notification_path(entry)
@@ -122,11 +113,9 @@ class Person::AccountingController < ApplicationController
   end
 
   def authorize_action
+    @person ||= person
+    @group ||= group
     authorize!(:edit, person)
-  end
-
-  def map_id_to_person_id
-    params[:person_id] = params[:id] unless params.key?(:person_id)
   end
 
   def journal_entries
