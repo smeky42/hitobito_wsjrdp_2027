@@ -9,8 +9,14 @@
 - if can?(:destroy, entry)
   = button_action_destroy(nil, { class: "btn-danger", data: { confirm: t('person.confirm_delete',
                                                               person: entry.person) } })
-- if can?(:create_invoice, entry)
-  = invoice_button(people: [entry])
+
+-# We don't work with invoices right now
+-# - if can?(:create_invoice, entry)
+-#   = invoice_button(people: [entry])
+
+-# Button to initiate Moss SSO SAML Login in a way that users do not
+-# need to enter their moss_email (if everything works as expected).
+= render "person/spend/moss_wsj_login"
 
 = render_extensions(:actions_show)
 

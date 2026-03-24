@@ -14,3 +14,7 @@
   }
 
 #main.row
+  - if @person.moss_account?
+    = render 'spend_with_moss'
+  - else
+    %h2 Moss nicht eingerichtet

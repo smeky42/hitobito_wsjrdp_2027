@@ -114,20 +114,32 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :wsjrdp_email, strip: true, created_at_key: :wsjrdp_email_created_at, updated_at_key: :wsjrdp_email_updated_at
       jsonb_accessor :additional_info, :wsjrdp_email_created_at
       jsonb_accessor :additional_info, :wsjrdp_email_updated_at
+      jsonb_accessor :additional_info, :wsjrdp_email_goto
       jsonb_accessor :additional_info, :wsjrdp_email_is_mailbox
       attribute :wsjrdp_email, :string
       attribute :wsjrdp_email_created_at, :datetime
       attribute :wsjrdp_email_updated_at, :datetime
+      # attribute :wsjrdp_email_goto, :array
       attribute :wsjrdp_email_is_mailbox, :boolean
 
       jsonb_accessor :additional_info, :moss_email, strip: true, created_at_key: :moss_email_created_at, updated_at_key: :moss_email_updated_at
       jsonb_accessor :additional_info, :moss_email_created_at
       jsonb_accessor :additional_info, :moss_email_updated_at
+      jsonb_accessor :additional_info, :moss_email_goto
       jsonb_accessor :additional_info, :moss_invited_at
+      jsonb_accessor :additional_info, :moss_phone
+      jsonb_accessor :additional_info, :moss_role
+      jsonb_accessor :additional_info, :moss_status
+      jsonb_accessor :additional_info, :moss_team
       attribute :moss_email, :string
       attribute :moss_email_created_at, :datetime
       attribute :moss_email_updated_at, :datetime
+      # attribute :moss_email_goto, :array
       attribute :moss_invited_at, :datetime
+      attribute :moss_phone, :string
+      attribute :moss_role, :string
+      attribute :moss_status, :string
+      attribute :moss_team, :string
 
       jsonb_accessor :additional_info, :keycloak_username, strip: true
       attribute :keycloak_username, :string
@@ -485,6 +497,10 @@ module Wsjrdp2027::Person
       def moss_invited_at=(value)
         value = value.to_datetime if value.respond_to?(:to_datetime)
         super(value&.to_fs(:iso8601))
+      end
+
+      def moss_account?
+        moss_email.present? && wsjrdp_email.present? && moss_invited_at.present?
       end
 
       def deregistration_effective_date

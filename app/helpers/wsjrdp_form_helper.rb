@@ -115,9 +115,9 @@ module WsjrdpFormHelper
       content_tag(:dl, content, class: "dl-horizontal m-0 p-2 border-top")
     end
 
-    def labeled_attr_with_help(entry, attr, display_link: true, help_text: nil, &block)
+    def labeled_attr_with_help(entry, attr, display_link: true, label: nil, help_text: nil, &block)
       help_content = capture(&block)
-      label = captionize(attr, object_class(entry))
+      label = captionize(attr, object_class(entry)) if label.nil?
       content = safe_join([
         format_attr(entry, attr),
         content_tag(:div, help_content, class: "muted")

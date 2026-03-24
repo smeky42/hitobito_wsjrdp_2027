@@ -1,0 +1,63 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+:css
+  .moss-green {
+    color: #265f4f;
+  }
+
+- content_for(:toolbar, render('moss_wsj_login'))
+
+%h2 Moss Login
+
+= render_attrs_list do
+  = labeled_attr_with_help(@person, :moss_email, label: "Moss Firmen-E-Mail") do
+    Deine E-Mail Adresse für Moss.
+    - if @person.moss_email_goto.present?
+      = "Nachrichten werden an #{email_links(@person.moss_email_goto)} weitergeleitet."
+  = labeled_attr(@person, :moss_invited_at)
+= render_attrs_list do
+  = labeled_attr_with_help(@person, :wsjrdp_email, label: "WSJ-Login E-Mail") do
+    E-Mail/Username für den WSJ Login.
+    - if @person.wsjrdp_email_goto.present?
+      = "Nachrichten werden an #{email_links(@person.wsjrdp_email_goto)} weitergeleitet."
+
+%div{class: "row"}
+  %div{class: "well"}
+    %div
+      %strong
+        Moss SSO Login Seite:
+      Wenn der
+      %em
+        Moss WSJ-Login
+      nicht funktioniert, kannst du die Moss SSO Login Seite öffnen:
+    %div{style: "padding: 6px;"}
+      = action_button("https://getmoss.com/login-via-sso",
+                      "https://getmoss.com/login-via-sso",
+                      :"external-link-alt",
+                      method: :get,
+                      rel: "noopener noreferrer",
+                      target: "_blank")
+      %span.muted.fw-light
+        (Link öffnet in neuem Tab)
+    %div
+      Auf der Moss-Seite musst du als Firmen-E-Mail
+      %span.moss-green
+        %strong= html_escape(@person.moss_email)
+      eingeben und dann
+      %em.moss-green
+        Anmelden
+      bzw.
+      %em.moss-green
+        Anmelden mit Single Sign-On (SSO)
+      auswählen.
+    - if @person.ul?
+      %br
+      %div{class: "trix-content"}
+        Mehr Informationen zum Moss Login gibt es auch in Unithub:
+        %a{href: "https://unithub.worldscoutjamboree.de/finanzen/moss/login/", target: "_blank", rel: "noopener noreferrer"}
+          https://unithub.worldscoutjamboree.de/finanzen/moss/login/
