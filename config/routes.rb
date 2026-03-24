@@ -63,6 +63,7 @@ Rails.application.routes.draw do
       resource :accounting, controller: "person/fee", only: [:show]
       resource :fee, controller: "person/fee", only: [:show]
       resource :spend, controller: "person/spend", only: [:show]
+      get :moss_sso_login, path: "person/spend/moss_sso_login", to: "person/spend#moss_sso_login"
       resource :deregistration, controller: "person/deregistration", only: [:edit, :update]
       resource :debit_return, controller: "person/debit_return", only: [:edit, :update]
     end

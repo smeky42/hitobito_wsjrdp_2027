@@ -163,6 +163,7 @@ de:
         wsjrdp_email: "Contingent E-Mail"
         wsjrdp_email_is_mailbox: "Mailbox für Contingent E-Mail"
         moss_email: "Moss E-Mail"
+        moss_invited_at: "Eingeladen zu Moss"
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:
