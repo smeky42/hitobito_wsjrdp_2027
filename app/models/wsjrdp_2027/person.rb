@@ -47,13 +47,22 @@ module Wsjrdp2027::Person
     # :zero_padded_id - can not be included as it is a generated column
   ].freeze
 
-  WSJRDP_ROLE_TYPES_TO_MAP = {
+  WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP = {
     "Group::Extern::Member" => "Group::Extern::Member",
     "Group::Ist::Member" => "Group::Ist::Member",
     "Group::Root::Member" => "Group::Root::Member",
     "Group::Unit::Leader" => "Group::Unit::Leader",
     "Group::Unit::Member" => "Group::Unit::Member",
     "Group::Unit::UnapprovedLeader" => "Group::Unit::Leader"
+  }.freeze
+
+  WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
+    "Group::Extern::Member" => "EXT",
+    "Group::Ist::Member" => "IST",
+    "Group::Root::Member" => "CMT",
+    "Group::Unit::Leader" => "UL",
+    "Group::Unit::Member" => "YP",
+    "Group::Unit::UnapprovedLeader" => "UL"
   }.freeze
 
   def self.included(base)
@@ -101,6 +110,7 @@ module Wsjrdp2027::Person
       # Overwrite addition_emails to establish a default ordering
       has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy
 
+      before_save :maybe_update_payment_or_wsj_role
       before_save :geocode_full_address, if: :address_changed?
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
@@ -195,24 +205,39 @@ module Wsjrdp2027::Person
         "#{buddy_id}-#{id}" if buddy_id.present?
       end
 
-      def role_type_for_payment_role
-        @role_type_for_payment_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPES_TO_MAP).compact.first
+      def default_role_type_for_payment_role
+        @default_role_type_for_payment_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP).compact.first
+      end
+
+      def default_wsj_role
+        @default_wsj_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP).compact.first
       end
 
       def build_payment_role
         prefix = early_payer ? "EarlyPayer" : "RegularPayer"
-        "#{prefix}::#{role_type_for_payment_role}"
+        "#{prefix}::#{default_role_type_for_payment_role}"
       end
 
       def ensure_payment_role(rebuild: false)
         if rebuild || payment_role.nil?
-          self.payment_role = build_payment_role
+          if build_payment_role == payment_role
+            Rails.logger.debug { "keep payment_role=#{payment_role.inspect}" }
+          else
+            self.payment_role = build_payment_role
+            Rails.logger.debug { "set payment_role=#{payment_role.inspect} (was #{payment_role_was.inspect})" }
+          end
+          if wsj_role.present? && (wsj_role == default_wsj_role)
+            Rails.logger.debug { "keep wsj_role=#{wsj_role.inspect}" }
+          else
+            self.wsj_role = default_wsj_role
+            Rails.logger.debug { "set wsj_role=#{wsj_role.inspect} (was #{wsj_role_was.inspect})" }
+          end
         end
         payment_role
       end
 
-      def short_wsj_role  # rubocop:disable Metrics/MethodLength
-        role = ensure_payment_role
+      def short_payment_role  # rubocop:disable Metrics/MethodLength
+        role = payment_role || default_role_type_for_payment_role
         if role.ends_with?("Unit::Member")
           "YP"
         elsif role.ends_with?("Unit::Leader")
@@ -577,6 +602,16 @@ module Wsjrdp2027::Person
 
         unless buddy.yp?
           errors.add(:buddy_id_yp, :buddy_no_yp)
+        end
+      end
+
+      def maybe_update_payment_or_wsj_role
+        # payment_role is fluid until we print.
+        if status.nil? || status == "registered"
+          Rails.logger.tagged("#{id || "???"} #{short_full_name} (before_save :maybe_update_payment_or_wsj_role)") do
+            Rails.logger.debug { "status=#{status.inspect}" }
+            ensure_payment_role(rebuild: true)
+          end
         end
       end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_15_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_24_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -550,8 +550,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_15_000100) do
     t.string "address_care_of"
     t.string "postbox"
     t.jsonb "additional_info", default: {}
-    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((COALESCE((name)::text, ''::text) || ' '::text) || COALESCE((short_name)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)))", stored: true
     t.boolean "is_wsjrdp", default: true, null: false
+    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((COALESCE((name)::text, ''::text) || ' '::text) || COALESCE((short_name)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)))", stored: true
     t.index ["layer_group_id"], name: "index_groups_on_layer_group_id"
     t.index ["lft", "rgt"], name: "index_groups_on_lft_and_rgt"
     t.index ["parent_id"], name: "index_groups_on_parent_id"
@@ -1094,6 +1094,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_15_000100) do
     t.string "cluster_code"
     t.jsonb "additional_info", default: {}
     t.virtual "zero_padded_id", type: :string, as: "\nCASE\n    WHEN (char_length(((id)::character varying)::text) < 4) THEN (lpad(((id)::character varying)::text, 4, '0'::text))::character varying\n    ELSE (id)::character varying\nEND", stored: true
+    t.string "wsj_role"
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true

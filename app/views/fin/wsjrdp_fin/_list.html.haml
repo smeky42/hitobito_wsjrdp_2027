@@ -40,7 +40,7 @@
           - people_list.each do |p|
             %tr
               %td
-                %span.muted= p.short_wsj_role
+                %span.muted= p.short_payment_role
               %td= p.id
               %td
                 %strong= link_to(p.short_full_name_with_nickname, person_path(p))
