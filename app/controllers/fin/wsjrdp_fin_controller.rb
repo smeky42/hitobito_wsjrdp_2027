@@ -58,7 +58,7 @@ class Fin::WsjrdpFinController < ApplicationController
   end
 
   def people_sort!(people)
-    people.sort_by! { |p| [p.short_wsj_role, p.id] }
+    people.sort_by! { |p| [p.short_payment_role, p.id] }
     people
   end
 end
