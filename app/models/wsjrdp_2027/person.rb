@@ -25,6 +25,7 @@ module Wsjrdp2027::Person
   WSJRDP_PUBLIC_ATTRS = WSJRDP_FILTER_ATTRS + [
     :additional_info,
     :cluster_code,
+    :wsj_role,
     :zero_padded_id
   ].freeze
 
@@ -167,6 +168,9 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :short_last_name, strip: true
       attribute :short_last_name, :string
 
+      jsonb_accessor :additional_info, :is_preallocated_ist
+      attribute :is_preallocated_ist, :boolean
+
       eur_attribute :total_fee_eur, cents_attr: :total_fee_cents
       eur_attribute :amount_paid_eur, cents_attr: :amount_paid_cents
       eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
@@ -226,7 +230,7 @@ module Wsjrdp2027::Person
             self.payment_role = build_payment_role
             Rails.logger.debug { "set payment_role=#{payment_role.inspect} (was #{payment_role_was.inspect})" }
           end
-          if wsj_role.present? && (wsj_role == default_wsj_role)
+          if wsj_role.present? || (wsj_role == default_wsj_role)
             Rails.logger.debug { "keep wsj_role=#{wsj_role.inspect}" }
           else
             self.wsj_role = default_wsj_role
@@ -294,6 +298,18 @@ module Wsjrdp2027::Person
 
         %i[upload_contract_pdf upload_sepa_pdf upload_medical_pdf upload_passport_pdf upload_photo_permission_pdf]
           .all? { |fld| public_send(fld).present? }
+      end
+
+      def is_preallocated_ist
+        super.presence || false
+      end
+
+      def is_preallocated_ist=(value)
+        if value.blank? || value == 0 || value == "0"
+          super(nil)
+        else
+          super(true)
+        end
       end
 
       #

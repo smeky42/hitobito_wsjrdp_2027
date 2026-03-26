@@ -164,6 +164,9 @@ de:
         wsjrdp_email_is_mailbox: "Mailbox für Contingent E-Mail"
         moss_email: "Moss E-Mail"
         moss_invited_at: "Eingeladen zu Moss"
+        payment_role: "Bezahl-Rolle"
+        wsj_role: "Rolle auf dem Jamboree"
+        is_preallocated_ist: "Preallocated IST"
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:

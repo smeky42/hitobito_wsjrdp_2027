@@ -7,7 +7,11 @@
       -# %h3= t('people.attributes.status')
     = field_set_tag do
       = f.labeled_collection_select(:status, Settings.status, :first, :last, {}, class: 'span2')
-      = f.labeled_input_fields :birthday, :first_name, :last_name, :print_at, :contract_upload_at, :complete_document_upload_at, :unit_code
+      = f.labeled_input_fields :birthday, :first_name, :last_name, :print_at, :contract_upload_at, :complete_document_upload_at
+      = f.labeled_collection_select(:wsj_role, Settings.wsj_role, :first, :last, {}, class: 'span2')
+      - if @person.ist?
+        = f.labeled_boolean_field :is_preallocated_ist
+      = f.labeled_input_field :unit_code
     = field_set_tag do
       - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
       = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
