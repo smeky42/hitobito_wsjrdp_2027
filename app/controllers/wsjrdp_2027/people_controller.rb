@@ -49,7 +49,8 @@ module Wsjrdp2027::PeopleController
     :uniform_size,
     :can_swim,
     :diet,
-    :medical_eating_disorders
+    :medical_eating_disorders,
+    :wsj_role
   ]
 
   def permitted_attrs

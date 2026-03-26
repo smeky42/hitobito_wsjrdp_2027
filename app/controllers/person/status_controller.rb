@@ -22,7 +22,10 @@ class Person::StatusController < ApplicationController
     :planned_custom_installments_comment,
     :deregistration_issue,
     :deregistration_effective_date,
-    :debit_return_issue
+    :debit_return_issue,
+    :payment_role,
+    :wsj_role,
+    :is_preallocated_ist
   ]
 
   def show

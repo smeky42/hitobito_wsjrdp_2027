@@ -108,6 +108,14 @@ uniform_size:
   - Kluftbluse 46
   - Kluftbluse 48
 
+wsj_role:
+  CMT: CMT
+  UL: UL
+  YP: YP
+  IST: IST
+  JPT: "JPT / JDT"
+  EXT: "Extern (nimmt nicht am Jamboree teil)"
+
 event:
   globally_visible_by_default: false
 

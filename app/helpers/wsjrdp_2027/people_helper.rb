@@ -50,6 +50,10 @@ module Wsjrdp2027::PeopleHelper
     l(person.moss_invited_at)
   end
 
+  def format_person_is_preallocated_ist(person)
+    person.is_preallocated_ist ? t(:"global.yes") : t(:"global.no")
+  end
+
   def format_person_buddy_id(person)
     if person.buddy_id.present?
       "#{person.buddy_id}-#{person.id}"
