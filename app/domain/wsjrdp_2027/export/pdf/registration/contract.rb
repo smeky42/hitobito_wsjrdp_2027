@@ -36,7 +36,7 @@ module Wsjrdp2027
 
         pdf.move_down 3.mm
         text "Die Teilnahme, als #{person_payment_role_full_name(@person)}, " \
-          "im deutschen Kontingent kostet #{get_full_regular_fee_eur(@person)} € " \
+          "im deutschen Kontingent kostet #{@person.total_fee_eur_text} " \
           "und beinhaltet " \
           "#{role_type(@person).starts_with?("Group::Unit") ? "die Vor- und Nachbereitung in Deutschland, die Reise nach Polen, eine Vor- oder Nachtour " : "die Vor- und Nachbereitung in Deutschland "} " \
           "und die Teilnahme am 26. World Scout Jamboree in Polen."
