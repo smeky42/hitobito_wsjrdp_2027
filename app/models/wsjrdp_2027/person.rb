@@ -368,6 +368,16 @@ module Wsjrdp2027::Person
         end
       end
 
+      def total_fee_eur_text(comment_sep: " ", space: " ")
+        reduction = active_fee_rule&.total_fee_reduction_cents || 0
+        comment = active_fee_rule&.total_fee_reduction_comment
+        total_fee_text = format_cents_de(total_fee_cents, space: space, zero_cents: "")
+        if reduction != 0 && comment.present?
+          total_fee_text = "#{total_fee_text}#{comment_sep}(#{comment})"
+        end
+        total_fee_text
+      end
+
       ##
       # amount paid in cents
       def amount_paid_cents
