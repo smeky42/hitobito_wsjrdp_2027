@@ -33,7 +33,8 @@ class Contingent::WsjrdpContingentController < ApplicationController
     "nickname",
     "first_name",
     "status",
-    "wsj_role"
+    "wsj_role",
+    "additional_info"
   ].freeze
 
   before_action :authorize_action
@@ -59,9 +60,9 @@ class Contingent::WsjrdpContingentController < ApplicationController
     query = Person.select(PERSON_COLUMNS).where(primary_group_id: [1, 4, 45]).includes(includes)
     @cmt_ist_people = make_grouped(
       query,
-      [->(p) { p.wsj_role }, nil],
-      [->(p) { p.primary_group.group_code_or_short_name_or_name }, nil],
-      [->(p) { p.status }, nil]
+      [->(p) { p.wsj_role || "???" }, nil],
+      [->(p) { p.primary_group.group_code_or_short_name_or_name || "???" }, nil],
+      [->(p) { p.status || "???" }, nil]
     )
   end
 
@@ -78,24 +79,24 @@ class Contingent::WsjrdpContingentController < ApplicationController
   def make_grouped(people, *groupings)
     if groupings.size == 1
       group_by_proc, _ = groupings.first
-      return people.group_by(&group_by_proc).sort_by(&:first).map do |key, grouped_people|
+      people.group_by(&group_by_proc).sort_by(&:first).map do |key, grouped_people|
         grouped_people.sort_by! { |p| p.nickname_or_short_first_name }
         [
           key,
-          {people: grouped_people, size: people.size, num_rows: 1, groups: []}
+          {people: grouped_people, size: grouped_people.size, num_rows: 1, groups: []}
         ]
       end
-    end
-
-    first_grouping, *groupings = groupings
-    group_by_op, _ = first_grouping
-    people.group_by(&group_by_op).sort_by(&:first).map do |key, grouped_people|
-      subgroups = make_grouped(grouped_people, *groupings)
-      num_rows = subgroups.map { |_, h| h[:num_rows] }.sum
-      [
-        key,
-        {people: grouped_people, size: grouped_people.size, num_rows: num_rows, groups: subgroups}
-      ]
+    else
+      first_grouping, *groupings = groupings
+      group_by_op, _ = first_grouping
+      people.group_by(&group_by_op).sort_by(&:first).map do |key, grouped_people|
+        subgroups = make_grouped(grouped_people, *groupings)
+        num_rows = subgroups.map { |_, h| h[:num_rows] }.sum
+        [
+          key,
+          {people: grouped_people, size: grouped_people.size, num_rows: num_rows, groups: subgroups}
+        ]
+      end
     end
   end
 end
