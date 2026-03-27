@@ -17,4 +17,5 @@
           %span.fw-light.muted
             = label
           = people_chips(people)
-  %td= count_people
+  - count_people = local_assigns[:count] if local_assigns[:count].present?
+  %td.right= count_people

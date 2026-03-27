@@ -31,7 +31,7 @@ module Wsjrdp2027::NavigationHelper
     label: :contingent,
     url: :contingent_contingent_path,
     icon_name: "campground",
-    if: ->(_) { can?(:log, Person) },
+    if: ->(_) { can?(:log, Group.root) },
     active_for: %w[contingent],
     inactive_for: %w[people]
   }

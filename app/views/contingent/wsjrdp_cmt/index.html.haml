@@ -6,13 +6,16 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 :css
+  .td-like {
+    font-weight: var(--bs-body-font-weight);
+    background-color: var(--bs-body-bg) !important;
+    --bs-table-accent-bg: transparent !important;
+  }
   .p-chip {
     display: inline-block;
     vertical-align: baseline;
-    /*box-sizing: border-box;*/
     padding: 1px 4px;
     margin: 1px 3px;
-    /*font-size: 13px;*/
     border-radius: 6px;
     background-color: #e8ebf0aa;
     white-space: nowrap;
@@ -43,22 +46,24 @@
   }
 
 #main.row
-  %h1 German Contingent
-
-  %h2
-    %a{href: group_people_path(1)}
-      CMT-Mitglieder
-
-  %table.table.table-striped.table-hover
-    %thead
-      %tr
-        %th Team
-        %th Personen
-        %th Anzahl
-    %tbody
-      - @tag_names.each do |tag_name|
-        = render 'team', tag_name: tag_name
-      = render 'group_row', label: "JPT auf dem WSJ", people_with_labels: [[nil, @wsj_role_jpt_people]]
-      = render 'group_row', label: "CMT auf dem WSJ", people_with_labels: [[nil, @wsj_role_cmt_people]]
-      - if @wsj_role_other_people.size > 0
-        = render 'group_row', label: "andere Rolle auf dem WSJ", people_with_labels: [[nil, @wsj_role_other_people]]
+  %div
+    %table.table.table-striped.table-hover
+      %thead
+        %tr
+          %th Team
+          %th Personen
+          %th.right Anzahl
+      %tbody
+        - cmt_teams.each do |team_hash|
+          = render 'group_row', label: team_hash[:label], count: team_hash[:count], people_with_labels: team_hash[:people_with_labels]
+      %tbody
+        %tr
+          %th.td-like{colspan: 3, style: "padding-top: 15px;"}
+            %strong
+              Nach Rolle auf dem Jamboree
+      %tbody
+        = render 'group_row', label: "JPT", people_with_labels: [[nil, @wsj_role_jpt_people]]
+        = render 'group_row', label: "CMT", people_with_labels: [[nil, @wsj_role_cmt_people]]
+        - if @wsj_role_other_people.size > 0
+          = render 'group_row', label: "andere Rolle", people_with_labels: [[nil, @wsj_role_other_people]]
+        = render 'group_row', label: "Gesamt", people_with_labels: [], count: @wsj_role_jpt_people.size + @wsj_role_cmt_people.size + @wsj_role_other_people.size
