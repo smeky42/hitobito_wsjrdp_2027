@@ -1,0 +1,64 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+:css
+  .td-like {
+    font-weight: var(--bs-body-font-weight);
+    background-color: var(--bs-body-bg) !important;
+    --bs-table-accent-bg: transparent !important;
+  }
+  .p-chip {
+    display: inline-block;
+    vertical-align: baseline;
+    padding: 1px 4px;
+    margin: 1px 3px;
+    border-radius: 6px;
+    background-color: #e8ebf0aa;
+    white-space: nowrap;
+  }
+  .tag-hoc, .tag-ehoc {
+    font-weight: 300 !important;
+    position: relative;
+    bottom: 0.25em;
+    font-size: 75%;
+    padding: 0px 2px;
+    border-radius: 2px;
+    color: #a16a18;
+    background-color: #fef5d5;
+  }
+  .tag-jpt {
+    font-weight: 300 !important;
+    position: relative;
+    bottom: 0.25em;
+    font-size: 75%;
+    padding: 0px 2px;
+    border-radius: 2px;
+    color: #398bf1;
+    background-color: #a2ceff;
+  }
+  .team-people-list + .team-people-list {
+    margin-left: 10px;
+  }
+
+#main.row
+  %div
+    %h1 German Contingent
+
+    %div.well
+      %ul
+        %li= link_to("CMT inklusive Team-Übersicht", contingent_cmt_path)
+
+    %div.btn-toolbar
+      %div.btn-group
+        - if show_people_links?
+          = action_button "Ohne Personen-Links", contingent_hide_people_links_path, nil, method: :post
+        - else
+          = action_button "Mit Personen-Links", contingent_show_people_links_path, nil, method: :post
+
+    %h2 CMT und IST
+
+    = render 'people_table'
