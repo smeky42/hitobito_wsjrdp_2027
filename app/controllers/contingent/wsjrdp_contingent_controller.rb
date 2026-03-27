@@ -69,7 +69,7 @@ class Contingent::WsjrdpContingentController < ApplicationController
   private
 
   def authorize_action
-    authorize!(:log, Person)
+    authorize!(:log, Group.root)
   end
 
   def show_people_links?

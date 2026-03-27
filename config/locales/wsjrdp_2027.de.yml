@@ -538,6 +538,11 @@ de:
       yp_bar_label: "YP: %{count} Units"
       ul_bar_label: "UL: %{count} Units"
 
+  contingent:
+    tabs:
+      overview: "Übersicht"
+      cmt: "CMT / JPT"
+
   version:
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
     wsjrdp_add_tag: 'Tag <i>%{tag_name}</i> hinzugefügt'
