@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- team_people = @cmt_people_by_tag[tag_name] || []
+- team_name = tag_name.delete_suffix("-Team")
+- leads = team_people.select { |p| p.has_tag?("Head-of-#{team_name}") }
+- members = team_people.select { |p| !p.has_tag?("Head-of-#{team_name}") }
+- if team_people.size > 0
+  - label = content_tag(:a, href: tag_search_path(1, tag_name)) do
+    = team_name
+  = render 'group_row', label: label, people_with_labels: [[leads.size == 1 ? "Lead:" : "Leads:", leads],
+                                                           ["Mitglieder:", members]]

@@ -193,16 +193,27 @@ module Wsjrdp2027::Person
         [Settings.sepa_status[sepa_status].presence, "(#{sepa_status})"].compact.join(" ")
       end
 
-      def short_full_name_with_nickname
-        first_names = first_name ? first_name.split : []
-        name_parts = if !nickname.blank? && Set.new(first_names).include?(nickname)
-          [nickname, last_name]
-        elsif nickname.blank?
-          [first_names[0], last_name]
+      def nickname_or_short_first_name
+        nickname.presence || first_name&.split&.first
+      end
+
+      def short_first_name
+        return nil if first_name.blank?
+        first_names = first_name.split
+        if nickname.present? && first_names.any? { |s| s == nickname || s.split("-").include?(nickname) }
+          nickname
         else
-          [first_names[0], last_name, "/", nickname]
+          first_names.first
         end
-        name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      def short_full_name_with_nickname
+        f_name = short_first_name
+        name_parts = [f_name, last_name]
+        if nickname.present? && f_name != nickname
+          name_parts << ["/", nickname]
+        end
+        name_parts.compact.join(" ")
       end
 
       def full_buddy_id
@@ -271,6 +282,18 @@ module Wsjrdp2027::Person
 
       def ist?
         ensure_payment_role.ends_with?("Ist::Member")
+      end
+
+      def has_tag?(tag_name)
+        tags.any? { |t| t.name == tag_name }
+      end
+
+      def hoc?
+        has_tag?("HoC")
+      end
+
+      def ehoc?
+        has_tag?("eHoC")
       end
 
       def upload_complete?

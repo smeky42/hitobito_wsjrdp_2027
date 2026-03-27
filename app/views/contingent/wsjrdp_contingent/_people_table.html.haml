@@ -1,0 +1,52 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- subhead_colspan = (@show_people_links ? 4 : 3)
+%table.table.table-striped.table-hover
+  %thead
+    %tr
+      %th WSJ
+      %th Gruppe
+      %th Status
+      - if show_people_links?
+        %th Personen
+      %th{colspan: "3"} Anzahl
+  %tbody
+    - @cmt_ist_people.each_with_index do |wsj_role_people, wsj_role_index|
+      - wsj_role, people_h_outer = wsj_role_people
+      %tr
+        %th.td-like{colspan: subhead_colspan}
+          %em
+            = "WSJ-Rolle: #{wsj_role}"
+            (alle Gruppen, jeder Status)
+        %th.td-like
+        %th.td-like
+        %th.td-like= people_h_outer[:people].size
+      - people_h_outer[:groups].each_with_index do |group_name_people, group_name_index|
+        - group_name, people_h_middle = group_name_people
+        - num_rows_group_name = people_h_middle[:num_rows]
+
+        %tr
+          %th.td-like{colspan: subhead_colspan}
+            %em
+              = "WSJ-Rolle: #{wsj_role}, Gruppe: #{group_name}"
+              (jeder Status)
+          %th.td-like
+          %th.td-like= people_h_middle[:people].size
+          %th.td-like
+        - people_h_middle[:groups].each_with_index do |status_people, status_index|
+          - status, people_h_inner = status_people
+          - people = people_h_inner[:people]
+          %tr
+            %td= wsj_role
+            %td= group_name
+            %td= status
+            - if show_people_links?
+              %td= people_chips(people)
+            %td= people.size
+            %td
+            %td

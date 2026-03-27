@@ -27,6 +27,15 @@ module Wsjrdp2027::NavigationHelper
     inactive_for: %w[fin/ae fin/pn people]
   }
 
+  WSJRDP_MAIN_CONTINGENT = {
+    label: :contingent,
+    url: :contingent_contingent_path,
+    icon_name: "campground",
+    if: ->(_) { can?(:log, Person) },
+    active_for: %w[contingent],
+    inactive_for: %w[people]
+  }
+
   included do
     # Remove :invoices tab for the time being. We do not use it and it
     # is visible to people with the :finance permission.
@@ -36,6 +45,9 @@ module Wsjrdp2027::NavigationHelper
     end
     if NavigationHelper::MAIN.find_index { |e| e[:label] == :finance }.nil?
       NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_FIN)
+    end
+    if NavigationHelper::MAIN.find_index { |e| e[:label] == :contingent }.nil?
+      NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_CONTINGENT)
     end
   end
 end

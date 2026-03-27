@@ -80,5 +80,12 @@ Rails.application.routes.draw do
       resources :wsjrdp_fin_accounts, path: "acc", only: [:show, :update]
       resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]
     end
+
+    namespace "contingent" do
+      get :contingent, path: "", to: "wsjrdp_contingent#index"
+      post :show_people_links, to: "wsjrdp_contingent#show_people_links"
+      post :hide_people_links, to: "wsjrdp_contingent#hide_people_links"
+      get :cmt, to: "wsjrdp_cmt#index"
+    end
   end
 end
