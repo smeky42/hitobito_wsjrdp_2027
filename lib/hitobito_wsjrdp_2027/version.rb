@@ -1,3 +1,3 @@
 module HitobitoWsjrdp2027
-  VERSION = "2.29.1".freeze
+  VERSION = "2.30.0".freeze
 end
