@@ -7,7 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Person::FeeController < ApplicationController
+class Person::FeeController < Fin::FinController
   include PersonInPrimaryGroup
   include ContractHelper
   include WsjrdpFinHelper
@@ -103,13 +103,11 @@ class Person::FeeController < ApplicationController
   end
 
   def can_fin?
-    @can_fin = get_can_fin(person, params: params) if @can_fin.nil?
-    @can_fin
+    can?(:log, person) && !param_is_false(cookies, :can_fin)
   end
 
   def can_fin_admin?
-    @can_fin_admin = get_can_fin_admin(person, params: params) if @can_fin_admin.nil?
-    @can_fin_admin
+    can?(:fin_admin, person) && param_is_true(cookies, :fin_admin)
   end
 
   def authorize_action

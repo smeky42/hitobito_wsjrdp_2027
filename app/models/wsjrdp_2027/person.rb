@@ -216,6 +216,14 @@ module Wsjrdp2027::Person
         name_parts.compact.join(" ")
       end
 
+      def role_id_name
+        [short_payment_role, id.to_s, short_full_name].compact.join(" ")
+      end
+
+      def link_name(length: 80)
+        role_id_name
+      end
+
       def full_buddy_id
         "#{buddy_id}-#{id}" if buddy_id.present?
       end

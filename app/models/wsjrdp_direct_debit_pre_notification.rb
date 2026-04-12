@@ -43,7 +43,10 @@ class WsjrdpDirectDebitPreNotification < ActiveRecord::Base
   eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
 
   def link_name(length: 80)
-    "#{id} #{truncate(description, length: length)} (#{amount_eur_display})"
+    pre = "[#{id}] "
+    post = " (#{amount_eur_display})"
+    length -= (pre.size + post.size)
+    "#{pre}#{truncate(description, length: length)}#{post}"
   end
 
   def try_skip?

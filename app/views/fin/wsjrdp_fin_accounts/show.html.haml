@@ -28,7 +28,7 @@
         %td Aktuelles Saldo
         %td
       - ordered_transactions.each do |tx|
-        - if tx.return_reason.present?
+        - if tx.respond_to?(:return_reason) && tx.return_reason.present?
           - return_msg = "#{Settings.return_debit_status[tx.return_status]}: Retoure mit Rückgabe-Grund #{tx.return_reason}"
         - else
           - return_msg = ""
@@ -47,29 +47,45 @@
                 %div(style="color:var(--bs-secondary);")= return_msg
               - else
                 %div= return_msg
-            %div= tx.description
+            %div= html_escape_multiline(tx.description)
+            - if tx.respond_to?(:note)
+              - if tx.note.present?
+                %div
+                  %div.fst-italic= auto_link_escaped_multiline(tx.note)
             - if tx.comment.present?
               %div
                 %div.fw-light.fst-italic= auto_link_escaped_multiline(tx.comment)
-            - if tx.subject.present?
+            - tx.accounting_entries.each do |ae|
               %div
                 %span.fw-light.muted Person:
-                %span= link_to(tx.subject.short_full_name_with_nickname, url_for(tx.subject))
-                - if !tx.accounting_entry.blank?
-                  - ae = tx.accounting_entry
-                  %span.ae-linked
-                    = " • Verknüpfte Buchung: #{link_to(tx.accounting_entry.link_name, url_for(tx.accounting_entry))}"
-              - if tx.accounting_entry.blank?
-                %div
-                  - accounting_entries = tx.accounting_entries_for_subject_with_matching_amount
-                  - if accounting_entries.size == 1
-                    - entry = accounting_entries[0]
-                    = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(tx)}/link_accounting_entry/#{entry.id}",
-                                    :plus, method: :post, remote: false,
-                                    data: { confirm: "Transaktion #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
-                  = action_button("Erzeuge Buchung", "#{url_for(tx)}/create_accounting_entry",
+                %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
+                %span.ae-linked
+                  = " • Verknüpfte Buchung: #{link_to(ae.link_name, url_for(ae))}"
+            - if (subject = tx.subject_without_accounting_entry).present?
+              %div
+                %span.fw-light.muted Person:
+                %span= link_to(subject.short_full_name_with_nickname, url_for(subject))
+              %div
+                = action_button("Erzeuge Buchung", "#{url_for(tx)}/create_accounting_entry",
+                                :plus, method: :post, remote: false,
+                                data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
+            - if tx.accounting_entries.blank?
+              %div
+                - accounting_entries = tx.accounting_entries_for_subject_with_matching_amount
+                - if accounting_entries.size == 1
+                  - entry = accounting_entries[0]
+                  = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(tx)}/link_accounting_entry/#{entry.id}",
                                   :plus, method: :post, remote: false,
-                                  data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
+                                  data: { confirm: "Transaktion #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
+            - if tx.respond_to?(:subject_candidates) && (subject_candidates = tx.subject_candidates).present?
+              - subject_candidates.each do |subject|
+                %div
+                  = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(tx, subject),
+                                  :plus, method: :post, remote: false,
+                                  data: { confirm: "Transaktion #{tx.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
+                  = action_button("Keine Verknüpfung mit #{subject.link_name}", disallow_link_subject_path(tx, subject),
+                                  :trash, method: :post, remote: false,
+                                  data: { confirm: "Verknüpfung von Transaktion #{tx.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })
           %td.info-col
             %a{href: url_for(tx), target: "_blank"}
               %span.fa.fa-info-circle(aria-label="info" role="img")

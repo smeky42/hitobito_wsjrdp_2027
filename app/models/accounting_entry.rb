@@ -11,6 +11,7 @@ class AccountingEntry < ActiveRecord::Base
   belongs_to :direct_debit_pre_notification, optional: true, class_name: "WsjrdpDirectDebitPreNotification"
   belongs_to :payment_initiation, optional: true, class_name: "WsjrdpPaymentInitiation"
   belongs_to :camt_transaction, optional: true, class_name: "WsjrdpCamtTransaction"
+  belongs_to :moss_balance_movement, optional: true, class_name: "MossBalanceMovement"
 
   belongs_to :reversed_by, inverse_of: "reverses", optional: true, class_name: "AccountingEntry"
   belongs_to :reverses, inverse_of: "reversed_by", optional: true, class_name: "AccountingEntry"
@@ -41,7 +42,10 @@ class AccountingEntry < ActiveRecord::Base
   end
 
   def link_name(length: 80)
-    "#{id} #{truncate(description, length: length)} (#{amount_eur_display})"
+    pre = "[#{id}] "
+    post = " (#{amount_eur_display})"
+    length -= (pre.size + post.size)
+    "#{pre}#{truncate(description, length: length)}#{post}"
   end
 
   def new_sepa_status_display
