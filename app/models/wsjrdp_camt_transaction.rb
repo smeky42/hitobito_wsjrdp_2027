@@ -10,13 +10,14 @@
 class WsjrdpCamtTransaction < ActiveRecord::Base
   include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
+  include WsjrdpTransaction
 
   belongs_to :subject, polymorphic: true, optional: true
   belongs_to :fin_account,
     optional: true,
     class_name: "WsjrdpFinAccount"
 
-  has_one :accounting_entry,
+  has_many :accounting_entries,
     foreign_key: "camt_transaction_id",
     inverse_of: :camt_transaction,
     class_name: "AccountingEntry",
@@ -36,36 +37,12 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
     self.return_debit_status = value
   end
 
+  def description_for_subject_candidates
+    description
+  end
+
   def subject_input_field_options
     {input_field_type: "Person"}
-  end
-
-  def accounting_entry_id
-    accounting_entry&.id
-  end
-
-  def accounting_entry_id=(value)
-    if accounting_entry.present? && value != accounting_entry.id
-      accounting_entry.camt_transaction_id = nil
-    end
-    if value.blank?
-      self.accounting_entry = nil
-    else
-      self.accounting_entry = AccountingEntry.find_by(id: value)
-      accounting_entry.camt_transaction_id = id
-    end
-    accounting_entry
-  end
-
-  def accounting_entries_for_subject(amount_cents: nil)
-    return [] if subject.nil?
-    entries = subject.accounting_entries
-    entries = entries.select { |e| e.amount_cents == amount_cents } unless amount_cents.nil?
-    entries
-  end
-
-  def accounting_entries_for_subject_with_matching_amount
-    accounting_entries_for_subject(amount_cents: amount_cents)
   end
 
   def group
@@ -89,7 +66,10 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   end
 
   def link_name(length: 80)
-    "#{id} #{truncate(description, length: length)} (#{amount_eur_display})"
+    pre = "[#{id}] "
+    post = " (#{amount_eur_display})"
+    length -= (pre.size + post.size)
+    "#{pre}#{truncate(description, length: length)}#{post}"
   end
 
   def short_dbtr

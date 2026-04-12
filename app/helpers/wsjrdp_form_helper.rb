@@ -77,12 +77,17 @@ module WsjrdpFormHelper
   end
 
   included do
+    def form_like_labeled(label, content = nil, &block)
+      content = capture(&block) if block
+      label_content = content_tag(:span, label, class: "col-md-3 col-xl-2 text-md-end")
+      content_content = content_tag(:span, content, class: "labeled pb-1 col-md-9 col-lg-8 col-xl-8 mw-63ch")
+      content_tag(:div, label_content + content_content, class: "row mb-2")
+    end
+
     def form_like_labeled_attr(obj, attr, display_link: true)
       key = captionize(attr, object_class(obj))
       val = wsjrdp_format_attr(obj, attr, display_link: display_link)
-      key_content = content_tag(:span, key, class: "col-md-3 col-xl-2 text-md-end")
-      val_content = content_tag(:span, val, class: "labeled pb-1 col-md-9 col-lg-8 col-xl-8 mw-63ch")
-      content_tag(:div, key_content + val_content, class: "row mb-2")
+      form_like_labeled(key, val)
     end
 
     def input_or_render_attrs(form, *attrs, display_link: true, show_previous_as_help_inline: false, **opts)

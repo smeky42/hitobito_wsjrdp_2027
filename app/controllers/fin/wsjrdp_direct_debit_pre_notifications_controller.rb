@@ -7,9 +7,8 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Fin::WsjrdpDirectDebitPreNotificationsController < ApplicationController
+class Fin::WsjrdpDirectDebitPreNotificationsController < Fin::FinController
   include WsjrdpFormHelper
-  include WsjrdpFinHelper
 
   before_action :authorize_action
 
@@ -58,13 +57,11 @@ class Fin::WsjrdpDirectDebitPreNotificationsController < ApplicationController
   end
 
   def can_fin?
-    @can_fin = get_can_fin(person, params: params) if @can_fin.nil?
-    @can_fin
+    can?(:log, pre_notification) && !param_is_false(cookies, :can_fin)
   end
 
   def can_fin_admin?
-    @can_fin_admin = get_can_fin_admin(person, params: params) if @can_fin_admin.nil?
-    @can_fin_admin
+    can?(:fin_admin, pre_notification) && param_is_true(cookies, :fin_admin)
   end
 
   private

@@ -7,10 +7,12 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Fin::WsjrdpFinAccountsController < ApplicationController
+class Fin::WsjrdpFinAccountsController < Fin::FinController
   include WsjrdpFormHelper
   include WsjrdpFinHelper
   include WsjrdpNumberHelper
+
+  decorates :person
 
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
@@ -21,6 +23,8 @@ class Fin::WsjrdpFinAccountsController < ApplicationController
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
   helper_method :fin_account_path
+  helper_method :link_subject_path
+  helper_method :disallow_link_subject_path
 
   def show
     @wsjrdp_fin_account ||= fin_account
@@ -48,8 +52,7 @@ class Fin::WsjrdpFinAccountsController < ApplicationController
   end
 
   def can_fin_admin?
-    @can_fin_admin = get_can_fin_admin(fin_account, params: params) if @can_fin_admin.nil?
-    @can_fin_admin
+    can?(:fin_admin, fin_account) && param_is_true(cookies, :fin_admin)
   end
 
   private
@@ -68,6 +71,14 @@ class Fin::WsjrdpFinAccountsController < ApplicationController
 
   def fin_account_path(entry = nil)
     url_for(entry.nil? ? fin_account : entry)
+  end
+
+  def link_subject_path(tx, subject)
+    "#{url_for(tx)}/link_subject/#{subject.id}/#{subject.class.name}"
+  end
+
+  def disallow_link_subject_path(tx, subject)
+    "#{url_for(tx)}/disallow_link_subject/#{subject.id}/#{subject.class.name}"
   end
 
   def model_params

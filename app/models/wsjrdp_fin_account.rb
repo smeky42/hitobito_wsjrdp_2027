@@ -10,17 +10,35 @@
 class WsjrdpFinAccount < ActiveRecord::Base
   include WsjrdpNumberHelper
 
-  has_many :transactions,
+  has_many :camt_transactions,
     foreign_key: "fin_account_id",
     inverse_of: :fin_account,
     class_name: "WsjrdpCamtTransaction",
     dependent: :restrict_with_error
 
+  has_many :moss_balance_movements,
+    foreign_key: "fin_account_id",
+    inverse_of: :fin_account,
+    class_name: "MossBalanceMovement",
+    dependent: :restrict_with_error
+
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
+  def transactions
+    if transaction_type == "MossBalanceMovement"
+      moss_balance_movements
+    else
+      camt_transactions
+    end
+  end
+
   def to_s
-    "#{short_name} / #{account_identification}"
+    if account_identification.present?
+      "#{short_name} / #{account_identification}"
+    else
+      short_name
+    end
   end
 
   def closing_balance_cents

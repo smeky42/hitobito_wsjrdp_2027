@@ -1,39 +1,38 @@
 # frozen_string_literal: true
 
-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
 #
 #  This file is part of hitobito_wsjrdp_2027 and licensed under the
 #  Affero General Public License version 3 or later. See the COPYING
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Fin::WsjrdpCamtTransactionsController < Fin::FinController
+class Fin::MossBalanceMovementsController < Fin::FinController
   include WsjrdpFormHelper
   include WsjrdpFinHelper
   include SubjectLinking
 
-  before_action :map_id_to_wsjrdp_camt_transaction_id
+  prepend_before_action :map_id_to_moss_balance_movement_id
   before_action :authorize_action
 
   helper_method :can_fin_admin?
-  helper_method :camt_transaction
+  helper_method :moss_balance_movement
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
-  helper_method :camt_transaction_return_url
-  helper_method :camt_transaction_path
+  helper_method :moss_balance_movement_path
   helper_method :matching_accounting_entries
 
   def show
-    @wsjrdp_camt_transaction ||= camt_transaction
+    @moss_balance_movement ||= moss_balance_movement
     render :show
   end
 
   def update
-    @wsjrdp_camt_transaction ||= camt_transaction
-    authorize!(:update, camt_transaction)
-    camt_transaction.attributes = permitted_params
-    if camt_transaction.save
-      flash[:notice] = "Transaktion #{camt_transaction.id} erfolgreich aktualisiert."
+    @moss_balance_movement ||= moss_balance_movement
+    authorize!(:update, moss_balance_movement)
+    moss_balance_movement.attributes = permitted_params
+    if moss_balance_movement.save
+      flash[:notice] = "Transaktion #{moss_balance_movement.id} erfolgreich aktualisiert."
       redirect_to return_url
     else
       render :show, status: :bad_request
@@ -41,8 +40,8 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   end
 
   def create_accounting_entry
-    authorize!(:update, camt_transaction)
-    tx = camt_transaction
+    authorize!(:update, moss_balance_movement)
+    tx = moss_balance_movement
     subject = tx.subject
     authorize!(:update, subject)
     entry = AccountingEntry.create!(
@@ -50,22 +49,16 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
       author: current_user,
       amount_cents: tx.amount_cents,
       amount_currency: tx.amount_currency,
-      description: tx.description,
+      description: tx.payment_reference,
       comment: tx.comment,
       value_date: tx.value_date,
       booking_date: tx.booking_date,
-      mandate_id: tx.mandate_id,
-      endtoend_id: tx.endtoend_id,
-      cdtr_name: tx.cdtr_name,
-      cdtr_iban: tx.cdtr_iban,
-      cdtr_bic: tx.cdtr_bic,
-      cdtr_address: tx.cdtr_address,
-      dbtr_name: tx.dbtr_name,
-      dbtr_iban: tx.dbtr_iban,
-      dbtr_bic: tx.dbtr_bic,
-      dbtr_address: tx.dbtr_address,
-      return_reason: tx.return_reason,
-      camt_transaction_id: tx.id
+      dbtr_name: tx.fin_account.owner_name,
+      dbtr_address: tx.fin_account.owner_address,
+      # cdtr_name:
+      cdtr_iban: tx.recipient_account_number,
+      cdtr_bic: tx.recipient_bank_code,
+      moss_balance_movement_id: tx.id
     )
     tx.accounting_entry_id = entry.id
     tx.save!
@@ -76,12 +69,12 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   end
 
   def link_accounting_entry
-    authorize!(:update, camt_transaction)
-    tx = camt_transaction
+    authorize!(:update, moss_balance_movement)
+    tx = moss_balance_movement
     subject = tx.subject
     authorize!(:update, subject)
     accounting_entry = AccountingEntry.find(params[:accounting_entry_id])
-    accounting_entry.camt_transaction_id = tx.id
+    accounting_entry.balance_movement_id = tx.id
     tx.accounting_entry_id = accounting_entry.id
     tx.save!
     accounting_entry.save!
@@ -94,44 +87,40 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   private
 
   def entry
-    camt_transaction
+    moss_balance_movement
   end
 
-  def map_id_to_wsjrdp_camt_transaction_id
-    params[:wsjrdp_camt_transaction_id] = params[:id] unless params.key?(:wsjrdp_camt_transaction_id)
+  def map_id_to_moss_balance_movement_id
+    params[:moss_balance_movement_id] = params[:id] unless params.key?(:moss_balance_movement_id)
   end
 
   def authorize_action
-    authorize!(:show, camt_transaction)
+    authorize!(:show, moss_balance_movement)
   end
 
-  def camt_transaction
-    @camt_transaction ||= WsjrdpCamtTransaction.find(params[:wsjrdp_camt_transaction_id])
+  def moss_balance_movement
+    @moss_balance_movement ||= MossBalanceMovement.find(params[:moss_balance_movement_id])
   end
 
-  def camt_transaction_path(entry = nil)
-    url_for(entry.nil? ? camt_transaction : entry)
+  def moss_balance_movement_path(entry = nil)
+    url_for(entry.nil? ? moss_balance_movement : entry)
   end
 
   def return_url
-    return_url_or_fallback url_for(camt_transaction)
+    return_url_or_fallback url_for(moss_balance_movement)
   end
 
   def cancel_url
     return_url
   end
 
-  def camt_transaction_return_url(entry = nil)
-    params[:return_url].presence || camt_transaction_path(entry)
-  end
-
   def can_fin_admin?
-    can?(:fin_admin, camt_transaction) && param_is_true(cookies, :fin_admin)
+    can?(:fin_admin, moss_balance_movement) && param_is_true(cookies, :fin_admin)
   end
 
   def matching_accounting_entries
-    @matching_accounting_entries ||= camt_transaction.accounting_entries_for_subject.select { |e|
-      e.amount_cents == camt_transaction.amount_cents
+    @matching_accounting_entries ||= moss_balance_movement.accounting_entries_for_subject.select { |e|
+      e.amount_cents == moss_balance_movement.amount_cents
     }
   end
 
@@ -146,15 +135,14 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   end
 
   def model_params
-    params.require(:wsjrdp_camt_transaction)
+    params.require(:moss_balance_movement)
   end
 
   def permitted_attrs
     [
       :comment,
       :subject, :subject_id, :subject_type,
-      :accounting_entry, :accounting_entry_id,
-      :return_status
+      :accounting_entry, :accounting_entry_id
     ]
   end
 

@@ -58,6 +58,14 @@ Rails.application.routes.draw do
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
 
+    concern :tx_actions do |options|
+      controller = options[:controller]
+      post "create_accounting_entry", to: "#{controller}#create_accounting_entry"
+      post "link_accounting_entry/:accounting_entry_id", to: "#{controller}#link_accounting_entry"
+      post "link_subject/:subject_id/:subject_type", to: "#{controller}#link_subject"
+      post "disallow_link_subject/:subject_id/:subject_type", to: "#{controller}#disallow_link_subject"
+    end
+
     resources :people, only: [] do
       resource :finance, controller: "person/fee", only: [:show]
       resource :accounting, controller: "person/fee", only: [:show]
@@ -73,9 +81,12 @@ Rails.application.routes.draw do
       get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       post :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]
+
+      resources :moss_balance_movements, controller: "moss_balance_movements", path: "moss_bm", only: [:show, :update] do
+        concerns :tx_actions, controller: "moss_balance_movements"
+      end
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
-        post "create_accounting_entry", to: "wsjrdp_camt_transactions#create_accounting_entry"
-        post "link_accounting_entry/:accounting_entry_id", to: "wsjrdp_camt_transactions#link_accounting_entry"
+        concerns :tx_actions, controller: "wsjrdp_camt_transactions"
       end
       resources :wsjrdp_fin_accounts, path: "acc", only: [:show, :update]
       resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]

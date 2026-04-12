@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_24_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_11_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -50,6 +50,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_000100) do
     t.string "return_reason"
     t.bigint "camt_transaction_id"
     t.date "booking_date", null: false
+    t.bigint "moss_balance_movement_id"
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
@@ -833,6 +834,59 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_000100) do
     t.index ["sender_id"], name: "index_messages_on_sender_id"
   end
 
+  create_table "moss_balance_movements", id: :serial, force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.bigint "fin_account_id", default: 4, null: false
+    t.bigint "subject_id"
+    t.string "subject_type"
+    t.text "comment", default: "", null: false
+    t.string "status"
+    t.jsonb "additional_info", default: {}
+    t.string "unique_item_number", null: false
+    t.string "moss_transaction_id", null: false
+    t.integer "sub_row_number", default: 0, null: false
+    t.string "transaction_state"
+    t.string "transaction_type"
+    t.date "payment_date", null: false
+    t.date "booking_date", null: false
+    t.decimal "amount_excl_vat", precision: 20, scale: 3
+    t.decimal "amount", precision: 20, scale: 3, null: false
+    t.string "currency", null: false
+    t.decimal "original_amount_excl_vat", precision: 20, scale: 3
+    t.decimal "original_amount", precision: 20, scale: 3
+    t.string "original_currency"
+    t.decimal "conversion_rate", precision: 20, scale: 8
+    t.decimal "conversion_rate_including_fees", precision: 20, scale: 8
+    t.decimal "fees_amount", precision: 20, scale: 3
+    t.decimal "payment_fee", precision: 20, scale: 3
+    t.decimal "transaction_amount_excluding_fees", precision: 20, scale: 3
+    t.string "supplier_account"
+    t.string "supplier_name"
+    t.string "account_number"
+    t.string "name_of_expense_account"
+    t.string "category"
+    t.string "moss_balance_account"
+    t.string "cash_in_transit_account"
+    t.string "reason_for_purchase"
+    t.string "note", default: "", null: false
+    t.string "recipient_account_number"
+    t.string "recipient_bank_code"
+    t.string "payment_reference"
+    t.string "invoice_number"
+    t.string "team_name"
+    t.string "cardholder"
+    t.string "client_number"
+    t.date "first_export_date"
+    t.string "moss_expense_id"
+    t.string "moss_invoice_id"
+    t.string "moss_reimbursement_id"
+    t.string "moss_attachment_url"
+    t.index ["moss_transaction_id", "sub_row_number"], name: "index_moss_balance_movements_tx_id_sub_row", unique: true
+    t.index ["subject_type", "subject_id"], name: "index_moss_balance_movements_subject"
+    t.index ["unique_item_number"], name: "index_moss_balance_movements_unique_item_number", unique: true
+  end
+
   create_table "mounted_attributes", force: :cascade do |t|
     t.string "key", null: false
     t.integer "entry_id", null: false
@@ -1530,6 +1584,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_000100) do
     t.datetime "deleted_at"
     t.string "status", default: "active", null: false, comment: "active, closed, deleted"
     t.jsonb "additional_info", default: {}
+    t.string "transaction_type", default: "WsjrdpCamtTransaction", null: false
+    t.string "banking_url"
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
   end
 

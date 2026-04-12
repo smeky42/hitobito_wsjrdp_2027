@@ -199,6 +199,11 @@ de:
         creditor_id: Gläubiger-Identifikationsnummer
         fill_in_rdp_account_44_as_creditor: rdp Konto 44 (Jamboree Konto) als Kreditor einfügen
         clear_creditor: Kreditor löschen
+        wsjrdp_direct_debit_pre_notification: SEPA Pre-Notification
+        direct_debit_pre_notification: SEPA Pre-Notification
+        wsjrdp_camt_transaction: Kontobewegung
+        camt_transaction: Kontobewegung
+        moss_balance_movement: Moss Wallet Buchung
 
       # de.activerecord.attributes.wsjrdp_camt_transaction
       wsjrdp_camt_transaction:
@@ -249,6 +254,23 @@ de:
         subject: Beteiligte Person
         accounting_entry: Assoziierte Buchung
         accounting_entry_id: Assoziierte Buchung
+
+      # de.activerecord.attributes.moss_balance_movement
+      moss_balance_movement:
+        fin_account: Konto
+        account_identification: Konto
+        amount: Betrag
+        value_date: Valuta
+        payment_date: Zahlungsdatum
+        booking_date: Buchungsdatum
+        currency: Währung
+        note: Moss Buchungstext
+        comment: Kommentar
+        payment_reference: Verwendungszweck
+        created_at: Erstellt
+        updated_at: Geändert
+        deleted_at: Gelöscht
+        subject: Beteiligte Person
 
       # de.activerecord.attributes.wsjrdp_direct_debit_pre_notification
       wsjrdp_direct_debit_pre_notification:

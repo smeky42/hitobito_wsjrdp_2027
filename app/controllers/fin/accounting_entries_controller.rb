@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Fin::AccountingEntriesController < ApplicationController
+class Fin::AccountingEntriesController < Fin::FinController
   include WsjrdpFormHelper
   include WsjrdpFinHelper
   include FormatHelper
@@ -8,6 +8,7 @@ class Fin::AccountingEntriesController < ApplicationController
   include ::ActionView::Helpers::TagHelper
 
   before_action :authorize_action
+
   decorates :group, :person
 
   helper_method :entry
@@ -152,11 +153,11 @@ class Fin::AccountingEntriesController < ApplicationController
   end
 
   def can_fin?
-    can?(:show, AccountingEntry) && !param_is_false(params, :can_fin)
+    can?(:log, accounting_entry) && !param_is_false(cookies, :can_fin)
   end
 
   def can_fin_admin?
-    can?(:fin_admin, AccountingEntry) && param_is_true(params, :fin_admin)
+    can?(:fin_admin, accounting_entry) && param_is_true(cookies, :fin_admin)
   end
 
   private

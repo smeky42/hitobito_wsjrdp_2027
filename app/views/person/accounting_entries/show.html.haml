@@ -8,13 +8,6 @@
 
 #main.row
 
-  - pn_id = accounting_entry.direct_debit_pre_notification_id
-  - unless pn_id.nil?
-    %div
-      Ursprung: SEPA Pre-Notification
-      %a{ href: pre_notification_url(pn_id, admin: can_fin_admin?) }
-        = pn_id
-
   - permitted_attrs_set = Set.new(permitted_attrs)
   = standard_form(accounting_entry, {url: url_for(accounting_entry), method: :put}) do |f|
     = hidden_field_tag("fin_admin", can_fin_admin?)
@@ -29,8 +22,12 @@
     .mt-3
     = field_set_tag do
       %div.border-top.py-2
-      = input_or_render_attrs(f, :created_at, :updated_at)
-      %div.border-top.py-2
+      - if f.object.direct_debit_pre_notification_id.present?
+        = form_like_labeled_attr(f.object, :direct_debit_pre_notification)
+      - if f.object.camt_transaction_id.present?
+        = form_like_labeled_attr(f.object, :camt_transaction)
+      - if f.object.moss_balance_movement_id.present?
+        = form_like_labeled_attr(f.object, :moss_balance_movement)
       = input_or_render_attrs(f, :new_sepa_status_display)
       %div.border-top.py-2
       = input_or_render_attrs(f, :amount_eur)
@@ -52,5 +49,8 @@
                 = t('activerecord.attributes.accounting_entry.fill_in_rdp_account_44_as_creditor')
       = input_or_render_attrs(f, :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address)
       = input_or_render_attrs(f, :creditor_id)
+      %div.border-top.py-2
+      = form_like_labeled_attr(f.object, :created_at)
+      = form_like_labeled_attr(f.object, :updated_at)
 
     = form_buttons(f, cancel_url: cancel_url)
