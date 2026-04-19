@@ -11,28 +11,13 @@ class Contingent::WsjrdpContingentController < ApplicationController
   include ContractHelper
   include WsjrdpContingentHelper
 
-  TEAM_NAMES = [
-    "HoC",
-    "eHoC",
-    "CMT-Management",
-    "IST",
-    "IT",
-    "Finance",
-    "Identity",
-    "Logistics",
-    "Unit-Support",
-    "Media",
-    "Wellbeing"
-  ].freeze
-
-  TAG_NAMES = TEAM_NAMES.map { |s| (s == "HoC" || s == "eHoC") ? s : "#{s}-Team" }.freeze
-
   PERSON_COLUMNS = [
     "id",
     "primary_group_id",
     "nickname",
     "first_name",
     "status",
+    "payment_role",
     "wsj_role",
     "additional_info"
   ].freeze
@@ -60,7 +45,7 @@ class Contingent::WsjrdpContingentController < ApplicationController
     query = Person.select(PERSON_COLUMNS).where(primary_group_id: [1, 4, 45]).includes(includes)
     @cmt_ist_people = make_grouped(
       query,
-      [->(p) { p.wsj_role || "???" }, nil],
+      [->(p) { p.effective_wsj_role }, nil],
       [->(p) { p.primary_group.group_code_or_short_name_or_name || "???" }, nil],
       [->(p) { p.status || "???" }, nil]
     )

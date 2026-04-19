@@ -21,10 +21,3 @@
       %br/
       Aktuelles Saldo:
       = format_cents_de(acc.closing_balance_cents)
-
-  %h1 Personen
-  %div
-    = render "list", title_people_list: [["Bestätigte Personen mit Finanzstatus nicht OK", confirmed_people_sepa_status_not_ok],
-                                         ["Nicht bestätigte Personen in WSJRDP Gruppen", not_confirmed_people_in_wsjrdp_groups],
-                                         ["Bezahlt ≠ 0 in nicht-WSJRDP Gruppen", other_people_with_nonzero_paid],
-                                        ]

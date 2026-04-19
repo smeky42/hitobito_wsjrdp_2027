@@ -7,6 +7,8 @@ class Person::StatusController < ApplicationController
 
   respond_to :html
 
+  helper_method :wsj_role_options
+
   self.permitted_attrs = [
     :status,
     :birthday,
@@ -89,5 +91,10 @@ class Person::StatusController < ApplicationController
 
   def group
     @group ||= Group.find(params[:group_id])
+  end
+
+  def wsj_role_options
+    blank_opt = [nil, "Nicht gesetzt: WSJ Rolle = WSJRDP Rolle = #{person.short_payment_role}"]
+    [blank_opt] + Settings.wsj_role.map { |key, val| [key, val] }
   end
 end

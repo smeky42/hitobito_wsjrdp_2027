@@ -2,6 +2,7 @@
 
 class Wsj27RdpFeeRule < ActiveRecord::Base
   include ContractHelper
+  include WsjrdpInstallmentsHelper
 
   # rubocop:disable Rails/InverseOf
   belongs_to :person, foreign_key: :people_id, optional: true, class_name: "Person"
@@ -20,6 +21,10 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
       self.prev_rule_id = prev_rule_id
     end
     save!
+  end
+
+  def total_fee_reduction_eur
+    BigDecimal(total_fee_reduction_cents) / BigDecimal(100) if total_fee_reduction_cents.present?
   end
 
   def total_fee_reduction?
@@ -81,36 +86,10 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
   end
 
   ##
-  # Return installments (in cents) if this fee rule contains installment data.
+  # Return installments as YearMonthEur objects if this fee rule contains installment data.
   #
   # Returns nil if this fee ruls does not contain installment data.
-  #
-  # The returned list has entries of the form [[year, month], cents].
-  def get_installments_cents
-    year = custom_installments_starting_year
-    list_of_cent_values = custom_installments_cents
-    if year.nil? || list_of_cent_values.nil?
-      nil
-    else
-      month = 1
-      installments = []
-      list_of_cent_values.each do |cents|
-        if cents != 0
-          installments << Wsjrdp2027::YearMonthCents.new([year, month], cents)
-        end
-        month += 1
-        if month > 12
-          year += 1
-          month = 1
-        end
-      end
-      installments
-    end
-  end
-
-  def get_installments_cents_if_active
-    if status == "active"
-      get_installments_cents
-    end
+  def yme_list
+    Wsjrdp2027::PaymentPlanConversionHelper.year_and_cents_a_to_yme_list(custom_installments_starting_year, custom_installments_cents)
   end
 end

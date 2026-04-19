@@ -434,6 +434,12 @@ de:
       print_already_printed: Deine Anmeldung wurde schon gedruckt
     print:
       contract_roles:
+        CMT: Contingent Management Team Mitglied
+        UL: Unit Leader einer Unit
+        YP: Youth Participant in einer Unit
+        IST: International Service Team Mitglied
+        BMT: International Service Team Mitglied
+        EXT: "Externe*r Mitarbeitende*r"
         Group:
           Unit:
             UnapprovedLeader: Unit Leader einer Unit
@@ -559,6 +565,12 @@ de:
       balanced: "Mit der aktuellen Anzahl an Youth Participants und Unit Leader bekommen wir genau %{count} Units zusammen."
       yp_bar_label: "YP: %{count} Units"
       ul_bar_label: "UL: %{count} Units"
+
+  fin:
+    tabs:
+      accounts: "Konten"
+      person_fees: "Personen"
+      plans: "Ratenpläne"
 
   contingent:
     tabs:

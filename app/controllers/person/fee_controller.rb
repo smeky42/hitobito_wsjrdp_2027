@@ -126,20 +126,15 @@ class Person::FeeController < Fin::FinController
   end
 
   def get_installments_table_entries
-    installments = person.installments_cents
-    total = 0
-    entries = []
-    installments.each do |item|
-      cents = item[1]
-      total += cents
-      date = Date.new(item[0][0], item[0][1], 5)
-      entries << {
-        date: I18n.l(date, format: "%b %Y"),
-        amount: format_cents_de(cents),
-        total: format_cents_de(total)
+    total_eur = BigDecimal(0)
+    person.yme_list.map do |item|
+      total_eur += item.eur
+      {
+        date: I18n.l(item.to_time_with_zone(day: 5), format: "%b %Y"),
+        amount: format_eur_de(item.eur),
+        total: format_eur_de(total_eur)
       }
     end
-    entries
   end
 
   def extra_entry_turbo_frame

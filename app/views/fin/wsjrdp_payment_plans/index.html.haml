@@ -1,0 +1,33 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+:css
+  .thead-like {
+    background-color: var(--bs-body-bg) !important;
+    --bs-table-accent-bg: transparent !important;
+  }
+
+#main.row
+
+  %table.table.table-striped.table-hover
+    %thead
+      %tr
+        %th WSJRDP
+        %th Einmalzahlung
+        %th Raten
+        %th Gesamt
+        %th
+    %tbody
+      - @payment_plans.each do |di|
+        %tr
+          %td= di.wsjrdp_role
+          %td= format_attr(di, :single_payment)
+          %td= format_attr(di, :yme_list)
+          %td= format_attr(di, :total_eur)
+          %td.info-col
+            %a{href: url_for(di)}
+              %span.fa.fa-info-circle(aria-label="info" role="img")

@@ -54,11 +54,19 @@ module Wsjrdp2027::PeopleHelper
     person.is_preallocated_ist ? t(:"global.yes") : t(:"global.no")
   end
 
+  def format_person_wsj_role(person)
+    if (role = person.wsj_role).present?
+      role
+    else
+      content_tag(:span, "#{person.short_payment_role} (abgeleitet von der WSJRDP Rolle)", class: "muted fw-light")
+    end
+  end
+
   def format_person_buddy_id(person)
     if person.buddy_id.present?
       "#{person.buddy_id}-#{person.id}"
     else
-      "<span class=\"muted fw-light\">Nicht gesetzt</span>".html_safe
+      content_tag(:span, "Nicht gesetzt", class: "muted fw-light")
     end
   end
 

@@ -8,7 +8,7 @@
     = field_set_tag do
       = f.labeled_collection_select(:status, Settings.status, :first, :last, {}, class: 'span2')
       = f.labeled_input_fields :birthday, :first_name, :last_name, :print_at, :contract_upload_at, :complete_document_upload_at
-      = f.labeled_collection_select(:wsj_role, Settings.wsj_role, :first, :last, {}, class: 'span2')
+      = f.labeled_collection_select(:wsj_role, wsj_role_options, :first, :last, {}, class: 'span2')
       - if @person.ist?
         = f.labeled_boolean_field :is_preallocated_ist
       = f.labeled_input_field :unit_code

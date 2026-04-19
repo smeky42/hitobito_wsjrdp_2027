@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
 #
 #  This file is part of hitobito_wsjrdp_2027 and licensed under the
 #  Affero General Public License version 3 or later. See the COPYING
@@ -9,17 +9,13 @@
 
 module Sheet
   class Fin::WsjrdpFin < Base
-    class Fin::WsjrdpFinAccount < Base
+    class Fin::WsjrdpFinPersonFee < Base
       class_attribute :always_render_parent
       self.parent_sheet = Sheet::Fin::WsjrdpFin
       self.always_render_parent = true
 
       def title
-        if entry.blank?
-          "WSJRDP Geld Konten"
-        else
-          "#{entry.short_name} (Konto #{entry.id})"
-        end
+        "WSJRDP Personen mit spezieller Finanz-Situation"
       end
     end
   end

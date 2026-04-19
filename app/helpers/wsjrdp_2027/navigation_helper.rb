@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-#  Copyright (c) 2025 German Contingent for the World Scout Jamboree 2027.
+#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
 #
 #  This file is part of hitobito_wsjrdp_2027 and licensed under the
 #  Affero General Public License version 3 or later. See the COPYING
@@ -14,17 +14,17 @@ module Wsjrdp2027::NavigationHelper
     label: :groups,
     url: :groups_path,
     icon_name: "users",
-    active_for: %w[groups people fin/ae fin/pn],
+    active_for: %w[groups /people fin/ae fin/pn],
     inactive_for: %w[/invoices invoice_articles invoice_config payment_process invoice_lists?]
   }
 
   WSJRDP_MAIN_FIN = {
     label: :finance,
-    url: :fin_path,
+    url: :wsjrdp_fin_accounts_path,
     icon_name: "money-bill",
     if: ->(_) { can?(:fin_admin, WsjrdpFinAccount) },
     active_for: %w[fin],
-    inactive_for: %w[fin/ae fin/pn people]
+    inactive_for: %w[fin/ae fin/pn /people]
   }
 
   WSJRDP_MAIN_CONTINGENT = {

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_11_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_19_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1149,6 +1149,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_11_000100) do
     t.jsonb "additional_info", default: {}
     t.virtual "zero_padded_id", type: :string, as: "\nCASE\n    WHEN (char_length(((id)::character varying)::text) < 4) THEN (lpad(((id)::character varying)::text, 4, '0'::text))::character varying\n    ELSE (id)::character varying\nEND", stored: true
     t.string "wsj_role"
+    t.decimal "wsjrdp_total_fee_reduction", precision: 20, scale: 3, default: "0.0", null: false
+    t.string "wsjrdp_total_fee_reduction_issue"
+    t.text "wsjrdp_total_fee_reduction_hint"
+    t.text "wsjrdp_total_fee_reduction_comment"
+    t.decimal "wsjrdp_raw_installments_eur", precision: 20, scale: 3, array: true
+    t.string "wsjrdp_installments_issue"
+    t.text "wsjrdp_installments_comment"
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true
@@ -1618,6 +1625,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_11_000100) do
     t.jsonb "additional_info", default: {}
     t.bigint "camt52_entry_id"
     t.bigint "camt53_entry_id"
+  end
+
+  create_table "wsjrdp_payment_plans", id: :serial, force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.text "comment", default: "", null: false
+    t.string "status"
+    t.jsonb "additional_info", default: {}
+    t.string "wsjrdp_role", null: false
+    t.boolean "single_payment"
+    t.decimal "raw_installments_eur", precision: 20, scale: 3, array: true
+    t.index ["wsjrdp_role", "single_payment"], name: "index_wsjrdp_payment_plans_wsjrdp_role_single_payment", unique: true
   end
 
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"

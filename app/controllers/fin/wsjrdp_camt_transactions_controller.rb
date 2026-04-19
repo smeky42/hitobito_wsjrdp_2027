@@ -14,6 +14,7 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
 
   before_action :map_id_to_wsjrdp_camt_transaction_id
   before_action :authorize_action
+  before_action :check_fin_params_and_cookies
 
   helper_method :can_fin_admin?
   helper_method :camt_transaction

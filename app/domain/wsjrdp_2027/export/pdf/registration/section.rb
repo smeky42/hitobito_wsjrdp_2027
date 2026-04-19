@@ -9,7 +9,7 @@ module Wsjrdp2027
       class_attribute :name
 
       delegate :bounds, :bounding_box, :table,
-        :text, :cursor, :font_size, :text_box,
+        :cursor, :font_size, :text_box,
         :fill_and_stroke_rectangle, :fill_color,
         :image, :group, to: :pdf
 

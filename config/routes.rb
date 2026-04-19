@@ -77,19 +77,20 @@ Rails.application.routes.draw do
     end
 
     scope "fin", module: "fin" do
-      get :fin, path: "", to: "wsjrdp_fin#index"
+      get :person_fees, as: "fin_person_fees", to: "wsjrdp_fin_person_fees#index"
       get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       post :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]
-
       resources :moss_balance_movements, controller: "moss_balance_movements", path: "moss_bm", only: [:show, :update] do
         concerns :tx_actions, controller: "moss_balance_movements"
       end
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"
       end
-      resources :wsjrdp_fin_accounts, path: "acc", only: [:show, :update]
+      resources :wsjrdp_fin_accounts, path: "acc", only: [:index, :show, :update]
       resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]
+      resources :wsjrdp_payment_plans, path: "payment_plans", only: [:index, :show, :update]
+      get :fin, path: "", to: "wsjrdp_fin_accounts#index"
     end
 
     namespace "contingent" do
