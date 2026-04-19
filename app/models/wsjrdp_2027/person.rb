@@ -5,6 +5,7 @@ require "geocoder"
 
 module Wsjrdp2027::Person
   include ContractHelper
+  include WsjrdpInstallmentsHelper
 
   # This is just local to this module, it doesn't override anything when this module in included
   GENDERS = %w[m w d].freeze
@@ -171,6 +172,9 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :is_preallocated_ist
       attribute :is_preallocated_ist, :boolean
 
+      jsonb_accessor :additional_info, :raw_wsjrdp_role
+      attribute :raw_wsjrdp_role, :string
+
       eur_attribute :total_fee_eur, cents_attr: :total_fee_cents
       eur_attribute :amount_paid_eur, cents_attr: :amount_paid_cents
       eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
@@ -228,6 +232,43 @@ module Wsjrdp2027::Person
         "#{buddy_id}-#{id}" if buddy_id.present?
       end
 
+      def wsjrdp_role_by_primary_group
+        case primary_group_id
+        when 1, 47
+          "CMT"
+        when 2, 5
+          "UL"
+        when 3, 6
+          "YP"
+        when 4, 7
+          "IST"
+        when 45
+          "BMT"
+        when 46
+          "YP"
+        when 48
+          "EXT"
+        else
+          "EXT"
+        end
+      end
+
+      def wsjrdp_role
+        if (role = raw_wsjrdp_role).present?
+          role
+        else
+          role = short_payment_role
+          case role
+          when "IST"
+            (primary_group_id == 45) ? "BMT" : "IST"
+          when "???"
+            wsjrdp_role_by_primary_group
+          else
+            role
+          end
+        end
+      end
+
       def default_role_type_for_payment_role
         @default_role_type_for_payment_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP).compact.first
       end
@@ -249,18 +290,25 @@ module Wsjrdp2027::Person
             self.payment_role = build_payment_role
             Rails.logger.debug { "set payment_role=#{payment_role.inspect} (was #{payment_role_was.inspect})" }
           end
-          if wsj_role.present? || (wsj_role == default_wsj_role)
-            Rails.logger.debug { "keep wsj_role=#{wsj_role.inspect}" }
+          if wsj_role.present?
+            if wsj_role == default_wsj_role
+              Rails.logger.debug { "keep wsj_role=#{wsj_role.inspect}" }
+            else
+              Rails.logger.debug { "keep wsj_role=#{wsj_role.inspect} (default_wsj_role=#{default_wsj_role.inspect})" }
+            end
           else
-            self.wsj_role = default_wsj_role
-            Rails.logger.debug { "set wsj_role=#{wsj_role.inspect} (was #{wsj_role_was.inspect})" }
+            Rails.logger.debug { "keep blank wsj_role=#{wsj_role.inspect}" }
           end
         end
         payment_role
       end
 
+      def effective_wsj_role
+        wsj_role || short_payment_role
+      end
+
       def short_payment_role  # rubocop:disable Metrics/MethodLength
-        role = payment_role || default_role_type_for_payment_role
+        role = (payment_role || default_role_type_for_payment_role).to_s
         if role.ends_with?("Unit::Member")
           "YP"
         elsif role.ends_with?("Unit::Leader")
@@ -364,17 +412,34 @@ module Wsjrdp2027::Person
         super&.map { |e| e.presence || "wsjrdp2027#{id}" }
       end
 
+      def single_payment_contract?
+        ensure_payment_role.start_with?("EarlyPayer")
+      end
+
       ##
       # Regular full fee in cents based on payment role.
       def regular_full_fee_cents
-        get_full_regular_fee_cents(self)
+        regular_full_fee_cents_for_role(payment_role)
+      end
+
+      ##
+      # Regular full fee in Euro based on payment role.
+      def regular_full_fee_eur
+        regular_full_fee_eur_for_role(payment_role)
       end
 
       ##
       # Total fee (reduced by custom fee reduction) in cents.
       def total_fee_cents
         reduction = active_fee_rule&.total_fee_reduction_cents || 0
-        [get_full_regular_fee_cents(self) - reduction, 0].max
+        [regular_full_fee_cents - reduction, 0].max
+      end
+
+      ##
+      # Total fee (reduced by custom fee reduction) in Euro.
+      def total_fee_eur
+        reduction = active_fee_rule&.total_fee_reduction_eur || 0
+        [regular_full_fee_eur - reduction, 0].max
       end
 
       ##
@@ -416,36 +481,19 @@ module Wsjrdp2027::Person
       end
 
       ##
-      # Array of all installments
-      #
-      # Each entry of the returned array has two elements:
-      # * An array of year and month
-      # * The installment amount in cents
-      #
-      # Examples:
-      # [[[2025, 8], 340000] - YP august 2025 early payer installments
-      def installments_cents
-        installments = active_fee_rule&.get_installments_cents
+      # Array of all installments as YearMonthEur
+      def yme_list
+        installments = active_fee_rule&.yme_list
         if !installments.nil?
           installments
         else
-          regular_installments_cents_for(self).dup
+          ensure_payment_role
+          WsjrdpPaymentPlan.find_by(wsjrdp_role: wsjrdp_role, single_payment: early_payer || false).yme_list
         end
       end
 
       def installments_string
-        installments = installments_cents
-        return "2025: 0" if installments.blank?
-        first_installment = installments.min_by { |i| i.year_month }
-        start = first_installment.year_month.with(month: 1)
-        last_installment = installments.max_by { |i| i.year_month }
-        num_months = start.distance_in_months_to(last_installment)
-        cents_a = [0] * num_months
-        installments.each do |installment|
-          cents_a[start.distance_in_months_to(installment)] = installment.cents
-        end
-        cents_str = cents_a.map { |c| (c.to_f / 100).to_s.sub(/[.]0$/, "") }.join("; ")
-        "#{first_installment.year}: #{cents_str}"
+        Wsjrdp2027::PaymentPlanConversionHelper.installments_to_installments_string(yme_list, blank_year: 2025)
       end
 
       #

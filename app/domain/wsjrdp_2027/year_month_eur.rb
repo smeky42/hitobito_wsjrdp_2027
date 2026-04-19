@@ -8,10 +8,10 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Wsjrdp2027
-  YearMonthCents = Data.define(:year_month, :cents) do
+  YearMonthEur = Data.define(:year_month, :eur) do
     alias_method :to_ary, :deconstruct
 
-    def initialize(year_month:, cents:)
+    def initialize(year_month:, eur:)
       if !year_month.is_a?(YearMonth)
         year_month = YearMonth.new(year_month[0], year_month[1])
       end
@@ -22,23 +22,23 @@ module Wsjrdp2027
       case index
       when :year_month, "year_month", 0, -2
         year_month
-      when :cents, "cents", 1, -1
+      when :eur, "eur", 1, -1
+        decimal
+      when :cents, "cents"
         cents
-      when :eur, "eur"
-        eur
       end
     end
 
     def first = year_month
 
-    def last = cents
+    def last = eur
 
-    def eur
-      (cents.to_d / BigDecimal(100))
+    def cents
+      (eur * BigDecimal(100)).to_i
     end
 
-    def to_year_month_eur
-      YearMonthEuros.new(year_month, eur)
+    def to_year_month_cents
+      YearMonthCents.new(year_month, cents)
     end
 
     delegate :year, :month, :year_month_i, :distance_in_months_to, :to_time_with_zone, to: :year_month

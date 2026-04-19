@@ -15,6 +15,7 @@ class Contingent::WsjrdpCmtController < ApplicationController
     "eHoC",
     "CMT-Management",
     "IST",
+    "BMT",
     "IT",
     "Finance",
     "Identity",
@@ -36,9 +37,9 @@ class Contingent::WsjrdpCmtController < ApplicationController
     @tag_names = TAG_NAMES
     @full_cmt_people = Person.where(primary_group_id: 1).includes([:tags]).sort_by { |p| p.nickname_or_short_first_name.downcase }
     @cmt_people_by_tag = make_tag_to_people_hash(@full_cmt_people)
-    @wsj_role_jpt_people = @full_cmt_people.select { |p| p.wsj_role == "JPT" }
-    @wsj_role_cmt_people = @full_cmt_people.select { |p| p.wsj_role == "CMT" }
-    @wsj_role_other_people = @full_cmt_people.select { |p| !["JPT", "CMT"].include?(p.wsj_role) }
+    @wsj_role_jpt_people = @full_cmt_people.select { |p| p.effective_wsj_role == "JPT" }
+    @wsj_role_cmt_people = @full_cmt_people.select { |p| p.effective_wsj_role == "CMT" }
+    @wsj_role_other_people = @full_cmt_people.select { |p| !["JPT", "CMT"].include?(p.effective_wsj_role) }
   end
 
   private
@@ -60,19 +61,26 @@ class Contingent::WsjrdpCmtController < ApplicationController
 
   def cmt_teams
     sum_people = 0
+    overall_used_ids = Set.new
     rows = TAG_NAMES.map do |tag_name|
       team_people = @cmt_people_by_tag[tag_name] || []
-      team_name = tag_name.delete_suffix("-Team")
-      leads = team_people.select { |p| p.has_tag?("Head-of-#{team_name}") }
-      guests = team_people.select { |p| p.has_tag?("Guest-in-#{team_name}") }
-      used_ids = Set.new(leads.map(&:id) + guests.map(&:id))
-      members = team_people.select { |p| !used_ids.include?(p.id) }
       if team_people.size > 0
+        team_name = tag_name.delete_suffix("-Team")
+        leads = team_people.select { |p| p.has_tag?("Head-of-#{team_name}") }
+        guests = team_people.select { |p| p.has_tag?("Guest-in-#{team_name}") }
+        guests_ids = Set.new(guests.map(&:id))
+        leads_ids = Set.new(leads.map(&:id))
+        used_ids = guests_ids | leads_ids
+        new_leads = leads.select { |p| !overall_used_ids.include?(p.id) }
+        members = team_people.select { |p| !used_ids.include?(p.id) }
+        overall_used_ids.merge(leads_ids)
+        overall_used_ids.merge(members.map(&:id))
         label = content_tag(:a, html_escape(team_name), href: tag_search_path(1, tag_name))
-        sum_people += members.size
+        team_count = new_leads.size + members.size
+        sum_people += team_count
         {
           label: label,
-          count: members.size,
+          count: team_count,
           people_with_labels: [
             [(leads.size == 1) ? "Lead:" : "Leads:", leads],
             ["Mitglieder:", members],

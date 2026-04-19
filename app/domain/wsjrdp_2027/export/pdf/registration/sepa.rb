@@ -33,11 +33,11 @@ module Wsjrdp2027
         pdf.move_down 1.mm
         text "Der Teilnahmebeitrag zum Jamboree"
         pdf.indent(0.75.cm) do
-          pdf.make_table([
+          pdf.table([
             [{content: "von", width: 3.cm}, @person.full_name],
             ["als", person_payment_role_full_name(@person)],
-            ["in Höhe von", format_cents_de(@person.total_fee_cents)]
-          ], cell_style: {padding: [1, 0, 1, 0], border_width: 0, inline_format: true}).draw
+            ["in Höhe von", @person.total_fee_eur_text]
+          ], cell_style: {padding: [1, 0, 1, 0], border_width: 0, inline_format: true})
         end
         pdf.move_down 2
         text "wird mittels SEPA-Basislastschrift eingezogen:"
@@ -46,7 +46,7 @@ module Wsjrdp2027
         text "Ich ermächtige den Ring deutscher Pfadfinder*innenverbände e.V., " \
              "die Zahlungen gemäß Zahlungsplan von meinem Konto mittels Lastschrift einzuziehen. " \
              "Maßgeblich ist das von mir gewählte Zahlungsmodell " \
-             "(#{early_payer?(@person) ? "Einmalzahlung" : "Ratenzahlungen"}). " \
+             "(#{@person.single_payment_contract? ? "Einmalzahlung" : "Ratenzahlungen"}). " \
              "Zugleich weise ich mein Kreditinstitut an, die vom Ring deutscher " \
              "Pfadfinder*innenverbände e.V. auf mein Konto gezogenen Lastschriften einzulösen."
 
@@ -58,24 +58,24 @@ module Wsjrdp2027
 
         pdf.move_down 4.mm
         pdf.indent(0.75.cm) do
-          pdf.make_table([
-            [{content: "IBAN:", width: 5.5.cm}, @person.sepa_iban.upcase],
+          pdf.table([
+            [{content: "IBAN:", width: 5.5.cm}, @person.sepa_iban.upcase.delete(" ")],
             ["Mandatsreferenz:", @person.sepa_mandate_id],
             ["Gläubiger-Identifikationsnummer:",
               "DE81 WSJ 0000 2017 275"],
             ["Kontoinhaber*in:", @person.sepa_name],
             ["Adresse:", @person.sepa_address]
-          ], cell_style: {padding: [1, 0, 1, 0], border_width: 0, inline_format: true}).draw
+          ], cell_style: {padding: [1, 0, 1, 0], border_width: 0, inline_format: true})
         end
         pdf.move_down 3.mm
 
-        if early_payer?(@person)
+        if @person.single_payment_contract?
           text "Der Einzug des Gesamtbetrages von #{format_cents_de(@person.total_fee_cents)} erfolgt am 5. Januar 2026."
         else
           text "Der Einzug erfolgt am 5. des jeweiligen Monats bzw. am " \
                "darauffolgenden Banktag nach folgendem Ratenplan:"
 
-          @person.installments_cents.each_slice(10).each do |installments_slice|
+          @person.yme_list.each_slice(10).each do |installments_slice|
             pdf.move_down 1.mm
             dates = installments_slice.map do |installment|
               I18n.with_locale(:de) do
@@ -85,18 +85,18 @@ module Wsjrdp2027
                 }
               end
             end
-            euros = installments_slice.map { |installment| format_cents_de(installment.cents, zero_cents: "") }
-            pdf.make_table(
+            euros = installments_slice.map { |installment| format_eur_de(installment.eur, zero_cents: "") }
+            pdf.table(
               [dates, euros],
               cell_style: {
                 padding: 1.4,
-                border_width: 0.5,
+                border_width: 0.4,
                 border_color: "CCCCCC",
                 align: :center,
                 inline_format: true,
                 size: 8
               }
-            ).draw
+            )
           end
         end
 

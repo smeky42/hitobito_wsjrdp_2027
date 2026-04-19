@@ -4,6 +4,7 @@ module Wsjrdp2027
   module Export::Pdf::Registration
     class Travel < Section
       include ContractHelper
+      include WsjrdpInstallmentsHelper
 
       self.name = "Teilnahme- und Reisebedingungen"
 
@@ -129,30 +130,44 @@ module Wsjrdp2027
 
         pdf.start_new_page
         text "Bei Wahl des Ratenzahlungsmodells:"
-        pdf.make_table(payment_array_sepa.slice!(0, 5), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
-          cell_style: {padding: 1,
-                       border_width: 0,
-                       inline_format: true,
-                       size: 8}).draw
+        pdf.move_down 2
+
+        pdf.table(
+          regular_payment_installments_table,
+          column_widths: [170, 40] + ([32] * regular_payment_installments_table[0].size),
+          cell_style: {
+            align: :right, valign: :bottom,
+            size: 8, padding: [0, 4, 2.6, 4],
+            inline_format: true, border_width: 0.4, border_color: "CCCCCC"
+          }
+        ) do
+          column(0).align = :left
+        end
 
         pdf.move_down 3.mm
         text "Bei Wahl des Einmalzahlungsmodells: "
         text "- am 5. August 2025 (bei Anmeldung bis 31. Juli 2025)"
         text "- am 5. November 2025 (bei Anmeldung bis 31. Oktober 2025)"
-        text "- zum Termin der nächsten Rate (im Ratenzahlungsmodell) mindestens 4 Kalendertage nach Anmeldung (bei Anmeldung ab 1. November 2025)"
+        text "- am 5. Januar 2026 (bei Anmeldung bis 31. Dezember 2025)"
+        text "- zum Termin des nächsten monatlichen Einzugs mindestens 4 Kalendertage nach Anmeldung (bei Anmeldung ab 1. Januar 2026)"
 
-        pdf.make_table(payment_array_sepa.slice!(5, 4), column_widths: [150, 40, 40, 30, 30, 30, 30, 30, 30, 30],
-          cell_style: {padding: 1,
-                       border_width: 0,
-                       inline_format: true,
-                       size: 8}).draw
+        pdf.move_down 2
+        pdf.table(
+          single_payment_installments_table,
+          column_widths: [170, 40],
+          cell_style: {size: 8, valign: :bottom, padding: [0, 4, 2.6, 4], inline_format: true, border_width: 0.4, border_color: "CCCCCC"}
+        ) do
+          column(1).align = :right
+        end
 
         pdf.move_down 3.mm
         text "NICHT im Teilnahmebeitrag enthalten sind:"
+        pdf.move_down 1
         text "- Reiserücktrittversicherung"
         text "- Gepäckversicherung"
         text "- persönliche Ausgaben"
         text "- Kosten für Einreisegenehmigungen nach Polen (falls erforderlich)"
+        pdf.move_down 2
         text "Der Abschluss einer Reiserücktrittsversicherung wird dringend empfohlen."
 
         pdf.move_down 3.mm
@@ -349,6 +364,40 @@ module Wsjrdp2027
         text "Stand dieser Hinweise: Juni 2025 (v1 vom 28.06.2025)"
 
         text ""
+      end
+
+      private
+
+      def regular_payment_installments_table
+        if @regular_payment_installments_table.nil?
+          installments_table = default_regular_payment_installments_table
+
+          header_row = ["Rolle", "Gesamt", *(installments_table[0][1..].map { |yme| format_ym_de(yme.year_month, space: "\n") })]
+          @regular_payment_installments_table = [header_row] + installments_table.map do |row|
+            yme_list = row[1..]
+            [
+              role_full_name(row[0]),
+              format_eur_de(yme_list.map(&:eur).sum, zero_cents: ""),
+              *(yme_list.map { |yme| (yme.eur != 0) ? format_eur_de(yme.eur, zero_cents: "") : "—" })
+            ]
+          end
+        end
+        @regular_payment_installments_table
+      end
+
+      def single_payment_installments_table
+        if @single_payment_installments_table.nil?
+          @single_payment_installments_table = (
+            [["Rolle", "Gesamt"]] + default_single_payment_total_fee_eur_table.map do |role, eur|
+              [role_full_name(role), format_eur_de(eur, zero_cents: "")]
+            end
+          )
+        end
+        @single_payment_installments_table
+      end
+
+      def format_ym_de(ym, space: " ")
+        I18n.l(ym.to_time_with_zone(day: 5), format: "%b") + "#{space}#{ym.year}"
       end
     end
     # rubocop:enable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity

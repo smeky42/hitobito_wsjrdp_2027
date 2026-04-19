@@ -6,82 +6,9 @@ module ContractHelper
 
   extend ActiveSupport::Concern
 
-  # rubocop:disable Layout/ExtraSpacing
-  # rubocop:disable Layout/SpaceInsideArrayLiteralBrackets
-  # rubocop:disable Layout/HashAlignment
-  PAYMENT_ROLE_TO_INSTALLMENTS_CENTS = {
-    "RegularPayer::Group::Unit::Member" => [
-      Wsjrdp2027::YearMonthCents.new([2025, 12], 30000),
-      Wsjrdp2027::YearMonthCents.new([2026,  1], 50000),
-      Wsjrdp2027::YearMonthCents.new([2026,  2], 50000),
-      Wsjrdp2027::YearMonthCents.new([2026,  3], 50000),
-      Wsjrdp2027::YearMonthCents.new([2026,  8], 40000),
-      Wsjrdp2027::YearMonthCents.new([2026, 11], 40000),
-      Wsjrdp2027::YearMonthCents.new([2027,  2], 40000),
-      Wsjrdp2027::YearMonthCents.new([2027,  5], 40000)
-    ].freeze,
-    "RegularPayer::Group::Unit::Leader" => [
-      Wsjrdp2027::YearMonthCents.new([2025, 12], 15000),
-      Wsjrdp2027::YearMonthCents.new([2026,  1], 35000),
-      Wsjrdp2027::YearMonthCents.new([2026,  2], 35000),
-      Wsjrdp2027::YearMonthCents.new([2026,  3], 35000),
-      Wsjrdp2027::YearMonthCents.new([2026,  8], 30000),
-      Wsjrdp2027::YearMonthCents.new([2026, 11], 30000),
-      Wsjrdp2027::YearMonthCents.new([2027,  2], 30000),
-      Wsjrdp2027::YearMonthCents.new([2027,  5], 30000)
-    ].freeze,
-    "RegularPayer::Group::Ist::Member" => [
-      Wsjrdp2027::YearMonthCents.new([2025, 12], 20000),
-      Wsjrdp2027::YearMonthCents.new([2026,  1], 40000),
-      Wsjrdp2027::YearMonthCents.new([2026,  2], 40000),
-      Wsjrdp2027::YearMonthCents.new([2026,  3], 40000),
-      Wsjrdp2027::YearMonthCents.new([2026,  8], 30000),
-      Wsjrdp2027::YearMonthCents.new([2026, 11], 30000),
-      Wsjrdp2027::YearMonthCents.new([2027,  2], 30000),
-      Wsjrdp2027::YearMonthCents.new([2027,  5], 30000)
-    ].freeze,
-    "RegularPayer::Group::Root::Member" => [
-      Wsjrdp2027::YearMonthCents.new([2025, 12],  5000),
-      Wsjrdp2027::YearMonthCents.new([2026,  1], 25000),
-      Wsjrdp2027::YearMonthCents.new([2026,  2], 25000),
-      Wsjrdp2027::YearMonthCents.new([2026,  3], 25000),
-      Wsjrdp2027::YearMonthCents.new([2026,  8], 20000),
-      Wsjrdp2027::YearMonthCents.new([2026, 11], 20000),
-      Wsjrdp2027::YearMonthCents.new([2027,  2], 20000),
-      Wsjrdp2027::YearMonthCents.new([2027,  5], 20000)
-    ].freeze,
-    "RegularPayer::Group::Extern::Member" => [].freeze,
-    "EarlyPayer::Group::Unit::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 340000) ].freeze,
-    "EarlyPayer::Group::Unit::Leader" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 240000) ].freeze,
-    "EarlyPayer::Group::Ist::Member" =>  [ Wsjrdp2027::YearMonthCents.new([2025, 8], 260000) ].freeze,
-    "EarlyPayer::Group::Root::Member" => [ Wsjrdp2027::YearMonthCents.new([2025, 8], 160000) ].freeze,
-    "EarlyPayer::Group::Extern::Member" => [].freeze
-  }.freeze
-  # rubocop:enable Layout/ExtraSpacing
-  # rubocop:enable Layout/SpaceInsideArrayLiteralBrackets
-  # rubocop:enable Layout/HashAlignment
-
   GOOD_CONDUCT_MISSING_TAG = "eFZ-Einsicht-fehlt"
 
   included do
-    # rubocop:disable Metrics/MethodLength
-    def payment_array
-      [
-        ["Rolle", "Gesamt", "Dez 2025", "Jan 2026", "Feb 2026", "Mär 2026", "Aug 2026", "Nov 2026", "Feb 2027", "Mai 2027"],
-        ["RegularPayer::Group::Unit::Member", "3400", "300", "500", "500", "500", "400", "400", "400", "400"],
-        ["RegularPayer::Group::Unit::Leader", "2400", "150", "350", "350", "350", "300", "300", "300", "300"],
-        ["RegularPayer::Group::Ist::Member", "2600", "200", "400", "400", "400", "300", "300", "300", "300"],
-        ["RegularPayer::Group::Root::Member", "1600", "50", "250", "250", "250", "200", "200", "200", "200"],
-        ["EarlyPayer::Group::Unit::Member", "3400", "", "", "", "", "", "", "", ""],
-        ["EarlyPayer::Group::Unit::Leader", "2400", "", "", "", "", "", "", "", ""],
-        ["EarlyPayer::Group::Ist::Member", "2600", "", "", "", "", "", "", "", ""],
-        ["EarlyPayer::Group::Root::Member", "1600", "", "", "", "", "", "", "", ""],
-        ["RegularPayer::Group::Extern::Member", "0", "", "", "", "", "", "", "", ""],
-        ["EarlyPayer::Group::Extern::Member", "0", "", "", "", "", "", "", "", ""]
-      ]
-    end
-    # rubocop:enable Metrics/MethodLength
-
     # each person has a primary group which defines the price and role type
     def role_type(person)
       roles = PersonDecorator.new(person).current_roles_grouped
@@ -192,40 +119,6 @@ module ContractHelper
       end.html_safe
     end
 
-    def early_payer?(person)
-      person.ensure_payment_role.start_with?("EarlyPayer")
-    end
-
-    def payment_array_by(person)
-      role = person.ensure_payment_role
-      payment_array.find { |row| row[0] == role }
-    end
-
-    def payment_value(person)
-      payment_array_by(person)[1]
-    end
-
-    def payment_value_cents(person)
-      payment_array_by(person)[1].to_i * 100
-    end
-
-    def get_full_regular_fee_eur(person)
-      payment_array_by(person)[1]
-    end
-
-    def get_full_regular_fee_cents(person)
-      payment_array_by(person)[1].to_i * 100
-    end
-
-    def get_total_fee_cents(person, fee_rule = nil)
-      full_regular_fee = payment_array_by(person)[1].to_i * 100
-      total_fee = full_regular_fee
-      if fee_rule && fee_rule.status == "active" && fee_rule.person == person
-        total_fee -= fee_rule.total_fee_reduction_cents || 0
-      end
-      total_fee
-    end
-
     def compute_contractual_compensation_cents(cents, today: nil) # rubocop:disable Metrics/MethodLength
       today = Time.zone.today if today.nil?
       today_i = today.strftime("%Y%m%d").to_i
@@ -240,65 +133,19 @@ module ContractHelper
       end
     end
 
-    def regular_installments_cents_for(person)
-      role = person.ensure_payment_role
-      PAYMENT_ROLE_TO_INSTALLMENTS_CENTS[role]
-    end
-
-    def get_installments_cents(person, fee_rule = nil)
-      installments = fee_rule&.get_installments_cents_if_active
-      if installments
-        installments
-      elsif person.early_payer
-        [[[2025, 8], get_total_fee_cents(person, fee_rule)]]
-      else
-        regular_installments_cents_for(person).dup
-      end
-    end
-
-    # rubocop:disable Metrics/MethodLength
-    def payment_array_sepa
-      array = []
-
-      payment_array.each_with_index do |row, row_index|
-        if row_index == 0
-          array[0] = row
-        else
-          new_row = []
-          row.each_with_index do |element, index|
-            if index == 0
-              new_row[index] = role_full_name(element.split("::", 2)[1])
-            elsif !element.blank?
-              new_row[index] = "#{element} €"
-            end
-          end
-          array[row_index] = new_row
-        end
-      end
-
-      array
-    end
-    # rubocop:enable Metrics/MethodLength
-
-    def payment_array_table(person)
-      array = payment_array_by(person)
-
-      array.each_with_index do |element, index|
-        if index == 0
-          array[index] = role_full_name(array[0].split("::", 2)[1])
-        elsif !array[index].blank?
-          array[index] = "#{array[index]} €"
-        end
-      end
-
-      [payment_array[0], array]
-    end
-
     def format_cents_de(cents, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ", format: nil)
       return nil if cents.blank?
       currency = "€" if currency == "EUR"
       format = "%n#{space}%u" if format.blank?
       number = cents.to_f / 100.0
+      number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: format).sub(",00", zero_cents)
+    end
+
+    def format_eur_de(eur, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ", format: nil)
+      return nil if eur.blank?
+      currency = "€" if currency == "EUR"
+      format = "%n#{space}%u" if format.blank?
+      number = BigDecimal(eur)
       number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: format).sub(",00", zero_cents)
     end
 

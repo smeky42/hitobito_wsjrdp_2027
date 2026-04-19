@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-#  Copyright (c) 2025 German Contingent for the World Scout Jamboree 2027.
+#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
 #
 #  This file is part of hitobito_wsjrdp_2027 and licensed under the
 #  Affero General Public License version 3 or later. See the COPYING
@@ -17,6 +17,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
   before_action :authorize_action
+  before_action :check_fin_params_and_cookies
 
   helper_method :can_fin_admin?
   helper_method :fin_account, :ordered_transactions
@@ -26,15 +27,22 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   helper_method :link_subject_path
   helper_method :disallow_link_subject_path
 
+  def index
+    authorize!(:fin_admin, WsjrdpFinAccount)
+    @wsjrdp_fin_accounts = WsjrdpFinAccount.all
+  end
+
   def show
+    authorize!(:show, fin_account)
     @wsjrdp_fin_account ||= fin_account
     @ordered_transactions ||= ordered_transactions
     render :show
   end
 
   def update
-    @wsjrdp_fin_account ||= fin_account
+    authorize!(:edit, fin_account)
     authorize!(:fin_admin, fin_account)
+    @wsjrdp_fin_account ||= fin_account
     @wsjrdp_fin_account.attributes = permitted_params
     if @wsjrdp_fin_account.save
       redirect_to return_url
@@ -58,7 +66,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:show, fin_account)
+    authorize!(:show, WsjrdpFinAccount)
   end
 
   def return_url

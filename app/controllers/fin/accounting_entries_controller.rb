@@ -16,7 +16,6 @@ class Fin::AccountingEntriesController < Fin::FinController
   helper_method :accounting_entry
   helper_method :can_fin?
   helper_method :can_fin_admin?
-  helper_method :get_accounting_entry_path
   helper_method :person
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
@@ -195,10 +194,6 @@ class Fin::AccountingEntriesController < Fin::FinController
       array = array.collect(&block).compact
     end
     super(array, sep)
-  end
-
-  def get_accounting_entry_path(entry = nil)
-    accounting_entry_path(entry.nil? ? accounting_entry : entry)
   end
 
   def return_url

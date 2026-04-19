@@ -9,6 +9,10 @@
 
 module Sheet
   class Fin::WsjrdpFin < Base
+    tab "fin.tabs.accounts", :wsjrdp_fin_accounts_path
+    tab "fin.tabs.person_fees", :fin_person_fees_path
+    tab "fin.tabs.plans", :wsjrdp_payment_plans_path
+
     def title
       "Finanzen"
     end
