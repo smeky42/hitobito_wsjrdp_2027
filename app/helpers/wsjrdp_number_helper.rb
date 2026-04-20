@@ -17,7 +17,7 @@ module WsjrdpNumberHelper
       if cents.nil?
         nil
       else
-        cents.to_f / 100.0
+        BigDecimal(cents) / BigDecimal(100)
       end
     end
 
@@ -25,7 +25,7 @@ module WsjrdpNumberHelper
       if cents.nil?
         nil
       else
-        eur = cents.to_f / 100.0
+        eur = BigDecimal(cents) / BigDecimal(100)
         number_to_currency(eur, separator: separator, delimiter: delimiter, format: format)
       end
     end
@@ -34,7 +34,7 @@ module WsjrdpNumberHelper
       if eur.blank?
         nil
       else
-        (eur.to_f * 100.0).round
+        (BigDecimal(eur.to_s) * BigDecimal(100)).round
       end
     end
   end

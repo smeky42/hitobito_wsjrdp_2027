@@ -137,7 +137,7 @@ module ContractHelper
       return nil if cents.blank?
       currency = "€" if currency == "EUR"
       format = "%n#{space}%u" if format.blank?
-      number = cents.to_f / 100.0
+      number = BigDecimal(cents) / BigDecimal(100)
       number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: format).sub(",00", zero_cents)
     end
 
