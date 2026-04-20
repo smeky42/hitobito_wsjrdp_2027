@@ -432,14 +432,14 @@ module Wsjrdp2027::Person
       # Total fee (reduced by custom fee reduction) in cents.
       def total_fee_cents
         reduction = active_fee_rule&.total_fee_reduction_cents || 0
-        [regular_full_fee_cents - reduction, 0].max
+        [(regular_full_fee_cents || 340000) - reduction, 0].max
       end
 
       ##
       # Total fee (reduced by custom fee reduction) in Euro.
       def total_fee_eur
         reduction = active_fee_rule&.total_fee_reduction_eur || 0
-        [regular_full_fee_eur - reduction, 0].max
+        [(regular_full_fee_eur || BigDecimal(3400)) - reduction, 0].max
       end
 
       ##
