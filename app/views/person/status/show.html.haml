@@ -2,16 +2,16 @@
 
 #main.row
   - extra_render_attrs = []
-  - if @person.active_total_fee_reduction?
-    - extra_render_attrs << :active_total_fee_reduction_display
+  - if (@person.active_total_fee_reduction || 0) != 0
+    - extra_render_attrs << :active_total_fee_reduction
+  - if (@person.planned_total_fee_reduction || 0) != 0
+    - extra_render_attrs << :planned_total_fee_reduction
   - if @person.active_custom_installments?
     - extra_render_attrs << :active_custom_installments_issue_display
     - extra_render_attrs << :active_custom_installments_display
     - extra_render_attrs << :active_custom_installments_comment
   - else
     - extra_render_attrs << :installments_string
-  - if @person.planned_total_fee_reduction?
-    - extra_render_attrs << :planned_total_fee_reduction_display
   - if @person.planned_custom_installments?
     - extra_render_attrs << :planned_custom_installments_issue_display
     - extra_render_attrs << :planned_custom_installments_display
@@ -176,3 +176,20 @@
        class: "btn-danger",
        data: {confirm: "Soll der geplante Ratenplan wirklich gelöscht werden?"},
        title: t('activerecord.buttons.delete_planned_custom_installments'))
+- if ((@person.planned_total_fee_reduction || 0) != 0) || @person.planned_total_fee_reduction_hint.present?
+  #main.row-fluid(style="margin-top: 25px")
+    %div.muted(style="margin-bottom:5px;")
+      = raw(t('people.check_status_help.activate_total_fee_reduction_help'))
+    = action_button(t("activerecord.buttons.activate_total_fee_reduction"),
+       :status_activate_total_fee_reduction_group_person,
+       nil,
+       method: :post,
+       data: {confirm: "Soll die geplante Beitragsreduktion wirklich aktiviert werden?"},
+       title: t('activerecord.buttons.activate_total_fee_reduction'))
+    = action_button(t("activerecord.buttons.delete_total_fee_reduction"),
+       :status_delete_total_fee_reduction_group_person,
+       "trash-alt",
+       method: :post,
+       class: "btn-danger",
+       data: {confirm: "Soll die geplante Beitragsreduktion wirklich gelöscht werden?"},
+       title: t('activerecord.buttons.delete_total_fee_reduction'))

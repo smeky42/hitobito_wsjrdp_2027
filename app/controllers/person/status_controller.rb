@@ -8,6 +8,7 @@ class Person::StatusController < ApplicationController
   respond_to :html
 
   helper_method :wsj_role_options
+  helper_method :permitted_attrs
 
   self.permitted_attrs = [
     :status,
@@ -19,6 +20,9 @@ class Person::StatusController < ApplicationController
     :complete_document_upload_at,
     :unit_code,
     :cluster_code,
+    :planned_total_fee_reduction,
+    :planned_total_fee_reduction_hint,
+    :planned_total_fee_reduction_comment,
     :planned_custom_installments_string,
     :planned_custom_installments_issue,
     :planned_custom_installments_comment,
@@ -62,6 +66,29 @@ class Person::StatusController < ApplicationController
     authorize!(:log, person)
     Rails.logger.info "soft_delete #{person.planned_fee_rule.inspect}"
     person.planned_fee_rule&.soft_delete!
+    respond_with person, location: status_group_person_path
+  end
+
+  def activate_total_fee_reduction
+    authorize!(:log, person)
+    Rails.logger.info "activate #{person.planned_total_fee_reduction.inspect}"
+    person.active_total_fee_reduction = person.planned_total_fee_reduction
+    person.active_total_fee_reduction_hint = person.planned_total_fee_reduction_hint
+    person.active_total_fee_reduction_comment = person.planned_total_fee_reduction_comment
+    person.planned_total_fee_reduction = nil
+    person.planned_total_fee_reduction_hint = nil
+    person.planned_total_fee_reduction_comment = nil
+    person.save
+    respond_with person, location: status_group_person_path
+  end
+
+  def delete_total_fee_reduction
+    authorize!(:log, person)
+    Rails.logger.info "delete #{person.planned_total_fee_reduction.inspect}"
+    person.planned_total_fee_reduction = nil
+    person.planned_total_fee_reduction_hint = nil
+    person.planned_total_fee_reduction_comment = nil
+    person.save
     respond_with person, location: status_group_person_path
   end
 

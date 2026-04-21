@@ -23,22 +23,6 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
     save!
   end
 
-  def total_fee_reduction_eur
-    BigDecimal(total_fee_reduction_cents) / BigDecimal(100) if total_fee_reduction_cents.present?
-  end
-
-  def total_fee_reduction?
-    !(total_fee_reduction_cents.nil? || total_fee_reduction_cents == 0)
-  end
-
-  def total_fee_reduction_display
-    if total_fee_reduction_cents.nil? || total_fee_reduction_cents == 0
-      "keine"
-    else
-      format_cents_de(total_fee_reduction_cents)
-    end
-  end
-
   def custom_installments?
     ![custom_installments_starting_year.nil?, custom_installments_cents.nil?,
       custom_installments_comment.blank?, custom_installments_issue.blank?].all?

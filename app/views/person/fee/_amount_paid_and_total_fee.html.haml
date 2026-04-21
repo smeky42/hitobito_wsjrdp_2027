@@ -21,7 +21,7 @@
   %span(style="text-align: right;")
     %div.fa-2x.fw-light.muted
       = format_cents_de(@person.total_fee_cents)
-    %div.form-text= @person.total_fee_label(comment_sep: " ", space: " ")
+    %div.form-text= @person.total_fee_label(hint_sep: " ", space: " ")
 %div.my-3
   Finanzstatus:
   - if can_fin?
