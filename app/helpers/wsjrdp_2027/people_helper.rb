@@ -86,6 +86,22 @@ module Wsjrdp2027::PeopleHelper
     Settings.sepa_status[person.sepa_status].presence || person.sepa_status
   end
 
+  def format_person_active_total_fee_reduction(person)
+    format_eur_with_hint_and_comment(
+      person.active_total_fee_reduction,
+      hint: person.active_total_fee_reduction_hint,
+      comment: person.active_total_fee_reduction_comment
+    )
+  end
+
+  def format_person_planned_total_fee_reduction(person)
+    format_eur_with_hint_and_comment(
+      person.planned_total_fee_reduction,
+      hint: person.planned_total_fee_reduction_hint,
+      comment: person.planned_total_fee_reduction_comment
+    )
+  end
+
   def format_person_deregistration_issue(person)
     auto_link_escaped_multiline(person.deregistration_issue) if person.deregistration_issue.present?
   end
@@ -129,5 +145,15 @@ module Wsjrdp2027::PeopleHelper
 
   def format_email_or_nil(email_addr)
     mail_to(email_addr, email_addr) if email_addr.present?
+  end
+
+  def format_eur_with_hint_and_comment(eur, hint: nil, comment: nil, not_set_text: "Nicht gesetzt")
+    if eur.nil?
+      content_tag(:span, "Nicht gesetzt", class: "muted fw-light")
+    else
+      s = format_eur_de(eur)
+      s = "#{s} (#{hint})" if hint.present?
+      s
+    end
   end
 end

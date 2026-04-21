@@ -70,7 +70,7 @@ module Wsjrdp2027
         pdf.move_down 3.mm
 
         if @person.single_payment_contract?
-          text "Der Einzug des Gesamtbetrages von #{format_cents_de(@person.total_fee_cents)} erfolgt am 5. Januar 2026."
+          text "Der Einzug des Gesamtbetrages von #{format_eur_de(@person.total_fee_eur)} erfolgt am 5. Januar 2026."
         else
           text "Der Einzug erfolgt am 5. des jeweiligen Monats bzw. am " \
                "darauffolgenden Banktag nach folgendem Ratenplan:"

@@ -30,6 +30,14 @@ module WsjrdpNumberHelper
       end
     end
 
+    def eur_display_or_nil(eur, separator: ",", delimiter: ".", format: "%n")
+      if eur.nil?
+        nil
+      else
+        number_to_currency(eur, separator: separator, delimiter: delimiter, format: format)
+      end
+    end
+
     def eur_to_cents_or_nil(eur)
       if eur.blank?
         nil
@@ -40,8 +48,7 @@ module WsjrdpNumberHelper
   end
 
   module ClassMethods
-    # rubocop:disable Style/RedundantInterpolation
-    def eur_attribute(name, cents_attr:)
+    def eur_attribute(name, cents_attr:)  # rubocop:disable Style/RedundantInterpolation
       define_method(:"#{name}") do
         cents = send(cents_attr)
         cents_to_eur_or_nil(cents)
@@ -61,6 +68,26 @@ module WsjrdpNumberHelper
         {value: value, type: "number", lang: "de-DE", step: 0.01, autocomplete: "off"}
       end
     end
-    # rubocop:enable Style/RedundantInterpolation
+
+    def cents_attribute(name, eur_attr:)  # rubocop:disable Style/RedundantInterpolation
+      define_method(:"#{name}_cents") do
+        eur = send(eur_attr)
+        eur_to_cents_or_nil(eur)
+      end
+      define_method(:"#{name}_cents=") do |value|
+        eur = cents_to_eur_or_nil(value)
+        send(:"#{eur_attr}=", eur)
+      end
+      # attribute name.to_sym, :float
+      define_method(:"#{name}_display") do
+        eur = send(eur_attr)
+        eur_display_or_nil(eur)
+      end
+      define_method(:"#{name}_input_field_options") do
+        eur = send(eur_attr)
+        value = eur_display_or_nil(eur, delimiter: "")
+        {value: value, type: "number", lang: "de-DE", step: 0.01, autocomplete: "off"}
+      end
+    end
   end
 end

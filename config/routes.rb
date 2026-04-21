@@ -44,6 +44,8 @@ Rails.application.routes.draw do
           put "status" => "person/status#update"
           post "status/activate_planned_custom_installments" => "person/status#activate_planned_custom_installments"
           post "status/delete_planned_custom_installments" => "person/status#delete_planned_custom_installments"
+          post "status/activate_total_fee_reduction" => "person/status#activate_total_fee_reduction"
+          post "status/delete_total_fee_reduction" => "person/status#delete_total_fee_reduction"
           post "status/review_documents" => "person/status#review_documents"
           post "status/approve_documents" => "person/status#approve_documents"
 

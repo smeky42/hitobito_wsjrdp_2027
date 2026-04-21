@@ -179,6 +179,16 @@ module Wsjrdp2027::Person
       eur_attribute :amount_paid_eur, cents_attr: :amount_paid_cents
       eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
 
+      jsonb_accessor :additional_info, :planned_total_fee_reduction, strip: true
+      attribute :planned_total_fee_reduction, :decimal
+      cents_attribute :planned_total_fee_reduction, eur_attr: :planned_total_fee_reduction
+
+      jsonb_accessor :additional_info, :planned_total_fee_reduction_hint, strip: true
+      attribute :planned_total_fee_reduction_hint, :string
+
+      jsonb_accessor :additional_info, :planned_total_fee_reduction_comment, strip: true
+      attribute :planned_total_fee_reduction_comment, :text
+
       def short_full_name
         first_names = first_name ? first_name.split : []
         name_parts = if !nickname.blank? && Set.new(first_names).include?(nickname)
@@ -431,45 +441,45 @@ module Wsjrdp2027::Person
       ##
       # Total fee (reduced by custom fee reduction) in cents.
       def total_fee_cents
-        reduction = active_fee_rule&.total_fee_reduction_cents || 0
-        [(regular_full_fee_cents || 340000) - reduction, 0].max
+        reduction_cents = (active_total_fee_reduction * BigDecimal(100)).to_i
+        [(regular_full_fee_cents || 340000) - reduction_cents, 0].max
       end
 
       ##
       # Total fee (reduced by custom fee reduction) in Euro.
       def total_fee_eur
-        reduction = active_fee_rule&.total_fee_reduction_eur || 0
-        [(regular_full_fee_eur || BigDecimal(3400)) - reduction, 0].max
+        reduction_eur = active_total_fee_reduction
+        [(regular_full_fee_eur || BigDecimal(3400)) - reduction_eur, 0].max
       end
 
       ##
       # Label for displaying total_fee_cents.
       #
       # The label gives some hints about a fee reduction if any applies.
-      def total_fee_label(comment_sep: " ", space: " ")
-        reduction = active_fee_rule&.total_fee_reduction_cents || 0
+      def total_fee_label(hint_sep: " ", space: " ")
+        reduction = active_total_fee_reduction
         if reduction != 0
-          reduction_display = format_cents_de(reduction, space: "", zero_cents: "")
-          comment = active_fee_rule&.total_fee_reduction_comment
-          comment_sep = ERB::Util.html_escape(comment_sep)
+          reduction_display = format_eur_de(reduction, space: "", zero_cents: "")
+          hint = active_total_fee_reduction_hint
+          hint_sep = ERB::Util.html_escape(hint_sep)
           space = ERB::Util.html_escape(space)
-          reduction_comment = "reduziert um #{reduction_display}"
-          if !comment.blank?
-            reduction_comment = "#{comment}: #{reduction_comment}"
+          reduction_hint = "reduziert um #{reduction_display}"
+          if !hint.blank?
+            reduction_hint = "#{hint}: #{reduction_hint}"
           end
-          reduction_comment = reduction_comment.gsub(/\s+/, space).html_safe
-          "Beitrag#{comment_sep}(#{reduction_comment})".html_safe
+          reduction_hint = reduction_hint.gsub(/\s+/, space).html_safe
+          "Beitrag#{hint_sep}(#{reduction_hint})".html_safe
         else
           "Beitrag".html_safe
         end
       end
 
-      def total_fee_eur_text(comment_sep: " ", space: " ")
-        reduction = active_fee_rule&.total_fee_reduction_cents || 0
-        comment = active_fee_rule&.total_fee_reduction_comment
-        total_fee_text = format_cents_de(total_fee_cents, space: space, zero_cents: "")
-        if reduction != 0 && comment.present?
-          total_fee_text = "#{total_fee_text}#{comment_sep}(#{comment})"
+      def total_fee_eur_text(hint_sep: " ", space: " ")
+        reduction = active_total_fee_reduction
+        hint = active_total_fee_reduction_hint
+        total_fee_text = format_eur_de(total_fee_eur, space: space, zero_cents: "")
+        if reduction != 0 && hint.present?
+          total_fee_text = "#{total_fee_text}#{hint_sep}(#{hint})"
         end
         total_fee_text
       end
@@ -496,6 +506,45 @@ module Wsjrdp2027::Person
         Wsjrdp2027::PaymentPlanConversionHelper.installments_to_installments_string(yme_list, blank_year: 2025)
       end
 
+      # Active total fee reduction
+
+      def active_total_fee_reduction
+        wsjrdp_total_fee_reduction || BigDecimal(0)
+      end
+
+      def active_total_fee_reduction=(value)
+        self.wsjrdp_total_fee_reduction = value
+      end
+
+      def active_total_fee_reduction_hint
+        wsjrdp_total_fee_reduction_hint
+      end
+
+      def active_total_fee_reduction_hint=(value)
+        self.wsjrdp_total_fee_reduction_hint = value
+      end
+
+      def active_total_fee_reduction_comment
+        wsjrdp_total_fee_reduction_comment
+      end
+
+      def active_total_fee_reduction_comment=(value)
+        self.wsjrdp_total_fee_reduction_comment = value
+      end
+
+      # Planned total fee reduction
+
+      def planned_total_fee_reduction
+        val = super
+        if val.present? && val != 0
+          BigDecimal(val)
+        end
+      end
+
+      def planned_total_fee_reduction=(value)
+        super(value.to_s)
+      end
+
       #
       # active fee rule
       #
@@ -503,18 +552,6 @@ module Wsjrdp2027::Person
       def active_fee_rule
         _maybe_fetch_fee_rules
         @active_fee_rule
-      end
-
-      def active_total_fee_reduction?
-        active_fee_rule&.total_fee_reduction?
-      end
-
-      def active_total_fee_reduction_cents
-        active_fee_rule&.total_fee_reduction_cents || 0
-      end
-
-      def active_total_fee_reduction_display
-        active_fee_rule&.total_fee_reduction_display || ""
       end
 
       def active_custom_installments?
@@ -552,18 +589,6 @@ module Wsjrdp2027::Person
           @planned_fee_rule = Wsj27RdpFeeRule.new(people_id: id, status: "planned")
         end
         @planned_fee_rule
-      end
-
-      def planned_total_fee_reduction?
-        planned_fee_rule&.total_fee_reduction?
-      end
-
-      def planned_total_fee_reduction_cents
-        planned_fee_rule&.total_fee_reduction_cents || 0
-      end
-
-      def planned_total_fee_reduction_display
-        planned_fee_rule&.total_fee_reduction_display || ""
       end
 
       def planned_custom_installments?
