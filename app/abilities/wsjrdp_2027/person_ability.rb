@@ -9,10 +9,10 @@ module Wsjrdp2027::PersonAbility
       # permission(:any).may(:show, :update, :update_email, :primary_group, :totp_reset, :security)
       #   .herself
       permission(:any)
-        .may(:update_email, :primary_group, :totp_reset, :security)
+        .may(:primary_group, :totp_reset, :security)
         .nobody
       permission(:any)
-        .may(:show, :update)
+        .may(:show, :update, :update_email)
         .herself
 
       # Replaced original permission:
