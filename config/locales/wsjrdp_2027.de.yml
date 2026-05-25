@@ -594,6 +594,7 @@ de:
     tabs:
       overview: "Übersicht"
       cmt: "CMT / JPT"
+      ist: "IST"
 
   version:
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'

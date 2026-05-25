@@ -7,7 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-class Contingent::WsjrdpContingentController < ApplicationController
+class Contingent::WsjrdpIstController < ApplicationController
   include ContractHelper
   include WsjrdpContingentHelper
 
@@ -42,19 +42,17 @@ class Contingent::WsjrdpContingentController < ApplicationController
     Rails.logger.debug { "cookies[:contingent_show_people_links]: #{cookies[:contingent_show_people_links].inspect}" }
     includes = [:primary_group]
     includes << :tags if show_people_links?
-    # 1 - CMT
-    # 4 - IST Reg
     # 45 - BMT
+    @bmt_people = make_ist_grouped(
+      Person.select(PERSON_COLUMNS).where(primary_group_id: [45]).includes(includes)
+    )
+    # 4 - IST Reg
     # 49 - IST Süd
     # 50 - IST Süd West
     # 51 - IST West
     # 52 - IST Nord Ost
-    query = Person.select(PERSON_COLUMNS).where(primary_group_id: [1, 4, 45, 49, 50, 51, 52]).includes(includes)
-    @cmt_ist_people = make_grouped(
-      query,
-      [->(p) { p.effective_wsj_role }, nil],
-      [->(p) { p.primary_group.group_code_or_short_name_or_name || "???" }, nil],
-      [->(p) { p.status || "???" }, nil]
+    @ist_wo_bmt_people = make_ist_grouped(
+      Person.select(PERSON_COLUMNS).where(primary_group_id: [4, 49, 50, 51, 52]).includes(includes)
     )
   end
 
@@ -66,6 +64,15 @@ class Contingent::WsjrdpContingentController < ApplicationController
 
   def show_people_links?
     ActiveModel::Type::Boolean.new.cast(cookies[:contingent_show_people_links])
+  end
+
+  def make_ist_grouped(query)
+    make_grouped(
+      query,
+      [->(p) { p.effective_wsj_role }, nil],
+      [->(p) { p.primary_group.group_code_or_short_name_or_name || "???" }, nil],
+      [->(p) { p.status || "???" }, nil]
+    )
   end
 
   def make_grouped(people, *groupings)

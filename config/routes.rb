@@ -100,6 +100,7 @@ Rails.application.routes.draw do
       post :show_people_links, to: "wsjrdp_contingent#show_people_links"
       post :hide_people_links, to: "wsjrdp_contingent#hide_people_links"
       get :cmt, to: "wsjrdp_cmt#index"
+      get :ist, to: "wsjrdp_ist#index"
     end
   end
 end
