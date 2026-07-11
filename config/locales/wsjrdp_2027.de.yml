@@ -267,6 +267,9 @@ de:
         fin_account: Konto
         account_identification: Konto
         amount: Betrag
+        amount_with_currency: Betrag
+        original_amount: Original-Betrag
+        original_amount_with_currency: Original-Betrag
         value_date: Valuta
         payment_date: Zahlungsdatum
         booking_date: Buchungsdatum
