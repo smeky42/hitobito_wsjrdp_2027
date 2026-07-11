@@ -34,7 +34,11 @@
           - return_msg = ""
         %tr
           %td= tx.value_date
-          %td.amount= tx.amount_eur_display
+          %td.amount
+            - if tx.respond_to?(:original_currency) && (tx.currency != tx.original_currency)
+              %span.fw-semibold(style="color:var(--bs-indigo);")= tx.amount_eur_display
+            - else
+              %span= tx.amount_eur_display
           %td
             - if return_msg.present?
               - if tx.return_status == "in_review"

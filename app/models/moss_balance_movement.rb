@@ -11,6 +11,7 @@ class MossBalanceMovement < ActiveRecord::Base
   include ActionView::Helpers::NumberHelper
   include ActionView::Helpers::TextHelper
   include WsjrdpTransaction
+  include ContractHelper
 
   belongs_to :subject, polymorphic: true, optional: true
   belongs_to :fin_account,
@@ -30,6 +31,14 @@ class MossBalanceMovement < ActiveRecord::Base
 
   def amount_currency
     currency
+  end
+
+  def amount_with_currency
+    format_eur_de(amount, currency)
+  end
+
+  def original_amount_with_currency
+    format_eur_de(original_amount, original_currency)
   end
 
   def description
