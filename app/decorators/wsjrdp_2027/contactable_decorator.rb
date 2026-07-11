@@ -12,12 +12,12 @@ module Wsjrdp2027::ContactableDecorator
     additional_emails_array = additional_emails.to_a
     emails = additional_emails_array.collect(&:email).compact_blank.map(&:downcase)
     emails << email.downcase if email.present?
-    wsjrdp_email_label = (respond_to?(:wsjrdp_email_is_mailbox) && send(:wsjrdp_email_is_mailbox)) ? "Contingent Mailbox" : "Contingent"
-    candidates = [
-      [:sepa_mail, "SEPA", false],
-      [:wsjrdp_email, wsjrdp_email_label, false],
-      [:moss_email, "Moss", false]
-    ]
+    candidates = []
+    if respond_to?(:wsjrdp_email_is_mailbox) && send(:wsjrdp_email_is_mailbox)
+      candidates << [:wsjrdp_email, "wsjrdp Mailbox", false]
+    end
+    # candidates << [:sepa_mail, "SEPA", false, true]
+    # candidates << [:moss_email, "Moss", false, true]
     candidates.each do |attr, label, allow_duplicate|
       next unless respond_to?(attr)
       email_addr = send(attr)
