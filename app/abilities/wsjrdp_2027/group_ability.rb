@@ -31,9 +31,9 @@ module Wsjrdp2027::GroupAbility
         .none
       permission(:group_full).may(:show_statistics).in_same_group
     end
+  end
 
-    def if_member_of_group
-      user.group_ids.include?(group.id)
-    end
+  def if_member_of_group
+    user.group_ids.include?(group.id)
   end
 end

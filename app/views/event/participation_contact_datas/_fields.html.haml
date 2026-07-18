@@ -1,2 +1,7 @@
 = field_set_tag do
-  = render_attrs(entry, :first_name, :last_name, :nickname)
+  - [:email, :first_name, :last_name, :nickname].each do |a|
+    - if entry.show_attr?(a)
+      - if current_user && entry.send(a).present?
+        = f.labeled(a, f.readonly_value(a))
+      - else
+        = f.labeled_input_field(a)
