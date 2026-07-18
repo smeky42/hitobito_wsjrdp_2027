@@ -7,6 +7,10 @@
 = field_set_tag do
   = f.labeled_input_fields(*entry.used_attributes(:application_opening_at, :application_closing_at, :application_conditions, :maximum_participants, :minimum_participants))
 
+  - entry.used?(:applications_cancelable) do
+    = f.labeled_boolean_field(:applications_cancelable,
+                          caption: t('events.form.caption_applications_cancelable'))
+
   - if can?(:log, entry)
     - entry.used?(:external_applications) do
       = f.labeled_boolean_field(:external_applications, caption: t('events.form.caption_external_applications'))
@@ -34,10 +38,6 @@
       = f.labeled_boolean_field(:signature_confirmation, caption: t('.caption_signature_confirmation'))
     - entry.used?(:signature_confirmation_text) do
       = f.labeled_input_field(:signature_confirmation_text, value: entry.signature_confirmation_text ||  t('.signature_confirmation_text_default'), class: 'mt-1 ')
-
-    - entry.used?(:applications_cancelable) do
-      = f.labeled_boolean_field(:applications_cancelable,
-                            caption: t('events.form.caption_applications_cancelable'))
 
     - entry.used?(:display_booking_info) do
       = f.labeled_boolean_field(:display_booking_info,
