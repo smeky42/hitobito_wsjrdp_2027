@@ -25,8 +25,6 @@ module Wsjrdp2027::Person
   # Note: Do not include store_accessor attributes in PUBLIC_ATTRS
   WSJRDP_PUBLIC_ATTRS = WSJRDP_FILTER_ATTRS + [
     :additional_info,
-    :cluster_code,
-    :wsj_role,
     :zero_padded_id
   ].freeze
 
@@ -40,6 +38,12 @@ module Wsjrdp2027::Person
     :wsjrdp_email_updated_at,
     :zero_padded_id  # note: Also in WSJRDP_PUBLIC_ATTRS
   ].freeze
+
+  # Added to INTERNAL_ATTRS and used_attributes, but not skipped from paper trail
+  WSJRDP_INTERNAL_ATTRS_WITH_PAPER_TRAIL = [
+    :company_name,
+    :company
+  ]
 
   WSJRDP_SEARCHABLE_ATTRS = [
     :id,
@@ -71,10 +75,13 @@ module Wsjrdp2027::Person
     # Be careful to modify existing variables instead of re-assigning
     # them to avoid Ruby warnings.
     Person::FILTER_ATTRS.concat(WSJRDP_FILTER_ATTRS)
+    Person::FILTER_ATTRS.delete :company_name
     Person::PUBLIC_ATTRS.concat(WSJRDP_PUBLIC_ATTRS)
     Person::INTERNAL_ATTRS.concat(WSJRDP_INTERNAL_ATTRS)
+    Person::INTERNAL_ATTRS.concat(WSJRDP_INTERNAL_ATTRS_WITH_PAPER_TRAIL)
     Person.used_attributes.concat(WSJRDP_PUBLIC_ATTRS)
     Person.used_attributes.concat(WSJRDP_INTERNAL_ATTRS)
+    Person.used_attributes.concat(WSJRDP_INTERNAL_ATTRS_WITH_PAPER_TRAIL)
     Person.used_attributes.uniq!
     # Searching for birthdays interferes too much with searching for a
     # persons id, so we remove :birthday from SEARCHABLE_ATTRS.

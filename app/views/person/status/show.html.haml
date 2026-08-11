@@ -17,7 +17,13 @@
     - extra_render_attrs << :planned_custom_installments_display
     - extra_render_attrs << :planned_custom_installments_comment
   = render_attrs_list do
-    = labeled_attrs(@person, :birthday, :status_log_display, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role, :wsj_role)
+    = labeled_attrs(@person, :birthday, :status_log_display, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role)
+    - if @person.wsj_role.present?
+      = labeled_attr(@person, :wsj_role)
+    - else
+      = labeled_attr_with_help(@person, :wsj_role) do
+        %span.muted
+          (nich gesetzt, abgeleitet von der WSJRDP Rolle)
     - if @person.ist?
       = labeled_attr(@person, :is_preallocated_ist)
     = labeled_attr(@person, :unit_code)

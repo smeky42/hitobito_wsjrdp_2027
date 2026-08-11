@@ -58,7 +58,7 @@ module Wsjrdp2027::PeopleHelper
     if (role = person.wsj_role).present?
       role
     else
-      content_tag(:span, "#{person.short_payment_role} (abgeleitet von der WSJRDP Rolle)", class: "muted fw-light")
+      person.short_payment_role
     end
   end
 
