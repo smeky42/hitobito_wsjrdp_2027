@@ -18,6 +18,12 @@ Gem::Specification.new do |s|
 
   s.add_dependency "iban-tools", "~> 1.1"
   s.add_dependency "geocoder", "~> 1.3", ">= 1.3.7"
+  s.add_dependency "rison", "~> 2.1"
+  s.add_dependency "typst", "~> 0.15.1", ">= 0.15.1.5"
+  # typst requires rubyzip ~> 3.2. With rubyzip 3.x, caxlsx writes Zip64 archives
+  # by default, which Google Sheets refuses to import. caxlsx 4.4.1 disables Zip64
+  # by default again (https://github.com/caxlsx/caxlsx/pull/482), so floor it there.
+  s.add_dependency "caxlsx", ">= 4.4.1"
 
   s.add_runtime_dependency "chartkick"
   s.add_runtime_dependency "chart-js-rails"
