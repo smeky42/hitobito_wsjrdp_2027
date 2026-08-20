@@ -12,7 +12,12 @@ module WsjrdpJsonbHelper
   include ActiveRecord::Store
 
   module ClassMethods
-    def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil)
+    # cast: :boolean -- values are cast with ActiveModel::Type::Boolean before
+    # the blank check, so form params ("1"/"0"/"true"/"false") behave like real
+    # booleans. Combined with delete_on_blank (false.blank? is true), clearing
+    # a boolean flag REMOVES the key from the JSONB: absent == false == the
+    # default. Also defines a `<key>?` predicate.
+    def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil, cast: nil)
       accessor_prefix =
         case prefix
         when String, Symbol
@@ -36,6 +41,7 @@ module WsjrdpJsonbHelper
       store_accessor_module = instance_method(:"#{accessor_key}=").owner
       store_accessor_module.module_eval do
         define_method(:"#{accessor_key}=") do |value|
+          value = ActiveModel::Type::Boolean.new.cast(value) if cast == :boolean
           value = value&.strip if strip
           if delete_on_blank && value.blank?
             send(store_attribute)&.delete(accessor_key)
@@ -52,6 +58,11 @@ module WsjrdpJsonbHelper
               end
             end
             write_store_attribute(store_attribute, key, value)
+          end
+        end
+        if cast == :boolean
+          define_method(:"#{accessor_key}?") do
+            !!read_store_attribute(store_attribute, key)
           end
         end
       end

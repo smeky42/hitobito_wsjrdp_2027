@@ -119,7 +119,8 @@ class Fin::AccountingEntriesController < Fin::FinController
           :endtoend_id,
           :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address,
           :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address,
-          :mandate_id, :mandate_date, :debit_sequence_type
+          :mandate_id, :mandate_date, :debit_sequence_type,
+          :excluded_from_fee_reconciliation
         ]
       end
     else
