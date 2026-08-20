@@ -181,6 +181,7 @@ de:
         updated_at: Geändert
         subject: Person
         subject_id: Person
+        excluded_from_fee_reconciliation: Von der Beitrags-Abstimmung ausgenommen
         amount_eur: Betrag in Euro
         amount_eur_display: Betrag in Euro
         pre_notified_amount_eur: Vorab informierter Betrag in Euro

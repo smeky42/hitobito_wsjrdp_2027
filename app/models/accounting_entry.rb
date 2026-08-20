@@ -3,6 +3,18 @@
 class AccountingEntry < ActiveRecord::Base
   include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
+  include WsjrdpJsonbHelper
+
+  # true = this entry does NOT take part in the participant-fee reconciliation
+  # Key absent or false = it takes part (default)
+  jsonb_accessor :additional_info, :excluded_from_fee_reconciliation, cast: :boolean
+
+  scope :excluded_from_fee_reconciliation, -> {
+    where("(accounting_entries.additional_info ->> 'excluded_from_fee_reconciliation')::boolean IS TRUE")
+  }
+  scope :fee_reconciliation_relevant, -> {
+    where.not("(accounting_entries.additional_info ->> 'excluded_from_fee_reconciliation')::boolean IS TRUE")
+  }
 
   belongs_to :subject, polymorphic: true, optional: true
   belongs_to :author, polymorphic: true

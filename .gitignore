@@ -22,6 +22,12 @@ Gemfile.lock
 # uploaded pdf files
 /private/ 
 
+# ignore local dev overrides:
+# for dev login
+config/initializers/local_dev_login.rb
+# different file watching on macOS
+config/initializers/local_dev_file_watcher.rb
+
 # reports
 spec/coverage
 spec/reports

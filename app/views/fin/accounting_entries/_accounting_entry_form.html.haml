@@ -21,6 +21,8 @@
   %div.border-top.py-2
   = f.labeled_input_field :value_date, help_inline: 'Nur falls abweichend vom aktuellen Datum'
   = f.labeled_input_field :endtoend_id, help_inline: 'SEPA Ende-zu-Ende-Referenz'
+  = f.labeled_boolean_field :excluded_from_fee_reconciliation,
+    caption: 'Diese Buchung nimmt nicht an der Abstimmung der TN-Beiträge teil'
   %div.border-top.py-2
   = f.labeled_input_fields :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address
   %div.border-top.py-2
