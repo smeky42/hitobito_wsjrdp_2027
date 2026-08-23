@@ -7,6 +7,7 @@ EVENT_ACTIONS = [
   :destroy,
   :index_invitations,
   :index_participations,
+  :log,
   :manage_attachments,
   :manage_tags,
   :qualifications_read,
