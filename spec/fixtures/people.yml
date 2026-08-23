@@ -26,6 +26,12 @@ cmt_member2:
 
 
 
+um_a_1:
+  first_name: UM1
+  last_name: UnitA
+  email: um1.unita@wsjrdp.example.com
+  primary_group: unit_a
+
 ul_a_1:
   first_name: UL1
   last_name: UnitA
@@ -63,6 +69,12 @@ yp_b_1:
   last_name: UnitB
   email: yp1.unitb@wsjrdp.example.com
   primary_group: unit_b
+
+mist_a_1:
+  first_name: MIST1
+  last_name: IstA
+  email: mist1.ista@wsjrdp.example.com
+  primary_group: ist_a
 
 ist_a_1:
   first_name: IST1
