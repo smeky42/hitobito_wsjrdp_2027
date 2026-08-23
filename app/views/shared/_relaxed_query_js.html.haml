@@ -1,0 +1,59 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  window.wsjrdpRelaxedQuery -- build URL query strings with "," and "~" LITERAL
+-#  instead of %2C/%7E (both are RFC 3986-safe in a query; see
+-#  doc/url_encoding.md). SECURITY (doc/url_encoding.md §6): encode + relax are
+-#  encapsulated in one function; the API only accepts STRUCTURED input
+-#  (URLSearchParams / FormData / URL) and throws on strings, so the %XX->literal
+-#  replacement can never run on a string containing a raw "%". Tested by
+-#  spec/javascripts/relaxed_query.test.mjs, which extracts the code between the
+-#  marker comments below -- keep the markers when editing.
+-#
+-#  Render this partial before any :javascript block that uses the helper; the
+-#  ivar guard emits it once per request, the window guard once per page.
+- return if @wsjrdp_relaxed_query_js_emitted
+- @wsjrdp_relaxed_query_js_emitted = true
+:javascript
+  // wsjrdp-relaxed-query-begin
+  (function () {
+    if (window.wsjrdpRelaxedQuery) return;
+    // URLSearchParams | FormData -> query string with "," and "~" literal.
+    // Serialisation (URLSearchParams.toString, which encodes every raw "%" as
+    // %25) and the relax replacement happen in ONE function, so %2C / %7E can
+    // only ever be the encoder's own escapes. Strings are rejected: relaxing a
+    // pre-built string is exactly the unsafe operation this API exists to
+    // prevent.
+    function serialize(params) {
+      if (!(params instanceof URLSearchParams)) {
+        if (typeof FormData !== "undefined" && params instanceof FormData) {
+          params = new URLSearchParams(params);
+        } else {
+          throw new TypeError("wsjrdpRelaxedQuery expects URLSearchParams or FormData, got " + typeof params);
+        }
+      }
+      return params.toString().replace(/%2C/gi, ",").replace(/%7E/gi, "~");
+    }
+    // URL -> relative href (path + relaxed query + hash). Reassembles from the
+    // components so the replacement only ever touches the query part, never
+    // path or fragment octets.
+    function href(url) {
+      if (!(url instanceof URL)) {
+        throw new TypeError("wsjrdpRelaxedQuery.href expects a URL, got " + typeof url);
+      }
+      // A pathname may start with "//" (WHATWG keeps an empty first segment, e.g.
+      // new URL("https://app//evil.example/x").pathname === "//evil.example/x").
+      // Returned as-is that would be a protocol-relative (network-path) reference
+      // resolving to ANOTHER ORIGIN -- an open-redirect primitive. Collapse the
+      // leading slashes so the result is always same-origin-relative.
+      var path = url.pathname.replace(/^\/{2,}/, "/");
+      var qs = serialize(url.searchParams);
+      return path + (qs ? "?" + qs : "") + url.hash;
+    }
+    window.wsjrdpRelaxedQuery = { serialize: serialize, href: href };
+  })();
+  // wsjrdp-relaxed-query-end

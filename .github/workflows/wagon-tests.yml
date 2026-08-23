@@ -59,6 +59,33 @@ jobs:
         run: |
           bundle exec rake app:rubocop
 
+  # Client-side helper tests (doc/url_encoding.md §6). No core, no bundle, no DB:
+  # the suites use only node's built-in test runner, so this job is seconds long.
+  # Without it the JS half of the mandatory URL-encoding helpers would rest on
+  # developer discipline alone, while its Ruby twin runs in wagon_specs.
+  javascript_specs:
+    name: javascript specs
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out ${{ inputs.wagon_repository }}
+        uses: actions/checkout@v4
+        with:
+          path: ${{ inputs.wagon_repository }}
+          fetch-depth: 1
+
+      # Pinned rather than relying on the runner image default: `node --test`
+      # only expands glob arguments itself on recent versions, and the image
+      # default may lag behind or change.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Quote the glob so node expands it, not the shell. A bare directory
+      # argument does NOT work (it is resolved as a module path).
+      - name: Run node test suites
+        working-directory: ${{ inputs.wagon_repository }}
+        run: node --test "spec/javascripts/**/*.test.mjs"
+
   wagon_seeds:
     name: seeds
     runs-on: "ubuntu-22.04"
