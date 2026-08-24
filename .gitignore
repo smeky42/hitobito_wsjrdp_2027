@@ -27,6 +27,8 @@ Gemfile.lock
 config/initializers/local_dev_login.rb
 # different file watching on macOS
 config/initializers/local_dev_file_watcher.rb
+# rake shim to to solve issues with db:_dump / db:_dump_rails
+lib/tasks/local_db_dump_shim.rake
 
 # reports
 spec/coverage
