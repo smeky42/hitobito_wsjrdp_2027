@@ -50,7 +50,26 @@ of Wsjrdp 2027.
 
 ## Wsjrdp 2027 Organization Hierarchy
 
-<!-- roles:start -->
+    * CMT < CMT
+      * CMT
+        * Admin: [:layer_and_below_full, :admin, :finance]
+        * Leader: [:layer_and_below_full]
+        * CMT: []
+        * Finance: [:layer_and_below_full, :finance]
+    * Extern < CMT
+      * Extern
+        * Extern: []
+    * IST < IST, CMT
+      * IST
+        * IST Manager: [:layer_and_below_full]
+        * IST: []
+    * Unit < CMT
+      * Unit
+        * Unit Manager: [:layer_and_below_full]
+        * Unit Leader: [:group_full]
+        * Unit Leader (unbestätigt): []
+        * Youth Participant: []
 
+<!-- roles:start -->
 (Output of rake app:hitobito:roles)
 <!-- roles:end -->
