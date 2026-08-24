@@ -115,6 +115,8 @@ module Wsjrdp2027::Person
 
       has_many :accounting_entries, -> { order(:created_at, :id) }, inverse_of: :subject, dependent: :destroy
       has_many :direct_debit_pre_notifications, -> { order(:created_at, :id) }, inverse_of: :subject, class_name: "WsjrdpDirectDebitPreNotification", dependent: :destroy
+      has_many :managed_cost_centers, -> { order(:number, :id) }, inverse_of: :manager, class_name: "WsjrdpCostCenter", foreign_key: :manager_person_id, dependent: :nullify
+      has_many :managed_spheres, -> { order(:number, :id) }, inverse_of: :manager, class_name: "WsjrdpSphere", foreign_key: :manager_person_id, dependent: :nullify
 
       # Overwrite addition_emails to establish a default ordering
       has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy
