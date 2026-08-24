@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_21_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1489,6 +1489,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_21_000100) do
     t.index ["active"], name: "index_wsjrdp_configs_on_active", unique: true, where: "active"
   end
 
+  create_table "wsjrdp_cost_centers", comment: "cost centers (synced with both DATEV and Moss)", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "number", null: false, comment: "Moss: cost center, DATEV: KOST2 (SKR42), KOST1 (SKR03)"
+    t.string "name"
+    t.string "short_name"
+    t.string "moss_status", default: "active", null: false, comment: "Moss Status: active or deactivated"
+    t.string "manager_name", comment: "cost center manager"
+    t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
+    t.decimal "budget_2025", precision: 20, scale: 2, comment: "Signed budget 2025 (expenses negative); NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 2, comment: "Signed budget 2026 (expenses negative); NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 2, comment: "Signed budget 2027 (expenses negative); NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 2, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "explicit_total_budget", precision: 20, scale: 2, comment: "Explicitly set total budget for the whole period; NULL = not set"
+    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 2, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
+    t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
+  end
+
   create_table "wsjrdp_direct_debit_payment_infos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -1639,6 +1659,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_21_000100) do
     t.index ["wsjrdp_role", "single_payment"], name: "index_wsjrdp_payment_plans_wsjrdp_role_single_payment", unique: true
   end
 
+  create_table "wsjrdp_spheres", comment: "tax spheres / cost carriers (synced with both DATEV and Moss)", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "number", null: false, comment: "Moss: cost carrier, DATEV: KOST1 (SKR42), implicit (SKR03)"
+    t.string "name"
+    t.string "short_name"
+    t.string "moss_status", default: "active", null: false, comment: "Moss Status: active or deactivated"
+    t.string "manager_name", comment: "sphere manager"
+    t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
+    t.decimal "budget_2025", precision: 20, scale: 2, comment: "Signed budget 2025 (expenses negative); NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 2, comment: "Signed budget 2026 (expenses negative); NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 2, comment: "Signed budget 2027 (expenses negative); NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 2, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "explicit_total_budget", precision: 20, scale: 2, comment: "Explicitly set total budget for the whole period; NULL = not set"
+    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 2, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.index ["manager_person_id"], name: "index_wsjrdp_spheres_on_manager_person_id"
+    t.index ["number"], name: "index_wsjrdp_spheres_on_number", unique: true
+  end
+
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
   add_foreign_key "accounting_entries", "accounting_entries", column: "reverses_id"
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
@@ -1654,7 +1694,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_21_000100) do
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
   add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"
+  add_foreign_key "wsjrdp_cost_centers", "people", column: "manager_person_id"
   add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_payment_initiations", column: "payment_initiation_id"
+  add_foreign_key "wsjrdp_spheres", "people", column: "manager_person_id"
 end
