@@ -91,7 +91,75 @@ Rails.application.routes.draw do
       resources :wsjrdp_fin_accounts, path: "acc", only: [:index, :show, :update]
       resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]
       resources :wsjrdp_payment_plans, path: "payment_plans", only: [:index, :show, :update]
-      get :fin, path: "", to: "wsjrdp_fin_accounts#index"
+      # "Moss" section: overview at /fin/moss (own controller) + card transactions
+      # at /fin/moss/card_transactions (own controller). See doc/navigation.md.
+      get :moss, path: "moss", to: "moss#index", as: "moss"
+      resources :moss_card_transactions, path: "moss/card_transactions", only: [:index, :show] do
+        collection do
+          post :apply # PRG target of the CNF filter builder
+        end
+      end
+      # /fin used to be a second name for the accounts index; make /fin/acc the
+      # canonical URL and keep old /fin links working via redirect.
+      get :fin, path: "", to: redirect { |params, _request|
+        params[:locale] ? "/#{params[:locale]}/fin/acc" : "/fin/acc"
+      }
+    end
+
+    # Buchhaltung (accounting) -- a top-level /bookkeeping URL space, still served
+    # by the Fin:: controllers: one resource controller per master-data entity
+    # plus the overview.
+    scope module: "fin" do
+      get "bookkeeping", to: "bookkeeping#overview", as: "bookkeeping"
+      scope "bookkeeping" do
+        # Ledger accounts (Sachkonten) and personal accounts (Kreditoren /
+        # Debitoren) are keyed by their numeric DATEV account number.
+        resources :ledger_accounts, param: :number, only: [:index, :show],
+          constraints: {number: /\d+/}
+        # Cost-center numbers may contain LETTERS -- deliberately unconstrained.
+        resources :cost_centers, param: :number, only: [:index, :show]
+        resources :personal_accounts, param: :number, only: [:index, :show],
+          constraints: {number: /\d+/}
+        # Buchungsstapel (DATEV booking batch / Primanota) detail pages.
+        resources :booking_batches, only: [:show]
+        # :update is the ONE endpoint for all manual associations of the booking
+        # detail view (person assign/clear, entry connect/unlink): each mini-form
+        # PATCHes a field subset of datev_booking (see BookingsController#update).
+        resources :bookings, only: [:index, :show, :update] do
+          collection do
+            # Apply target of the generic CNF filter builder (PRG; see
+            # Fin::BookingsController#apply).
+            post :apply
+          end
+          member do
+            # JSON source for the entry autocomplete (same-amount unlinked
+            # entries) in the booking detail view.
+            get :query_entries
+          end
+        end
+      end
+
+      # Abstimmung (reconciliation) -- matching accounting entries with DATEV
+      # bookings. Third Finanzen nav item next to Zahlungsverkehr / Buchhaltung.
+      get "reconciliation", to: "reconciliation#overview", as: "reconciliation"
+      get "reconciliation/participant_fees", to: "reconciliation#participant_fees",
+        as: "reconciliation_participant_fees"
+      post "reconciliation/participant_fees/apply", to: "reconciliation#apply_participant_fees",
+        as: "apply_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect", to: "reconciliation#connect_participant_fees",
+        as: "connect_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect_single", to: "reconciliation#connect_single",
+        as: "connect_single_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect_entries", to: "reconciliation#connect_participant_entries",
+        as: "connect_entries_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect_single_entry", to: "reconciliation#connect_single_entry",
+        as: "connect_single_entry_reconciliation_participant_fees"
+      # DEVELOPMENT ONLY: reset every DATEV booking's links, to replay the
+      # reconciliation while testing. The route does not exist in production.
+      if Rails.env.development?
+        post "reconciliation/participant_fees/reset_links", to: "reconciliation#reset_links",
+          as: "reset_links_reconciliation_participant_fees"
+      end
     end
 
     namespace "contingent" do

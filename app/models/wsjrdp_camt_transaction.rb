@@ -23,6 +23,11 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
     class_name: "AccountingEntry",
     dependent: :nullify
 
+  has_one :datev_booking,
+    foreign_key: "camt_transaction_id",
+    inverse_of: :camt_transaction,
+    dependent: :nullify
+
   eur_attribute :amount_eur, cents_attr: :amount_cents
 
   attribute :accounting_entry_id, :integer

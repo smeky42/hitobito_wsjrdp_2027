@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main
+  %h1 Sachkonten
+  %p.text-muted
+    Übersicht der Sachkonten mit der Summe der gebuchten Beträge (nur aktive Buchungen).
+    Klick auf eine Zeile zeigt die Buchungen des Kontos.
+
+  - action = ->(r) { link_to(icon(:eye), ledger_account_path(r[:number]), class: "btn btn-sm btn-link p-0", title: "Detailseite dieses Kontos öffnen") }
+  - detail_src = ->(r) { ledger_account_path(r[:number]) }
+  -# Experiment: page the summary through the widget's default paging (10/Seite).
+  - accounts_page = Kaminari.paginate_array(account_summaries).page(params[:page]).per(et_per_page("", 10))
+
+  = render "shared/expandable_table",
+    rows: accounts_page, pagination: accounts_page, per_options: [10, 25, 50, 100, "all"], default_per: 10,
+    columns_menu: true, multi_sort: true, open_keys: open_keys, id_prefix: "account",
+    row_key: ->(r) { r[:number] }, columns: sachkonten_columns, action: action, detail_src: detail_src
+
+  %p.text-muted.small.mt-2
+    Gesamt: #{eur_display_or_nil(total_sum)} EUR · #{total_count} Buchungen

@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+- frame = turbo_frame_tag("bkframe-supplier-#{@number}") do
+  = supplier_item_detail(@number)
+
+- if turbo_frame_request?
+  = frame
+- else
+  #main
+    %p.mb-1
+      = link_to personal_accounts_path, class: "small text-decoration-none" do
+        ← Zurück zu Kreditoren
+    %h1.mb-3
+      Kreditor #{@number}
+      - name = supplier_records[@number]&.name
+      - if name.present?
+        %span.text-muted.fs-5.ms-2= name
+    = frame

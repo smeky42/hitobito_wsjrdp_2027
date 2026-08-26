@@ -1,0 +1,15 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Thin pass-through to the bookings table adapter. Summary line, paging, the
+-#  column hamburger, the filter and the row selection are all rendered by the
+-#  shared widget (via fin/bookings/_bookings_table).
+= render "fin/bookings/bookings_table", query: query,
+  filter: local_assigns[:filter],
+  row_badge: local_assigns[:row_badge], extra_columns: local_assigns[:extra_columns],
+  selection: local_assigns[:selection], detail_top: local_assigns[:detail_top],
+  detail_extra: local_assigns[:detail_extra]

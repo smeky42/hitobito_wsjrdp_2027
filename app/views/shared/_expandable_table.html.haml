@@ -1,0 +1,207 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  THE shared table widget. One row = one clickable summary row + a per-row
+-#  expandable detail row (Bootstrap collapse; several open at once). Every extra
+-#  element is optional and off by default, so a bare call renders just a table;
+-#  turning options on adds a filter, a summary line, paging, a column hamburger,
+-#  row selection, sortable headers, etc. Several independent tables coexist on
+-#  one page via distinct `prefix`es. FULL GUIDE: doc/expandable_table.md.
+-#
+-#  Core locals:
+-#    columns   -- [{ key:, label:, cell: ->(row){..}, numeric:, width:,
+-#                    sort_key:, css_class:, condensed_label:, abbr: }]
+-#    rows      -- the collection (a Kaminari page when paginating, else any list)
+-#    row_key   -- ->(row){ String } unique key (URL param + DOM id + selection)
+-#    detail     -- ->(row){ html }   server-rendered detail  (OR)
+-#    detail_src -- ->(row){ url }     lazy-loaded detail (turbo frame)
+-#    detail_top / detail_extra -- ->(row){ html } injected at the top / bottom
+-#                 of each detail (see fin/bookings/_booking_detail for the slots)
+-#    action    -- ->(row){ html } trailing action cell (e.g. an eye link)
+-#    open_keys -- Set of open row keys (from the <param> URL param)
+-#    param     -- open-rows URL param (default "#{prefix}_open" / "open")
+-#  Namespacing:
+-#    prefix    -- "" | "bk" | "ae" — the query-param + DOM-id namespace, so two
+-#                 tables page/sort/filter independently. Default "".
+-#    id_prefix -- DOM id prefix (default: prefix.presence || "exp")
+-#  Optional feature locals (see the guide): sortable/default_sort, pagination,
+-#    per_options/default_per, columns_menu/default_column_keys, summary,
+-#    selection, filter, condensed, detail_level.
+- prefix = local_assigns.fetch(:prefix, "").to_s
+- id_prefix = local_assigns.fetch(:id_prefix, prefix.presence || "exp")
+- action = local_assigns.fetch(:action, nil)
+- detail = local_assigns.fetch(:detail, nil)
+- detail_src = local_assigns.fetch(:detail_src, nil)
+- detail_top = local_assigns.fetch(:detail_top, nil)
+- detail_extra = local_assigns.fetch(:detail_extra, nil)
+- detail_level = local_assigns.fetch(:detail_level, 0)
+- param = local_assigns.fetch(:param) { et_param_name(prefix, :open) }
+- open_keys = local_assigns.fetch(:open_keys) { params[param].to_s.split(",").to_set }
+- condensed = local_assigns.fetch(:condensed, false)
+- all_columns = local_assigns.fetch(:columns)
+- columns_menu = local_assigns.fetch(:columns_menu, false)
+- default_column_keys = local_assigns.fetch(:default_column_keys, nil)
+-# extra_columns: host-injected columns appended after the (menu-managed) ones
+-# and NOT part of the column picker -- e.g. the reconciliation match-proposal
+-# column. Always shown.
+- extra_columns = Array(local_assigns.fetch(:extra_columns, nil))
+-# Visible columns: with the hamburger, from <prefix>_cols (default order/keys);
+-# without it, the default_column_keys subset when given, else every column.
+- visible_columns = columns_menu ? et_visible_columns(all_columns, prefix, default_keys: default_column_keys) : (default_column_keys ? all_columns.select { |c| default_column_keys.map(&:to_s).include?(c[:key].to_s) } : all_columns)
+- columns = visible_columns + extra_columns
+- sort_path = local_assigns.fetch(:sort_path, nil)
+- default_sort = local_assigns.fetch(:default_sort, nil)
+- sortable = local_assigns.fetch(:sortable) { columns.any? { |c| c[:sort_key] } }
+- sort_key = local_assigns[:sort].presence || et_sort_key(prefix, default_key: default_sort&.dig(:key))
+- sort_dir = local_assigns[:sort_dir].presence || et_sort_dir(prefix, default_key: default_sort&.dig(:key), default_dir: (default_sort&.dig(:dir) || "asc"))
+- sort_url = ->(key, dir) { sort_path ? sort_path.call(key, dir) : et_url(prefix, {sort: key, sort_dir: dir}) }
+-# Multi-column sort (opt-in): one <prefix>_sort param holds several columns +
+-# directions; clicking a header makes it primary and cycles asc/desc/off.
+-# `sort_list` is the real param state (drives the header links); `display_sort_list`
+-# is what the arrows show -- identical to sort_list, except that with no param yet
+-# it falls back to `default_sort` (mapped to its column's token) so a table with a
+-# default order still shows that arrow. Clicking the default column then advances
+-# from an empty state (asc), exactly like the single-sort default did.
+- multi_sort = local_assigns.fetch(:multi_sort, false)
+- sort_list = multi_sort ? et_sort_list(prefix) : nil
+- if multi_sort && sort_list.empty? && default_sort
+  - default_col = columns.find { |c| c[:sort_key].to_s == default_sort[:key].to_s }
+  - display_sort_list = default_col ? [[(default_col[:abbr].presence || default_col[:sort_key]).to_s, (default_sort[:dir].presence || "asc").to_s]] : []
+- else
+  - display_sort_list = sort_list
+- selection = local_assigns.fetch(:selection, nil)
+-# on_filter_change: :clear (default) drops a remembered selection when the
+-# filter changes. :narrow (keep the still-matching rows) is a planned option --
+-# accepted here but not implemented yet.
+- raise NotImplementedError, "expandable_table selection on_filter_change: :narrow is not implemented yet" if selection && selection[:on_filter_change].to_s == "narrow"
+- pagination = local_assigns.fetch(:pagination, nil)
+- per_options = local_assigns.fetch(:per_options, nil)
+- default_per = local_assigns.fetch(:default_per, 50)
+- summary = local_assigns.fetch(:summary, nil)
+- filter = local_assigns.fetch(:filter, nil)
+- lead_cols = (selection ? 1 : 0)
+- cols_count = lead_cols + columns.size + (action ? 1 : 0)
+- min_rem = columns.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 } + (action ? 2.75 : 0) + (selection ? 2.0 : 0)
+- paging_html = (render "shared/expandable_table_paging", prefix: prefix, pagination: pagination, per_options: per_options, default_per: default_per) if pagination || per_options
+- has_toolbar = columns_menu || paging_html.present? || summary || (selection && selection[:all_param])
+
+= render "shared/expandable_table_styles"
+= render "shared/row_click_guard"
+- if selection
+  = render "shared/table_selection_js"
+
+- if filter
+  = render "shared/fin_panes"
+  = render "shared/filtering/builder",
+    catalog: filter[:catalog], value: filter[:value],
+    locked: filter.fetch(:locked, []), locked_catalog: filter[:locked_catalog],
+    apply_url: filter[:apply_url], reset_url: filter[:reset_url],
+    carry: filter.fetch(:carry, {}),
+    open: filter.fetch(:open, true), pane_cookie: filter[:pane_cookie],
+    condensed_locked: filter.fetch(:condensed_locked, false),
+    disabled: filter.fetch(:disabled, false)
+
+.bk-select-scope{ data: (selection ? {select_key: (selection[:remember_key] || prefix.presence || id_prefix), filter_sig: (selection[:filter_sig] || et_param(prefix, :filter).to_s), select_name: selection[:name], select_form: selection[:form], on_filter_change: selection.fetch(:on_filter_change, "clear").to_s} : {}) }
+  - if has_toolbar
+    -# Left: summary, paging and the (optional) select-all bar. Right: the column
+    -# hamburger, bottom-aligned so it sits at the bottom of a tall left block.
+    .d-flex.flex-wrap.justify-content-between.align-items-end.gap-2.mb-2
+      .d-flex.flex-column.gap-1.flex-grow-1{ style: "min-width: 0" }
+        - if summary
+          .text-muted.small= summary
+        - if paging_html
+          = paging_html
+        - if selection && selection[:all_param]
+          .bk-select-bar.small{ style: "display: none", data: { total: selection[:total_count] } }
+            %span.bk-select-info.text-muted
+            %a.bk-select-all-pages.ms-2{ href: "#" }
+            %a.bk-select-clear.ms-2{ href: "#" } Auswahl aufheben
+            %input{ type: "hidden", name: selection[:all_param], value: "", form: selection[:form], class: "bk-select-all-field" }
+      - if columns_menu
+        - menu = capture do
+          = render "shared/expandable_table_columns_form", prefix: prefix, all_columns: all_columns, default_column_keys: default_column_keys
+        = render "shared/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
+
+  .table-responsive.exp-table-wrap{ class: ("bk-condensed-wrap" if condensed), data: { exptbl: id_prefix } }
+    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: ("bookings-table-condensed" if condensed), style: (condensed ? nil : "min-width: #{min_rem}rem") }
+      %thead
+        %tr
+          - if selection
+            %th.bk-select-cell{ style: "width: 2rem" }
+              %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+          - columns.each do |col|
+            - label = (condensed && col[:condensed_label]) || col[:label]
+            %th.text-nowrap.exp-col{ class: [col[:css_class], ("text-end" if col[:numeric])].compact, style: ("width: #{col[:width]}" if col[:width] && !condensed), data: { colkey: col[:key] } }
+              - if multi_sort && col[:sort_key]
+                - token = (col[:abbr].presence || col[:sort_key]).to_s
+                - dir, rank = et_sort_state(display_sort_list, token)
+                = link_to et_sort_toggle_url(prefix, token, sort_list), class: ["exp-sort text-reset text-decoration-none", ("exp-sort-active" if dir)], aria: { sort: (dir ? "#{dir}ending" : nil) } do
+                  = label
+                  - if dir
+                    %span.exp-sort-caret.exp-sort-on{ "aria-hidden": "true" }= (dir.to_s == "asc") ? "↑" : "↓"
+                    - if display_sort_list.size >= 2
+                      %span.exp-sort-rank.text-muted{ "aria-hidden": "true" }= rank
+                  - else
+                    %span.exp-sort-caret{ "aria-hidden": "true" } ⇅
+              - elsif sortable && col[:sort_key]
+                - active = sort_key.to_s == col[:sort_key].to_s
+                - next_dir = (active && sort_dir.to_s == "asc") ? "desc" : "asc"
+                = link_to sort_url.call(col[:sort_key], next_dir), class: ["exp-sort text-reset text-decoration-none", ("exp-sort-active" if active)], aria: { sort: (active ? "#{sort_dir}ending" : nil) } do
+                  = label
+                  - if active
+                    %span.exp-sort-caret.exp-sort-on{ "aria-hidden": "true" }= (sort_dir.to_s == "asc") ? "↑" : "↓"
+                  - else
+                    %span.exp-sort-caret{ "aria-hidden": "true" } ⇅
+              - else
+                = label
+          - if action
+            %th{ style: "width: 2.75rem" }
+      %tbody
+        - if rows.blank?
+          %tr
+            %td.text-muted.text-center.py-4{ colspan: cols_count } Keine Einträge gefunden.
+        - rows.each do |row|
+          - key = row_key.call(row).to_s
+          - detail_id = "#{id_prefix}-#{key}"
+          - is_open = open_keys.include?(key)
+          %tr.exp-row{ class: (local_assigns[:row_class] && local_assigns[:row_class].call(row)),
+            role: "button", tabindex: 0,
+            data: { "bs-toggle": "collapse", "bs-target": "##{detail_id}" },
+            aria: { expanded: is_open.to_s, controls: detail_id } }
+            - if selection
+              %td.bk-select-cell
+                - if !selection[:enabled] || selection[:enabled].call(row)
+                  %input.form-check-input.bk-select-check{ type: "checkbox", name: selection[:name],
+                    value: selection[:id_field].call(row), form: selection[:form], "aria-label": "Zeile auswählen",
+                    data: (selection[:row_data] ? selection[:row_data].call(row) : {}) }
+            - columns.each do |col|
+              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= col[:cell].call(row)
+            - if action
+              %td.text-end.text-nowrap= action.call(row)
+          %tr.exp-detail-row
+            %td.p-0{ colspan: cols_count }
+              .collapse.exp-detail{ id: detail_id, class: ("show" if is_open), data: { "exp-key": key } }
+                - if detail_src
+                  -# The detail's nesting level travels in the frame URL so the
+                  -# lazily-rendered partial knows it sits inside a table row.
+                  - src = detail_src.call(row)
+                  - src = "#{src}#{src.include?("?") ? "&" : "?"}_lvl=#{detail_level + 1}"
+                  = turbo_frame_tag "bkframe-#{id_prefix}-#{key}", src: src, loading: "lazy" do
+                    .booking-detail.p-3.text-center.text-muted.small Wird geladen …
+                - else
+                  .booking-detail.p-3
+                    - if detail_top && (top_html = detail_top.call(row)).present?
+                      .mb-3= top_html
+                    -# Detail lambdas may take (row) or (row, table_context).
+                    = (detail.arity == 1) ? detail.call(row) : detail.call(row, TableContext.for_detail(detail_level, lazy: false))
+                    - if detail_extra && (extra_html = detail_extra.call(row)).present?
+                      .mt-3.pt-2.border-top= extra_html
+
+  - if paging_html
+    .mt-2= paging_html
+
+= render "shared/expandable_table_js", param: param

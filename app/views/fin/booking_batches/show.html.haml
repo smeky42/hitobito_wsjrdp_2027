@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Detail page of a Buchungsstapel (DATEV booking batch / Primanota): its header
+-#  metadata plus the condensed list of the bookings it contains.
+- query = booking_batch_bookings_query(@batch.id)
+#main
+  %p.mb-1
+    = link_to bookings_path, class: "small text-decoration-none" do
+      ← Zurück zu Buchungen
+  %h1.mb-3
+    %span.d-block.text-muted.fw-light.fs-6.text-uppercase= "Buchungsstapel ##{@batch.id}"
+    = @batch.label.presence || content_tag(:span, "—", class: "text-muted")
+
+  .bk-item-detail.bk-item-detail-plain
+    = render "shared/detail_fields", fields: booking_batch_detail_fields(@batch)
+
+    .fin-embedded-bookings
+      %hr.fin-embedded-rule
+      .fw-semibold.mb-1 Buchungen
+      %span.text-muted.small.d-block.mb-2
+        = query.total_count
+        Buchungen · Summe:
+        = eur_display_or_nil(query.total_sum)
+        EUR
+      = render "fin/bookings/bookings_table", query: query, condensed: true

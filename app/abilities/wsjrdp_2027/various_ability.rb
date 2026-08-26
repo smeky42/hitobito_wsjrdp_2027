@@ -29,5 +29,31 @@ module Wsjrdp2027::VariousAbility
     on(MossBalanceMovement) do
       permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
     end
+
+    # DATEV bookkeeping: every Buchhaltung/Abstimmung page authorizes against
+    # its own model (no proxy subject); same gate as the other finance models.
+    on(DatevBooking) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(DatevBookingBatch) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(WsjrdpLedgerAccount) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(WsjrdpCostCenter) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(WsjrdpPersonalAccount) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(MossCardTransaction) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
   end
 end

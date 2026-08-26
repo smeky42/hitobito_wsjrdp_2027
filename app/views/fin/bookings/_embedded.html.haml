@@ -1,0 +1,29 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Embeddable, paged bookings list for a scoped DatevBookingsQuery, shown inside a
+-#  detail view (account / cost center / supplier). A thin rule + "Buchungen"
+-#  heading + a summary line with a split "open in the bookings view" button
+-#  introduce it; the condensed table (with its own paging above and below) is
+-#  rendered by the shared widget.
+.fin-embedded-bookings
+  %hr.fin-embedded-rule
+  .fw-semibold.mb-1 Buchungen
+  .d-flex.flex-wrap.justify-content-between.align-items-center.gap-2.mb-2
+    %span.text-muted.small
+      = query.total_count
+      Buchungen · Summe:
+      = eur_display_or_nil(query.total_sum)
+      EUR
+    .btn-group.btn-group-sm.fin-embedded-open{ role: "group", "aria-label": all_label }
+      = link_to all_label, show_all_path, class: "btn btn-outline-secondary"
+      = link_to show_all_path, target: "_blank", rel: "noopener",
+        class: "btn btn-outline-secondary px-2", title: "In neuem Tab öffnen",
+        "aria-label": "In neuem Tab öffnen" do
+        = icon(:"external-link-alt")
+  = render "fin/bookings/bookings_table", query: query, condensed: true,
+    detail_level: local_assigns.fetch(:detail_level, 0)

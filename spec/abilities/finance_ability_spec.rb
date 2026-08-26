@@ -12,7 +12,13 @@ describe "finance abilities" do
       AccountingEntry,
       WsjrdpCamtTransaction,
       WsjrdpPaymentPlan,
-      MossBalanceMovement
+      MossBalanceMovement,
+      DatevBooking,
+      DatevBookingBatch,
+      WsjrdpLedgerAccount,
+      WsjrdpCostCenter,
+      WsjrdpPersonalAccount,
+      MossCardTransaction
     ]
   end
 

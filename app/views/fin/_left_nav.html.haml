@@ -1,0 +1,17 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Sub-items of the "Finanzen" main-nav section. Zahlungsverkehr (accounts /
+-#  person fees / payment plans) is the default; Moss holds the Moss overview /
+-#  card transactions; Buchhaltung holds the DATEV bookkeeping / bookings;
+-#  Abstimmung matches accounting entries with bookings.
+-#  See doc/navigation.md for how nav / sheets / tabs fit together.
+%ul.nav-left-list
+  = nav t("fin.nav.payments"), wsjrdp_fin_accounts_path, %w[fin], %w[fin/moss bookkeeping bookings reconciliation]
+  = nav t("fin.nav.moss"), moss_path, %w[fin/moss]
+  = nav t("fin.nav.accounting"), bookkeeping_path, %w[bookkeeping bookings]
+  = nav t("fin.nav.reconciliation"), reconciliation_path, %w[reconciliation]

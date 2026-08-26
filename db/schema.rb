@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_24_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -247,6 +247,97 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.string "context_type"
     t.bigint "context_id"
     t.index ["context_type", "context_id"], name: "index_custom_contents_on_context"
+  end
+
+  create_table "datev_booking_batches", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "consultant_number", null: false, comment: "DATEV Berater-Nr (Header-Feld 11)"
+    t.string "client_number", null: false, comment: "DATEV Mandanten-Nr (Header-Feld 12)"
+    t.date "period_from", null: false, comment: "DATEV 'Datum von' (Header-Feld 15): Beginn des Stapel-Zeitraums"
+    t.date "period_to", null: false, comment: "DATEV 'Datum bis' (Header-Feld 16): Ende des Zeitraums; Monat+Jahr bilden die Primanota-/Stapelnummer"
+    t.string "label", null: false, comment: "DATEV 'Bezeichnung' (Header-Feld 17), z. B. 'Einzüge Januar 2026'"
+    t.integer "fiscal_year", comment: "Geschäftsjahr (Jahr aus WJ-Beginn, Header-Feld 13)"
+    t.date "fiscal_year_start", comment: "DATEV 'WJ-Beginn' (Header-Feld 13)"
+    t.string "primanota_number", comment: "Rekonstruierte Primanota-/Stapelnummer 'MM-YYYY/NNNN' (Monat aus period_to + laufende Nr im Export); Anzeigewert, kein Identitätsschlüssel"
+    t.string "origin_indicator", comment: "DATEV 'Herkunft' (Header-Feld 8), z. B. RE/SV"
+    t.boolean "festschreibung", default: false, null: false, comment: "DATEV Festschreibung (Header-Feld 21): true = Stapel unveränderlich (GoBD)"
+    t.integer "booking_type", comment: "DATEV Buchungstyp (Header-Feld 19): 1 = Finanzbuchführung"
+    t.integer "account_number_length", comment: "DATEV Sachkontenlänge (Header-Feld 14)"
+    t.string "chart_of_accounts", comment: "DATEV Sachkontenrahmen / SKR (Header-Feld 27), z. B. '42'"
+    t.string "currency", default: "EUR", null: false, comment: "DATEV Basiswährung WKZ (Header-Feld 22)"
+    t.datetime "datev_created_at", comment: "DATEV 'Erzeugt am' (Header-Feld 6); gespeichert, aber NICHT als verlässliches Änderungssignal genutzt"
+    t.string "source_file", comment: "Dateiname der DTVF-Datei"
+    t.integer "file_sequence", comment: "_NNNNN-Sequenz im Dateinamen des Exports"
+    t.jsonb "header_raw", default: {}, null: false, comment: "Alle 31 Header-Felder roh (inkl. der undokumentierten Felder 24/26), zur Nachvollziehbarkeit"
+    t.jsonb "other_datev_fields", default: {}, null: false, comment: "Header-Felder mit Wert ohne eigene Spalte; fängt sonst nicht abgebildete Headerangaben ab"
+    t.index ["consultant_number", "client_number", "period_from", "period_to", "label"], name: "index_datev_booking_batches_on_identity", unique: true
+  end
+
+  create_table "datev_bookings", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "account_number", null: false, comment: "DATEV Konto"
+    t.string "offsetting_account_number", null: false, comment: "DATEV Gegenkonto"
+    t.string "original_account_number", comment: "Original DATEV Konto if mapped on import"
+    t.string "original_offsetting_account_number", comment: "Original DATEV Gegenkonto if mapped on import"
+    t.string "account_type", null: false, comment: "DATEV Kontenart of account_number"
+    t.string "offsetting_account_type", null: false, comment: "DATEV Kontenart of offsetting_account_number"
+    t.virtual "account_ref_type", type: :string, comment: "Target class of the polymorphic `account` association", as: "\nCASE\n    WHEN ((account_type)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "offsetting_account_ref_type", type: :string, comment: "Target class of the polymorphic `offsetting_account` association", as: "\nCASE\n    WHEN ((offsetting_account_type)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.decimal "absolute_base_amount", precision: 20, scale: 3, null: false, comment: "Vorzeichenloser Buchungsbetrag in Basiswährung (EUR): DATEV Basis-Umsatz bei Fremdwährung, sonst der Umsatz"
+    t.string "debit_credit", null: false, comment: "Debit/Credit indicator: 'D' = Debit, 'C' = Credit, derived from DATEV S/H"
+    t.string "base_currency", default: "EUR", null: false, comment: "Basis-/Buchungswährung (EUR): DATEV WKZ Basis-Umsatz bei Fremdwährung, sonst WKZ Umsatz"
+    t.virtual "amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the account (Konto) perspective (incoming +, outgoing -)", as: "((absolute_base_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_type)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "offsetting_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the offsetting (Gegenkonto) perspective, same sign convention as amount", as: "(((- absolute_base_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_type)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.string "description", comment: "Display/working text; initially copied from original_posting_text (with mojibake repair for the 2025 KOST1=9500/Konto=1200 batch), then hand-editable and left untouched on re-import"
+    t.string "cost_center_number", comment: "DATEV KOST1 (year <= 2025) or KOST2 (year >= 2026)"
+    t.string "sphere_number", comment: "Tax sphere (steuerliche Sphäre). Year >=2026 (SKR42) from DATEV KOST1; year <=2025 defaults to 3 (Zweckbetrieb)"
+    t.string "original_kost1", comment: "DATEV KOST1"
+    t.string "original_kost2", comment: "DATEV KOST2"
+    t.string "document_field_1", comment: "DATEV Belegfeld 1"
+    t.string "document_field_2", comment: "DATEV Belegfeld 2"
+    t.date "booking_date", comment: "DATEV Datum"
+    t.date "service_date", comment: "DATEV Leistungsdatum"
+    t.string "original_posting_text", comment: "DATEV Buchungstext"
+    t.string "origin_indicator", comment: "DATEV \"HK\" (origin indicator), e.g. SV (batch processing) or RE (accounting)"
+    t.decimal "absolute_transaction_amount", precision: 20, scale: 3, null: false, comment: "DATEV Umsatz (Feld 1, vorzeichenlos) in Transaktionswährung; für EUR-Buchungen = absolute_base_amount"
+    t.string "transaction_currency", default: "EUR", null: false, comment: "DATEV WKZ Umsatz (Feld 3): Transaktionswährung, in der die Buchung erfasst wurde (EUR für die Mehrheit, sonst z. B. PLN)"
+    t.virtual "transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the account (Konto) perspective", as: "((absolute_transaction_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_type)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "offsetting_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the offsetting (Gegenkonto) perspective", as: "(((- absolute_transaction_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_type)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.decimal "exchange_rate", precision: 11, scale: 6, comment: "DATEV Kurs (Feld 4): angegebener Umrechnungskurs; nur bei Fremdwährung"
+    t.string "bedi_guid", comment: "DATEV Beleglink BEDI-GUID (Feld 20, aus BEDI \"<guid>\"): Verweis auf das Belegbild in DATEV Unternehmen online (Original-Schreibweise)"
+    t.jsonb "beleginfo", default: [], null: false, comment: "DATEV Beleginfo (Felder 21-36) als [{num,key,value}]; num = Slot, key = Art, value = Inhalt"
+    t.jsonb "zusatzinformation", default: [], null: false, comment: "DATEV Zusatzinformation (Felder 48-87) als [{num,key,value}]; num = Slot, key = Art, value = Inhalt"
+    t.string "secondary_cost_center_number", comment: "Manually maintained secondary cost center. Not from DATEV"
+    t.bigint "accounting_entry_id", comment: "Optional 1:1 (<-> accounting_entries)"
+    t.string "accounting_entry_link_type"
+    t.datetime "accounting_entry_linked_at"
+    t.bigint "accounting_entry_link_person_id"
+    t.bigint "person_id", comment: "Optional n:1 (<-> people)"
+    t.bigint "camt_transaction_id", comment: "Optional 1:1 (<-> wsjrdp_camt_transactions)"
+    t.bigint "datev_booking_batch_id", comment: "Optional n:1 (<-> datev_booking_batches): der Buchungsstapel/Primanota dieser Buchung"
+    t.uuid "buchungs_guid", null: false, comment: "DATEV Buchungs GUID (Feld 103): stabiler, eindeutiger Schlüssel je Buchung; Basis für Upsert beim Re-Import"
+    t.string "consultant_number", comment: "DATEV consultant number from the Primanota header"
+    t.string "client_number", comment: "DATEV client number from the Primanota header"
+    t.integer "fiscal_year", comment: "Fiscal year of the export (e.g. 2025)"
+    t.date "primanota_period", comment: "First day of the booking month of the Primanota (from the header, e.g. 2026-04-01)"
+    t.string "primanota_number", comment: "DATEV Primanota number from the header (e.g. \"08-2025/0001\")"
+    t.string "primanota_label", comment: "Primanota label from the header (e.g. \"Einzuege August 2025\")"
+    t.string "source_file", comment: "Original DATEV export file (file name)"
+    t.string "source_sheet", comment: "Original worksheet in the export (e.g. \"Primanota 08-2025_0001\")"
+    t.jsonb "other_datev_fields", default: {}, null: false, comment: "DTVF-Satzfelder mit Wert ohne eigene Spalte (z. B. Beleglink-Rohwert, Festschreibung, Generalumkehr, Kurs, Basis-Umsatz); fängt auch sonst leere Felder ab"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for our own, non-DATEV extension data (JSONB). Empty by default."
+    t.index ["accounting_entry_id"], name: "index_datev_bookings_on_accounting_entry_id", unique: true
+    t.index ["bedi_guid"], name: "index_datev_bookings_on_bedi_guid"
+    t.index ["beleginfo"], name: "index_datev_bookings_on_beleginfo", opclass: :jsonb_path_ops, using: :gin
+    t.index ["buchungs_guid"], name: "index_datev_bookings_on_buchungs_guid", unique: true
+    t.index ["camt_transaction_id"], name: "index_datev_bookings_on_camt_transaction_id"
+    t.index ["consultant_number", "client_number", "fiscal_year", "primanota_number"], name: "index_datev_bookings_on_source"
+    t.index ["datev_booking_batch_id"], name: "index_datev_bookings_on_datev_booking_batch_id"
+    t.index ["person_id"], name: "index_datev_bookings_on_person_id"
+    t.index ["primanota_period"], name: "index_datev_bookings_on_period"
+    t.index ["zusatzinformation"], name: "index_datev_bookings_on_zusatzinformation", opclass: :jsonb_path_ops, using: :gin
   end
 
   create_table "delayed_jobs", id: :serial, force: :cascade do |t|
@@ -885,6 +976,104 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.index ["moss_transaction_id", "sub_row_number"], name: "index_moss_balance_movements_tx_id_sub_row", unique: true
     t.index ["subject_type", "subject_id"], name: "index_moss_balance_movements_subject"
     t.index ["unique_item_number"], name: "index_moss_balance_movements_unique_item_number", unique: true
+  end
+
+  create_table "moss_card_transaction_bookings", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "unique_item_number", comment: "Moss 'Unique Item Number' (WSJ27): eindeutiger Zeilen-/Buchungsschlüssel."
+    t.integer "sub_row_number", default: 0, null: false, comment: "Moss 'Sub-row Number': Split-Position innerhalb der Transaktion (WSJ27 1-basiert)."
+    t.string "card_transaction_uuid", null: false, comment: "Pflicht-Verweis auf moss_card_transactions.card_transaction_uuid (natürlicher Schlüssel; die Transaktion dieser Buchung)"
+    t.bigint "expense_datev_booking_id", comment: "1:1 -> datev_bookings: Schritt-1-Buchung Sachkonto -> Sammelkreditor 700002 (Beleg/Aufwand)"
+    t.bigint "clearing_datev_booking_id", comment: "1:1 -> datev_bookings: Schritt-2-Buchung Sammelkreditor 700002 -> Moss-Konto 36100 (Kreditorenausgleich)"
+    t.jsonb "other_columns", default: {}, null: false, comment: "Buchungs-Level WSJ27-Spalten ohne eigene Spalte (>70% leer), nur befüllt wenn vorhanden: Unit Price, Quantity."
+    t.decimal "amount", precision: 20, scale: 3, null: false, comment: "Moss 'Amount' / Betrag dieser Buchung (Zeile)"
+    t.decimal "amount_excl_vat", precision: 20, scale: 3, comment: "Moss 'Amount (excl. VAT)'"
+    t.decimal "home_amount", precision: 20, scale: 3, comment: "Moss 'Home Amount' (Basiswährung EUR). Abstimmungs-Anker gegen datev_bookings.absolute_base_amount (These)."
+    t.decimal "original_amount", precision: 20, scale: 3, comment: "Moss 'Original Amount'"
+    t.decimal "original_amount_excl_vat", precision: 20, scale: 3, comment: "Moss 'Original Amount (excl. VAT)'"
+    t.decimal "transaction_amount_excluding_fees", precision: 20, scale: 3, comment: "Moss 'Transaction Amount Excluding Fees'"
+    t.string "account_number", comment: "Moss 'Account Number' / Sachkonto dieser Buchung"
+    t.string "name_of_expense_account", comment: "Moss 'Name of Expense Account'"
+    t.string "original_expense_account", comment: "Moss 'Original Expense Account'"
+    t.string "cost_center_number", comment: "Moss 'Cost Center - Number' dieser Buchung (Link zu wsjrdp_cost_centers; = DATEV KOST1). 'Cost Center - Name' ignoriert."
+    t.string "sphere_number", comment: "Moss 'Cost Carrier - Number' = steuerliche Sphäre dieser Buchung (fix meist 3 = Zweckbetrieb). 'Cost Carrier - Name' ignoriert."
+    t.string "distribution_combination", comment: "Moss 'Distribution combination'"
+    t.string "description", default: "", null: false, comment: "Moss 'Note' = Buchungstext dieser Buchung"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Eigene, nicht-Moss Erweiterungsdaten (JSONB). Standard leer."
+    t.index ["account_number"], name: "index_moss_card_transaction_bookings_account_number"
+    t.index ["amount"], name: "index_moss_card_transaction_bookings_amount"
+    t.index ["card_transaction_uuid", "sub_row_number"], name: "index_moss_card_transaction_bookings_uuid_sub_row", unique: true
+    t.index ["clearing_datev_booking_id"], name: "index_moss_card_transaction_bookings_clearing_datev", unique: true
+    t.index ["cost_center_number"], name: "index_moss_card_transaction_bookings_cost_center_number"
+    t.index ["expense_datev_booking_id"], name: "index_moss_card_transaction_bookings_expense_datev", unique: true
+    t.index ["unique_item_number"], name: "index_moss_card_transaction_bookings_unique_item_number", unique: true
+  end
+
+  create_table "moss_card_transactions", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.bigint "person_id", comment: "Optionaler Verweis auf people (zugeordnete Person / Karteninhaber)"
+    t.bigint "fin_account_id", comment: "FinAccount des Kartenkontos; noch nicht verdrahtet"
+    t.text "comment", default: "", null: false, comment: "Manuelle Notiz (nicht aus Moss), beim Import bewahrt"
+    t.string "status", comment: "Manueller Status (nicht aus Moss), beim Import bewahrt"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Eigene, nicht-Moss Erweiterungsdaten (JSONB). Standard leer."
+    t.jsonb "other_columns", default: {}, null: false, comment: "Transaktions-Level WSJ27-Spalten ohne eigene Spalte (>70% leer), nur befüllt wenn vorhanden: Record Type, Supplier IBAN/BIC/Vat ID, VAT Code/Name/Rate, Card Acceptor Name, Client Number, Airline Ticket Number, Number of Months in Release Plan, Prepayment Start/End Date. Zusätzlich moss_record_url / moss_attachment_url / transaction_id_pdf_filename NUR, wenn NICHT aus card_transaction_uuid ableitbar (Model liefert sonst den abgeleiteten Wert)."
+    t.string "card_transaction_uuid", null: false, comment: "Moss 'Transaction ID' (UUID). Eindeutig je Transaktion; natürlicher Schlüssel (bookings verweisen darüber). = Dateiname in attachments/<uuid>.pdf"
+    t.string "transaction_state", comment: "Moss 'Transaction State' / Transaktionsstatus (z. B. ACCEPTED)"
+    t.string "transaction_type", comment: "Moss 'Transaction Type' (STANDARD/CREDIT)"
+    t.string "general_transaction_type", comment: "Moss 'General Transaction Type' (STANDARD/CREDIT)"
+    t.string "is_prepayment", comment: "Moss 'Is Prepayment?' (Flag, hier durchgehend '0')"
+    t.date "payment_date", comment: "Moss 'Payment Date' / Zahlungsdatum (Kartenbelastung). Period = YYYY-MM hiervon."
+    t.date "booking_date", comment: "Moss 'Booking Date' / Buchungsdatum"
+    t.date "settlement_date", comment: "Moss 'Settlement Date' / Abrechnungsdatum"
+    t.date "first_export_date", comment: "Moss 'First Export Date'"
+    t.date "last_export_date", comment: "Moss 'Last Export Date'"
+    t.date "receipt_date", comment: "Moss 'Receipt Date' / Belegdatum"
+    t.date "service_date", comment: "Moss 'Service Date' / Leistungsdatum (teils leer)"
+    t.date "approval_date", comment: "Moss 'Approval Date' / Freigabedatum"
+    t.decimal "total_amount", precision: 20, scale: 3, comment: "Moss 'Total Amount' (Gesamttransaktion; Summe der Split-Beträge)"
+    t.decimal "total_amount_excl_vat", precision: 20, scale: 3, comment: "Moss 'Total Amount (excl. VAT)'"
+    t.decimal "total_original_amount", precision: 20, scale: 3, comment: "Moss 'Total Original Amount'"
+    t.decimal "total_original_amount_excl_vat", precision: 20, scale: 3, comment: "Moss 'Total Original Amount (excl. VAT)'"
+    t.decimal "vat_amount", precision: 20, scale: 3, comment: "Moss 'VAT Amount' (im Sample 0; ggf. per Split -> bookings verschieben)"
+    t.decimal "original_vat", precision: 20, scale: 3, comment: "Moss 'Original VAT' (im Sample 0)"
+    t.decimal "fees_amount", precision: 20, scale: 3, comment: "Moss 'Fees Amount' (im Sample 0)"
+    t.string "currency", null: false, comment: "Moss 'Currency' / Buchungswährung"
+    t.string "home_currency", comment: "Moss 'Home Currency' (Basiswährung, hier EUR)"
+    t.string "original_currency", comment: "Moss 'Original Currency'"
+    t.decimal "conversion_rate", precision: 20, scale: 8, comment: "Moss 'Conversion Rate' / Wechselkurs"
+    t.decimal "conversion_rate_including_fees", precision: 20, scale: 8, comment: "Moss 'Conversion Rate Including Fees'"
+    t.string "merchant_name", comment: "Moss 'Merchant Name' / Händlername"
+    t.string "merchant_city", comment: "Moss 'Merchant City'"
+    t.string "merchant_country", comment: "Moss 'Merchant Country'"
+    t.string "supplier_name", comment: "Moss 'Supplier Name' (bei Karten: Sammelkreditor, konstant 'Default Moss Supplier')"
+    t.string "supplier_account", comment: "Moss 'Supplier Account' / Lieferantenkonto (Sammelkreditor, 700002)"
+    t.string "moss_balance_account", comment: "Moss 'Moss Balance Account' / Moss-Bilanzkonto (36100)"
+    t.string "cash_in_transit_account", comment: "Moss 'Cash in Transit Account' / Geldtransitkonto (13720)"
+    t.string "cardholder", comment: "Moss 'Cardholder' / Kreditkarteninhaber (voller Name)"
+    t.string "card_used", comment: "Moss 'Card Used' (z. B. 'VIRTUAL - 2557'; letzte 4 Kartenziffern)"
+    t.string "card_holder_name", comment: "Moss 'Card Holder Name'"
+    t.string "card_holder_label", comment: "Moss 'Card Holder Label' (konstant 'Kreditkarteninhaber')"
+    t.string "card_label", comment: "Moss 'Card Label' (konstant 'Kreditkarte')"
+    t.string "card_purpose", comment: "Moss 'Card Purpose'"
+    t.string "team_name", comment: "Moss 'Team Name' / Teamname"
+    t.string "approver_name", comment: "Moss 'Approver Name'"
+    t.string "post_spend_approval_status", comment: "Moss 'Post Spend Approval Status' (APPROVED/NA)"
+    t.string "reason_for_purchase", comment: "Moss 'Reason for Purchase' / Grund des Einkaufs"
+    t.string "parent_booking_text", comment: "Moss 'Parent Booking Text': Buchungstext der Gesamt-Transaktion (der Buchungstext je Buchung steht in bookings.description; nicht deckungsgleich mit dem DATEV-Buchungstext)"
+    t.string "invoice_number", comment: "Moss 'Invoice Number' = DATEV 'Belegfeld 1'. Brücke zu datev_bookings.document_field_1 (Schritt-1-Buchung EXPENSE -> Sammelkreditor 700002)."
+    t.string "invoice_file_name", comment: "Moss 'Invoice File Name': Beleg-Dateinamen (mehrere Pipe-getrennt); = Dateien in receipts/"
+    t.string "sage_payment_type", comment: "Moss 'Sage Payment Type' (PA/PR)"
+    t.string "sage_transaction_type", comment: "Moss 'Sage Transaction Type' (PI/PC)"
+    t.index ["booking_date"], name: "index_moss_card_transactions_booking_date"
+    t.index ["card_transaction_uuid"], name: "index_moss_card_transactions_uuid", unique: true
+    t.index ["cardholder"], name: "index_moss_card_transactions_cardholder"
+    t.index ["invoice_number"], name: "index_moss_card_transactions_invoice_number"
+    t.index ["payment_date"], name: "index_moss_card_transactions_payment_date"
+    t.index ["person_id"], name: "index_moss_card_transactions_person_id"
+    t.index ["total_amount"], name: "index_moss_card_transactions_total_amount"
+    t.index ["transaction_state"], name: "index_moss_card_transactions_transaction_state"
   end
 
   create_table "mounted_attributes", force: :cascade do |t|
@@ -1642,7 +1831,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.index ["number"], name: "index_wsjrdp_ledger_accounts_on_number", unique: true
     t.check_constraint "number::text !~ '^[1-9]\\d{5}$'::text", name: "chk_ledger_account_number_not_personal_account"
-    t.check_constraint "visibility::text = ANY (ARRAY['auto'::character varying, 'visible'::character varying, 'hidden'::character varying]::text[])", name: "chk_ledger_account_visibility"
+    t.check_constraint "visibility::text = ANY (ARRAY['auto'::character varying::text, 'visible'::character varying::text, 'hidden'::character varying::text])", name: "chk_ledger_account_visibility"
   end
 
   create_table "wsjrdp_notes", id: :serial, force: :cascade do |t|
@@ -1761,6 +1950,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade
+  add_foreign_key "datev_bookings", "accounting_entries"
+  add_foreign_key "datev_bookings", "datev_booking_batches"
+  add_foreign_key "datev_bookings", "people"
+  add_foreign_key "datev_bookings", "wsjrdp_camt_transactions", column: "camt_transaction_id"
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade

@@ -1,0 +1,47 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Thin adapter: renders a DatevBookingsQuery through the shared widget
+-#  (shared/_expandable_table). It only maps the booking specifics -- the column
+-#  config, the eye/soft-delete action cell, the inline detail, the count+sum
+-#  summary -- onto the generic options; paging, sorting, the column hamburger and
+-#  row selection all come from the widget. `condensed` renders the compact
+-#  in-detail variant (bare codes, abbreviated headers, no column picker).
+-#
+-#  Locals: query (required); condensed; row_badge; extra_columns (injected
+-#  columns, e.g. the reconciliation proposal); selection; detail_top /
+-#  detail_extra (booking detail slots).
+- condensed = local_assigns.fetch(:condensed, false)
+- row_badge = local_assigns.fetch(:row_badge, nil)
+- extra_columns = local_assigns.fetch(:extra_columns, nil)
+- selection = local_assigns.fetch(:selection, nil)
+- detail_top = local_assigns.fetch(:detail_top, nil)
+- detail_extra = local_assigns.fetch(:detail_extra, nil)
+- action = ->(booking) do
+  - capture do
+    - if row_badge && (badge = row_badge.call(booking))
+      = badge
+    = link_to booking_path(booking), class: "btn btn-sm btn-link p-0", title: "Detailseite öffnen", "aria-label": "Detailseite öffnen" do
+      = icon(:eye)
+- detail = ->(booking, ctx) { render "fin/bookings/booking_detail", booking: booking, table_context: ctx, top: detail_top, extra: detail_extra }
+= render "shared/expandable_table",
+  prefix: query.prefix, id_prefix: (query.prefix.presence || "bk"),
+  filter: local_assigns[:filter],
+  detail_level: local_assigns.fetch(:detail_level, 0),
+  rows: query.result, pagination: query.result,
+  columns: booking_table_columns(query, condensed: condensed),
+  extra_columns: extra_columns,
+  columns_menu: !condensed,
+  default_column_keys: (query.default_column_keys || WsjrdpBookingsHelper::DEFAULT_BOOKING_COLUMN_KEYS),
+  row_key: ->(b) { b.id },
+  action: action, detail: detail,
+  default_sort: {key: DatevBookingsQuery::DEFAULT_SORT, dir: DatevBookingsQuery::DEFAULT_SORT_DIRECTION},
+  multi_sort: true,
+  per_options: [25, 50, 100, 200, 500, "all"], default_per: query.default_per,
+  summary: (condensed ? nil : "#{query.total_count} Buchungen · Summe (gefiltert): #{eur_display_or_nil(query.total_sum)} EUR"),
+  selection: selection,
+  condensed: condensed

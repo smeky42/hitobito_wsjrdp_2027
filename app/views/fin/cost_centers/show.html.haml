@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+- frame = turbo_frame_tag("bkframe-cost_center-#{@number}") do
+  = cost_center_item_detail(@number)
+
+- if turbo_frame_request?
+  = frame
+- else
+  #main
+    %p.mb-1
+      = link_to cost_centers_path, class: "small text-decoration-none" do
+        ← Zurück zu Kostenstellen
+    %h1.mb-3
+      Kostenstelle #{@number}
+      - name = cost_center_records[@number]&.name
+      - if name.present?
+        %span.text-muted.fs-5.ms-2= name
+    = frame

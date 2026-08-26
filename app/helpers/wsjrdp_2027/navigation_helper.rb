@@ -23,7 +23,7 @@ module Wsjrdp2027::NavigationHelper
     url: :wsjrdp_fin_accounts_path,
     icon_name: "money-bill",
     if: ->(_) { can?(:fin_admin, WsjrdpFinAccount) },
-    active_for: %w[fin],
+    active_for: %w[fin bookkeeping reconciliation],
     inactive_for: %w[fin/ae fin/pn /people]
   }
 

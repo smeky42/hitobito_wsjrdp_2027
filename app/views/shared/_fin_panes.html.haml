@@ -1,0 +1,73 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared chrome for collapsible "panes": a slim pill button (equal width for
+-#  all panes) with the pane body to its RIGHT when there is room (below on
+-#  narrow screens). Collapsed, a pane is just the pill line. Only the pill
+-#  toggles; the open state is remembered per pane cookie (data-pane-cookie).
+-#  Also provides scroll-position restore across form reloads
+-#  (form.booking-scroll-form). All listeners are document-delegated, so render
+-#  position and Turbo re-renders don't matter. Render once per page.
+-#
+-#  Markup contract:
+-#    .fin-pane(.open){data: {pane_cookie: "..."}}
+-#      %button.pane-pill{type: "button"} <i.fas.fa-chevron-right.pane-caret> Label [badge]
+-#      .pane-body ...
+
+:css
+  html { scrollbar-gutter: stable; }
+  .fin-pane { display: flex; align-items: flex-start; gap: .75rem; flex-wrap: wrap; }
+  .pane-pill { flex: 0 0 auto; width: 8em; display: inline-flex; align-items: center;
+    gap: .45rem; padding: .3rem .8rem; border: 1px solid var(--bs-border-color);
+    border-radius: 999px; background: var(--bs-body-bg); cursor: pointer;
+    font-weight: 600; font-size: .875rem; color: var(--bs-body-color); text-align: left; }
+  .pane-pill:hover { background: var(--bs-secondary-bg); }
+  .pane-pill .badge { margin-left: auto; }
+  .pane-caret { transition: transform .15s ease; color: var(--bs-secondary-color);
+    font-size: .7em; flex: 0 0 auto; }
+  .fin-pane.open .pane-caret { transform: rotate(90deg); }
+  .pane-body { display: none; flex: 1 1 28rem; min-width: 0; }
+  .fin-pane.open .pane-body { display: block; }
+
+:javascript
+  (function () {
+    var SCROLL_KEY = "datev_bookings_scroll";
+    function saveScroll() {
+      try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || document.documentElement.scrollTop || 0)); } catch (e) {}
+    }
+    // Restore runs on every render of this partial (fresh loads and Turbo
+    // visits both re-execute inline scripts).
+    (function restoreScroll() {
+      try {
+        var v = sessionStorage.getItem(SCROLL_KEY);
+        if (v === null) return;
+        sessionStorage.removeItem(SCROLL_KEY);
+        var y = parseInt(v, 10) || 0;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { window.scrollTo(0, y); });
+        });
+      } catch (e) {}
+    })();
+
+    // Document-delegated: works regardless of where panes sit in the DOM and
+    // survives Turbo body swaps.
+    if (window.__wsjrdpFinPanes) return;
+    window.__wsjrdpFinPanes = true;
+    document.addEventListener("click", function (e) {
+      var pill = e.target.closest(".pane-pill");
+      if (!pill) return;
+      var pane = pill.closest(".fin-pane");
+      if (!pane) return;
+      var open = pane.classList.toggle("open");
+      pill.setAttribute("aria-expanded", open ? "true" : "false");
+      var cookie = pane.dataset.paneCookie;
+      if (cookie) document.cookie = cookie + "=" + (open ? "1" : "0") + ";path=/;max-age=31536000";
+    });
+    document.addEventListener("submit", function (e) {
+      if (e.target.matches && e.target.matches("form.booking-scroll-form")) saveScroll();
+    });
+  })();

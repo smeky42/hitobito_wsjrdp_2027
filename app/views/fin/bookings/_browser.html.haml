@@ -1,0 +1,36 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The complete bookings browser: the generic CNF filter + the bookings table,
+-#  both rendered by the shared widget (shared/_expandable_table via
+-#  fin/bookings/_bookings_table). This partial only assembles the filter config
+-#  from the host's BookingsFiltering helpers. Hosts render it with:
+-#    apply_url:     POST target of the filter builder (PRG)
+-#    pane_name:     pane cookie name (default "flt"; recon passes "rec_flt")
+-#    pane_default:  filter pane open by default? (default true)
+-#    locked:, locked_catalog:  optional pinned filter conditions (read-only)
+-#    condensed_locked:  show the pinned conditions as a compact summary line
+-#    extra_columns: injected table columns (e.g. the match-proposal column)
+-#    row_badge:, selection:, detail_top:, detail_extra:  passed to the table
+-#  The host controller must include Fin::BookingsFiltering.
+- pfx = query.prefix
+- filter_param = et_param_name(pfx, :filter)
+- page_param = et_param_name(pfx, :page)
+- reset_url = et_url(pfx, {filter: nil})
+- reset_url = reset_url + (reset_url.include?("?") ? "&clear=1" : "?clear=1")
+- pane_name = local_assigns.fetch(:pane_name, "flt")
+- filter_cfg = {catalog: filter_catalog, value: filter_value, apply_url: apply_url, reset_url: reset_url,
+    locked: local_assigns.fetch(:locked, []), locked_catalog: local_assigns.fetch(:locked_catalog, nil),
+    carry: request.query_parameters.except(filter_param, page_param),
+    open: booking_pane_open?(pane_name, default: local_assigns.fetch(:pane_default, true)),
+    pane_cookie: "datev_bookings_pane_#{pane_name}",
+    condensed_locked: local_assigns.fetch(:condensed_locked, false),
+    disabled: local_assigns.fetch(:disabled, false)}
+= render "fin/bookings/listing", filter: filter_cfg,
+  row_badge: local_assigns[:row_badge], extra_columns: local_assigns[:extra_columns],
+  selection: local_assigns[:selection], detail_top: local_assigns[:detail_top],
+  detail_extra: local_assigns[:detail_extra]

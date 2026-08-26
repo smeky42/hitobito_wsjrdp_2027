@@ -1,0 +1,29 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A clickable row toggles its detail via a data-bs-toggle collapse. Clicks on
+-#  interactive controls inside the row (the eye link, buttons, form fields) must
+-#  NOT toggle the row. Inline onclick handlers are blocked by the CSP, so a single
+-#  capture-phase listener stops such clicks before the toggle handler sees them;
+-#  the control's own action (navigation, submit) still runs.
+-#
+-#  The listener is bound on `window`, not `document`: Hitobito registers the
+-#  collapse toggle as a capture-phase listener on `document` at page load, and all
+-#  window-capture listeners fire before any document-capture listener regardless of
+-#  registration order, so this reliably runs first. stopPropagation only suppresses
+-#  further listeners; it does not cancel the control's default action.
+:javascript
+  (function () {
+    if (window.__wsjrdpRowClickGuard) return;
+    window.__wsjrdpRowClickGuard = true;
+    window.addEventListener("click", function (e) {
+      var control = e.target.closest && e.target.closest("a, button, input, select, textarea, label, .bk-select-cell");
+      if (control && control.closest(".exp-row")) {
+        e.stopPropagation();
+      }
+    }, true);
+  })();

@@ -1,0 +1,78 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared, read-only detail of an AccountingEntry (Beitragsbuchung). Mirrors the
+-#  useful fields of the edit form (/fin/ae/:id) in a compact grid; used inside
+-#  the reconciliation expandable table (and reusable elsewhere).
+-#
+-#  Locals:
+-#    entry -- the AccountingEntry
+-#    hide  -- Array of element keys to omit (default []). Recognised:
+-#               :excluded_flag  the "von der Abstimmung ausgenommen" note
+-#             Debtor + creditor, the SEPA direct-debit block and the
+-#             created/updated timestamps are ALWAYS shown when present.
+- e = entry
+- hide = Array(local_assigns.fetch(:hide, []))
+- person_val = e.subject.is_a?(Person) ? link_to(e.subject.to_s, url_for(e.subject)) : e.subject_type
+- source = e.direct_debit_pre_notification_id ? "SEPA-Einzug" : (e.camt_transaction_id ? "Kontoauszug" : (e.moss_balance_movement_id ? "Moss" : nil))
+.bk-item-detail.bk-item-detail-plain
+  -# Grid: Buchungsdatum / Valuta / Beschreibung (2 cols) first, then amount/meta.
+  - head_row = [["Buchungsdatum", e.booking_date&.strftime("%d.%m.%Y")], ["Valuta", e.value_date&.strftime("%d.%m.%Y")], ["Beschreibung", e.description, 2]]
+  - meta = [["Betrag", "#{cents_to_eur_display_or_nil(e.amount_cents)} €", 1, :end]]
+  - meta << ["Vorab angekündigt", "#{cents_to_eur_display_or_nil(e.pre_notified_amount_cents)} €", 1, :end] if e.pre_notified_amount_cents && e.pre_notified_amount_cents != e.amount_cents
+  - meta << ["Person", person_val]
+  - meta << ["Quelle", source]
+  - meta << ["Finanzstatus", e.new_sepa_status_display]
+  - meta << ["Rückgabegrund", e.return_reason] if e.return_reason.present?
+  = render "shared/kv_grid", rows: [head_row, meta]
+
+  -# Verknüpfungen: the Beitragsbuchung itself, its bank transaction and its
+  -# pre-notification.
+  - links = [["Beitragsbuchung", link_to("##{e.id}", accounting_entry_path(e))]]
+  - links << ["Bank-Transaktion", e.camt_transaction_id && link_to("##{e.camt_transaction_id}", wsjrdp_camt_transaction_path(e.camt_transaction_id))]
+  - links << ["Pre-Notification", e.direct_debit_pre_notification_id && link_to("##{e.direct_debit_pre_notification_id}", wsjrdp_direct_debit_pre_notification_path(e.direct_debit_pre_notification_id))]
+  - links << ["Moss", e.moss_balance_movement_id && link_to("##{e.moss_balance_movement_id}", moss_balance_movement_path(e.moss_balance_movement_id))] if e.moss_balance_movement_id
+  .mt-3.pt-2.border-top
+    .booking-detail-label.text-muted.text-uppercase.mb-1 Verknüpfungen
+    = render "shared/kv_grid", rows: [links]
+
+  -# SEPA direct-debit data (mandate + end-to-end reference), when present.
+  - sepa = [["Mandats-ID", e.mandate_id], ["Mandatsdatum", e.mandate_date&.strftime("%d.%m.%Y")], ["Sequenztyp", e.debit_sequence_type], ["Ende-zu-Ende-ID", e.endtoend_id]]
+  - if sepa.any? { |_l, v| v.present? }
+    .mt-3.pt-2.border-top
+      .booking-detail-label.text-muted.text-uppercase.mb-1 SEPA-Lastschrift
+      = render "shared/kv_grid", rows: [sepa]
+
+  -# Debtor (Zahlungspflichtige:r) -- always shown when present.
+  - dbtr = [["Name", e.dbtr_name], ["IBAN", e.dbtr_iban], ["BIC", e.dbtr_bic], ["Anschrift", e.dbtr_address]]
+  - if dbtr.any? { |_l, v| v.present? }
+    .mt-3.pt-2.border-top
+      .booking-detail-label.text-muted.text-uppercase.mb-1 Zahlungspflichtige:r (Debitor)
+      = render "shared/kv_grid", rows: [dbtr]
+
+  -# Creditor (Zahlungsempfänger:in) -- always shown when present.
+  - cdtr = [["Name", e.cdtr_name], ["IBAN", e.cdtr_iban], ["BIC", e.cdtr_bic], ["Anschrift", e.cdtr_address], ["Gläubiger-ID", e.creditor_id]]
+  - if cdtr.any? { |_l, v| v.present? }
+    .mt-3.pt-2.border-top
+      .booking-detail-label.text-muted.text-uppercase.mb-1 Zahlungsempfänger:in (Kreditor)
+      = render "shared/kv_grid", rows: [cdtr]
+
+  - if e.comment.present?
+    .mt-2
+      .booking-detail-label.text-muted.text-uppercase.mb-1 Kommentar
+      .small.text-break= e.comment
+
+  - if !hide.include?(:excluded_flag) && e.excluded_from_fee_reconciliation?
+    .mt-2
+      %span.badge.text-bg-light.border
+        = icon(:"eye-slash")
+        Von der Beitrags-Abstimmung ausgenommen
+
+  -# Created / last updated -- always shown.
+  - stamps = [["Erstellt", e.created_at&.strftime("%d.%m.%Y %H:%M")], ["Zuletzt geändert", e.updated_at&.strftime("%d.%m.%Y %H:%M")]]
+  .mt-3.pt-2.border-top
+    = render "shared/kv_grid", rows: [stamps]

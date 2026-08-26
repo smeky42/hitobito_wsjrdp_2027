@@ -1,0 +1,90 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Detail of one Moss card transaction: its header fields plus ALL its bookings
+-#  (splits). Rendered both as the expandable row detail (table_context nested)
+-#  and standalone on /fin/moss/card_transactions/:id (table_context nil).
+-#  Locals: card_transaction (required); table_context (optional).
+- tx = card_transaction
+- nested = local_assigns[:table_context]&.nested?
+- receipts = card_transaction_receipt_names(tx)
+
+.moss-ct-detail
+  - if nested
+    %p
+      = link_to icon(:eye) + " Detailseite öffnen", moss_card_transaction_path(tx),
+        class: "small text-decoration-none"
+
+  .row
+    .col-md-6
+      %dl.row.mb-2
+        %dt.col-5.text-muted Händler
+        %dd.col-7= tx.merchant_name
+        %dt.col-5.text-muted Karteninhaber
+        %dd.col-7= tx.cardholder
+        %dt.col-5.text-muted Karte
+        %dd.col-7= tx.card_used
+        %dt.col-5.text-muted Zweck
+        %dd.col-7= tx.reason_for_purchase
+    .col-md-6
+      %dl.row.mb-2
+        %dt.col-5.text-muted Betrag (gesamt)
+        %dd.col-7= moss_amount_display(tx.total_amount, tx.currency)
+        %dt.col-5.text-muted Buchungsdatum
+        %dd.col-7= tx.booking_date&.strftime("%d.%m.%Y")
+        %dt.col-5.text-muted Zahlungsdatum
+        %dd.col-7= tx.payment_date&.strftime("%d.%m.%Y")
+        %dt.col-5.text-muted Abrechnungsdatum
+        %dd.col-7= tx.settlement_date&.strftime("%d.%m.%Y")
+        %dt.col-5.text-muted Status
+        %dd.col-7= [tx.transaction_state, tx.post_spend_approval_status].compact_blank.join(" · ")
+
+  %h5.mt-3 Buchungen (Splits)
+  %table.table.table-sm.table-striped
+    %thead
+      %tr
+        %th Sub-row
+        %th Sachkonto
+        %th Kostenstelle
+        %th.text-end Betrag
+        %th Buchungstext
+        %th DATEV
+    %tbody
+      - tx.bookings.sort_by { |b| b.sub_row_number.to_i }.each do |b|
+        %tr
+          %td= b.sub_row_number
+          %td= [b.account_number, b.name_of_expense_account].compact_blank.join(" ")
+          %td= b.cost_center_number
+          %td.text-end= moss_amount_display(b.amount, tx.currency)
+          %td= b.description.presence
+          %td
+            - if b.expense_datev_booking_id
+              = link_to "Aufwand", booking_path(b.expense_datev_booking_id), class: "small"
+            - if b.clearing_datev_booking_id
+              = link_to "Ausgleich", booking_path(b.clearing_datev_booking_id), class: "small ms-1"
+            - unless b.expense_datev_booking_id || b.clearing_datev_booking_id
+              %span.text-muted.small —
+
+  .row.mt-2
+    .col-md-6
+      %dl.row.mb-0
+        %dt.col-5.text-muted Rechnungsnummer
+        %dd.col-7= tx.invoice_number
+        %dt.col-5.text-muted Buchungstext (gesamt)
+        %dd.col-7= tx.parent_booking_text
+    .col-md-6
+      %dl.row.mb-0
+        %dt.col-5.text-muted Moss
+        %dd.col-7= link_to("In Moss öffnen", tx.moss_record_url, target: "_blank", rel: "noopener", class: "small")
+        %dt.col-5.text-muted= "Belege (#{receipts.size})"
+        %dd.col-7
+          - if receipts.any?
+            %ul.list-unstyled.mb-0
+              - receipts.each do |name|
+                %li.small= name
+          - else
+            %span.text-muted —

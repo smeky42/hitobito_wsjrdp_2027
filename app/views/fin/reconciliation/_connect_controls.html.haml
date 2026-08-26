@@ -1,0 +1,134 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Bulk-connect controls shared by BOTH reconciliation tables. The "Auswahl
+-#  verbinden" button + a confirm dialog (count + summed amount), and quick-select
+-#  criteria buttons. Each tier offers TWO equally-styled actions: "+ <tier>"
+-#  ADDS the tier to the selection (the common action), "nur (N)" REPLACES the
+-#  selection with just that tier.
+-#  Selection is by disjoint confidence atoms, one per rating tier (auto / hhigh
+-#  / hmid / hlow, see shared/_table_selection_js), all pages. Drives the
+-#  .bk-select-scope whose data-select-form == form_id. Locals: form_url,
+-#  form_id, noun (plural),
+-#  stats ({ "auto"|"hhigh"|"hmid"|"hlow" => { count:, sum: } }).
+-# Per-button colour comes from the inline --rec-tier variable; these rules add
+-# the hover/active/focus-visible fill + white (high-contrast) text and, crucially,
+-# override hitobito's legacy ".btn:focus" teal fill (specificity .btn:focus = 2,
+-# ours = 3/4) so a mouse-focused button REVERTS after a click instead of staying
+-# filled. Fill on :hover/:active/:focus-visible only -- never plain :focus.
+- unless @rec_connect_styles_emitted
+  - @rec_connect_styles_emitted = true
+  :css
+    .rec-quickselect .btn.rec-select{color:var(--rec-tier);background-color:transparent;border-color:var(--rec-tier)}
+    .rec-quickselect .btn.rec-select:hover,.rec-quickselect .btn.rec-select:active,.rec-quickselect .btn.rec-select:focus-visible{color:#fff;background-color:var(--rec-tier);background-color:color-mix(in srgb,var(--rec-tier),#000 20%);border-color:var(--rec-tier);border-color:color-mix(in srgb,var(--rec-tier),#000 20%)}
+    .rec-quickselect .btn.rec-select:focus-visible{outline:none;box-shadow:0 0 0 .2rem color-mix(in srgb,var(--rec-tier),transparent 70%)}
+- stats = local_assigns.fetch(:stats)
+- noun = local_assigns.fetch(:noun, "Einträge")
+- auto = stats["auto"]
+- hhigh = stats["hhigh"]
+- hmid = stats["hmid"]
+- hlow = stats["hlow"]
+- heur_count = hhigh[:count] + hmid[:count] + hlow[:count]
+- all_count = auto[:count] + heur_count
+- all_sum = auto[:sum] + hhigh[:sum] + hmid[:sum] + hlow[:sum]
+= form_tag form_url, method: :post, id: form_id,
+  class: "d-flex flex-wrap align-items-center gap-2 rec-connect-form",
+  data: {auto_count: auto[:count], auto_sum: auto[:sum],
+    hhigh_count: hhigh[:count], hhigh_sum: hhigh[:sum],
+    hmid_count: hmid[:count], hmid_sum: hmid[:sum],
+    hlow_count: hlow[:count], hlow_sum: hlow[:sum],
+    all_count: all_count, all_sum: all_sum, noun: noun} do
+  %button.btn.btn-sm.btn-success{type: "submit"}
+    = icon(:link)
+    Auswahl verbinden
+  %span.text-muted.small
+    = "#{all_count} Vorschläge (#{auto[:count]} automatisch, #{heur_count} heuristisch)"
+.d-flex.flex-wrap.align-items-center.gap-2.mt-2.mb-4.rec-quickselect{data: {connect_form: form_id}}
+  %span.small.text-muted Auswählen (alle Seiten):
+  -# "Keine" sits in a btn-group like the others, so all buttons share the same
+  -# height and baseline (a bare .btn next to .btn-group renders slightly off).
+  -# text-nowrap keeps every label on one line, so the heights stay identical
+  -# even when the row wraps on a narrow screen.
+  .btn-group.btn-group-sm{role: "group", "aria-label": "Auswahl aufheben"}
+    %button.btn.rec-select.text-nowrap{type: "button", title: "Auswahl aufheben",
+      style: "--rec-tier: #6c757d", data: {mode: "none", form: form_id}} Keine
+  - criteria = [{atom: "auto", tier: :automatic, label: "Automatisch", count: auto[:count]},
+    {atom: "hhigh", tier: :heuristic_high, label: "Heuristisch 100 %", count: hhigh[:count]},
+    {atom: "hmid", tier: :heuristic_middle, label: "Heuristisch > 50 %", count: hmid[:count]},
+    {atom: "hlow", tier: :heuristic_low, label: "Heuristisch ≤ 50 %", count: hlow[:count]}]
+  -# Two equally-styled parts per tier (same colour/border, NO primary/secondary
+  -# highlight): "+ <Stufe>" ADDS the tier to the all-pages selection (the common
+  -# action); "nur (N)" REPLACES the selection with just this tier's N rows.
+  - criteria.each do |c|
+    - btn_style = "--rec-tier: #{match_tier_style_for(c[:tier])[:colour]}"
+    .btn-group.btn-group-sm.rec-crit{role: "group", "aria-label": c[:label]}
+      %button.btn.rec-select.rec-add.text-nowrap{type: "button",
+        title: "#{c[:label]} zur Auswahl hinzufügen", "aria-label": "#{c[:label]} zur Auswahl hinzufügen",
+        style: btn_style, data: {atoms: c[:atom], mode: "add", form: form_id}}
+        = safe_join([icon(:plus), c[:label]], " ")
+      %button.btn.rec-select.rec-only.text-nowrap{type: "button",
+        title: "Nur #{c[:label]} auswählen (ersetzt die Auswahl)", "aria-label": "Nur #{c[:label]} auswählen",
+        style: btn_style, data: {atoms: c[:atom], mode: "only", form: form_id}}
+        = "nur (#{c[:count]})"
+  %span.small.text-muted.rec-select-status
+
+:javascript
+  (function () {
+    if (window.__recConnect) return;
+    window.__recConnect = true;
+    function eur(cents) {
+      return (cents / 100).toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+    }
+    function scopeFor(formId) {
+      return document.querySelector('.bk-select-scope[data-select-form="' + formId + '"]');
+    }
+    function atomsCount(form, atoms, suffix) {
+      return atoms.reduce(function (a, at) { return a + (parseInt(form.dataset[at + suffix], 10) || 0); }, 0);
+    }
+    // Quick-select: replace ("only") or extend ("add") the atom selection, or clear.
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".rec-select");
+      if (!btn) return;
+      var scope = scopeFor(btn.dataset.form);
+      if (!scope || !window.wsjrdpSelection) return;
+      var mode = btn.dataset.mode;
+      if (mode === "none") window.wsjrdpSelection.clear(scope);
+      else window.wsjrdpSelection.setCriteria(scope, (btn.dataset.atoms || "").split(","), mode);
+      var status = btn.closest(".rec-quickselect").querySelector(".rec-select-status");
+      if (status) status.textContent = "";
+    });
+    // Confirm the bulk connect with the count + summed amount, then submit. The
+    // real submit MUST happen outside this submit handler -- so it is deferred.
+    document.addEventListener("submit", function (e) {
+      var form = e.target.closest && e.target.closest(".rec-connect-form");
+      if (!form || form.dataset.recConfirmed === "1") return;
+      e.preventDefault();
+      var scope = scopeFor(form.id);
+      var sel = (scope && window.wsjrdpSelection) ? window.wsjrdpSelection.read(scope) : null;
+      var count = 0, sum = 0, extra = "";
+      if (sel && sel.mode === "all") {
+        count = atomsCount(form, sel.atoms, "Count");
+        sum = atomsCount(form, sel.atoms, "Sum");
+        extra = "\n(alle Seiten des aktuellen Filters)";
+      } else if (sel) {
+        count = sel.count; sum = sel.sum;
+      }
+      if (!count) { alert("Bitte zuerst Vorschläge auswählen."); return; }
+      var head = (count === 1) ? "1 Verknüpfung wird" : (count + " Verknüpfungen werden");
+      var msg = head + " hergestellt (" + (form.dataset.noun || "Einträge") + ")." + extra +
+        "\n\nSumme der Beträge: " + eur(Math.abs(sum)) + "\n\nFortfahren?";
+      if (!confirm(msg)) return;
+      if (scope && window.wsjrdpSelection && window.wsjrdpSelection.injectRemembered) {
+        window.wsjrdpSelection.injectRemembered(scope, form);
+      }
+      form.dataset.recConfirmed = "1";
+      setTimeout(function () {
+        if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+        if (scope && window.wsjrdpSelection && window.wsjrdpSelection.forget) window.wsjrdpSelection.forget(scope);
+      }, 0);
+    }, true);
+  })();

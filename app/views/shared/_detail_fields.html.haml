@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared metadata list of an item detail view (label left, value right).
+-#  Used by the Buchhaltung item details (accounts / cost centers / suppliers)
+-#  and the DATEV booking detail. Blank values are dropped.
+-#
+-#  Locals: fields -- [[label, value], ...]
+- shown = fields.reject { |(_label, value)| value.blank? }
+- if shown.any?
+  %dl.row.small.mb-3
+    - shown.each do |label, value|
+      %dt.col-sm-3.col-lg-2.fw-normal.text-muted.mb-1= label
+      %dd.col-sm-9.col-lg-10.mb-1.text-break= value

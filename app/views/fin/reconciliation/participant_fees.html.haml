@@ -1,0 +1,288 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main
+  %h1 TN-Beiträge
+  %p.text-muted
+    Abgleich der Teilnehmenden-Beiträge: Beitragsbuchungen (SEPA-Einzüge,
+    Überweisungen, …) gegen die zugehörigen DATEV-Buchungen.
+
+  .d-flex.flex-wrap.gap-3.mb-3
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(matched_entries_count, delimiter: ".")
+      .text-muted.small verknüpfte Beitragsbuchungen
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(unmatched_entries_count, delimiter: ".")
+      .text-muted.small ohne verknüpfte DATEV-Buchung
+      .small.fw-semibold.text-muted{title: "Summe der noch nicht abgestimmten Beträge"}
+        = "Σ #{cents_to_eur_display_or_nil(unmatched_entries_sum)} €"
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(total_entries_count, delimiter: ".")
+      .text-muted.small Beitragsbuchungen gesamt (Betrag ≠ 0)
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(collection_entries_count, delimiter: ".")
+      .text-muted.small davon SEPA-Einzüge
+
+  %p.text-muted.small
+    Abgestimmt werden ausschließlich Beitragsbuchungen und DATEV-Buchungen.
+    Pre-Notifications (die Ankündigungen im Finanz-Tab einer Person) sind
+    %strong nie
+    Teil der Abstimmung.
+    - if excluded_entries_count.positive?
+      Zusätzlich #{excluded_entries_count == 1 ? "ist" : "sind"}
+      #{excluded_entries_count}
+      #{excluded_entries_count == 1 ? "Beitragsbuchung" : "Beitragsbuchungen"}
+      manuell von der Abstimmung ausgenommen (nicht mitgezählt).
+
+  -# Shared: params of BOTH tables, carried across every connect redirect.
+  - list_carry = params.slice(:bk_filter, :bk_sort, :bk_sort_dir, :bk_per, :bk_cols, :bk_page, :bk_open, :ae_sort, :ae_sort_dir, :ae_per, :ae_cols, :ae_page, :ae_open).permit!.to_h
+
+  -# Month histogram of the entries still missing their DATEV booking.
+  - histogram = unmatched_entries_by_month
+  - if histogram.any?
+    :css
+      .rec-histo-col { width: 3.4rem; border-radius: 3px; transition: background-color .15s; }
+      .rec-histo-col:hover { background: var(--bs-secondary-bg); }
+      .rec-histo-bar { width: 100%; border-radius: 2px 2px 0 0; background: rgba(140, 0, 0, .3);
+        border: 1px solid rgba(140, 0, 0, .35); border-bottom: 0; transition: background-color .15s; }
+      .rec-histo-col:hover .rec-histo-bar { background: rgba(140, 0, 0, .6); }
+    .mb-4
+      .fw-semibold.small.mb-1 Beitragsbuchungen ohne DATEV-Buchung nach Monat
+      - max_count = histogram.map(&:last).max
+      .d-flex.align-items-end.gap-2.flex-wrap
+        - histogram.each do |month, count|
+          .d-flex.flex-column.align-items-center.rec-histo-col
+            .small.text-muted= number_with_delimiter(count, delimiter: ".")
+            .rec-histo-bar{style: "height: #{[(count * 5.0 / [max_count, 1].max), 0.15].max.round(2)}rem",
+              title: "#{number_with_delimiter(count, delimiter: ".")} Beitragsbuchungen"}
+            .small.text-muted.border-top.w-100.text-center.pt-1= month ? month.strftime("%m/%y") : "—"
+
+  -# The match-rating chip (colour + score + basis) is the shared
+  -# `match_rating_chip` helper (WsjrdpBookingsHelper), also used on the booking
+  -# detail page to rate a booking's explicit accounting-entry link.
+
+  %h2.h4.mt-4 Nicht zugeordnete Buchungen
+  %p.text-muted.small
+    DATEV-Buchungen der TN-Beiträge ohne verknüpfte Beitragsbuchung. Die
+    vorgegebenen Bedingungen sind fest; darüber hinaus kann gefiltert werden. Die
+    Spalte „Beitragsbuchung (Vorschlag)" zeigt den besten Treffer:
+    = match_rating_legend
+    · Der Betrag muss immer exakt stimmen – einschließlich Vorzeichen.
+
+  = render "fin/reconciliation/connect_controls",
+    form_url: connect_reconciliation_participant_fees_path(list_carry), form_id: "bk-connect-form",
+    noun: "DATEV-Buchungen", stats: proposal_atom_stats(match_proposals)
+
+  - bk_proposal_cell = ->(booking) do
+    - match = match_proposals[booking.id]
+    - alts = match_alternatives[booking.id]
+    - next "".html_safe unless match || (alts && alts.size > 1)
+    - capture do
+      - if match
+        = match_rating_chip(match, target_label: "##{match.entry.id} #{match.person_name}")
+      - if alts && alts.size > 1
+        %span.badge.rounded-pill.text-bg-light.border.ms-1{title: "#{alts.size} mögliche Beitragsbuchungen – Auswahl in der Detailansicht"}
+          = "#{alts.size} Kandidaten"
+  - bk_proposal_column = {key: "proposal", label: "Beitragsbuchung (Vorschlag)", cell: bk_proposal_cell}
+
+  -# Candidate list injected at the top of each booking detail (proposal + alts).
+  - bk_detail_candidates = ->(booking) do
+    - capture do
+      - candidates = ([match_proposals[booking.id]].compact + (match_alternatives[booking.id] || [])).uniq { |m| m.entry.id }
+      - if candidates.present?
+        %div
+          .fw-semibold.small.mb-1 Mögliche Beitragsbuchungen (beste zuerst)
+          - candidates.each do |alt|
+            - entry = alt.entry
+            - entry_date = entry.value_date || entry.booking_date
+            - confirm = ["Buchung ##{booking.id} mit Beitragsbuchung ##{entry.id} verbinden?", "",
+                "DATEV-Buchung: #{booking.booking_date&.strftime("%d.%m.%Y")} · #{booking_base_amount_with_sh(booking)} · #{booking.description.to_s.truncate(70)}",
+                "Beitragsbuchung: #{entry_date&.strftime("%d.%m.%Y")} · #{cents_to_eur_display_or_nil(entry.amount_cents)} € · #{alt.person_name} · #{entry.description.to_s.truncate(70)}"].join("\n")
+            .mb-2
+              .d-flex.flex-wrap.align-items-center.gap-2
+                - alt_style = match_tier_style(alt)
+                %span{title: alt.details, style: "color: #{alt_style[:colour]}"}
+                  = icon(alt_style[:icon])
+                  %span.fw-semibold= "#{alt.score} %"
+                %span.small= "##{entry.id} #{alt.person_name}"
+                = link_to accounting_entry_path(entry), target: "_blank", rel: "noopener",
+                  class: "small", title: "Beitragsbuchung ##{entry.id} in neuem Tab öffnen" do
+                  = icon(:"external-link-alt")
+                %span.small.text-muted= alt.basis
+                = button_to "Verbinden",
+                  connect_single_reconciliation_participant_fees_path(list_carry.merge(booking_id: booking.id, entry_id: entry.id)),
+                  method: :post, class: "btn btn-sm btn-outline-success py-0",
+                  form: {data: {turbo_confirm: confirm}}
+              - if entry.description.present?
+                .small.text-muted.text-break{style: "margin-left: 1.7rem"}= entry.description
+
+  = render "fin/bookings/browser",
+    apply_url: apply_reconciliation_participant_fees_path,
+    pane_name: "rec_flt", pane_default: false,
+    locked: filter_locked_value, locked_catalog: filter_full_catalog, condensed_locked: true,
+    extra_columns: [bk_proposal_column],
+    selection: {name: "booking_ids[]", id_field: ->(b) { b.id }, form: "bk-connect-form",
+      all_param: "select_all", total_count: match_proposals.size, remember_key: "bk",
+      enabled: ->(b) { match_proposals.key?(b.id) },
+      row_data: ->(b) { m = match_proposals[b.id]; {atom: proposal_atom(m), amount: m&.entry&.amount_cents} }},
+    detail_top: bk_detail_candidates
+
+  %h2.h4.mt-5 Nicht zugeordnete Beitragsbuchungen
+  %p.text-muted.small
+    Beitragsbuchungen (Betrag ≠ 0) ohne verknüpfte DATEV-Buchung. Die Spalte
+    „DATEV-Buchung (Vorschlag)" zeigt – mit demselben Farbschema – den besten
+    Treffer in der Gegenrichtung; verbinden wie oben.
+
+  = render "fin/reconciliation/connect_controls",
+    form_url: connect_entries_reconciliation_participant_fees_path(list_carry), form_id: "ae-connect-form",
+    noun: "Beitragsbuchungen", stats: proposal_atom_stats(entry_match_proposals)
+
+  - ae_source = ->(e) do
+    - if e.direct_debit_pre_notification_id
+      - "SEPA-Einzug"
+    - elsif e.camt_transaction_id
+      - "Kontoauszug"
+    - elsif e.moss_balance_movement_id
+      - "Moss"
+    - else
+      - "—"
+  - ae_person = ->(e) do
+    - if e.subject.is_a?(Person)
+      - link_to(e.subject.to_s, url_for(e.subject))
+    - else
+      - e.subject_type
+  - ae_columns = [{key: "date", label: "Datum", width: "6.5rem", sort_key: "date", cell: ->(e) { (e.value_date || e.booking_date)&.strftime("%d.%m.%Y") }},
+    {key: "amount", label: "Betrag", width: "7rem", numeric: true, sort_key: "amount", cell: ->(e) { "#{cents_to_eur_display_or_nil(e.amount_cents)} €" }},
+    {key: "description", label: "Beschreibung", sort_key: "description", cell: ->(e) { truncate(e.description.to_s, length: 100) }},
+    {key: "person", label: "Person", width: "14rem", cell: ae_person},
+    {key: "source", label: "Quelle", width: "7rem", cell: ae_source}]
+  - ae_action = ->(e) { link_to(icon(:eye), accounting_entry_path(e), class: "btn btn-sm btn-link p-0", title: "Beitragsbuchung öffnen") }
+  - ae_detail = ->(e) { render "fin/accounting_entries/detail", entry: e, hide: [:excluded_flag] }
+
+  - ae_proposal_cell = ->(entry) do
+    - match = entry_match_proposals[entry.id]
+    - alts = entry_match_alternatives[entry.id]
+    - next "".html_safe unless match || (alts && alts.size > 1)
+    - capture do
+      - if match
+        = match_rating_chip(match, target_label: "##{match.booking.id}")
+      - if alts && alts.size > 1
+        %span.badge.rounded-pill.text-bg-light.border.ms-1{title: "#{alts.size} mögliche DATEV-Buchungen – Auswahl in der Detailansicht"}
+          = "#{alts.size} Kandidaten"
+  - ae_proposal_column = {key: "proposal", label: "DATEV-Buchung (Vorschlag)", cell: ae_proposal_cell}
+
+  - ae_detail_candidates = ->(entry) do
+    - capture do
+      - candidates = ([entry_match_proposals[entry.id]].compact + (entry_match_alternatives[entry.id] || [])).uniq { |m| m.booking.id }
+      - if candidates.present?
+        %div
+          .fw-semibold.small.mb-1 Mögliche DATEV-Buchungen (beste zuerst)
+          - candidates.each do |alt|
+            - booking = alt.booking
+            - confirm = ["Beitragsbuchung ##{entry.id} mit Buchung ##{booking.id} verbinden?", "",
+                "Beitragsbuchung: #{(entry.value_date || entry.booking_date)&.strftime("%d.%m.%Y")} · #{cents_to_eur_display_or_nil(entry.amount_cents)} € · #{entry.description.to_s.truncate(70)}",
+                "DATEV-Buchung: #{booking.booking_date&.strftime("%d.%m.%Y")} · #{booking_base_amount_with_sh(booking)} · #{booking.description.to_s.truncate(70)}"].join("\n")
+            .mb-2
+              .d-flex.flex-wrap.align-items-center.gap-2
+                - alt_style = match_tier_style(alt)
+                %span{title: alt.details, style: "color: #{alt_style[:colour]}"}
+                  = icon(alt_style[:icon])
+                  %span.fw-semibold= "#{alt.score} %"
+                %span.small= "##{booking.id} #{booking.description.to_s.truncate(50)}"
+                = link_to booking_path(booking), target: "_blank", rel: "noopener",
+                  class: "small", title: "Buchung ##{booking.id} in neuem Tab öffnen" do
+                  = icon(:"external-link-alt")
+                %span.small.text-muted= alt.basis
+                = button_to "Verbinden",
+                  connect_single_entry_reconciliation_participant_fees_path(list_carry.merge(entry_id: entry.id, booking_id: booking.id)),
+                  method: :post, class: "btn btn-sm btn-outline-success py-0",
+                  form: {data: {turbo_confirm: confirm}}
+
+  = render "shared/expandable_table",
+    prefix: "ae",
+    rows: unmatched_entries_page, pagination: unmatched_entries_page,
+    row_key: ->(e) { e.id }, columns: ae_columns, extra_columns: [ae_proposal_column],
+    columns_menu: true, default_column_keys: %w[date amount description],
+    action: ae_action, detail: ae_detail, detail_top: ae_detail_candidates,
+    default_sort: {key: "date", dir: "desc"}, multi_sort: true,
+    per_options: [25, 50, 100, 200, 500], default_per: 50,
+    summary: "#{number_with_delimiter(unmatched_entries_count, delimiter: ".")} Beitragsbuchungen · Summe: #{cents_to_eur_display_or_nil(unmatched_entries_sum)} €",
+    selection: {name: "entry_ids[]", id_field: ->(e) { e.id }, form: "ae-connect-form",
+      all_param: "select_all", total_count: entry_match_proposals.size, remember_key: "ae",
+      enabled: ->(e) { entry_match_proposals.key?(e.id) },
+      row_data: ->(e) { {atom: proposal_atom(entry_match_proposals[e.id]), amount: e.amount_cents} }}
+
+  :javascript
+    (function () {
+      // Keep the vertical scroll position across the reload that every connect /
+      // assign form triggers (PRG).
+      if (window.__recScrollKeep) return;
+      window.__recScrollKeep = true;
+      var KEY = "wsjrdpRecScroll";
+      document.addEventListener("submit", function (e) {
+        if (e.target.closest && e.target.closest("#main")) {
+          sessionStorage.setItem(KEY, String(window.scrollY || document.documentElement.scrollTop || 0));
+        }
+      }, true);
+      function restore() {
+        var y = sessionStorage.getItem(KEY);
+        if (y === null) return;
+        sessionStorage.removeItem(KEY);
+        window.scrollTo(0, parseInt(y, 10) || 0);
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", restore);
+      else restore();
+      document.addEventListener("turbo:load", restore);
+    })();
+
+  -# DEVELOPMENT ONLY, at the very bottom of the page: replay the whole
+  -# reconciliation from scratch. Styled as a destructive action (hitobito
+  -# convention: btn-danger + trash icon + confirm); the route and the action
+  -# exist only in development. The link resets EVERYTHING: the DB links (server
+  -# side), every query param (the action redirects to the bare page) and the
+  -# remembered row selections of both tables (the JS below).
+  - if Rails.env.development?
+    %hr.mt-5
+    .border.border-danger.rounded.p-2.mb-3.d-flex.flex-wrap.align-items-center.gap-2.rec-devtools
+      %span.badge.text-bg-danger Entwicklung
+      = button_to reset_links_reconciliation_participant_fees_path,
+        method: :post, class: "btn btn-sm btn-danger",
+        form: {class: "d-inline rec-reset-links-form",
+          data: {turbo_confirm: "ACHTUNG – nur für Testzwecke!\n\nAlle Verknüpfungen (Beitragsbuchung und Person) werden für ALLE DATEV-Buchungen gelöscht.\n\nAußerdem werden Filter, Spalten, Seiten und die gemerkte Auswahl zurückgesetzt.\n\nDas kann nicht rückgängig gemacht werden. Wirklich fortfahren?"}} do
+        = icon(:"trash-alt")
+        Alle Verknüpfungen zurücksetzen
+      %span.text-muted.small
+        Setzt in allen DATEV-Buchungen Beitragsbuchung und Person auf NULL und
+        verwirft Filter, Spalten, Seiten und Auswahl – zum erneuten Durchspielen
+        der Abstimmung.
+
+    :javascript
+      (function () {
+        // Drop the remembered row selections (sessionStorage, see
+        // shared/_table_selection_js) when the reset runs. Bound to
+        // turbo:submit-start, which fires only AFTER the confirm was accepted --
+        // a cancelled dialog leaves the selection untouched. Plain-submit
+        // fallback for a page without Turbo.
+        if (window.__recResetLinks) return;
+        window.__recResetLinks = true;
+        function clearSelections() {
+          try {
+            Object.keys(sessionStorage)
+              .filter(function (k) { return k.indexOf("wsjrdp.exptbl.sel.") === 0; })
+              .forEach(function (k) { sessionStorage.removeItem(k); });
+          } catch (e) {}
+        }
+        document.addEventListener("turbo:submit-start", function (e) {
+          var form = e.target;
+          if (form && form.classList && form.classList.contains("rec-reset-links-form")) clearSelections();
+        });
+        if (!window.Turbo) {
+          document.addEventListener("submit", function (e) {
+            if (e.target.closest && e.target.closest(".rec-reset-links-form")) clearSelections();
+          });
+        }
+      })();

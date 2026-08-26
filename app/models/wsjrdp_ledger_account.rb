@@ -22,6 +22,13 @@ class WsjrdpLedgerAccount < ActiveRecord::Base
 
   validates :number, presence: true, uniqueness: true
 
+  # Bookings whose Konto (account_number) is this account. Linked by number
+  # (no DB-level foreign key: not every booking account is present here, and
+  # account_number may be NULL for unmapped rows). Gegenkonto-side bookings are
+  # not covered by this association.
+  has_many :bookings, class_name: "DatevBooking",
+    primary_key: :number, foreign_key: :account_number, inverse_of: false
+
   # moss_status is NULL for accounts without a Moss connection
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
   scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }

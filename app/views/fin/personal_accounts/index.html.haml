@@ -1,0 +1,82 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main
+  %h1 Kreditoren
+  %p.text-muted
+    Übersicht der Kreditoren (Lieferanten) mit der Summe der gebuchten Beträge (nur aktive Buchungen).
+    Standardmäßig werden alle Kreditoren angezeigt, auch solche ohne Buchungen.
+    Klick auf eine Zeile zeigt die Buchungen des Kreditors.
+
+  -# Kreditoren-Sichtbarkeit: Schnellauswahl (Presets) + optionale Feinsteuerung.
+  -# Beide bedienen dasselbe Raster-Modell (grid=1 + show[zelle]); jeder Supplier
+  -# gehört zu genau einer Zelle aus Moss-Status (aktiviert/deaktiviert) und
+  -# Buchungslage (ohne Buchungen / Summe 0 / Summe != 0). Presets sind Links, die
+  -# genau die passenden Zellen einblenden; die Feinsteuerung ist ein Formular,
+  -# das bei jeder Änderung automatisch absendet. Alle Links/Felder behalten die
+  -# aktive Sortierung (und Locale/geöffnete Zeilen) bei.
+  - booking_cols = [["none", "Ohne Buchungen"], ["zero", "Buchungssumme 0"], ["balance", "Buchungssumme ≠ 0"]]
+  - moss_rows = [["active", "Moss-Status aktiviert"], ["deactivated", "Moss-Status deaktiviert"]]
+  - presets = [["all", "Alle"], ["booked", "Nur mit Buchungen"], ["balance", "Nur mit Saldo ≠ 0"], ["active_booked", "Aktive mit Buchungen"]]
+  - base_params = request.query_parameters.except("grid", "show", "page")
+  .border.rounded.bg-light.p-3.mb-3
+    .small.text-muted.mb-2 Schnellauswahl
+    .d-flex.flex-wrap.gap-2
+      - presets.each do |name, label|
+        - active = current_supplier_preset == name
+        - cells = Fin::PersonalAccountsController::SUPPLIER_PRESETS[name]
+        - url = cells ? personal_accounts_path(base_params.merge("grid" => "1", "show" => cells.to_h { |k| [k, "1"] })) : personal_accounts_path(base_params)
+        = link_to label, url, class: "btn btn-sm #{active ? "btn-secondary" : "btn-outline-secondary"}", aria: { current: (active ? "true" : nil) }
+    %details.mt-3{ open: current_supplier_preset.nil? }
+      %summary.small.text-muted Erweitert – einzelne Kategorien ein-/ausblenden
+      = form_tag personal_accounts_path, method: :get, class: "supplier-filter-form mt-2" do
+        = hidden_field_tag :grid, "1"
+        - if params[:sort].present?
+          = hidden_field_tag :sort, params[:sort]
+        - if params[:locale].present?
+          = hidden_field_tag :locale, params[:locale]
+        - if params[:open].present?
+          = hidden_field_tag :open, params[:open]
+        .row
+          - moss_rows.each do |moss, moss_label|
+            .col-12.col-md-6.mb-2.mb-md-0
+              .fw-normal.small.text-muted.mb-1= moss_label
+              - booking_cols.each do |booking, booking_label|
+                - key = "#{moss}_#{booking}"
+                .form-check
+                  = check_box_tag "show[#{key}]", "1", supplier_cell_visible?(key), id: "show_#{key}", class: "form-check-input"
+                  %label.form-check-label{ for: "show_#{key}" }
+                    = booking_label
+                    %span.text-muted.small (#{supplier_cell_counts[key]})
+        %noscript
+          = submit_tag "Anwenden", class: "btn btn-sm btn-outline-secondary mt-2"
+
+  :javascript
+    (function () {
+      if (window.__wsjrdpSupplierFilter) return;
+      window.__wsjrdpSupplierFilter = true;
+      document.addEventListener("change", function (e) {
+        var cb = e.target.closest && e.target.closest(".supplier-filter-form input[type=checkbox]");
+        if (!cb || !cb.form) return;
+        cb.form.requestSubmit ? cb.form.requestSubmit() : cb.form.submit();
+      });
+    })();
+
+  - action = ->(r) { link_to(icon(:eye), personal_account_path(r[:number]), class: "btn btn-sm btn-link p-0", title: "Detailseite dieses Kreditors öffnen") }
+  - detail_src = ->(r) { personal_account_path(r[:number]) }
+  -# Page the (already filtered + sorted) list through the widget's default paging
+  -# (10/Seite). Sorting + the column hamburger use the widget's native links
+  -# (et_url), which preserve the grid/preset + locale params and reset the page.
+  - suppliers_page = Kaminari.paginate_array(supplier_summaries).page(params[:page]).per(et_per_page("", 10))
+
+  = render "shared/expandable_table",
+    rows: suppliers_page, pagination: suppliers_page, per_options: [10, 25, 50, 100, "all"], default_per: 10,
+    columns_menu: true, multi_sort: true, open_keys: open_keys, id_prefix: "supplier",
+    row_key: ->(r) { r[:number] }, columns: kreditoren_columns, action: action, detail_src: detail_src
+
+  %p.text-muted.small.mt-2
+    #{supplier_summaries.size} Kreditoren angezeigt · Gesamt: #{eur_display_or_nil(total_sum)} EUR · #{total_count} Buchungen

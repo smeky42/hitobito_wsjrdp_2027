@@ -589,10 +589,42 @@ de:
       ul_bar_label: "UL: %{count} Units"
 
   fin:
+    nav:
+      payments: "Zahlungsverkehr"
+      moss: "Moss"
+      accounting: "Buchhaltung"
+      reconciliation: "Abstimmung"
     tabs:
       accounts: "Konten"
       person_fees: "Personen"
       plans: "Ratenpläne"
+      overview: "Übersicht"
+      ledger_accounts: "Sachkonten"
+      cost_centers: "Kostenstellen"
+      suppliers: "Kreditoren"
+      bookkeeping: "Buchhaltung"
+      bookings: "Buchungen"
+      participant_fees: "TN-Beiträge"
+      card_transactions: "Kartentransaktionen"
+    account_type:
+      BANK: "Bank"
+      TRANSIT: "Geldtransit"
+      CLEARING: "Verrechnung"
+      LIABILITY: "Verbindlichkeit"
+      CREDITOR: "Kreditor"
+      INCOME: "Ertrag"
+      EXPENSE: "Aufwand"
+      EQUITY: "Eigenkapital"
+      UNKNOWN: "Unbekannt"
+    status:
+      active: "Aktiv"
+      deactivated: "Deaktiviert"
+      soft_deleted: "Gelöscht"
+    # debit_credit is stored canonically English (D/C); shown as the German
+    # abbreviations S/H (Soll/Haben) in the booking detail view.
+    debit_credit:
+      D: "S"
+      C: "H"
 
   contingent:
     tabs:

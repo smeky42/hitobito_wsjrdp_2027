@@ -1,0 +1,70 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Reusable right-aligned "hamburger" dropdown for a table toolbar. Holds the
+-#  column picker (bookings widget: a server round-trip form; expandable table: a
+-#  client-side show/hide + reorder list). Locals:
+-#    id    -- unique element id for the panel
+-#    menu  -- HTML content of the dropdown panel (usually a `capture` block)
+-#    label -- button tooltip / aria-label (default "Spalten ein-/ausblenden")
+-#    icon  -- FontAwesome 5 icon name (default "bars")
+- id = local_assigns.fetch(:id)
+- label = local_assigns.fetch(:label, "Spalten ein-/ausblenden")
+- icon_name = local_assigns.fetch(:icon, "bars")
+- unless @wsjrdp_table_hamburger_css
+  - @wsjrdp_table_hamburger_css = true
+  :css
+    .tbl-burger { position: relative; flex: 0 0 auto; }
+    .tbl-burger-panel { position: absolute; right: 0; top: calc(100% + .25rem); z-index: 1050;
+      min-width: 15rem; max-width: min(92vw, 26rem); background: var(--bs-body-bg);
+      border: 1px solid var(--bs-border-color); border-radius: .5rem;
+      box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .18); padding: .7rem; display: none;
+      max-height: min(70vh, 30rem); overflow: auto; }
+    .tbl-burger.open .tbl-burger-panel { display: block; }
+    @media (max-width: 575.98px) {
+      /* Right-anchored to the button (absolute, not fixed -- a fixed element's
+         top:100% is the viewport bottom); cap width + min-width to the screen so
+         it never overflows a phone. */
+      .tbl-burger-panel { min-width: min(15rem, calc(100vw - 1rem));
+        max-width: calc(100vw - 1rem); }
+    }
+  :javascript
+    (function () {
+      if (window.__tblBurger) return;
+      window.__tblBurger = true;
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest(".tbl-burger-btn");
+        if (btn) {
+          var burger = btn.closest(".tbl-burger");
+          var open = burger.classList.toggle("open");
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+          e.stopPropagation();
+          return;
+        }
+        // click outside an open panel closes it (clicks inside the panel keep it)
+        if (e.target.closest(".tbl-burger-panel")) return;
+        document.querySelectorAll(".tbl-burger.open").forEach(function (b) {
+          b.classList.remove("open");
+          var t = b.querySelector(".tbl-burger-btn");
+          if (t) t.setAttribute("aria-expanded", "false");
+        });
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key !== "Escape") return;
+        document.querySelectorAll(".tbl-burger.open").forEach(function (b) {
+          b.classList.remove("open");
+          var t = b.querySelector(".tbl-burger-btn");
+          if (t) { t.setAttribute("aria-expanded", "false"); t.focus(); }
+        });
+      });
+    })();
+.tbl-burger
+  %button.tbl-burger-btn.btn.btn-sm.btn-outline-secondary{type: "button", "aria-expanded": "false",
+    "aria-haspopup": "true", "aria-controls": id, title: label, "aria-label": label}
+    %i.fas{class: "fa-#{icon_name}", "aria-hidden": "true"}
+  .tbl-burger-panel{id: id, role: "menu"}
+    = menu

@@ -1,0 +1,904 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Generic CNF filter builder (doc/generic_filter_builder.md): AND-combined
+-#  slots of OR-combined conditions, driven purely by the catalog + value JSON
+-#  (no dataset knowledge). Editing is flow-oriented: conditions auto-commit on
+-#  Enter / on outside click / when continuing with "oder"/"UND"; ✓ and ×
+-#  icons next to the inputs are the explicit fallback. Keyboard hints are
+-#  shown in the editor. Attributes sharing a variant_group appear as ONE
+-#  picker entry with a sub-variant switch in the editor. Locals:
+-#    catalog:    BoundSchema#catalog hash
+-#    value:      Query#as_json tree (the applied filter)
+-#    apply_url:  POST target; the server encodes to Rison and redirects (PRG)
+-#    reset_url:  link that clears the filter
+-#    carry:      {param => value} kept as hidden fields on apply (sort, cols, ...)
+-#    locked:     CNF tree of host-pinned conditions, shown as read-only slots
+-#                ahead of the user's (display only -- enforcement is the host's
+-#                pinned scope); locked_catalog: catalog used to label them
+-#                (may contain attributes the user picker does not offer)
+-#    open:, pane_cookie:  pane state (shared/_fin_panes must be rendered once)
+- carry ||= {}
+- locked ||= []
+- locked_catalog ||= nil
+- condensed_locked = local_assigns.fetch(:condensed_locked, false)
+- disabled = local_assigns.fetch(:disabled, false)
+- condition_count = value.sum(&:size)
+
+:css
+  .flt-slot { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+    border: 1px solid var(--bs-border-color); border-radius: .5rem;
+    padding: .45rem .6rem; background: var(--bs-body-bg); }
+  .flt-slot-empty { border-style: dashed; }
+  .flt-slot-locked { background: var(--bs-tertiary-bg, var(--bs-light)); }
+  /* Read-only (host-pinned) conditions: muted throughout so they read clearly
+     as "fixed, not editable" next to the user's own (full-contrast) chips. This
+     Bootstrap build has no --bs-secondary-color token (a 5.3 addition), so a
+     concrete gray fallback is given. */
+  .flt-slot-locked .flt-chip { cursor: default; background: transparent; color: var(--bs-secondary-color, #6c757d); }
+  .flt-slot-locked .flt-chip .fw-semibold { font-weight: 500 !important; color: var(--bs-secondary-color, #6c757d); }
+  .flt-slot-locked .flt-chip .flt-op,
+  .flt-slot-locked .flt-chip .flt-chip-text > span { color: var(--bs-secondary-color, #6c757d); }
+  .flt-slot-locked .flt-chip:hover { border-color: var(--bs-border-color); }
+  .flt-slot-locked .flt-lock { color: var(--bs-secondary-color, #6c757d); }
+  /* Truncated chip content still explains itself in full via the title
+     tooltip (set in JS); show the help cursor only where a tooltip exists. */
+  .flt-chip[title] { cursor: help; }
+  .flt-slot:not(.flt-slot-locked) .flt-chip[title] { cursor: pointer; }
+  .flt-lock { color: var(--bs-secondary-color, #6c757d); font-size: .75rem; }
+  /* Condensed summary of the fixed (locked) conditions: one muted line with a
+     full-text tooltip, shown instead of the full read-only chip rows. */
+  .flt-locked-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem;
+    padding: .35rem .6rem; border: 1px dashed var(--bs-border-color); border-radius: .5rem;
+    background: var(--bs-tertiary-bg, var(--bs-light)); color: var(--bs-secondary-color, #6c757d);
+    font-size: .85rem; cursor: help; }
+  .flt-locked-summary .flt-lock { font-size: .8rem; align-self: center; }
+  .flt-locked-summary-text { word-break: break-word; }
+  .flt-und { align-self: flex-start; margin: .25rem 0 .25rem .75rem; font-size: .7rem;
+    font-weight: 600; color: var(--bs-secondary-color);
+    background: var(--bs-secondary-bg); border-radius: .35rem; padding: .1rem .45rem; }
+  .flt-chip { display: inline-flex; align-items: center; gap: .3rem; max-width: 100%;
+    border: 1px solid var(--bs-border-color); border-radius: 999px;
+    padding: .12rem .25rem .12rem .6rem; background: var(--bs-tertiary-bg, var(--bs-light));
+    cursor: pointer; font-size: .85rem; }
+  .flt-chip:hover { border-color: var(--bs-secondary-color); }
+  .flt-chip .flt-chip-text { white-space: normal; word-break: break-word; }
+  .flt-chip .flt-op { color: var(--bs-secondary-color); }
+  .flt-x { border: 0; background: transparent; line-height: 1; padding: 0 .3rem;
+    font-size: .7rem; color: var(--bs-secondary-color); cursor: pointer; }
+  .flt-x:hover { color: var(--bs-danger); }
+  .flt-del-slot .fas { font-size: .85rem; }
+  .flt-add-cond .fas, .flt-add-slot .fas { font-size: .75rem; }
+  .flt-or { font-size: .8rem; color: var(--bs-secondary-color); }
+  .flt-add-cond, .flt-add-slot { border: 1px dashed var(--bs-border-color); background: transparent;
+    border-radius: 999px; font-size: .8rem; padding: .1rem .6rem; color: var(--bs-link-color); cursor: pointer; }
+  .flt-add-cond:hover, .flt-add-slot:hover { background: var(--bs-secondary-bg); }
+  .flt-del-slot { border: 0; background: transparent; color: var(--bs-secondary-color);
+    cursor: pointer; margin-left: auto; padding: 0 .2rem; }
+  .flt-del-slot:hover { color: var(--bs-danger); }
+  .flt-editor { border: 1px solid var(--bs-border-color); border-radius: .5rem;
+    padding: .6rem; margin-top: .35rem; background: var(--bs-secondary-bg); }
+  .flt-editor-grid { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; }
+  .flt-editor-grid select { max-width: 100%; }
+  .flt-operands { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; min-width: 0; }
+  /* Compact date fields so attribute + operator + range fit on one line. */
+  .flt-operands input[type="date"] { width: 9.2rem; }
+  .flt-operands input[type="month"] { width: 8.5rem; }
+  .flt-icons { display: flex; gap: .25rem; align-items: center; }
+  .flt-ok, .flt-cancel { border: 1px solid var(--bs-border-color); background: var(--bs-body-bg);
+    border-radius: .35rem; width: 1.9rem; height: 1.9rem; line-height: 1; cursor: pointer;
+    font-size: 1rem; padding: 0; }
+  .flt-ok { color: var(--bs-success); }
+  .flt-ok:disabled { color: var(--bs-secondary-color); opacity: .45; cursor: default; }
+  .flt-ok:not(:disabled):hover { background: var(--bs-success-bg-subtle, #d1e7dd); }
+  .flt-cancel { color: var(--bs-danger); }
+  .flt-cancel:hover { background: var(--bs-danger-bg-subtle, #f8d7da); }
+  .flt-hints { flex-basis: 100%; font-size: .72rem; color: var(--bs-secondary-color); }
+  .flt-case { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem;
+    color: var(--bs-body-color); margin: 0; align-self: center; text-align: left;
+    white-space: nowrap; }
+  .flt-case input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0; flex: 0 0 auto; }
+  .flt-many-hint { font-size: .75rem; color: var(--bs-primary-text-emphasis, #084298);
+    margin-top: .25rem; }
+  /* Chips-combobox (multiselect): chips + search inside one field, list below. */
+  .flt-msfield { flex: 1 1 20rem; min-width: min(20rem, 100%); }
+  .flt-msbox { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center;
+    border: 1px solid var(--bs-border-color); border-radius: .35rem;
+    background: var(--bs-body-bg); padding: .25rem .35rem; cursor: text; }
+  .flt-msbox:focus-within { border-color: var(--bs-primary); box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
+  .flt-mschip { display: inline-flex; align-items: center; gap: .2rem; font-size: .8rem;
+    background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color);
+    border-radius: .3rem; padding: .05rem .15rem .05rem .4rem; max-width: 100%; }
+  .flt-mschip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+  /* hitobito's global stylesheet gives every input a fixed width -- undo it. */
+  .flt-ms-input { border: 0 !important; outline: none !important; box-shadow: none !important;
+    background: transparent; flex: 1 0 6rem; width: 6rem; min-height: 1.5rem;
+    font-size: .85rem; padding: 0 .1rem; margin: 0; }
+  .flt-ms-list { max-height: 240px; overflow: auto; border: 1px solid var(--bs-border-color);
+    border-radius: .35rem; margin-top: .25rem; background: var(--bs-body-bg); }
+  .flt-ms-row { display: flex; gap: .45rem; align-items: baseline; padding: .18rem .5rem;
+    font-size: .85rem; cursor: pointer; text-align: left; }
+  .flt-ms-row .flt-ms-tick { width: 1rem; flex: 0 0 auto; color: var(--bs-success); }
+  .flt-ms-row .flt-ms-text { flex: 1 1 auto; text-align: left; }
+  .flt-ms-row:hover { background: var(--bs-secondary-bg); }
+  .flt-ms-row.hl { background: var(--bs-primary); color: #fff; }
+  .flt-ms-row.hl .flt-ms-tick { color: #fff; }
+  .flt-ms-row.sel .flt-ms-text { font-weight: 600; }
+  .flt-empty-hint { color: var(--bs-secondary-color); font-size: .85rem; }
+  .flt-dirty-hint { display: none; color: var(--bs-warning-text-emphasis, #664d03); font-size: .8rem; }
+  .flt-root.flt-dirty .flt-dirty-hint { display: inline; }
+  .flt-root.flt-dirty .flt-apply-btn { box-shadow: 0 0 0 .2rem rgba(255, 193, 7, .35); }
+  @media (max-width: 575.98px) {
+    .flt-editor-grid { flex-direction: column; align-items: stretch; }
+    .flt-editor-grid select, .flt-operands, .flt-operands input, .flt-msfield { width: 100%; }
+    .flt-operands { flex-direction: column; align-items: stretch; }
+    .flt-mschip span { max-width: 11rem; }
+  }
+
+.fin-pane.mb-2{class: ("open" if open), data: {pane_cookie: pane_cookie}}
+  %button.pane-pill{type: "button", "aria-expanded": open.to_s}
+    %i.fas.fa-chevron-right.pane-caret{"aria-hidden": "true"}
+    %span Filter
+    - if condition_count.positive?
+      %span.badge.bg-secondary= condition_count
+  .pane-body
+    .flt-root{class: ("flt-disabled" if disabled), data: {catalog: catalog.to_json, value: value.to_json, locked: locked.to_json, locked_catalog: (locked_catalog || {}).to_json, condensed_locked: condensed_locked.to_s, disabled: disabled.to_s}}
+      .flt-slots
+      - unless disabled
+        .d-flex.flex-wrap.align-items-center.gap-2.mt-2
+          = form_tag apply_url, method: :post, class: "d-inline flt-apply-form booking-scroll-form" do
+            = hidden_field_tag :filter_json, value.to_json, id: nil, class: "flt-json"
+            - carry.each do |key, carried|
+              = hidden_field_tag key, carried, id: nil
+            %button.btn.btn-sm.btn-primary.flt-apply-btn{type: "submit"} Anwenden
+          = link_to "Zurücksetzen", reset_url, class: "btn btn-sm btn-outline-secondary"
+          %span.flt-dirty-hint Änderungen noch nicht angewendet
+
+:javascript
+  (function () {
+    function initRoot(root) {
+      if (root.dataset.init) return;
+      root.dataset.init = "1";
+
+      var catalog = JSON.parse(root.dataset.catalog);
+      var value = JSON.parse(root.dataset.value || "[]");
+      var locked = JSON.parse(root.dataset.locked || "[]");
+      var lockedCatalog = JSON.parse(root.dataset.lockedCatalog || "{}");
+      var condensedLocked = root.dataset.condensedLocked === "true";
+      var disabled = root.dataset.disabled === "true";
+      var initialJson = JSON.stringify(value);
+      var slotsEl = root.querySelector(".flt-slots");
+      var form = root.querySelector(".flt-apply-form");
+      var jsonInput = root.querySelector(".flt-json");
+      var attrs = catalog.attributes;
+      // For LABELLING locked conditions the host may hand a wider catalog
+      // (locked slots can use attributes the user picker does not offer).
+      var labelAttrs = attrs.concat((lockedCatalog.attributes || []).filter(function (a) {
+        return !attrs.some(function (b) { return b.key === a.key; });
+      }));
+      // editor: {si, ci|null, attrKey, opKey, sel: [values], raw: [strings]}
+      var editor = null;
+
+      form.addEventListener("submit", function () {
+        if (editor) commitIfValid();
+        jsonInput.value = JSON.stringify(value);
+      });
+
+      // ----- catalog helpers ----------------------------------------------
+      function attrByKey(k) {
+        for (var i = 0; i < labelAttrs.length; i++) if (labelAttrs[i].key === k) return labelAttrs[i];
+        return null;
+      }
+      function opByKey(attr, k) {
+        for (var i = 0; i < attr.operators.length; i++) if (attr.operators[i].key === k) return attr.operators[i];
+        return null;
+      }
+      function variantMembers(group) {
+        return attrs.filter(function (a) { return a.variant_group === group; });
+      }
+      // Picker entries: attributes, with each variant_group collapsed to one
+      // entry (labelled by the group, keyed by its first member).
+      function pickerEntries() {
+        var seen = {}, entries = [];
+        attrs.forEach(function (a) {
+          if (a.variant_group) {
+            if (seen[a.variant_group]) return;
+            seen[a.variant_group] = true;
+            entries.push({key: a.key, label: a.variant_group, group: a.group});
+          } else {
+            entries.push({key: a.key, label: a.label, group: a.group});
+          }
+        });
+        return entries;
+      }
+      function pickerKeyFor(attrKey) {
+        var a = attrByKey(attrKey);
+        if (a && a.variant_group) return variantMembers(a.variant_group)[0].key;
+        return attrKey;
+      }
+      function optionLabel(attr, v) {
+        var values = attr.options && attr.options.values;
+        if (values) for (var i = 0; i < values.length; i++) if (values[i][0] === String(v)) return values[i][1];
+        return String(v);
+      }
+      function el(tag, cls, text) {
+        var node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+      // FontAwesome 5 icons, same set hitobito uses elsewhere (fas fa-*).
+      function icon(name) {
+        var i = el("i", "fas fa-" + name);
+        i.setAttribute("aria-hidden", "true");
+        return i;
+      }
+      function shorten(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+      function fmtOperand(attr, v) {
+        if (attr.control === "multiselect" || attr.control === "select") return shorten(optionLabel(attr, v), 28);
+        if (attr.control === "date_range") {
+          var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v));
+          if (m) return m[3] + "." + m[2] + "." + m[1];
+          var mo = /^(\d{4})-(\d{2})$/.exec(String(v));
+          if (mo) return mo[2] + "." + mo[1];
+          return String(v);
+        }
+        if (attr.control === "number_range" && typeof v === "number") return v.toLocaleString("de-DE");
+        return String(v);
+      }
+      function condText(cond) {
+        var attr = attrByKey(cond[0]);
+        if (!attr) return {label: cond[0], op: cond[1], operands: cond.slice(2).join(", ")};
+        var op = opByKey(attr, cond[1]);
+        var operands = cond.slice(2);
+        // "ist eines von" etc. makes the ANY-of semantics of a multi-select visible
+        var opLabel = op ? ((operands.length > 1 && op.label_many) ? op.label_many : op.label) : cond[1];
+        var shown;
+        if (!operands.length) shown = "";
+        else if (op && op.arity === "two") shown = fmtOperand(attr, operands[0]) + " – " + fmtOperand(attr, operands[1]);
+        else if (operands.length > 2) shown = fmtOperand(attr, operands[0]) + " +" + (operands.length - 1);
+        else shown = operands.map(function (v) { return fmtOperand(attr, v); }).join(", ");
+        return {label: attr.label, op: opLabel, operands: shown};
+      }
+      // Full, untruncated operand text for the hover tooltip (condFullText):
+      // option labels and long value lists are shown in full, so a chip that is
+      // too small to display everything still explains itself completely.
+      function fmtOperandFull(attr, v) {
+        if (attr.control === "multiselect" || attr.control === "select") return optionLabel(attr, v);
+        return fmtOperand(attr, v);
+      }
+      function condFullText(cond) {
+        var attr = attrByKey(cond[0]);
+        if (!attr) return cond[0] + " " + cond[1] + " " + cond.slice(2).join(", ");
+        var op = opByKey(attr, cond[1]);
+        var operands = cond.slice(2);
+        var opLabel = op ? ((operands.length > 1 && op.label_many) ? op.label_many : op.label) : cond[1];
+        var shown;
+        if (!operands.length) shown = "";
+        else if (op && op.arity === "two") shown = fmtOperandFull(attr, operands[0]) + " – " + fmtOperandFull(attr, operands[1]);
+        else shown = operands.map(function (v) { return fmtOperandFull(attr, v); }).join(", ");
+        return (attr.label + " " + opLabel + (shown ? " " + shown : "")).trim();
+      }
+
+      // Case-insensitive/-sensitive operator pairs (case_group): the dropdown
+      // shows one entry per pair (its insensitive member) + a separate toggle.
+      function operatorEntries(attr) {
+        var seen = {}, out = [];
+        attr.operators.forEach(function (o) {
+          if (o.case_group) {
+            if (seen[o.case_group]) return;
+            seen[o.case_group] = true;
+            var ci = attr.operators.filter(function (x) { return x.case_group === o.case_group && !x.case_sensitive; })[0];
+            out.push(ci || o);
+          } else {
+            out.push(o);
+          }
+        });
+        return out;
+      }
+      function dropdownKeyFor(attr, opKey) {
+        var op = opByKey(attr, opKey);
+        if (op && op.case_group) {
+          var ci = attr.operators.filter(function (x) { return x.case_group === op.case_group && !x.case_sensitive; })[0];
+          if (ci) return ci.key;
+        }
+        return opKey;
+      }
+      function effectiveOpKey(attr, entryKey, caseSensitive) {
+        var entry = opByKey(attr, entryKey);
+        if (entry && entry.case_group) {
+          var member = attr.operators.filter(function (x) {
+            return x.case_group === entry.case_group && !!x.case_sensitive === !!caseSensitive;
+          })[0];
+          if (member) return member.key;
+        }
+        return entryKey;
+      }
+      function markDirty() {
+        root.classList.toggle("flt-dirty", JSON.stringify(value) !== initialJson);
+      }
+
+      // ----- editor state / commit ----------------------------------------
+      // Current operands from editor state, or null if not committable.
+      function currentOperands() {
+        var attr = attrByKey(editor.attrKey);
+        var op = opByKey(attr, editor.opKey);
+        if (op.arity === "none") return [];
+        if (attr.control === "multiselect" || attr.control === "select") {
+          return editor.sel.length ? editor.sel.slice() : null;
+        }
+        var want = (op.arity === "two") ? 2 : 1;
+        var vals = [];
+        for (var i = 0; i < want; i++) {
+          var raw = (editor.raw[i] || "").trim();
+          if (raw === "") return null;
+          if (attr.control === "number_range") {
+            var n = Number(raw.replace(",", "."));
+            if (isNaN(n)) return null;
+            vals.push(n);
+          } else {
+            vals.push(raw);
+          }
+        }
+        return vals;
+      }
+      function commitIfValid() {
+        if (!editor) return false;
+        var operands = currentOperands();
+        if (operands === null) return false;
+        var cond = [editor.attrKey, editor.opKey].concat(operands);
+        if (editor.ci !== null) {
+          value[editor.si][editor.ci] = cond;
+        } else if (editor.si < value.length) {
+          value[editor.si].push(cond);
+        } else {
+          value.push([cond]);
+        }
+        editor = null;
+        render();
+        return true;
+      }
+      function cancelEditor() {
+        editor = null;
+        render();
+      }
+      // Commit-or-drop the open editor before another structural action.
+      function settleEditor() {
+        if (!editor) return;
+        if (!commitIfValid()) cancelEditor();
+      }
+      function openEditor(si, ci) {
+        var attrKey = attrs[0].key;
+        var opKey = attrs[0].operators[0].key;
+        var sel = [], raw = [], caseSensitive = false;
+        if (ci !== null) {
+          var cond = value[si][ci];
+          var a = attrByKey(cond[0]);
+          if (a) {
+            attrKey = cond[0];
+            var existingOp = opByKey(a, cond[1]);
+            opKey = existingOp ? cond[1] : a.operators[0].key;
+            caseSensitive = !!(existingOp && existingOp.case_sensitive);
+            if (a.control === "multiselect" || a.control === "select") {
+              sel = cond.slice(2).map(String);
+            } else {
+              raw = cond.slice(2).map(String);
+            }
+          }
+        }
+        editor = {si: si, ci: ci, attrKey: attrKey, opKey: opKey, sel: sel, raw: raw,
+          caseSensitive: caseSensitive};
+        render();
+        focusEditor(ci === null ? "attr" : "operand");
+      }
+      function focusEditor(target) {
+        var panel = slotsEl.querySelector(".flt-editor");
+        if (!panel) return;
+        var node = (target === "attr") ? panel.querySelector("select") :
+          (panel.querySelector(".flt-ms-input") || panel.querySelector(".flt-operands input") || panel.querySelector("select"));
+        if (node) node.focus();
+      }
+
+      // Outside click: commit if possible, else discard the draft.
+      document.addEventListener("mousedown", function (e) {
+        if (!editor) return;
+        if (!root.contains(e.target)) settleEditor();
+      });
+
+      // ----- rendering -----------------------------------------------------
+      // A read-only chip (locked conditions, and every chip in disabled mode).
+      function readonlyChip(cond, suffix) {
+        var t = condText(cond);
+        var chip = el("span", "flt-chip");
+        chip.title = condFullText(cond) + (suffix || "");
+        var text = el("span", "flt-chip-text");
+        text.appendChild(el("span", "fw-semibold", t.label + " "));
+        text.appendChild(el("span", "flt-op", t.op + (t.operands ? " " : "")));
+        if (t.operands) text.appendChild(el("span", null, t.operands));
+        chip.appendChild(text);
+        return chip;
+      }
+      // Locked conditions as full read-only slots (one row per AND-slot).
+      function renderLockedFull() {
+        locked.forEach(function (slot, li) {
+          if (li > 0) slotsEl.appendChild(el("div", "flt-und", "UND"));
+          var row = el("div", "flt-slot flt-slot-locked");
+          row.title = "Fest vorgegeben – nicht änderbar";
+          row.appendChild(icon("lock")).classList.add("flt-lock");
+          slot.forEach(function (cond, ci) {
+            if (ci > 0) row.appendChild(el("span", "flt-or", "oder"));
+            row.appendChild(readonlyChip(cond, " — fest vorgegeben, nicht änderbar"));
+          });
+          slotsEl.appendChild(row);
+        });
+      }
+      // Locked conditions as ONE compact summary line (condensed_locked):
+      // slots joined by " UND ", the conditions within a slot by " ODER ", and a
+      // multi-condition slot wrapped in parentheses so the AND/OR structure is
+      // unambiguous. No "Fest:" prefix -- the lock icon carries that meaning.
+      function renderLockedCondensed() {
+        var text = locked.map(function (slot) {
+          var conds = slot.map(condFullText).join(" ODER ");
+          return (slot.length > 1) ? ("(" + conds + ")") : conds;
+        }).join(" UND ");
+        var row = el("div", "flt-locked-summary");
+        row.title = "Fest vorgegebene Bedingungen – nicht änderbar";
+        row.appendChild(icon("lock")).classList.add("flt-lock");
+        row.appendChild(el("span", "flt-locked-summary-text", text));
+        slotsEl.appendChild(row);
+      }
+
+      function render() {
+        slotsEl.textContent = "";
+        if (locked.length) { condensedLocked ? renderLockedCondensed() : renderLockedFull(); }
+        // Fully read-only: show the user conditions as read-only chips too, then
+        // stop (no editor, no add/remove).
+        if (disabled) {
+          value.forEach(function (slot, si) {
+            if (si > 0 || locked.length) slotsEl.appendChild(el("div", "flt-und", "UND"));
+            var row = el("div", "flt-slot flt-slot-locked");
+            slot.forEach(function (cond, ci) {
+              if (ci > 0) row.appendChild(el("span", "flt-or", "oder"));
+              row.appendChild(readonlyChip(cond, ""));
+            });
+            slotsEl.appendChild(row);
+          });
+          if (!value.length && !locked.length) {
+            slotsEl.appendChild(el("span", "flt-empty-hint", "Keine Bedingungen."));
+          }
+          return;
+        }
+        value.forEach(function (slot, si) {
+          if (si > 0 || locked.length) slotsEl.appendChild(el("div", "flt-und", "UND"));
+          var row = el("div", "flt-slot");
+          slot.forEach(function (cond, ci) {
+            if (ci > 0) row.appendChild(el("span", "flt-or", "oder"));
+            var t = condText(cond);
+            var chip = el("span", "flt-chip");
+            chip.title = condFullText(cond) + " — Klicken zum Bearbeiten";
+            var text = el("span", "flt-chip-text");
+            text.appendChild(el("span", "fw-semibold", t.label + " "));
+            text.appendChild(el("span", "flt-op", t.op + (t.operands ? " " : "")));
+            if (t.operands) text.appendChild(el("span", null, t.operands));
+            chip.appendChild(text);
+            var x = el("button", "flt-x");
+            x.type = "button";
+            x.title = "Bedingung entfernen";
+            x.appendChild(icon("times"));
+            x.addEventListener("click", function (e) {
+              e.stopPropagation();
+              settleEditor();
+              slot.splice(ci, 1);
+              if (!slot.length) value.splice(si, 1);
+              render();
+            });
+            chip.appendChild(x);
+            chip.addEventListener("click", function () {
+              settleEditor();
+              openEditor(si, ci);
+            });
+            row.appendChild(chip);
+          });
+          var add = el("button", "flt-add-cond", "oder ");
+          add.type = "button";
+          add.title = "ODER-Bedingung zu dieser Zeile hinzufügen";
+          add.appendChild(icon("plus-circle"));
+          add.addEventListener("click", function () {
+            settleEditor();
+            openEditor(si, null);
+          });
+          row.appendChild(add);
+          var del = el("button", "flt-del-slot");
+          del.type = "button";
+          del.title = "Ganze Zeile entfernen";
+          del.appendChild(icon("trash"));
+          del.addEventListener("click", function () {
+            settleEditor();
+            value.splice(si, 1);
+            render();
+          });
+          row.appendChild(del);
+          slotsEl.appendChild(row);
+          if (editor && editor.si === si) slotsEl.appendChild(buildEditor());
+        });
+
+        if (!value.length) {
+          // Empty state: one waiting slot instead of just a button.
+          if (locked.length) slotsEl.appendChild(el("div", "flt-und", "UND"));
+          var emptyRow = el("div", "flt-slot flt-slot-empty");
+          var addFirst = el("button", "flt-add-cond");
+          addFirst.type = "button";
+          addFirst.appendChild(icon("plus-circle"));
+          addFirst.appendChild(document.createTextNode(" Bedingung hinzufügen"));
+          addFirst.addEventListener("click", function () { openEditor(0, null); });
+          emptyRow.appendChild(addFirst);
+          emptyRow.appendChild(el("span", "flt-empty-hint", "Ohne Bedingungen werden alle Buchungen angezeigt."));
+          slotsEl.appendChild(emptyRow);
+          if (editor && editor.si === 0) slotsEl.appendChild(buildEditor());
+        } else {
+          var addSlot = el("button", "flt-add-slot");
+          addSlot.type = "button";
+          addSlot.appendChild(icon("plus-circle"));
+          addSlot.appendChild(document.createTextNode(" 'UND'-Bedingung hinzufügen"));
+          addSlot.addEventListener("click", function () {
+            settleEditor();
+            openEditor(value.length, null);
+          });
+          var wrap = el("div", "mt-2");
+          wrap.appendChild(addSlot);
+          slotsEl.appendChild(wrap);
+          if (editor && editor.si >= value.length) slotsEl.appendChild(buildEditor());
+        }
+        markDirty();
+      }
+
+      // ----- the editor panel ---------------------------------------------
+      function buildEditor() {
+        var panel = el("div", "flt-editor");
+        var grid = el("div", "flt-editor-grid");
+        var attr = attrByKey(editor.attrKey);
+        var op = opByKey(attr, editor.opKey);
+
+        // attribute picker (variant groups collapsed), grouped by `group`
+        var attrSel = el("select", "form-select form-select-sm w-auto");
+        attrSel.setAttribute("aria-label", "Attribut");
+        var groups = {};
+        pickerEntries().forEach(function (entry) {
+          var g = entry.group || "";
+          if (!(g in groups)) {
+            groups[g] = g ? el("optgroup") : attrSel;
+            if (g) { groups[g].label = g; attrSel.appendChild(groups[g]); }
+          }
+          var o = el("option", null, entry.label);
+          o.value = entry.key;
+          if (entry.key === pickerKeyFor(editor.attrKey)) o.selected = true;
+          groups[g].appendChild(o);
+        });
+        attrSel.addEventListener("change", function () {
+          editor.attrKey = attrSel.value;
+          editor.opKey = attrByKey(attrSel.value).operators[0].key;
+          editor.sel = [];
+          editor.raw = [];
+          render();
+          focusEditor("operand");
+        });
+        grid.appendChild(attrSel);
+
+        // sub-variant dropdown for variant groups (keeps operator + operands)
+        if (attr.variant_group) {
+          var vSel = el("select", "form-select form-select-sm w-auto");
+          vSel.setAttribute("aria-label", attr.variant_group + " Variante");
+          variantMembers(attr.variant_group).forEach(function (member) {
+            var vo = el("option", null, member.label);
+            vo.value = member.key;
+            if (member.key === editor.attrKey) vo.selected = true;
+            vSel.appendChild(vo);
+          });
+          vSel.addEventListener("change", function () {
+            var member = attrByKey(vSel.value);
+            editor.attrKey = member.key;
+            if (!opByKey(member, editor.opKey)) editor.opKey = member.operators[0].key;
+            render();
+            focusEditor("operand");
+          });
+          grid.appendChild(vSel);
+        }
+
+        // operator select: one entry per case pair (+ ungrouped operators);
+        // arity-none operators commit immediately on choice
+        var opSel = el("select", "form-select form-select-sm w-auto");
+        opSel.setAttribute("aria-label", "Operator");
+        operatorEntries(attr).forEach(function (o) {
+          var opt = el("option", null, o.label);
+          opt.value = o.key;
+          if (o.key === dropdownKeyFor(attr, editor.opKey)) opt.selected = true;
+          opSel.appendChild(opt);
+        });
+        opSel.addEventListener("change", function () {
+          var previous = opByKey(attr, editor.opKey);
+          editor.opKey = effectiveOpKey(attr, opSel.value, editor.caseSensitive);
+          var chosen = opByKey(attr, editor.opKey);
+          // A different operand control (e.g. month <-> year <-> date) cannot
+          // reuse the typed value -- start fresh (and get the new prefill).
+          if ((previous && previous.operand_control) !== chosen.operand_control) {
+            editor.raw = [];
+          }
+          if (chosen.arity === "none") {
+            editor.sel = [];
+            editor.raw = [];
+            commitIfValid(); // nothing more to enter -> apply directly
+            return;
+          }
+          render();
+          focusEditor("operand");
+        });
+        grid.appendChild(opSel);
+
+        // operand controls (live-bound to editor.sel / editor.raw)
+        var zone = el("div", "flt-operands");
+        var hint = buildOperandControls(zone, attr, op);
+        grid.appendChild(zone);
+
+        // separate case toggle for case_group operator pairs (default:
+        // insensitive), placed right AFTER the input, before the ✓/× icons
+        if (op.case_group) {
+          var caseLabel = el("label", "flt-case");
+          var caseChk = el("input");
+          caseChk.type = "checkbox";
+          caseChk.checked = !!editor.caseSensitive;
+          caseChk.addEventListener("change", function () {
+            editor.caseSensitive = caseChk.checked;
+            editor.opKey = effectiveOpKey(attr, dropdownKeyFor(attr, editor.opKey), caseChk.checked);
+          });
+          caseLabel.appendChild(caseChk);
+          caseLabel.appendChild(el("span", null, "Groß/Klein beachten"));
+          caseLabel.title = "Groß-/Kleinschreibung beachten";
+          grid.appendChild(caseLabel);
+        }
+
+        // ✓ / × icons right next to the inputs
+        var icons = el("div", "flt-icons");
+        var ok = el("button", "flt-ok");
+        ok.type = "button";
+        ok.title = "Übernehmen (↵)";
+        ok.appendChild(icon("check"));
+        ok.addEventListener("click", function () { commitIfValid(); });
+        var cancel = el("button", "flt-cancel");
+        cancel.type = "button";
+        cancel.title = "Abbrechen (Esc)";
+        cancel.appendChild(icon("times"));
+        cancel.addEventListener("click", cancelEditor);
+        icons.appendChild(ok);
+        icons.appendChild(cancel);
+        grid.appendChild(icons);
+
+        var hints = el("div", "flt-hints", hint);
+        grid.appendChild(hints);
+        panel.appendChild(grid);
+
+        function refreshOk() { ok.disabled = (currentOperands() === null); }
+        panel.addEventListener("input", refreshOk);
+        panel.addEventListener("change", refreshOk);
+        refreshOk();
+
+        panel.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            cancelEditor();
+          } else if (e.key === "Enter" && e.target.tagName !== "SELECT" &&
+              !e.target.classList.contains("flt-ms-input")) {
+            e.preventDefault();
+            commitIfValid();
+          }
+        });
+        return panel;
+      }
+
+      // Build operand inputs into `zone`; returns the keyboard hint text.
+      function buildOperandControls(zone, attr, op) {
+        if (op.arity === "none") {
+          return "Ohne Wert – wird beim Auswählen direkt übernommen.";
+        }
+
+        // Operator-specific controls (whole year / whole month on dates),
+        // prefilled with the current year/month so ✓/↵ works immediately.
+        if (op.operand_control === "year" || op.operand_control === "month") {
+          var isYear = op.operand_control === "year";
+          var now = new Date();
+          var dflt = isYear ? String(now.getFullYear())
+            : (now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0"));
+          if (!(editor.raw[0] || "").trim()) editor.raw[0] = dflt;
+          var special = el("input", "form-control form-control-sm");
+          special.type = isYear ? "number" : "month";
+          if (isYear) {
+            special.min = "1900";
+            special.max = "2100";
+            special.style.width = "7rem";
+          } else if (special.type !== "month") {
+            special.type = "text"; // browser without <input type=month>
+            special.placeholder = "JJJJ-MM";
+            special.style.width = "8rem";
+          }
+          special.value = editor.raw[0];
+          special.addEventListener("input", function () { editor.raw[0] = special.value; });
+          zone.appendChild(special);
+          return "Vorbelegt mit " + (isYear ? "dem aktuellen Jahr" : "dem aktuellen Monat") +
+            " · ↵: übernehmen · Esc: abbrechen";
+        }
+
+        if (attr.control === "multiselect" || attr.control === "select") {
+          buildChipsCombobox(zone, attr);
+          return "Tippen: suchen · ↑↓: markieren · ↵: auswählen, mit leerem Feld: übernehmen · ⌫: letzte entfernen · Esc: abbrechen";
+        }
+
+        var isNumber = attr.control === "number_range";
+        var isDate = attr.control === "date_range";
+        if (isNumber || isDate) {
+          var n = (op.arity === "two") ? 2 : 1;
+          for (var i = 0; i < n; i++) {
+            if (i > 0) zone.appendChild(el("span", "small text-muted", "–"));
+            (function (idx) {
+              var input = el("input", "form-control form-control-sm");
+              input.type = isNumber ? "number" : "date";
+              if (isNumber) { input.step = "any"; input.style.width = "9rem"; }
+              input.value = editor.raw[idx] !== undefined ? editor.raw[idx] : "";
+              input.addEventListener("input", function () { editor.raw[idx] = input.value; });
+              zone.appendChild(input);
+            })(i);
+          }
+          return "↵: übernehmen · Esc: abbrechen";
+        }
+
+        var text = el("input", "form-control form-control-sm");
+        text.type = "text";
+        text.style.minWidth = "10rem";
+        text.value = editor.raw[0] !== undefined ? editor.raw[0] : "";
+        text.addEventListener("input", function () { editor.raw[0] = text.value; });
+        zone.appendChild(text);
+        return "↵: übernehmen · Esc: abbrechen";
+      }
+
+      // TomSelect-style chips-combobox: selected values as removable chips in
+      // the field, a search input, and a keyboard-navigable option list.
+      function buildChipsCombobox(zone, attr) {
+        var values = (attr.options && attr.options.values) || [];
+        var op = opByKey(attr, editor.opKey);
+        var field = el("div", "flt-msfield");
+        var box = el("div", "flt-msbox");
+        var input = el("input", "flt-ms-input");
+        input.type = "text";
+        input.setAttribute("aria-label", attr.label + " suchen");
+        input.placeholder = "Suchen…";
+        var list = el("div", "flt-ms-list");
+        // ANY-of semantics hint, shown as soon as more than one value is picked.
+        var manyHint = el("div", "flt-many-hint");
+        var highlight = -1; // index into the currently visible rows
+
+        function selected(v) { return editor.sel.indexOf(v) >= 0; }
+        function syncManyHint() {
+          manyHint.textContent =
+            (editor.sel.length > 1 && op && op.many_hint) ? op.many_hint : "";
+        }
+        function toggle(v) {
+          var i = editor.sel.indexOf(v);
+          if (i >= 0) editor.sel.splice(i, 1);
+          else editor.sel.push(v);
+          syncChips();
+          syncList();
+          syncManyHint();
+          box.dispatchEvent(new Event("change", {bubbles: true}));
+        }
+        function syncChips() {
+          box.querySelectorAll(".flt-mschip").forEach(function (c) { c.remove(); });
+          editor.sel.forEach(function (v) {
+            var chip = el("span", "flt-mschip");
+            chip.appendChild(el("span", null, optionLabel(attr, v)));
+            var x = el("button", "flt-x");
+            x.type = "button";
+            x.title = "Entfernen";
+            x.appendChild(icon("times"));
+            x.addEventListener("click", function (e) {
+              e.stopPropagation();
+              toggle(v);
+              input.focus();
+            });
+            chip.appendChild(x);
+            box.insertBefore(chip, input);
+          });
+        }
+        function visibleRows() {
+          return Array.prototype.filter.call(list.children, function (r) { return r.style.display !== "none"; });
+        }
+        function syncList() {
+          var q = input.value.toLowerCase();
+          Array.prototype.forEach.call(list.children, function (row) {
+            row.style.display = row.dataset.text.indexOf(q) >= 0 ? "" : "none";
+            row.classList.toggle("sel", selected(row.dataset.value));
+            row.querySelector(".flt-ms-tick").textContent = selected(row.dataset.value) ? "✓" : "";
+          });
+          var rows = visibleRows();
+          if (highlight >= rows.length) highlight = rows.length - 1;
+          rows.forEach(function (row, i) { row.classList.toggle("hl", i === highlight); });
+        }
+        values.forEach(function (pair) {
+          var row = el("div", "flt-ms-row");
+          row.dataset.value = pair[0];
+          row.dataset.text = pair[1].toLowerCase();
+          row.appendChild(el("span", "flt-ms-tick", ""));
+          row.appendChild(el("span", "flt-ms-text", pair[1]));
+          row.addEventListener("mousedown", function (e) { e.preventDefault(); }); // keep input focus
+          row.addEventListener("click", function () {
+            toggle(pair[0]);
+            input.focus();
+          });
+          list.appendChild(row);
+        });
+        input.addEventListener("input", function () {
+          highlight = input.value ? 0 : -1;
+          syncList();
+        });
+        input.addEventListener("keydown", function (e) {
+          var rows = visibleRows();
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            highlight = Math.min(highlight + 1, rows.length - 1);
+            syncList();
+            if (highlight >= 0) rows[highlight].scrollIntoView({block: "nearest"});
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            highlight = Math.max(highlight - 1, -1);
+            syncList();
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            var current = visibleRows()[highlight];
+            if (current) {
+              toggle(current.dataset.value);
+              input.value = "";
+              highlight = -1;
+              syncList();
+            } else if (input.value === "") {
+              commitIfValid(); // empty field + Enter = done
+            }
+          } else if (e.key === "Backspace" && input.value === "" && editor.sel.length) {
+            toggle(editor.sel[editor.sel.length - 1]);
+          }
+        });
+        box.addEventListener("click", function () { input.focus(); });
+        box.appendChild(input);
+        field.appendChild(box);
+        field.appendChild(manyHint);
+        field.appendChild(list);
+        zone.appendChild(field);
+        syncChips();
+        syncList();
+        syncManyHint();
+      }
+
+      render();
+    }
+
+    function initAll() {
+      document.querySelectorAll(".flt-root").forEach(initRoot);
+    }
+    initAll();
+    // Turbo-safety: cached snapshots keep data-init but lose the listeners, so
+    // strip the marker before caching and re-init after every (restore) visit.
+    window.__fltInitAll = initAll;
+    if (!window.__fltTurboHooks) {
+      window.__fltTurboHooks = true;
+      document.addEventListener("turbo:before-cache", function () {
+        document.querySelectorAll(".flt-root").forEach(function (r) {
+          delete r.dataset.init;
+          var slots = r.querySelector(".flt-slots");
+          if (slots) slots.textContent = "";
+        });
+      });
+      document.addEventListener("turbo:load", function () {
+        if (window.__fltInitAll) window.__fltInitAll();
+      });
+    }
+  })();

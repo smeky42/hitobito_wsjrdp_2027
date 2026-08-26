@@ -1,0 +1,59 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Keeps the set of open detail rows in the URL query string (local: `param`),
+-#  so the open/closed state is bookmarkable and survives a reload. The server
+-#  renders the matching rows open; this only writes the URL back on toggle.
+= render "shared/relaxed_query_js"
+:javascript
+  (function () {
+    var PARAM = "#{param}";
+    function sync() {
+      var open = Array.prototype.map.call(
+        document.querySelectorAll(".exp-detail.show"),
+        function (el) { return el.dataset.expKey; }
+      ).filter(Boolean);
+      var url = new URL(window.location);
+      if (open.length) { url.searchParams.set(PARAM, open.join(",")); }
+      else { url.searchParams.delete(PARAM); }
+      // Mutating searchParams re-serialises the query as x-www-form-urlencoded,
+      // re-encoding "," / "~" everywhere; wsjrdpRelaxedQuery.href rebuilds the
+      // relative URL with them literal again (see doc/url_encoding.md).
+      window.history.replaceState({}, "", window.wsjrdpRelaxedQuery.href(url));
+    }
+    document.querySelectorAll(".exp-detail").forEach(function (el) {
+      el.addEventListener("shown.bs.collapse", function (e) { if (e.target === el) sync(); });
+      el.addEventListener("hidden.bs.collapse", function (e) { if (e.target === el) sync(); });
+    });
+  })();
+
+  (function () {
+    // Preserve the vertical scroll position across a table's paging / sorting /
+    // page-size navigation (Turbo Drive otherwise scrolls to the top, which on a
+    // long page feels like the position jumps). Delegated + window-guarded, so
+    // it covers every expandable table on the page and survives Turbo visits.
+    if (window.__expScrollKeep) return;
+    window.__expScrollKeep = true;
+    var KEY = "wsjrdp.exptbl.scroll";
+    function remember() { try { sessionStorage.setItem(KEY, String(window.scrollY || document.documentElement.scrollTop || 0)); } catch (e) {} }
+    document.addEventListener("click", function (e) {
+      if (e.target.closest(".bk-pagination a, a.exp-sort")) remember();
+    });
+    document.addEventListener("change", function (e) {
+      if (e.target.closest && e.target.closest(".bk-per-select")) remember();
+    });
+    function restore() {
+      var y;
+      try { y = sessionStorage.getItem(KEY); } catch (e) { return; }
+      if (y === null) return;
+      try { sessionStorage.removeItem(KEY); } catch (e) {}
+      requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, parseInt(y, 10) || 0); }); });
+    }
+    document.addEventListener("turbo:load", restore);
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", restore);
+    else restore();
+  })();

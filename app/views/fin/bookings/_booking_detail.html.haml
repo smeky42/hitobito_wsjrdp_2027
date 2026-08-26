@@ -1,0 +1,157 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared booking detail content. Rendered inline (in the expandable table row,
+-#  inline: true) and on the standalone /fin/bookings/:id page (inline: false).
+-#  The OUTER layout is the shared item-detail card (.bk-item-detail, as used by
+-#  the Buchhaltung details) minus the tinted background (-plain); INSIDE, the
+-#  booking keeps its own compact grid of labeled fields.
+-#
+-#  Two host injection slots (both optional lambdas booking -> HTML):
+-#    top:   rendered at the very TOP of the detail (e.g. the reconciliation
+-#           page's match-candidate list).
+-#    extra: rendered at the very BOTTOM (host-specific extras).
+-#  Layout order: top slot · field grid · raw DATEV · manual associations
+-#  (person + Beitragsbuchung) · Detailseite/Soft-delete actions · bottom slot.
+-#  The manual-association block is part of EVERY host (list, booking page,
+-#  reconciliation) and sits just above the Detailseite/Soft-delete buttons.
+-# table_context (a TableContext) says whether this detail is nested in a table
+-# row and how deep; falls back to the legacy `inline:` boolean. `inline` here
+-# means "rendered inside a table" (so the Detailseite link is offered).
+- table_context = local_assigns.fetch(:table_context) { TableContext.new(level: local_assigns.fetch(:inline, false) ? 1 : 0) }
+- inline = table_context.nested?
+- top = local_assigns.fetch(:top, nil)
+- extra = local_assigns.fetch(:extra, nil)
+-# The grid label styling (.booking-detail-label -> light weight) lives in this
+-# shared partial, otherwise only emitted with an expandable table. Render it here
+-# too (idempotent once-guard) so the standalone /bookkeeping/bookings/:id page
+-# also gets the light labels.
+= render "shared/expandable_table_styles"
+.bk-item-detail.bk-item-detail-plain
+  - if top && (top_html = top.call(booking)).present?
+    .mb-3= top_html
+
+  - booking_detail_field_rows(booking).each_with_index do |cells, i|
+    .row.g-3{ class: ("mt-1" if i.positive?) }
+      - cells.each do |label, value, span, align|
+        - cols = (span == 2) ? "col-12 col-md-8 col-lg-6" : "col-6 col-md-4 col-lg-3"
+        %div{ class: cols }
+          - if label
+            .booking-detail-label.text-muted.text-uppercase= label
+            .text-break{ class: ("text-end" if align == :end) }
+              - if value.present?
+                = value
+              - else
+                %span.text-muted —
+
+  - raw_fields = booking_raw_fields(booking)
+  - if raw_fields.any? { |_label, value| value.present? }
+    .mt-3.pt-2.border-top
+      .booking-detail-label.text-muted.text-uppercase.mb-1 Rohdaten (DATEV)
+      -# One field per line so the (potentially many) Beleginfo / Zusatzinformation
+      -# Art/Inhalt pairs each stand on their own line.
+      .small.font-monospace
+        - raw_fields.each do |label, value|
+          - next if value.blank?
+          .text-break
+            %span.text-muted= "#{label}:"
+            = " #{value}"
+
+  -# Manual associations (all hosts: bookings list, booking page,
+  -# reconciliation) -- sits above the Detailseite / Soft-delete actions. DOM
+  -# ids are UNIQUE per booking -- hitobito's entity autocomplete binds by #id,
+  -# so duplicate ids across the row details of a table would leave all but the
+  -# first widget dead.
+  -# Two-column label/value grid (tx-detail style): one wsjrdp_labeled_row per
+  -# association -- label | widgets (wsjrdp_row_line / wsjrdp_row_form) plus an
+  -# optional help line (wsjrdp_row_help). See WsjrdpLabeledRowsHelper.
+  .mt-3.pt-2.border-top
+    .booking-detail-label.text-muted.text-uppercase.mb-2 Verknüpfungen
+    - if booking.datev_booking_batch_id
+      = wsjrdp_labeled_row("Buchungsstapel") do
+        - batch = booking.datev_booking_batch
+        - batch_path = booking_batch_path(booking.datev_booking_batch_id)
+        = link_to "##{booking.datev_booking_batch_id}#{" · #{batch.label}" if batch&.label.present?}", batch_path
+        = wsjrdp_newtab_link(batch_path)
+    - pid = "bk-person-#{booking.id}"
+    = wsjrdp_labeled_row("Person") do
+      = wsjrdp_row_form(booking_path(booking), method: :patch) do
+        %input.form-control.form-control-sm.wsjrdp-lr-entity{type: "text", id: "#{pid}-q",
+          value: booking.person&.to_s, placeholder: t("global.search.placeholder_person"),
+          autocomplete: "off", "aria-label": "Person suchen",
+          data: {provide: "entity", id_field: pid, url: query_people_path,
+            no_results_message: t("global.no_list_entries")}}
+        %input{type: "hidden", name: "datev_booking[person_id]", id: pid, value: booking.person_id}
+        %button.btn.btn-sm.btn-outline-primary{type: "submit"} Person zuordnen
+      - if booking.person
+        = wsjrdp_row_help do
+          Bisher:
+          = assoc_link_with_newtab(booking.person)
+    = wsjrdp_labeled_row("Beitragsbuchung") do
+      - if booking.accounting_entry_id
+        = wsjrdp_row_line do
+          = assoc_link_with_newtab(booking.accounting_entry, "##{booking.accounting_entry_id}")
+          = match_rating_chip(booking_link_rating(booking), compact: false)
+          = button_to booking_path(booking), method: :patch,
+            params: {datev_booking: {accounting_entry_id: ""}},
+            form: {class: "bk-unlink-form d-inline", data: {turbo: false}},
+            class: "btn btn-sm btn-outline-danger py-0", title: "Verknüpfung mit der Beitragsbuchung trennen",
+            "aria-label": "Verknüpfung mit der Beitragsbuchung trennen" do
+            = icon(:unlink)
+        -# When / by whom the link was made (accounting_entry_link* columns).
+        = wsjrdp_row_help(booking_link_provenance(booking))
+      - else
+        - aid = "bk-ae-#{booking.id}"
+        = wsjrdp_row_form(booking_path(booking), css: "bk-connect-entry-form", method: :patch) do
+          %input.form-control.form-control-sm.wsjrdp-lr-entity{type: "text", id: "#{aid}-q",
+            autocomplete: "off", "aria-label": "Beitragsbuchung suchen",
+            placeholder: "ID, Name oder Beschreibung – nur unverknüpfte mit gleichem Betrag …",
+            data: {provide: "entity", id_field: aid, url: query_entries_booking_path(booking),
+              no_results_message: "Keine unverknüpfte Beitragsbuchung mit diesem Betrag"}}
+          %input{type: "hidden", name: "datev_booking[accounting_entry_id]", id: aid}
+          %button.btn.btn-sm.btn-outline-success{type: "submit"} Verbinden
+
+  - if inline
+    .d-flex.flex-wrap.gap-2.mt-3.pt-2.border-top
+      = link_to booking_path(booking), class: "btn btn-sm btn-outline-secondary" do
+        = icon(:eye)
+        Detailseite
+
+  - if extra && (extra_html = extra.call(booking)).present?
+    .mt-3.pt-2.border-top= extra_html
+
+  :javascript
+    (function () {
+      // Confirm the manual entry connect (the forms run with turbo:false, so
+      // data-turbo-confirm would not fire): delegated capture listener, bound
+      // once, shows booking + chosen entry before submitting.
+      if (window.__bkConnectEntryConfirm) return;
+      window.__bkConnectEntryConfirm = true;
+      document.addEventListener("submit", function (e) {
+        var form = e.target.closest && e.target.closest(".bk-connect-entry-form");
+        if (!form) return;
+        var idField = form.querySelector('input[name="datev_booking[accounting_entry_id]"]');
+        var q = form.querySelector("input[data-provide]");
+        if (!idField || !idField.value) {
+          e.preventDefault();
+          alert("Bitte zuerst eine Beitragsbuchung aus der Vorschlagsliste auswählen.");
+          return;
+        }
+        var label = (q && q.value) || ("#" + idField.value);
+        if (!confirm("Diese Buchung mit der Beitragsbuchung\n\n" + label + "\n\nverbinden?")) {
+          e.preventDefault();
+        }
+      }, true);
+      // Confirm unlinking the accounting entry (turbo:false, so a delegated
+      // capture listener stands in for data-turbo-confirm).
+      document.addEventListener("submit", function (e) {
+        var uf = e.target.closest && e.target.closest(".bk-unlink-form");
+        if (uf && !confirm("Verknüpfung mit der Beitragsbuchung wirklich trennen?")) {
+          e.preventDefault();
+        }
+      }, true);
+    })();

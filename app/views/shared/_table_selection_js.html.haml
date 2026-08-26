@@ -1,0 +1,190 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared row-selection for shared/_expandable_table. Everything lives inside one
+-#  .bk-select-scope carrying data-select-key (sessionStorage key), data-filter-sig
+-#  (filter signature), data-select-name (checkbox name), data-select-form (the
+-#  linked form's id). The selection is remembered across paging/sort/column
+-#  changes (sessionStorage map { id => amount_cents }) and cleared when the
+-#  filter changes. A .bk-select-bar shows how many are selected on this page and
+-#  overall, offers "select all rows (all pages)" once a full page is picked, and
+-#  a "clear" link whenever anything is selected. The all-pages mode is stored as
+-#  `all` ("1" or a comma-joined atom string); the count shown then comes from
+-#  the linked form's data-<atom>-count. window.wsjrdpSelection exposes read / clear /
+-#  setAll / injectRemembered for the connect dialogs.
+- return if @wsjrdp_table_selection_emitted
+- @wsjrdp_table_selection_emitted = true
+:css
+  .bk-select-cell .form-check-input { width: 1.1rem !important; height: 1.1rem;
+    min-width: 1.1rem; margin: 0; padding: 0; flex: 0 0 auto; }
+:javascript
+  (function () {
+    if (window.__bkSelection) return;
+    window.__bkSelection = true;
+
+    function keyFor(scope) { return "wsjrdp.exptbl.sel." + (scope.dataset.selectKey || ""); }
+    function load(scope) { try { return JSON.parse(sessionStorage.getItem(keyFor(scope))); } catch (e) { return null; } }
+    function save(scope, st) { try { sessionStorage.setItem(keyFor(scope), JSON.stringify(st)); } catch (e) {} }
+    function checks(scope) { return Array.prototype.slice.call(scope.querySelectorAll(".bk-select-check")); }
+    function field(scope) { return scope.querySelector(".bk-select-all-field"); }
+    function allBox(scope) { return scope.querySelector(".bk-select-all"); }
+    function formOf(scope) { return document.getElementById(scope.dataset.selectForm || ""); }
+    function state(scope) {
+      var st = load(scope);
+      if (!st || typeof st.sel !== "object" || st.sel === null) st = { sel: {}, all: "" };
+      return st;
+    }
+    // The disjoint confidence atom of a row = its rating tier, computed
+    // server-side and carried verbatim in data-atom (auto / hhigh / hmid / hlow),
+    // so the 50 % middle/low boundary lives only in Match#tier.
+    function atomOf(c) { return c.dataset.atom || "hlow"; }
+    var ALL_ATOMS = ["auto", "hhigh", "hmid", "hlow"];
+    function atomsOf(all) { return (all === "1") ? ALL_ATOMS : (all ? all.split(",") : []); }
+
+    function persist(scope) {
+      var f = field(scope), all = f ? f.value : "";
+      var st = state(scope);
+      st.sig = scope.dataset.filterSig || "";
+      st.all = all;
+      if (!all) {
+        checks(scope).forEach(function (c) {
+          if (c.checked) st.sel[c.value] = parseInt(c.dataset.amount || "0", 10) || 0;
+          else delete st.sel[c.value];
+        });
+      }
+      save(scope, st);
+    }
+
+    function restore(scope) {
+      var st = load(scope);
+      if (st && st.sig !== (scope.dataset.filterSig || "")) {
+        if ((scope.dataset.onFilterChange || "clear") !== "clear") return;
+        st = null; // filter changed -> drop the remembered selection
+      }
+      if (!st) { save(scope, { sig: scope.dataset.filterSig || "", sel: {}, all: "" }); st = load(scope); }
+      if (typeof st.sel !== "object" || st.sel === null) st.sel = {};
+      var f = field(scope);
+      if (f) f.value = st.all || "";
+      if (st.all) {
+        var atoms = (st.all === "1") ? null : st.all.split(",");
+        checks(scope).forEach(function (c) { c.checked = atoms ? (atoms.indexOf(atomOf(c)) >= 0) : true; });
+      } else {
+        checks(scope).forEach(function (c) { c.checked = Object.prototype.hasOwnProperty.call(st.sel, c.value); });
+      }
+      refresh(scope);
+    }
+
+    function refresh(scope) {
+      var all = allBox(scope), cs = checks(scope);
+      var onPage = cs.filter(function (c) { return c.checked; }).length;
+      if (all) {
+        all.checked = cs.length > 0 && onPage === cs.length;
+        all.indeterminate = onPage > 0 && onPage < cs.length;
+      }
+      var bar = scope.querySelector(".bk-select-bar");
+      if (!bar) return;
+      var info = bar.querySelector(".bk-select-info");
+      var allLink = bar.querySelector(".bk-select-all-pages");
+      var clearLink = bar.querySelector(".bk-select-clear");
+      var f = field(scope), mode = f ? f.value : "";
+      var form = formOf(scope), total = bar.dataset.total;
+      if (mode) {
+        // all-pages mode: the count is the SUM of the active atoms' counts
+        // (disjoint atoms -> additive), read from the linked form.
+        var n = form ? atomsOf(mode).reduce(function (a, at) { return a + (parseInt(form.dataset[at + "Count"], 10) || 0); }, 0) : total;
+        info.textContent = "Alle " + n + " ausgewählt (alle Seiten).";
+        if (allLink) allLink.textContent = "";
+        if (clearLink) clearLink.style.display = "";
+        bar.style.display = "";
+        return;
+      }
+      var remembered = Object.keys(state(scope).sel).length;
+      if (remembered === 0) { bar.style.display = "none"; return; }
+      bar.style.display = "";
+      info.textContent = (onPage === remembered)
+        ? (remembered + " ausgewählt.")
+        : (onPage + " auf dieser Seite · " + remembered + " insgesamt ausgewählt.");
+      if (allLink) {
+        allLink.textContent = (all && all.checked && total && parseInt(total, 10) > remembered)
+          ? ("Alle " + total + " auswählen (auch andere Seiten)") : "";
+      }
+      if (clearLink) clearLink.style.display = "";
+    }
+
+    function scopeOf(el) { return el.closest(".bk-select-scope"); }
+
+    document.addEventListener("change", function (e) {
+      var scope = scopeOf(e.target);
+      if (!scope) return;
+      if (e.target.classList.contains("bk-select-all")) {
+        checks(scope).forEach(function (c) { c.checked = e.target.checked; });
+        var f = field(scope); if (f) f.value = "";
+        persist(scope); refresh(scope);
+      } else if (e.target.classList.contains("bk-select-check")) {
+        var f2 = field(scope); if (f2) f2.value = "";
+        persist(scope); refresh(scope);
+      }
+    });
+    document.addEventListener("click", function (e) {
+      var clear = e.target.closest(".bk-select-clear");
+      if (clear) { e.preventDefault(); window.wsjrdpSelection.clear(scopeOf(clear)); return; }
+      var allLink = e.target.closest(".bk-select-all-pages");
+      if (allLink && allLink.textContent) { e.preventDefault(); window.wsjrdpSelection.setAll(scopeOf(allLink), "1"); }
+    });
+    document.addEventListener("exptbl:persist-selection", function (e) {
+      var scope = scopeOf(e.target); if (scope) { persist(scope); refresh(scope); }
+    });
+
+    window.wsjrdpSelection = {
+      read: function (scope) {
+        var st = state(scope);
+        if (st.all) return { mode: "all", atoms: atomsOf(st.all) };
+        var ids = Object.keys(st.sel);
+        return { mode: "ids", count: ids.length, sum: ids.reduce(function (a, id) { return a + (parseInt(st.sel[id], 10) || 0); }, 0) };
+      },
+      clear: function (scope) {
+        save(scope, { sig: scope.dataset.filterSig || "", sel: {}, all: "" });
+        restore(scope);
+      },
+      setAll: function (scope, value) {
+        var f = field(scope); if (f) f.value = value;
+        var st = state(scope); st.all = value; st.sig = scope.dataset.filterSig || "";
+        save(scope, st); restore(scope);
+      },
+      // Select an all-pages confidence-atom set. mode "only" replaces, "add"
+      // unions with the current atoms (deduped). Empty atoms clears.
+      setCriteria: function (scope, atoms, mode) {
+        var cur = (mode === "add") ? atomsOf(state(scope).all) : [];
+        var seen = {}, out = [];
+        cur.concat(atoms).forEach(function (a) { if (a && !seen[a]) { seen[a] = 1; out.push(a); } });
+        if (out.length) this.setAll(scope, out.join(",")); else this.clear(scope);
+      },
+      // Add hidden inputs for remembered ids that are NOT checked on the current
+      // page, so an individual cross-page selection posts completely. Called by
+      // the connect dialog BEFORE it submits the form.
+      injectRemembered: function (scope, form) {
+        form.querySelectorAll("input.bk-select-remembered").forEach(function (n) { n.remove(); });
+        var f = field(scope);
+        if (f && f.value) return; // all-pages mode: the server uses the flag
+        var here = {};
+        checks(scope).forEach(function (c) { if (c.checked) here[c.value] = true; });
+        Object.keys(state(scope).sel).forEach(function (id) {
+          if (here[id]) return;
+          var input = document.createElement("input");
+          input.type = "hidden"; input.name = scope.dataset.selectName; input.value = id;
+          input.className = "bk-select-remembered";
+          form.appendChild(input);
+        });
+      },
+      forget: function (scope) { try { sessionStorage.removeItem(keyFor(scope)); } catch (e) {} }
+    };
+
+    function initAll() { document.querySelectorAll(".bk-select-scope[data-select-key]").forEach(restore); }
+    initAll();
+    window.__bkSelectionInit = initAll;
+    document.addEventListener("turbo:load", function () { if (window.__bkSelectionInit) window.__bkSelectionInit(); });
+  })();

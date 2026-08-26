@@ -30,6 +30,10 @@ class AccountingEntry < ActiveRecord::Base
 
   has_many :notes, dependent: :destroy, as: :subject, class_name: "WsjrdpNote"
 
+  # At most one DATEV booking may be linked to this accounting entry
+  # (enforced by a unique index on datev_bookings.accounting_entry_id).
+  has_one :datev_booking, dependent: :nullify
+
   validates :subject_id, presence: true
   validates :amount_eur, presence: true
   validates :description, presence: true

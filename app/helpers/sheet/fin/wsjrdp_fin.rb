@@ -8,13 +8,22 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Sheet
+  # "Zahlungsverkehr" -- the default sub-item of the Finanzen main-nav section.
   class Fin::WsjrdpFin < Base
     tab "fin.tabs.accounts", :wsjrdp_fin_accounts_path
     tab "fin.tabs.person_fees", :fin_person_fees_path
     tab "fin.tabs.plans", :wsjrdp_payment_plans_path
 
+    def left_nav?
+      true
+    end
+
+    def render_left_nav
+      view.render("fin/left_nav")
+    end
+
     def title
-      "Finanzen"
+      I18n.t("fin.nav.payments")
     end
   end
 end

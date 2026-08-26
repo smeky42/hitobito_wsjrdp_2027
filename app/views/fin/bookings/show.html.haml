@@ -1,0 +1,23 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Standalone, bookmarkable detail page for a single booking. Reuses the shared
+-#  _booking_detail partial inside a plain page shell.
+
+#main
+  = link_to bookings_path, class: "btn btn-sm btn-link px-0 mb-2" do
+    = icon(:"arrow-left")
+    Zurück zur Liste
+
+  -# Title on one line: the technical "Buchung #<id>" light + muted, then the
+  -# booking's Beschreibung in the normal heading weight.
+  %h1.mb-3
+    %span.text-muted.fw-light= "Buchung ##{@booking.id}"
+    - if @booking.description.present?
+      %span.ms-2= @booking.description
+
+  = render "fin/bookings/booking_detail", booking: @booking, inline: false

@@ -1,0 +1,38 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Paging control for shared/_expandable_table: Kaminari page links + page count
+-#  and an optional "pro Seite" select. Rendered above and below the table. The
+-#  page size select is shown ONLY when it is useful -- i.e. when there is more
+-#  than one page, or a non-default size is active (so it can be reverted). It
+-#  never appears when everything fits on one page at the default size. Both the
+-#  page links and the select are namespaced by `prefix` (<prefix>_page /
+-#  <prefix>_per), so sibling tables page independently.
+-#  Locals: prefix, pagination (Kaminari page or nil), per_options (array or
+-#  nil), default_per.
+- prefix = local_assigns.fetch(:prefix, "").to_s
+- pagination = local_assigns.fetch(:pagination, nil)
+- per_options = local_assigns.fetch(:per_options, nil)
+- default_per = local_assigns.fetch(:default_per, 50)
+- pages = pagination ? pagination.total_pages : 1
+- per_value = et_per_value(prefix, default_per)
+- show_per = per_options.present? && (pages > 1 || per_value != default_per.to_s)
+- if pages > 1 || show_per
+  - if show_per
+    = render "shared/per_page_select_js"
+  .d-flex.flex-wrap.align-items-center.column-gap-3.row-gap-1.bk-pagination
+    - if pages > 1
+      .pagination-bar= paginate pagination, param_name: et_param_name(prefix, :page)
+      %span.text-muted.small.text-nowrap.mx-2= "#{pages} Seiten"
+    - if show_per
+      - choices = per_options.map { |v| (v.to_s == "all") ? ["Alle", "all"] : [v.to_s, v.to_s] }
+      - choices = [[per_value, per_value]] + choices unless choices.any? { |_l, v| v == per_value }
+      .d-flex.align-items-center.gap-1
+        = select_tag et_param_name(prefix, :per), options_for_select(choices, per_value),
+          id: nil, class: "form-select form-select-sm w-auto bk-per-select",
+          "aria-label": "Einträge pro Seite", data: { url_template: et_url(prefix, {per: "__PER__"}) }
+        %span.text-muted.small.text-nowrap pro Seite

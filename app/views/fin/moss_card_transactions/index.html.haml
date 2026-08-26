@@ -1,0 +1,40 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Filterable, expandable table of Moss card transactions. Reuses the generic
+-#  CNF filter builder + shared/_expandable_table (same scaffolding as the
+-#  Buchungen page). The expanded row detail is the same partial served by the
+-#  standalone /fin/moss/card_transactions/:id page.
+- pfx = query.prefix
+- filter_param = et_param_name(pfx, :filter)
+- page_param = et_param_name(pfx, :page)
+- reset_url = et_url(pfx, {filter: nil})
+- reset_url = reset_url + (reset_url.include?("?") ? "&clear=1" : "?clear=1")
+- filter_cfg = {catalog: filter_catalog, value: filter_value,
+    apply_url: apply_moss_card_transactions_path, reset_url: reset_url,
+    carry: request.query_parameters.except(filter_param, page_param),
+    open: (cookies["moss_card_transactions_pane_flt"] != "0"),
+    pane_cookie: "moss_card_transactions_pane_flt"}
+- action = ->(tx) { link_to(icon(:eye), moss_card_transaction_path(tx), class: "btn btn-sm btn-link p-0", title: "Detailseite öffnen", "aria-label": "Detailseite öffnen") }
+- detail = ->(tx, ctx) { render "fin/moss_card_transactions/detail", card_transaction: tx, table_context: ctx }
+
+#main
+  %h1= t("fin.tabs.card_transactions")
+
+  = render "shared/expandable_table",
+    prefix: query.prefix, id_prefix: (query.prefix.presence || "mct"),
+    filter: filter_cfg,
+    rows: query.result, pagination: query.result,
+    columns: card_transaction_table_columns(query),
+    columns_menu: true,
+    default_column_keys: MossCardTransactionsHelper::DEFAULT_COLUMN_KEYS,
+    row_key: ->(tx) { tx.id },
+    action: action, detail: detail,
+    default_sort: {key: MossCardTransactionsQuery::DEFAULT_SORT, dir: MossCardTransactionsQuery::DEFAULT_SORT_DIRECTION},
+    multi_sort: true,
+    per_options: [25, 50, 100, 200, 500, "all"], default_per: query.default_per,
+    summary: "#{query.total_count} Kartentransaktionen · Summe (gefiltert): #{eur_display_or_nil(query.total_sum)} EUR"

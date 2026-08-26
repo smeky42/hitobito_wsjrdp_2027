@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main
+  %h1 Kostenstellen
+  %p.text-muted
+    Übersicht der Kostenstellen mit der Summe der gebuchten Beträge (nur aktive Buchungen).
+    Klick auf eine Zeile zeigt die Buchungen der Kostenstelle.
+
+  - action = ->(r) { link_to(icon(:eye), cost_center_path(r[:number]), class: "btn btn-sm btn-link p-0", title: "Detailseite dieser Kostenstelle öffnen") }
+  - detail_src = ->(r) { cost_center_path(r[:number]) }
+  -# Experiment: page the summary through the widget's default paging (10/Seite).
+  - cost_centers_page = Kaminari.paginate_array(cost_center_summaries).page(params[:page]).per(et_per_page("", 10))
+
+  = render "shared/expandable_table",
+    rows: cost_centers_page, pagination: cost_centers_page, per_options: [10, 25, 50, 100, "all"], default_per: 10,
+    columns_menu: true, multi_sort: true, open_keys: open_keys, id_prefix: "cost_center",
+    row_key: ->(r) { r[:number] }, columns: kostenstellen_columns, action: action, detail_src: detail_src
+
+  %p.text-muted.small.mt-2
+    Gesamt: #{eur_display_or_nil(total_sum)} EUR · #{total_count} Buchungen

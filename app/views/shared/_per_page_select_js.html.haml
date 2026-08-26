@@ -1,0 +1,33 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Change listener for the per-page selects (select.bk-per-select, see
+-#  fin/bookings/_pagination). The select carries the target URL as a template
+-#  (data-url-template with a __PER__ placeholder); inline handlers are blocked
+-#  by the CSP, so a single delegated listener navigates instead. Inside a turbo
+-#  frame only the frame is reloaded, keeping the surrounding page untouched.
+-#  Emitted once per response; the window guard survives Turbo page visits.
+- return if @wsjrdp_per_page_select_js_emitted
+- @wsjrdp_per_page_select_js_emitted = true
+:javascript
+  (function () {
+    if (window.__wsjrdpPerPageSelect) return;
+    window.__wsjrdpPerPageSelect = true;
+    document.addEventListener("change", function (e) {
+      var select = e.target.closest && e.target.closest("select.bk-per-select");
+      if (!select || !select.dataset.urlTemplate) return;
+      var url = select.dataset.urlTemplate.replace("__PER__", encodeURIComponent(select.value));
+      var frame = select.closest("turbo-frame");
+      if (frame) {
+        frame.setAttribute("src", url);
+      } else if (window.Turbo) {
+        window.Turbo.visit(url);
+      } else {
+        window.location.assign(url);
+      }
+    });
+  })();

@@ -1,0 +1,115 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Server-side column picker for shared/_expandable_table's hamburger: check to
+-#  show/hide, drag to reorder. The full state (order + visibility) is encoded
+-#  into the <prefix>_cols query param and submitted (GET), so it is shareable /
+-#  bookmarkable and can later be persisted server-side (session, ...) -- never
+-#  localStorage. All other current params (filter, sort, sibling tables) are
+-#  carried along; this table's page resets. Locals: prefix, all_columns,
+-#  default_column_keys.
+- prefix = local_assigns.fetch(:prefix, "").to_s
+- all_columns = local_assigns.fetch(:all_columns)
+- default_column_keys = local_assigns.fetch(:default_column_keys, nil)
+- states = et_column_states(all_columns, prefix, default_keys: default_column_keys)
+- cols_param = et_param_name(prefix, :cols)
+- page_param = et_param_name(prefix, :page)
+- form_id = "exp-cols-#{prefix.presence || "d"}"
+- unless @wsjrdp_exp_cols_css
+  - @wsjrdp_exp_cols_css = true
+  :css
+    .exp-cols-list { display: flex; flex-direction: column; gap: .25rem; margin: 0; padding: 0; }
+    .exp-cols-item { display: flex; align-items: center; gap: .5rem; padding: .25rem .4rem;
+      border: 1px solid transparent; border-radius: .35rem; background: var(--bs-body-bg); }
+    .exp-cols-item:hover { background: var(--bs-secondary-bg); }
+    .exp-cols-item.dragging { opacity: .4; }
+    .exp-cols-item.col-selected { border-color: var(--bs-border-color); }
+    .exp-cols-handle { cursor: grab; color: var(--bs-secondary-color, #6c757d); user-select: none;
+      font-size: 1.1rem; line-height: 1; }
+    .exp-cols-item .form-check { margin: 0; min-height: auto; }
+= render "shared/relaxed_query_js"
+= form_tag request.path, method: :get, class: "booking-scroll-form exp-cols-form", id: form_id do
+  -# Carry every non-managed param through, including nested hashes (e.g. the
+  -# suppliers grid's show[...]) and arrays -- see et_hidden_params.
+  = et_hidden_params(request.query_parameters.except(cols_param, page_param))
+  = hidden_field_tag cols_param, et_encode_cols(states.map { |c, a| [c[:key], a] }, all_columns), id: "#{form_id}-input", class: "exp-cols-input"
+  %p.text-muted.small.mb-2 Ziehen zum Sortieren, Häkchen zum Ein-/Ausblenden.
+  .exp-cols-list{ data: { form: form_id } }
+    - states.each do |col, active|
+      .exp-cols-item{ draggable: "true", class: ("col-selected" if active), data: { key: col[:key], abbr: (col[:abbr].presence || col[:key]) } }
+        %span.exp-cols-handle{ title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
+        .form-check
+          %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
+          %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
+  .mt-2
+    = link_to "Standard-Spalten", et_url(prefix, {cols: nil}), class: "btn btn-sm btn-outline-secondary"
+
+:javascript
+  (function () {
+    function encode(list) {
+      return Array.prototype.map.call(list.querySelectorAll(".exp-cols-item"), function (el) {
+        var chk = el.querySelector(".exp-cols-check");
+        return (chk && chk.checked ? "" : "~") + el.dataset.abbr;
+      }).join(",");
+    }
+    function initForm(list) {
+      if (list.dataset.cinit) return;
+      list.dataset.cinit = "1";
+      var form = document.getElementById(list.dataset.form);
+      var input = form && form.querySelector(".exp-cols-input");
+      if (!form || !input) return;
+      function submit() {
+        input.value = encode(list);
+        // Navigate ourselves so "," and "~" stay literal in the URL: a browser
+        // form GET would form-urlencode them (cols=nr,bez -> nr%2Cbez, ~art ->
+        // %7Eart). wsjrdpRelaxedQuery serialises the form fields with those two
+        // characters relaxed (see doc/url_encoding.md), then Turbo-visit.
+        var qs = window.wsjrdpRelaxedQuery.serialize(new FormData(form));
+        var dest = (form.getAttribute("action") || location.pathname) + (qs ? "?" + qs : "");
+        if (window.Turbo && window.Turbo.visit) { window.Turbo.visit(dest); }
+        else { window.location.assign(dest); }
+      }
+      list.querySelectorAll(".exp-cols-check").forEach(function (chk) {
+        chk.addEventListener("change", function () {
+          chk.closest(".exp-cols-item").classList.toggle("col-selected", chk.checked);
+          submit();
+        });
+      });
+      var dragging = null, startVal = null;
+      list.querySelectorAll(".exp-cols-item").forEach(function (item) {
+        item.addEventListener("dragstart", function () {
+          dragging = item; startVal = encode(list); item.classList.add("dragging");
+        });
+        item.addEventListener("dragend", function () {
+          item.classList.remove("dragging");
+          if (encode(list) !== startVal) submit();
+          dragging = null;
+        });
+      });
+      list.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        if (!dragging) return;
+        var after = null, all = Array.prototype.slice.call(list.querySelectorAll(".exp-cols-item:not(.dragging)"));
+        for (var i = 0; i < all.length; i++) {
+          var box = all[i].getBoundingClientRect();
+          if (e.clientY < box.top + box.height / 2) { after = all[i]; break; }
+        }
+        if (after == null) list.appendChild(dragging);
+        else if (after !== dragging) list.insertBefore(dragging, after);
+      });
+    }
+    function initAll() { document.querySelectorAll(".exp-cols-list").forEach(initForm); }
+    initAll();
+    window.__expColsInit = initAll;
+    if (!window.__expColsHooks) {
+      window.__expColsHooks = true;
+      document.addEventListener("turbo:before-cache", function () {
+        document.querySelectorAll(".exp-cols-list").forEach(function (l) { delete l.dataset.cinit; });
+      });
+      document.addEventListener("turbo:load", function () { if (window.__expColsInit) window.__expColsInit(); });
+    }
+  })();

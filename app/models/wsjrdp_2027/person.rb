@@ -114,6 +114,7 @@ module Wsjrdp2027::Person
       validate :validate_buddy_id_yp
 
       has_many :accounting_entries, -> { order(:created_at, :id) }, inverse_of: :subject, dependent: :destroy
+      has_many :datev_bookings, -> { order(:booking_date, :id) }, inverse_of: :person, dependent: :nullify
       has_many :direct_debit_pre_notifications, -> { order(:created_at, :id) }, inverse_of: :subject, class_name: "WsjrdpDirectDebitPreNotification", dependent: :destroy
       has_many :managed_cost_centers, -> { order(:number, :id) }, inverse_of: :manager, class_name: "WsjrdpCostCenter", foreign_key: :manager_person_id, dependent: :nullify
       has_many :managed_spheres, -> { order(:number, :id) }, inverse_of: :manager, class_name: "WsjrdpSphere", foreign_key: :manager_person_id, dependent: :nullify

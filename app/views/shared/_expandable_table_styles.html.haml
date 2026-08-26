@@ -1,0 +1,137 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared styles for the expandable-detail tables (shared/_expandable_table), the
+-#  bookings table (fin/bookings/_bookings_table) and the item detail views. It is
+-#  rendered from several of those partials; the guard emits the <style> only once
+-#  per request. hitobito core forces td/th padding to 4px 4px 4px 0; the override
+-#  restores symmetric side padding.
+- return if @wsjrdp_table_styles_emitted
+- @wsjrdp_table_styles_emitted = true
+:css
+  .bookings-table { table-layout: fixed; width: 100%; }
+  .bookings-table td { overflow-wrap: anywhere; }
+  .bookings-table td, .bookings-table th,
+  .bookings-table td:last-child, .bookings-table th:last-child { padding: .4rem 4px; }
+  .bookings-table-condensed td, .bookings-table-condensed th,
+  .bookings-table-condensed td:last-child, .bookings-table-condensed th:last-child { padding: .25rem 4px; }
+  /* Sortable column headers. Inactive sortable columns show a faint muted
+     up/down glyph (⇅); the active column shows a solid, bold single arrow in
+     the current direction (↑ asc / ↓ desc). Shared, so both tables look alike. */
+  .exp-sort { cursor: pointer; white-space: nowrap; }
+  .exp-sort:hover { text-decoration: underline !important; }
+  .exp-sort-caret { margin-left: .3rem; font-size: .75em; opacity: .35; }
+  .exp-sort:hover .exp-sort-caret { opacity: .6; }
+  .exp-sort-caret.exp-sort-on { opacity: 1; font-weight: 700; font-size: .82em; }
+  .exp-sort-active { font-weight: 600; }
+  /* Priority rank for multi-column sort (1, 2, 3 …): muted, superscript-ish. */
+  .exp-sort-rank { margin-left: .1rem; font-size: .7em; vertical-align: super; opacity: .75; }
+  /* Condensed table sizing. When there is room, use a fixed layout whose column
+     percentages act like flex weights: every column grows a little with the width
+     while the description -- the widthless, wrapping "leftover" column -- takes what
+     is left over (the largest share, more so the longer its text). The percentages
+     reserve space for the short columns, so the table always fits its box. Widths
+     are relative to the surrounding box (a container query, not the viewport): the
+     detail box is far narrower than the window, so viewport breakpoints would not
+     match. Below ~640px the box is too tight for all columns, so we switch to a
+     content-sized auto layout and drop the code columns (still on the full bookings
+     page), keeping Datum / Betrag / Beschreibung readable without side-scrolling. */
+  /* The scrolling table wrappers are size containers: the condensed column rules
+     below and the 100cqw sticky width both measure the *visible* box, not the
+     (possibly wider, scrolled) table. */
+  .exp-table-wrap, .bk-table-wrap, .bk-condensed-wrap { container-type: inline-size; }
+  /* A detail row's cell spans the full table width, which may be wider than the
+     visible area when the table scrolls horizontally (min-width). Pin the detail
+     content to the visible scrollport instead: exactly as wide as the wrapper
+     (100cqw) and stuck to its left edge. Everything inside -- metadata, paging,
+     the embedded bookings table and its container queries -- then lays out and
+     shrinks against the width the user actually sees. */
+  .exp-detail { position: sticky; left: 0; width: 100cqw; }
+  /* Default (narrow to intermediate boxes): content-sized columns with the
+     description as the flexible "leftover" column -- it shrinks and wraps so every
+     column stays visible and the table fits its box, however little room there is.
+     This is the common case; only a very wide or a very narrow box overrides it. */
+  .bookings-table-condensed { table-layout: auto; }
+  .bookings-table-condensed td, .bookings-table-condensed th { white-space: nowrap; }
+  .bookings-table-condensed .bkcol-amount { padding-right: 1rem; }
+  .bookings-table-condensed .bkcol-description { white-space: normal; overflow-wrap: anywhere; }
+  /* Plenty of room: a fixed layout whose percentages act like flex weights, so every
+     column grows a little and the description (the leftover) grows the most. */
+  @container (min-width: 700px) {
+    .bookings-table-condensed { table-layout: fixed; }
+    .bookings-table-condensed .bkcol-booking_date { width: 12%; }
+    .bookings-table-condensed .bkcol-amount { width: 13%; }
+    .bookings-table-condensed .bkcol-cost_center_number { width: 8%; }
+    .bookings-table-condensed .bkcol-account_number { width: 9%; }
+    .bookings-table-condensed .bkcol-offsetting_account_number { width: 10%; }
+  }
+  /* Too tight even for content-sized columns (phones, very narrow windows): drop the
+     code columns -- still on the full bookings page -- so Datum / Betrag /
+     Beschreibung stay readable without side-scrolling. */
+  @container (max-width: 460px) {
+    .bookings-table-condensed .bkcol-cost_center_number,
+    .bookings-table-condensed .bkcol-secondary_cost_center_number,
+    .bookings-table-condensed .bkcol-account_number,
+    .bookings-table-condensed .bkcol-offsetting_account_number { display: none; }
+    .bookings-table-condensed .bkcol-description { min-width: 7rem; }
+  }
+  .exp-row { cursor: pointer; }
+  .exp-row[aria-expanded="true"] > td { background: var(--bs-secondary-bg); font-weight: 500; }
+  /* Detail rows are content, not clickable rows: no pointer, no default cell borders. */
+  .exp-detail-row { cursor: default; }
+  .exp-detail-row > td { border: 0; }
+  /* Bracket the expanded row + its detail with a top and a bottom rule only (no
+     side borders); the detail's own light background defines the open block. */
+  .exp-row[aria-expanded="true"] > td { border-top: 1px solid var(--bs-border-color); }
+  .exp-row[aria-expanded="true"] + .exp-detail-row > td { border-bottom: 1px solid var(--bs-border-color); }
+  /* The inline (expanded) detail sits on a very light card, tinted independently
+     of hovering. On the sides and bottom the breathing room is split in two -- the
+     outer half is margin (untinted), the inner half is padding -- so the tint fills
+     only about half of it. The top has no margin, so the card meets the toggled row
+     directly; only the bottom keeps its gap to the next row. */
+  .exp-detail .bk-item-detail {
+    margin: 0 .5rem .5rem;
+    padding: .4rem .5rem .5rem;
+    /* A translucent dark-red wash -> a very light gray with a subtle warm/red tint
+       on the white page. Bootstrap 5.0-5.2 here has no --bs-tertiary-bg (that is a
+       5.3 token), so an rgba wash is used instead of a theme surface token. */
+    background: rgba(140, 0, 0, .04);
+  }
+  /* Plain variant (DATEV booking detail): the same card layout, but without
+     the tinted background. Keeps its spacing also outside .exp-detail (the
+     standalone /fin/bookings/:id page). */
+  .bk-item-detail-plain, .exp-detail .bk-item-detail-plain { background: transparent; }
+  .bk-item-detail-plain { margin: 0 .5rem .5rem; padding: .4rem .5rem .5rem; }
+  /* The condensed table paints an opaque white background on the <table> element;
+     clear it (its cells are already transparent) so the detail card's tint shows
+     through the whole embedded list. */
+  .bk-item-detail .bookings-table-condensed { background-color: transparent; }
+  /* Suppress the hover tint where it is unwanted: the outer detail row (A), any
+     nested booking-detail row (B), and the embedded table's HEADER row (C). The
+     booking rows themselves keep their hover highlight. Note (C): hitobito's
+     `.table-hover tbody tr:hover > th` uses loose (descendant) combinators, so it
+     reaches the inner <thead> -- which sits inside the outer table's <tbody> -- and
+     would otherwise pink the header on hover. This build tints via a box-shadow
+     (var --bs-table-accent-bg) AND a plain background-color; neutralise both
+     (bg-state covers newer Bootstrap too). */
+  .table-hover > tbody > tr.exp-detail-row:hover > *,
+  .bk-item-detail .bookings-table > thead > tr:hover > th {
+    --bs-table-accent-bg: transparent;
+    --bs-table-bg-state: transparent;
+    background-color: transparent;
+  }
+  .booking-detail { background: var(--bs-tertiary-bg); }
+  /* Grid labels in the detail views (booking + Beitragsbuchung): light weight so
+     the values stand out against them. */
+  .booking-detail-label { font-size: .68rem; letter-spacing: .04em; font-weight: 300; }
+  /* Embedded bookings section: thin rule above the heading, small split button. */
+  .fin-embedded-rule { margin: 0 0 .5rem; opacity: .25; }
+  .fin-embedded-open .btn { font-size: .78rem; padding-top: .1rem; padding-bottom: .1rem; }
+  /* Paging mini-control (fin/bookings/_pagination): keep the page links, the
+     "Seite X von Y" label and the per-page select on one tight baseline. */
+  .bk-pagination .pagination, .bk-pagination .pagination-bar { margin: 0; }
+  .bk-pagination .pagination { flex-wrap: wrap; }
