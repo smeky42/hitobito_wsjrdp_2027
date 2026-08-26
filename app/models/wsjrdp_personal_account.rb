@@ -7,20 +7,20 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# A tax sphere (steuerliche Sphäre) of the non-profit. In Moss it is a
-# cost carrier.
-class WsjrdpSphere < ActiveRecord::Base
-  include WsjrdpBudgetable
-
+# A DATEV personal account (Personenkonto): CREDITOR
+# (Kreditor/Lieferant, 7xxxxx-9xxxxx) or DEBITOR (Debitor/Kunde,
+# 1xxxxx-6xxxxx); see doc/fin/personal_accounts.md for which column
+# comes from which system.
+class WsjrdpPersonalAccount < ActiveRecord::Base
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
 
-  belongs_to :manager, class_name: "Person", optional: true,
-    inverse_of: :managed_spheres
+  belongs_to :represented_person, class_name: "Person", optional: true,
+    inverse_of: :personal_accounts
 
   validates :number, presence: true, uniqueness: true
 
-  # moss_status is NULL for spheres unknown to Moss
+  # moss_status is NULL for accounts without a Moss connection
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
   scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1495,7 +1495,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
     t.string "number", null: false, comment: "Moss: cost center, DATEV: KOST2 (SKR42), KOST1 (SKR03)"
     t.string "name"
     t.string "short_name"
-    t.string "moss_status", default: "active", null: false, comment: "Moss Status: active or deactivated"
+    t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "cost center manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
     t.decimal "budget_2025", precision: 20, scale: 2, comment: "Signed budget 2025 (expenses negative); NULL = not set"
@@ -1505,6 +1505,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
     t.decimal "explicit_total_budget", precision: 20, scale: 2, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 2, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
+    t.text "description", default: "", null: false
+    t.text "comment", default: "", null: false
     t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
   end
@@ -1616,6 +1619,32 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
   end
 
+  create_table "wsjrdp_ledger_accounts", comment: "Ledger accounts (Sachkonten)", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "number", null: false
+    t.string "name"
+    t.string "short_name"
+    t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
+    t.text "aliases", default: [], null: false, comment: "Hitobito-specific alternative names", array: true
+    t.text "description", default: "", null: false
+    t.text "comment", default: "", null: false
+    t.string "visibility", default: "auto", null: false, comment: "Hitobito-specific, can be auto, visible (always visible) or hidden (never visible)"
+    t.string "account_type", default: "UNKNOWN", null: false, comment: "short code: BANK/TRANSIT/CLEARING/LIABILITY/INCOME/EXPENSE/EQUITY/UNKNOWN"
+    t.string "datev_purpose", comment: "DATEV Kontenzweck"
+    t.integer "datev_function_type", comment: "DATEV Hauptfunktionstyp (HFTyp), 0 = no Hauptfunktion"
+    t.integer "datev_function_number", comment: "DATEV Hauptfunktionsnummer (Funktion); only set for Automatik-/Funktionskonten"
+    t.integer "datev_additional_function", comment: "DATEV Zusatzfunktion"
+    t.jsonb "other_datev_columns", default: {}, null: false, comment: "Other DATEV-specific columns"
+    t.string "moss_status", comment: "active or deactivated; NULL = unknown to Moss (counts as deactivated)"
+    t.string "moss_category", comment: "Moss Category (e.g., OTHER, TRAVEL_AND_TRANSPORTATION)"
+    t.jsonb "other_moss_columns", default: {}, null: false, comment: "other Moss-specific columns"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.index ["number"], name: "index_wsjrdp_ledger_accounts_on_number", unique: true
+    t.check_constraint "number::text !~ '^[1-9]\\d{5}$'::text", name: "chk_ledger_account_number_not_personal_account"
+    t.check_constraint "visibility::text = ANY (ARRAY['auto'::character varying, 'visible'::character varying, 'hidden'::character varying]::text[])", name: "chk_ledger_account_visibility"
+  end
+
   create_table "wsjrdp_notes", id: :serial, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -1659,13 +1688,55 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
     t.index ["wsjrdp_role", "single_payment"], name: "index_wsjrdp_payment_plans_wsjrdp_role_single_payment", unique: true
   end
 
+  create_table "wsjrdp_personal_accounts", comment: "Personal accounts (Debitoren, Kreditoren)", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "number", null: false
+    t.string "name"
+    t.string "short_name"
+    t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
+    t.text "aliases", default: [], null: false, comment: "Hitobito-specific alternative names", array: true
+    t.text "description", default: "", null: false
+    t.text "comment", default: "", null: false
+    t.string "visibility", default: "auto", null: false, comment: "Hitobito-specific, can be auto, visible (always visible) or hidden (never visible)"
+    t.string "account_type", default: "CREDITOR", null: false, comment: "CREDITOR (Kreditor/Lieferant) or DEBITOR (Debitor/Kunde). "
+    t.bigint "represented_person_id", comment: "Optional n:1 (<-> people): set when this Debitor/Kreditor represents a real person with a Hitobito account. Hitobito-specific; no import writes it."
+    t.string "iban"
+    t.string "bic"
+    t.string "street", comment: "DATEV Straße (Rechnungsadresse)"
+    t.string "address_second_line", comment: "DATEV Adresszusatz (Rechnungsadresse)"
+    t.string "post_code", comment: "DATEV Postleitzahl (Rechnungsadresse)"
+    t.string "city", comment: "DATEV Ort (Rechnungsadresse)"
+    t.string "country", comment: "DATEV Land (Rechnungsadresse)"
+    t.string "datev_short_name", comment: "DATEV Kurzbezeichnung (max. 15 chars)"
+    t.string "datev_nummer_fremdsystem", comment: "DATEV Nummer Fremdsystem (max. 15 chars) the first 15 characters of the Moss supplier UUID"
+    t.jsonb "other_datev_columns", default: {}, null: false, comment: "Other DATEV-specific columns (for a future DATEV Personenkonten-Stammdaten export)"
+    t.string "moss_uuid", comment: "Moss supplier UUID (API field `id`); only obtainable via the Moss API"
+    t.string "moss_status", comment: "Moss Status active or deactivated; NULL = unknown to Moss (counts as deactivated)"
+    t.string "moss_type", comment: "Moss Type"
+    t.string "moss_account_holder_name"
+    t.string "moss_default_currency"
+    t.string "moss_vat_id"
+    t.string "moss_default_payment_method", comment: "Moss payment method, e.g., SEPA"
+    t.string "moss_default_ledger_account_number"
+    t.string "moss_default_cost_center_number"
+    t.string "moss_default_sphere_number"
+    t.string "moss_default_team_name"
+    t.jsonb "other_moss_columns", default: {}, null: false, comment: "Other Moss-specific columns from the Moss supplier export (VAT Code/Rate/Name, payment terms, ...)"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future, yet-unknown data (JSONB); empty by default."
+    t.index ["number"], name: "index_wsjrdp_personal_accounts_on_number", unique: true
+    t.index ["represented_person_id"], name: "index_wsjrdp_personal_accounts_on_represented_person_id"
+    t.check_constraint "account_type::text = 'CREDITOR'::text AND number::text ~ '^[7-9]'::text OR account_type::text = 'DEBITOR'::text AND number::text ~ '^[1-6]'::text", name: "chk_personal_account_type_matches_number"
+    t.check_constraint "number::text ~ '^[1-9]\\d{5}$'::text", name: "chk_personal_account_number_six_digits"
+  end
+
   create_table "wsjrdp_spheres", comment: "tax spheres / cost carriers (synced with both DATEV and Moss)", force: :cascade do |t|
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
     t.string "number", null: false, comment: "Moss: cost carrier, DATEV: KOST1 (SKR42), implicit (SKR03)"
     t.string "name"
     t.string "short_name"
-    t.string "moss_status", default: "active", null: false, comment: "Moss Status: active or deactivated"
+    t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "sphere manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
     t.decimal "budget_2025", precision: 20, scale: 2, comment: "Signed budget 2025 (expenses negative); NULL = not set"
@@ -1675,6 +1746,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
     t.decimal "explicit_total_budget", precision: 20, scale: 2, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 2, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
+    t.text "description", default: "", null: false
+    t.text "comment", default: "", null: false
     t.index ["manager_person_id"], name: "index_wsjrdp_spheres_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_spheres_on_number", unique: true
   end
@@ -1698,5 +1772,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_22_000100) do
   add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_payment_initiations", column: "payment_initiation_id"
+  add_foreign_key "wsjrdp_personal_accounts", "people", column: "represented_person_id"
   add_foreign_key "wsjrdp_spheres", "people", column: "manager_person_id"
 end
