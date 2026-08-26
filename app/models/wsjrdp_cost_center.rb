@@ -18,14 +18,15 @@ class WsjrdpCostCenter < ActiveRecord::Base
 
   validates :number, presence: true, uniqueness: true
 
+  # moss_status is NULL for cost centers unknown to Moss
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
-  scope :deactivated, -> { where(moss_status: STATUS_DEACTIVATED) }
+  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
 
   def active?
     moss_status == STATUS_ACTIVE
   end
 
   def to_s
-    name.present? ? "#{number} #{name}" : number
+    "#{number} #{display_short_name}"
   end
 end
