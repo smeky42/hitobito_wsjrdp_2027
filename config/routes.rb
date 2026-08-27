@@ -30,7 +30,6 @@ Rails.application.routes.draw do
           get "upload/show_data_agreement" => "person/upload#show_data_agreement"
           get "upload/show_passport" => "person/upload#show_passport"
           get "upload/show_recommendation" => "person/upload#show_recommendation"
-          get "upload/show_data_agreement" => "person/upload#show_data_agreement"
           get "upload/show_photo_permission" => "person/upload#show_photo_permission"
           get "upload/show_good_conduct" => "person/upload#show_good_conduct"
           delete "upload/delete/:what" => "person/upload#destroy"
