@@ -4,6 +4,8 @@ module Wsjrdp2027::PersonAbility
   extend ActiveSupport::Concern
 
   included do
+    include Wsjrdp2027::FinanceOnRoot
+
     on(Person) do
       # Replaced original permission:
       # permission(:any).may(:show, :update, :update_email, :primary_group, :totp_reset, :security)
@@ -48,10 +50,6 @@ module Wsjrdp2027::PersonAbility
 
       permission(:admin).may(:update_wsjrdp_email, :update_moss_email).all
       permission(:admin).may(:show_keycloak_username, :update_keycloak_username).all
-    end
-
-    def if_finance_on_root
-      user_context.permission_layer_ids(:finance).include?(Group.root.id)
     end
   end
 end
