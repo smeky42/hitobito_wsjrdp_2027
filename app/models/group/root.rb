@@ -13,6 +13,7 @@ class Group::Root < ::Group
   # Developers and Administrators
   class Admin < ::Role
     self.permissions = %i[layer_and_below_full admin finance]
+    self.admin_only_assignment = true
   end
 
   # Leader (HoC, Unit Managers, ...)
@@ -23,6 +24,7 @@ class Group::Root < ::Group
   # Finance (includes Leader permissions)
   class Finance < ::Role
     self.permissions = [:layer_and_below_full, :finance]
+    self.admin_only_assignment = true
   end
 
   # CMT Member
