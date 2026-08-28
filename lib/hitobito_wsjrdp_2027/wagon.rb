@@ -21,6 +21,9 @@ module HitobitoWsjrdp2027
       # extend application classes here
 
       # Models
+      # Role first: Group::Root's role classes use admin_only_assignment at
+      # class-definition time, and including Wsjrdp2027::Group loads them.
+      Role.include Wsjrdp2027::Role
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
       Event.include Wsjrdp2027::Event
