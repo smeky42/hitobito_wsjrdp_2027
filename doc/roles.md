@@ -197,6 +197,47 @@ configured for `Event` in the ability store, and its shared examples
 list per role (used in
 [`spec/abilities/event_ability_spec.rb`](../spec/abilities/event_ability_spec.rb)).
 
+## Admin-only roles (`Role.admin_only_assignment`)
+
+Some role types grant powerful permissions and must only be assigned by CMT
+admins: `Group::Root::Admin` and `Group::Root::Finance` mark themselves with
+`self.admin_only_assignment = true` (a wagon `class_attribute` on `Role`,
+added by `Wsjrdp2027::Role`). The rules, enforced by *general* constraints in
+`Wsjrdp2027::RoleAbility` (specs: `spec/abilities/role_ability_spec.rb`):
+
+* Only people with the `:admin` permission (`user_context.admin`) may
+  **create** or **update** such a role — this also covers the roles
+  controller's type-change path, which authorizes `:create` on the new role.
+* Only admins may **destroy**/**terminate** such a role of ANOTHER person;
+  one's own role is not restricted by the wagon rule (destroying one's own
+  permission-GIVING role stays blocked by the core's
+  `not_permission_giving`).
+* Future admin-only role types just set `self.admin_only_assignment = true`
+  in their class definition — no ability change needed.
+* The role-type dropdown on the person page hides admin-only types from
+  non-admins automatically: the core's `GroupDecorator#possible_roles`
+  filters every type through
+  `can?(:update, type.new(group:)) || can?(:create, type.new(group:))`, so
+  UI visibility and enforcement both derive from the same general
+  constraints — there is no second list to maintain. (Not every role UI
+  does this — e.g. the event role dropdown only rejects `restricted?` —
+  but person roles are covered.)
+
+**CAUTION when adding general constraints in a wagon:** the ability DSL
+stores exactly ONE general constraint per `(subject, action)`
+(`AbilityDsl::Store#add` is last-wins), so a wagon `general(:action)` silently
+REPLACES the core's general for that action. Re-include the core condition in
+your constraint method — see `admin_only_role_creation_guard`
+(`group_not_deleted_or_archived`) and `admin_only_role_destruction_guard`
+(`not_permission_giving`) in `Wsjrdp2027::RoleAbility`.
+
+**Dev note:** ability changes only take effect after an app RESTART:
+`AbilityDsl::Store` loads the whole rule configuration once per process and
+caches it (`@configs ||= load`), so the dev reloader does not pick up edited
+ability classes. Restart the rails container before verifying manually
+(e.g. via impersonation).
+
+
 ## The `:log` convention in `hitobito_wsjrdp_2027`
 
 In core, `:log` is the **change-log** action (PaperTrail): the log tab
