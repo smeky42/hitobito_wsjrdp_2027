@@ -22,13 +22,18 @@ Gemfile.lock
 # uploaded pdf files
 /private/ 
 
-# ignore local dev overrides:
-# for dev login
-config/initializers/local_dev_login.rb
+# Local dev overrides: the real files live in /dev-only-overrides and
+# are tracked. Ignored are only the symlinks below, which each
+# developer creates locally via dev-only-overrides/create_symlinks.sh.
+#
+# login bypass (fixed dev person, no login form)
+config/initializers/local_dev_only_login_bypass.rb
 # different file watching on macOS
-config/initializers/local_dev_file_watcher.rb
+config/initializers/local_dev_only_file_watcher_macos.rb
 # rake shim to to solve issues with db:_dump / db:_dump_rails
 lib/tasks/local_db_dump_shim.rake
+# local dev-only settings (read, e.g., by the login bypass override)
+config/dev_only_settings.local.yml
 
 # reports
 spec/coverage
