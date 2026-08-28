@@ -73,3 +73,42 @@ of Wsjrdp 2027.
 <!-- roles:start -->
 (Output of rake app:hitobito:roles)
 <!-- roles:end -->
+
+
+## Local dev overrides (`dev-only-overrides/`)
+
+Local-only tweaks for the development environment live in
+[`dev-only-overrides/`](dev-only-overrides/). The files are part of
+the repo, but Rails does not load anything from this directory.  Each
+override becomes active only once a developer opts in by creating a
+symlink at the original path. These symlinks are gitignored. So a
+fresh checkout (and any deployment) has none of them active. As a
+second line of defense the initializers refuse to boot in production
+and are no-ops outside development.
+
+| Override (file in `dev-only-overrides/`) | Symlinked to | Purpose |
+| --- | --- | --- |
+| `local_dev_only_login_bypass.rb` | `config/initializers/local_dev_only_login_bypass.rb` | Skips the login on `:3000` and acts as the person configured in the optional, gitignored `config/dev_only_settings.local.yml` (`dev_only` → `login_bypass` → `current_user_person_id`; defaults to person 1) — unless a warden session exists (a real sign-in or an impersonation), which stays authoritative. |
+| `local_dev_only_file_watcher_macos.rb` | `config/initializers/local_dev_only_file_watcher_macos.rb` | Switches to the polling file watcher: Docker Desktop's macOS bind mounts do not forward inotify events, so the default evented watcher never fires and edited views are served stale until restart. Linked on macOS only. |
+| `local_db_dump_shim.rake` | `lib/tasks/local_db_dump_shim.rake` | No-op absolute `db:_dump` / `db:_dump_rails` tasks so `rails app:db:migrate:down` run through the `app:` proxy does not abort (the wagons gem references the absolute task name). Schema dumping stays skipped on purpose. |
+
+To (re-)create the symlinks after a fresh checkout:
+
+```bash
+./dev-only-overrides/create_symlinks.sh
+```
+
+The script is idempotent: correct links are left alone, stale links are fixed,
+and it refuses to replace a real file at a target path (move that file into
+`dev-only-overrides/` first). The file watcher is only linked when running on
+Darwin (macOS); the links are relative, so they also resolve inside the Docker
+bind mount.
+
+To act as a person other than person 1, create the (gitignored) file
+`config/dev_only_settings.local.yml` and restart the app:
+
+```yaml
+dev_only:
+  login_bypass:
+    current_user_person_id: 42
+```
