@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_28_000400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -247,6 +247,93 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.string "context_type"
     t.bigint "context_id"
     t.index ["context_type", "context_id"], name: "index_custom_contents_on_context"
+  end
+
+  create_table "datev_booking_batches", comment: "DATEV Buchungsstapel (Primanota): one row per batch = one DTVF export file", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "consultant_number", null: false, comment: "DATEV Berater number (header field 11)"
+    t.string "client_number", null: false, comment: "DATEV Mandant number (header field 12)"
+    t.date "period_from", null: false, comment: "DATEV Datum von (header field 15): start of the batch period"
+    t.date "period_to", null: false, comment: "DATEV Datum bis (header field 16): end of the period; its month + year form the Primanota number"
+    t.string "label", null: false, comment: "DATEV Bezeichnung (header field 17), e.g., Einzüge Januar 2026"
+    t.date "financial_year_start", comment: "DATEV WJ-Beginn (header field 13)"
+    t.string "primanota_number", comment: "Reconstructed Primanota number MM-YYYY/NNNN (month from period_to + running number within the export); display value, NOT part of the identity"
+    t.datetime "datev_created_at", comment: "DATEV Erzeugt am (header field 6); stored, but NOT used as a reliable change signal"
+    t.string "origin_indicator", comment: "DATEV Herkunft (header field 8), e.g. RE or SV"
+    t.integer "ledger_account_number_length", comment: "DATEV Sachkontenlänge (header field 14)"
+    t.integer "booking_type", comment: "DATEV Buchungstyp (header field 19): 1 = Finanzbuchführung"
+    t.boolean "is_finalized", default: false, null: false, comment: "DATEV Festschreibung (header field 21): true = batch immutable (GoBD)"
+    t.string "base_currency", default: "EUR", null: false, comment: "DATEV base currency WKZ (header field 22); EUR enforced by check constraint"
+    t.string "datev_chart_of_accounts_number", comment: "DATEV Sachkontenrahmen / SKR (header field 27), e.g. 42"
+    t.string "source_file", comment: "name of the file we read the Buchungsstapel from"
+    t.jsonb "header_raw", default: {}, null: false, comment: "All header fields, keyed by their 1-based DATEV field number (incl. undocumented fields)"
+    t.string "import_export", null: false, comment: "import = reading into Hitobito, export = writing from Hitobito"
+    t.text "description", default: "", null: false
+    t.text "comment", default: "", null: false
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.index ["consultant_number", "client_number", "period_from", "period_to", "label"], name: "index_datev_booking_batches_on_identity", unique: true
+    t.check_constraint "base_currency::text = 'EUR'::text", name: "chk_datev_booking_batch_base_currency"
+  end
+
+  create_table "datev_bookings", comment: "DATEV bookings: one row per booking of the imported Buchungsstapel exports", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.bigint "datev_booking_batch_id", comment: "Optional n:1 (<-> datev_booking_batches): the Buchungsstapel/Primanota this booking came from"
+    t.uuid "buchungs_guid", null: false, comment: "DATEV Buchungs GUID (record field 103): stable, unique per-booking key; upsert key of the importer"
+    t.string "account_number", null: false, comment: "DATEV Konto"
+    t.string "offsetting_account_number", null: false, comment: "DATEV Gegenkonto"
+    t.string "original_account_number", comment: "Original DATEV Konto if mapped on import"
+    t.string "original_offsetting_account_number", comment: "Original DATEV Gegenkonto if mapped on import"
+    t.string "account_kind", null: false, comment: "DATEV Kontenart of account_number"
+    t.string "offsetting_account_kind", null: false, comment: "DATEV Kontenart of offsetting_account_number"
+    t.virtual "account_type", type: :string, comment: "Target class of the polymorphic `account` association", as: "\nCASE\n    WHEN ((account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "offsetting_account_type", type: :string, comment: "Target class of the polymorphic `offsetting_account` association", as: "\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.decimal "base_amount", precision: 20, scale: 3, null: false, comment: "Sign-less booking amount in the base currency (EUR): DATEV Basis-Umsatz for foreign-currency bookings, else the Umsatz"
+    t.string "debit_credit", null: false, comment: "Debit/credit indicator derived from DATEV S/H: D = debit, C = credit"
+    t.string "base_currency", default: "EUR", null: false, comment: "Base/ledger currency: DATEV WKZ Basis-Umsatz for foreign-currency bookings, else WKZ Umsatz; the importer refuses non-EUR values"
+    t.virtual "signed_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the account (Konto) perspective (incoming +, outgoing -)", as: "((base_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "signed_offsetting_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the offsetting (Gegenkonto) perspective, same sign convention as signed_base_amount", as: "(((- base_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.string "posting_text", comment: "Display/working posting text; initially copied from original_posting_text (with mojibake repair for the 2025 KOST1=9500/Konto=1200 batch), then hand-editable and left untouched on re-import"
+    t.string "original_posting_text", comment: "DATEV Buchungstext"
+    t.string "cost_center_number", comment: "DATEV KOST1 (year <= 2025) or KOST2 (year >= 2026)"
+    t.string "sphere_number", comment: "Tax sphere (steuerliche Sphäre): year >= 2026 (SKR42) from DATEV KOST1; year <= 2025 defaults to 3 (Zweckbetrieb)"
+    t.string "original_kost1", comment: "DATEV KOST1"
+    t.string "original_kost2", comment: "DATEV KOST2"
+    t.string "document_field_1", comment: "DATEV Belegfeld 1"
+    t.string "document_field_2", comment: "DATEV Belegfeld 2"
+    t.date "booking_date", null: false, comment: "DATEV Belegdatum"
+    t.date "service_date", comment: "DATEV Leistungsdatum"
+    t.boolean "is_finalized", default: false, null: false, comment: "DATEV Festschreibung record column: true only when the export explicitly marks the booking festgeschrieben (GoBD); empty/0 -> false"
+    t.boolean "is_general_reversal", default: false, null: false, comment: "DATEV Generalumkehr (GU) record column: true = reversal posting (exported side-flipped; no extra sign factor needed)"
+    t.decimal "transaction_amount", precision: 20, scale: 3, null: false, comment: "DATEV Umsatz (record field 1, sign-less) in the transaction currency; equals base_amount for EUR bookings"
+    t.string "transaction_currency", default: "EUR", null: false, comment: "DATEV WKZ Umsatz (record field 3): currency the booking was entered in (mostly EUR, else e.g. PLN)"
+    t.virtual "signed_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the account (Konto) perspective", as: "((transaction_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "signed_offsetting_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the offsetting (Gegenkonto) perspective", as: "(((- transaction_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.decimal "exchange_rate", precision: 28, scale: 12, comment: "DATEV Kurs (record field 4); only present for foreign-currency bookings"
+    t.uuid "bedi_guid", comment: "DATEV Beleglink BEDI GUID (record field 20): reference to the document image in DATEV Unternehmen online"
+    t.string "origin_indicator", comment: "DATEV Herkunft-Kz (HK), e.g. SV (batch processing) or RE (accounting)"
+    t.jsonb "beleginfo", default: [], null: false, comment: "DATEV Beleginfo (record fields 21-36) as [{num,key,value}]; num = slot, key = Art, value = Inhalt"
+    t.jsonb "zusatzinformation", default: [], null: false, comment: "DATEV Zusatzinformation (record fields 48-87) as [{num,key,value}]; num = slot, key = Art, value = Inhalt"
+    t.jsonb "other_datev_columns", default: {}, null: false, comment: "DTVF record fields with a value but no dedicated column (e.g. raw Beleglink, BU-Schlüssel)"
+    t.string "source_file", comment: "File of the DTVF import that inserted or last genuinely changed this row"
+    t.string "secondary_cost_center_number", comment: "Manually maintained secondary cost center; not from DATEV"
+    t.string "sub_cost_center_number", comment: "Manually maintained sub cost center; not from DATEV"
+    t.boolean "is_unit_budget", comment: "Flag to override automatic logic if a booking belongs to the budget of a unit"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.index ["account_number"], name: "index_datev_bookings_on_account_number"
+    t.index ["bedi_guid"], name: "index_datev_bookings_on_bedi_guid"
+    t.index ["beleginfo"], name: "index_datev_bookings_on_beleginfo", opclass: :jsonb_path_ops, using: :gin
+    t.index ["booking_date"], name: "index_datev_bookings_on_booking_date"
+    t.index ["buchungs_guid"], name: "index_datev_bookings_on_buchungs_guid", unique: true
+    t.index ["cost_center_number"], name: "index_datev_bookings_on_cost_center_number"
+    t.index ["datev_booking_batch_id"], name: "index_datev_bookings_on_datev_booking_batch_id"
+    t.index ["offsetting_account_number"], name: "index_datev_bookings_on_offsetting_account_number"
+    t.index ["sphere_number"], name: "index_datev_bookings_on_sphere_number"
+    t.index ["zusatzinformation"], name: "index_datev_bookings_on_zusatzinformation", opclass: :jsonb_path_ops, using: :gin
+    t.check_constraint "account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[])", name: "chk_datev_booking_account_kind"
+    t.check_constraint "debit_credit::text = ANY (ARRAY['D'::character varying, 'C'::character varying]::text[])", name: "chk_datev_booking_debit_credit"
+    t.check_constraint "offsetting_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[])", name: "chk_datev_booking_offsetting_account_kind"
   end
 
   create_table "delayed_jobs", id: :serial, force: :cascade do |t|
@@ -1498,16 +1585,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "cost center manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
-    t.decimal "budget_2025", precision: 20, scale: 2, comment: "Signed budget 2025 (expenses negative); NULL = not set"
-    t.decimal "budget_2026", precision: 20, scale: 2, comment: "Signed budget 2026 (expenses negative); NULL = not set"
-    t.decimal "budget_2027", precision: 20, scale: 2, comment: "Signed budget 2027 (expenses negative); NULL = not set"
-    t.decimal "budget_2028", precision: 20, scale: 2, comment: "Signed budget 2028 (expenses negative); NULL = not set"
-    t.decimal "explicit_total_budget", precision: 20, scale: 2, comment: "Explicitly set total budget for the whole period; NULL = not set"
-    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 2, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Signed budget 2025 (expenses negative); NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Signed budget 2026 (expenses negative); NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Signed budget 2027 (expenses negative); NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "explicit_total_budget", precision: 20, scale: 3, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
+    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
   end
@@ -1630,7 +1717,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
     t.string "visibility", default: "auto", null: false, comment: "Hitobito-specific, can be auto, visible (always visible) or hidden (never visible)"
-    t.string "account_type", default: "UNKNOWN", null: false, comment: "short code: BANK/TRANSIT/CLEARING/LIABILITY/INCOME/EXPENSE/EQUITY/UNKNOWN"
+    t.string "account_kind", default: "UNKNOWN", null: false, comment: "short code: BANK/TRANSIT/CLEARING/LIABILITY/INCOME/EXPENSE/EQUITY/UNKNOWN"
     t.string "datev_purpose", comment: "DATEV Kontenzweck"
     t.integer "datev_function_type", comment: "DATEV Hauptfunktionstyp (HFTyp), 0 = no Hauptfunktion"
     t.integer "datev_function_number", comment: "DATEV Hauptfunktionsnummer (Funktion); only set for Automatik-/Funktionskonten"
@@ -1642,7 +1729,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.index ["number"], name: "index_wsjrdp_ledger_accounts_on_number", unique: true
     t.check_constraint "number::text !~ '^[1-9]\\d{5}$'::text", name: "chk_ledger_account_number_not_personal_account"
-    t.check_constraint "visibility::text = ANY (ARRAY['auto'::character varying, 'visible'::character varying, 'hidden'::character varying]::text[])", name: "chk_ledger_account_visibility"
+    t.check_constraint "visibility::text = ANY (ARRAY['auto'::character varying::text, 'visible'::character varying::text, 'hidden'::character varying::text])", name: "chk_ledger_account_visibility"
   end
 
   create_table "wsjrdp_notes", id: :serial, force: :cascade do |t|
@@ -1699,7 +1786,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
     t.string "visibility", default: "auto", null: false, comment: "Hitobito-specific, can be auto, visible (always visible) or hidden (never visible)"
-    t.string "account_type", default: "CREDITOR", null: false, comment: "CREDITOR (Kreditor/Lieferant) or DEBITOR (Debitor/Kunde). "
+    t.string "account_kind", default: "CREDITOR", null: false, comment: "CREDITOR (Kreditor/Lieferant) or DEBITOR (Debitor/Kunde). "
     t.bigint "represented_person_id", comment: "Optional n:1 (<-> people): set when this Debitor/Kreditor represents a real person with a Hitobito account. Hitobito-specific; no import writes it."
     t.string "iban"
     t.string "bic"
@@ -1726,7 +1813,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future, yet-unknown data (JSONB); empty by default."
     t.index ["number"], name: "index_wsjrdp_personal_accounts_on_number", unique: true
     t.index ["represented_person_id"], name: "index_wsjrdp_personal_accounts_on_represented_person_id"
-    t.check_constraint "account_type::text = 'CREDITOR'::text AND number::text ~ '^[7-9]'::text OR account_type::text = 'DEBITOR'::text AND number::text ~ '^[1-6]'::text", name: "chk_personal_account_type_matches_number"
+    t.check_constraint "account_kind::text = 'CREDITOR'::text AND number::text ~ '^[7-9]'::text OR account_kind::text = 'DEBITOR'::text AND number::text ~ '^[1-6]'::text", name: "chk_personal_account_kind_matches_number"
     t.check_constraint "number::text ~ '^[1-9]\\d{5}$'::text", name: "chk_personal_account_number_six_digits"
   end
 
@@ -1739,16 +1826,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
     t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "sphere manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
-    t.decimal "budget_2025", precision: 20, scale: 2, comment: "Signed budget 2025 (expenses negative); NULL = not set"
-    t.decimal "budget_2026", precision: 20, scale: 2, comment: "Signed budget 2026 (expenses negative); NULL = not set"
-    t.decimal "budget_2027", precision: 20, scale: 2, comment: "Signed budget 2027 (expenses negative); NULL = not set"
-    t.decimal "budget_2028", precision: 20, scale: 2, comment: "Signed budget 2028 (expenses negative); NULL = not set"
-    t.decimal "explicit_total_budget", precision: 20, scale: 2, comment: "Explicitly set total budget for the whole period; NULL = not set"
-    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 2, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Signed budget 2025 (expenses negative); NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Signed budget 2026 (expenses negative); NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Signed budget 2027 (expenses negative); NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "explicit_total_budget", precision: 20, scale: 3, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
+    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.index ["manager_person_id"], name: "index_wsjrdp_spheres_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_spheres_on_number", unique: true
   end
@@ -1761,6 +1848,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_23_000300) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade
+  add_foreign_key "datev_bookings", "datev_booking_batches", on_delete: :nullify
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade
