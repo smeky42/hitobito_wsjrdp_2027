@@ -45,10 +45,17 @@ like so:
 RAILS_UID=$(id -u) DOCKER_DEFAULT_PLATFORM=linux/amd64 ./bin/dev-env.sh
 ```
 
-This hitobito wagon defines the organization hierarchy with groups and roles
-of Wsjrdp 2027.
+### Emacs
+
+See [doc/emacs/README.md](doc/emacs/README.md) for an Emacs-based
+development setup. The setup is scripted in
+[doc/emacs/setup-ruby-lsp.sh](doc/emacs/setup-ruby-lsp.sh).
+
 
 ## Wsjrdp 2027 Organization Hierarchy
+
+This hitobito wagon defines the organization hierarchy with groups and roles
+of Wsjrdp 2027.
 
     * CMT < CMT
       * CMT
