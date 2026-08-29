@@ -23,6 +23,10 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
     class_name: "AccountingEntry",
     dependent: :nullify
 
+  # The DATEV booking this bank transaction is reconciled with. More
+  # details are recorded in datev_booking_link_meta.
+  belongs_to :datev_booking, optional: true
+
   eur_attribute :amount_eur, cents_attr: :amount_cents
 
   attribute :accounting_entry_id, :integer

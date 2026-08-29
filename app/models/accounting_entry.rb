@@ -30,6 +30,10 @@ class AccountingEntry < ActiveRecord::Base
 
   has_many :notes, dependent: :destroy, as: :subject, class_name: "WsjrdpNote"
 
+  # The DATEV booking this entry is reconciled with. More details are
+  # recorded in datev_booking_link_meta.
+  belongs_to :datev_booking, optional: true
+
   validates :subject_id, presence: true
   validates :amount_eur, presence: true
   validates :description, presence: true
