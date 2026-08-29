@@ -1,0 +1,129 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Moss overview (default tab of the Moss section): key figures over the three
+-#  unified Moss tables -- one tile per kind linking to the kind's own tab (the
+-#  total tile to the Transaktionen tab), the structure, the DATEV /
+-#  Beitragsbuchung link state and the data freshness per export. Read-only;
+-#  the numbers come from Fin::MossOverview.
+- ov = @overview
+
+-#  The colours of the kind tiles below (the icons come from Fin::MossKinds).
+= render "shared/wsjrdp/moss_kind_styles"
+
+#main
+  %h1 Moss
+  %p.text-muted
+    Kartenzahlungen, Rechnungen, Erstattungen und Einzahlungen aus den Moss-Exporten,
+    mit ihren Ausgaben und Buchungen. Beträge in EUR, Vorzeichen aus Sicht des
+    Moss-Wallets: Einzahlungen positiv, Ausgaben negativ.
+
+  -# The cards in tab order: the total first, then the kinds (KINDS order).
+  -# Each card: count, kind, the signed sum of the transaction amounts (Σ) and
+  -# the average per transaction (Ø); a minus is muted, a plus green.
+  -# A kind card wears its kind's mark: the icon in front of the word and the
+  -# colour as the top edge (.moss-kind-tile reads it from the kind class). The
+  -# total card gets .moss-kind-tile WITHOUT a kind class -- its edge is then
+  -# transparent, which keeps every card exactly the same size.
+  - tile_class = "border rounded p-3 text-reset text-decoration-none moss-kind-tile"
+  .d-flex.flex-wrap.gap-3.mb-4
+    = link_to moss_transactions_path, class: tile_class, title: "Alle Transaktionen öffnen" do
+      .fs-3.fw-semibold= number_with_delimiter(ov.total_count, delimiter: ".")
+      .text-muted.small Transaktionen gesamt
+      .small.fw-semibold{title: "Summe aller Transaktionen = rechnerischer Wallet-Stand"}= safe_join(["Σ ", moss_signed_amount_display(ov.total_sum)])
+      .small{title: "Durchschnittlicher Transaktionsbetrag"}= safe_join(["Ø ", moss_signed_amount_display(ov.total_average)])
+    - ov.kinds.each do |k|
+      = link_to moss_kind_tab_path(k.kind), class: "#{tile_class} #{moss_kind_css_class(k.kind)}", title: "#{moss_kind_tab_label(k.kind)} öffnen" do
+        .fs-3.fw-semibold= number_with_delimiter(k.count, delimiter: ".")
+        .text-muted.small= safe_join([moss_kind_icon(k.kind), moss_kind_label(k.kind)], " ")
+        .small.fw-semibold{title: "Summe der Transaktionsbeträge"}= safe_join(["Σ ", moss_signed_amount_display(k.sum)])
+        .small{title: "Durchschnittlicher Transaktionsbetrag"}= safe_join(["Ø ", moss_signed_amount_display(k.average)])
+
+  %h2.h5 Struktur
+  -# The three levels as an indented tree (Fin::MossOverviewHelper): the
+  -# total, its bookings, then every kind with the levels that add
+  -# something -- its bookings always, its expenses only when a kind bundles
+  -# several per transaction (reimbursements). Each row
+  -# carries a bar relative to its level's total; the foreign-currency
+  -# transactions are a tag linking to the tab filtered down to them.
+  :css
+    .moss-structure td { vertical-align: middle; }
+    .moss-structure tr.total > td { font-weight: 600; }
+    .moss-structure tr.kind > td:first-child { font-weight: 500; }
+    .moss-structure tr.lvl1 > td:first-child { padding-left: 1.5rem; }
+    .moss-structure tr.lvl2 > td:first-child { padding-left: 3rem; color: var(--bs-secondary-color, #6c757d); }
+    .moss-structure td.bar { width: 10rem; }
+    .moss-share { display: block; height: .5rem; border-radius: 3px; background: var(--bs-secondary-bg, #e9ecef); position: relative; overflow: hidden; }
+    .moss-share i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--bs-primary, #21697c); }
+    tr.lvl2 .moss-share i { background: var(--bs-border-color, #ced4da); }
+    .moss-fx-tag { margin-left: .35rem; font-size: .72rem; font-weight: 500; vertical-align: 1px;
+      color: var(--bs-primary, #21697c); border: 1px solid var(--bs-primary, #21697c); text-decoration: none; }
+    .moss-fx-tag:hover { background: var(--bs-primary, #21697c); color: #fff; }
+  %table.table.table-sm.w-auto.mb-0.moss-structure
+    %tbody
+      %tr.total
+        %td
+          Transaktionen
+          = moss_foreign_currency_tag(ov.foreign_currency_count)
+        %td.text-end= number_with_delimiter(ov.total_count, delimiter: ".")
+        %td.bar= moss_share_bar(ov.total_count, ov.total_count)
+        %td.text-muted.small= moss_share_text(ov.total_count, ov.total_count)
+      %tr.lvl1
+        %td Buchungen
+        %td.text-end= number_with_delimiter(ov.bookings_count, delimiter: ".")
+        %td.bar= moss_share_bar(ov.bookings_count, ov.bookings_count)
+        %td.text-muted.small= moss_share_text(ov.bookings_count, ov.bookings_count, of: "Buchungen")
+      - ov.kinds.each do |k|
+        %tr.lvl1.kind
+          %td
+            = moss_kind_tab_label(k.kind)
+            = moss_foreign_currency_tag(k.foreign_currency_count, k.kind)
+          %td.text-end= number_with_delimiter(k.count, delimiter: ".")
+          %td.bar= moss_share_bar(k.count, ov.total_count)
+          %td.text-muted.small= moss_share_text(k.count, ov.total_count)
+        - if k.expenses_count != k.count
+          %tr.lvl2
+            %td Ausgaben
+            %td.text-end= number_with_delimiter(k.expenses_count, delimiter: ".")
+            %td.bar= moss_share_bar(k.expenses_count, ov.expenses_count)
+            %td.text-muted.small= moss_share_text(k.expenses_count, ov.expenses_count, of: "Ausgaben")
+        %tr.lvl2
+          %td Buchungen
+          %td.text-end= number_with_delimiter(k.bookings_count, delimiter: ".")
+          %td.bar= moss_share_bar(k.bookings_count, ov.bookings_count)
+          %td.text-muted.small= moss_share_text(k.bookings_count, ov.bookings_count, of: "Buchungen")
+  %h2.h5.mt-4 Verknüpfungen
+  %table.table.table-sm.w-auto.mb-0
+    %tbody
+      %tr
+        %td DATEV-Ausgleich (je Transaktion)
+        %td.text-end= "#{number_with_delimiter(ov.clearing_linked_count, delimiter: ".")} verknüpft · #{number_with_delimiter(ov.clearing_unlinked_count, delimiter: ".")} offen"
+      %tr
+        %td DATEV-Aufwand (je Buchung)
+        %td.text-end= "#{number_with_delimiter(ov.expense_linked_count, delimiter: ".")} verknüpft · #{number_with_delimiter(ov.expense_unlinked_count, delimiter: ".")} offen"
+      %tr
+        %td Beitragsbuchungen mit Moss-Buchung
+        %td.text-end= number_with_delimiter(ov.contribution_linked_count, delimiter: ".")
+
+  %h2.h5.mt-4 Datenstand
+  %table.table.table-sm.w-auto
+    %thead
+      %tr
+        %th Art
+        %th Letztes Zahlungsdatum
+        %th Export-Datei
+    %tbody
+      - ov.kinds.each do |k|
+        %tr
+          %td= moss_kind_label(k.kind)
+          %td= fin_date_or_dash(k.last_payment_date)
+          %td.font-monospace.small= k.source_file || "—"
+  %p.text-muted.small
+    = "Zuletzt importiert: #{fin_date_time_or_dash(ov.last_import_at)}"
+    - if ov.wallet_account
+      · WSJRDP-Konto:
+      = link_to ov.wallet_account.to_s, wsjrdp_fin_account_path(ov.wallet_account)

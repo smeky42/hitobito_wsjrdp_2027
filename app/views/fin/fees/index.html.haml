@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Beiträge overview (Übersicht tab of the Beiträge section). The area holds
+-#  no numbers of its own yet; the page names it and links its two lists, the
+-#  same two the tabs above and the /fin card show -- each with the small
+-#  new-tab companion icon (Fin::LabeledRowsHelper#wsjrdp_newtab_link).
+
+#main
+  %h1= t("fin.nav.fees")
+  %p.text-muted= t("fin.areas.fees.purpose")
+  %ul.list-unstyled
+    %li
+      = link_to t("fin.tabs.person_fees"), fin_person_fees_path
+      = wsjrdp_newtab_link(fin_person_fees_path)
+    %li
+      = link_to t("fin.tabs.plans"), wsjrdp_payment_plans_path
+      = wsjrdp_newtab_link(wsjrdp_payment_plans_path)

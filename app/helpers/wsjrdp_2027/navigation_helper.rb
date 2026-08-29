@@ -20,9 +20,10 @@ module Wsjrdp2027::NavigationHelper
 
   WSJRDP_MAIN_FIN = {
     label: :finance,
-    url: :wsjrdp_fin_accounts_path,
+    url: :fin_path,
     icon_name: "money-bill",
     if: ->(_) { can?(:fin_admin, WsjrdpFinAccount) },
+    # Every finance page lives under /fin, so one fragment covers them all.
     active_for: %w[fin],
     inactive_for: %w[fin/ae fin/pn /people]
   }

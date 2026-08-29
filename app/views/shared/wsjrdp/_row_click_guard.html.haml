@@ -1,0 +1,43 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A clickable row toggles its detail via a data-bs-toggle collapse -- the head
+-#  row of a group (.exp-row) and each of its sub-rows (.exp-sub-row) alike, both
+-#  pointing at the group's one detail. Clicks on interactive controls inside such
+-#  a row (the eye link, buttons, form fields, a sub-row's own links) must NOT
+-#  toggle the row, while everything else about the click stays untouched: the
+-#  control's own action (navigation, submit) runs, and so does a host's
+-#  delegated handler for it.
+-#
+-#  Inline onclick handlers are blocked by the CSP, so one capture-phase listener
+-#  does it, and it suppresses exactly the toggle: Bootstrap's collapse data API
+-#  is a listener DELEGATED on `document`, which looks up
+-#  [data-bs-toggle="collapse"] the moment the click reaches `document` -- after
+-#  this listener. Taking the attribute off the row for the duration of this one
+-#  dispatch therefore hides the row from that lookup and puts it back right
+-#  after, leaving the row a trigger for every later click. (An open collapse's
+-#  aria mirroring is unaffected: Bootstrap holds its triggers as element
+-#  references.) Stopping the event instead -- the blunter guard -- would also
+-#  silence every other delegated listener on `document`, a sub-row's own links
+-#  included.
+-#
+-#  The listener is bound on `window`, not `document`, so it runs before anything
+-#  bound on `document`: all window-capture listeners fire before any
+-#  document-capture listener, regardless of registration order.
+:javascript
+  (function () {
+    if (window.__wsjrdpRowClickGuard) return;
+    window.__wsjrdpRowClickGuard = true;
+    window.addEventListener("click", function (e) {
+      var control = e.target.closest && e.target.closest("a, button, input, select, textarea, label, .bk-select-cell");
+      if (!control) return;
+      var row = control.closest(".exp-row, .exp-sub-row");
+      if (!row || row.getAttribute("data-bs-toggle") !== "collapse") return;
+      row.removeAttribute("data-bs-toggle");
+      setTimeout(function () { row.setAttribute("data-bs-toggle", "collapse"); }, 0);
+    }, true);
+  })();

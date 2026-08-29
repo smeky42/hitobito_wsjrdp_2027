@@ -1,0 +1,28 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The complete bookings browser: the generic CNF filter + the bookings table,
+-#  both rendered by the shared widget (shared/_expandable_table via
+-#  fin/bookings/_bookings_table). Everything about the filter's CONTENT and
+-#  STATE -- the catalog, the applied conditions, the pinned ones and their
+-#  labels, the pane, the reset URL, the carried params -- comes from the table's
+-#  state, i.e. from the controller's wsjrdp_expandable_table_policy. What is
+-#  left here are display options. Hosts render it with:
+-#    rows:          the bookings Wsjrdp::ExpandableTableRows of the host
+-#                   (Fin::BookingsController#bookings,
+-#                   Fin::ReconciliationController#bookings)
+-#    apply_url:     POST target of the filter builder (PRG)
+-#    condensed_locked:  show the pinned conditions as a compact summary line
+-#    extra_columns: injected table columns (e.g. the match-proposal column)
+-#    selection:, detail_top:, detail_extra:  passed to the table
+- filter_cfg = {apply_url: apply_url,
+    condensed_locked: local_assigns.fetch(:condensed_locked, false),
+    disabled: local_assigns.fetch(:disabled, false)}
+= render "fin/bookings/bookings_table", rows: rows, filter: filter_cfg,
+  extra_columns: local_assigns[:extra_columns],
+  selection: local_assigns[:selection], detail_top: local_assigns[:detail_top],
+  detail_extra: local_assigns[:detail_extra]

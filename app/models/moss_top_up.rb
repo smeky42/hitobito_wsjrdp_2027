@@ -18,7 +18,14 @@
 # 60 characters), so the link to the matching bank booking
 # (`camt_transaction`) is made on amount + date.
 class MossTopUp < MossTransaction
-  def moss_record_url = moss_export_url  # the /transactions/all/ form is a dead link here
+  # A top-up is the one kind that links NOWHERE: Moss addresses it in its export
+  # route by an internal id of its own, which no export carries and no column
+  # here stores, and the transaction uuid put in that id's place resolves to
+  # nothing. Both readers therefore answer nil and every view renders no Moss
+  # link for a top-up (the /transactions/all/ form is a dead link here too).
+  def moss_record_url = nil
+
+  def moss_export_url = nil
 
   def expense = expenses.first
 

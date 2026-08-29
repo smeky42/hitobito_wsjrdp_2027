@@ -1,0 +1,50 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Moss transactions -- all kinds on the Transaktionen tab, one kind on a kind
+-#  tab (the controller pins it) -- as one expandable, filterable table rendered
+-#  by the shared widget (doc/wsjrdp/expandable_table.md): the generic CNF filter
+-#  above it, paging, multi-column sort, the column hamburger and the inline
+-#  detail (fin/moss_transactions/_detail) per row.
+-# The filter's content and its own state -- the catalog, the applied conditions,
+-# the pane, the reset URL, the carried params -- all come from the table's state
+-# (the controller's wsjrdp_expandable_table_policy); only the POST target is a
+-# view concern, and it is the tab's own apply route.
+- filter_cfg = {apply_url: moss_transactions_apply_path}
+-# The "Art" column shows the kind chip (Fin::MossTransactionsHelper#moss_kind_chip),
+-# whose colours live in the shared kind stylesheet; that stylesheet also paints
+-# the kind rail along each row group.
+= render "shared/wsjrdp/moss_kind_styles"
+-# The look of a reimbursement's expense sub-rows and the one interaction they
+-# bring (revealing the expenses beyond the cap).
+= render "shared/wsjrdp/moss_expense_rows"
+#main
+  %h1= moss_transactions_title
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows   transactions, id: (transactions.state.prefix.presence || "mtx")
+    - t.columns moss_transaction_table_columns, menu: true
+    - t.row_key { |tx| tx.id }
+    -# The row group: the kind's pale rail runs along every row of a
+    -# transaction -- its head row, its expense rows and its detail.
+    - t.group_class { |tx| moss_kind_css_class(tx.type) }
+    -# A reimbursement with two or more expenses shows one row per expense (and,
+    -# beyond the cap, the rest row that reveals the others) below its head row;
+    -# every other transaction brings none. Fin::MossExpenseRowsHelper decides
+    -# which rows those are and what each of their cells shows.
+    - t.sub_rows { |tx| moss_expense_sub_rows(tx) }
+    - t.sub_cell { |sub, col| moss_expense_row_cell(sub, col[:key]) }
+    - t.sub_row_class { |sub| moss_expense_row_class(sub) }
+    - t.detail_page { |tx| moss_transaction_path(tx) }
+    -# A top-up answers nil (Moss has no record page for it), and a link block
+    -# without a URL renders no group -- its line is "Detailseite" alone.
+    - t.detail_link label: "In Moss", icon: :wallet, title: "Transaktion in Moss öffnen",
+        title_new_tab: "Transaktion in Moss in neuem Tab öffnen", &:moss_record_url
+    - t.detail  { |tx, ctx| render "fin/moss_transactions/detail", transaction: tx, table_context: ctx }
+    - t.paging
+    - t.filter  filter_cfg
+    - t.summary "#{transactions.total_count} Transaktionen · Summe (gefiltert): #{moss_amount_display(transactions.total_sum, "EUR")}"

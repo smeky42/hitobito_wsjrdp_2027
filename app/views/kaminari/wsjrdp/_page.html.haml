@@ -1,0 +1,12 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A single page number. Markup as in the core's kaminari/_page, so hitobito's
+-#  Bootstrap pagination styling carries over unchanged; the theme only needs its
+-#  own copy because a themed paginator has no fallback to kaminari/.
+%li{class: "#{"active" if page.current?} page-item"}
+  = link_to page, page.current? ? "#" : url, {remote: remote, rel: page.next? ? "next" : (page.prev? ? "prev" : nil), class: "page-link"}

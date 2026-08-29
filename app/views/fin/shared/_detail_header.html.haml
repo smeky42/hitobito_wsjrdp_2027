@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The header of a finance detail PAGE (d.header): back link, the h1 with the
+-#  technical `label` light and the record's `title` in normal weight, and the
+-#  optional toolbar slot at its right end. One markup for every finance detail
+-#  page.
+-#
+-#  Locals: back, back_label, label, title, toolbar
+= link_to back, class: "btn btn-sm btn-link px-0 mb-2" do
+  = icon(:"arrow-left")
+  = back_label
+%h1.mb-3.d-flex.align-items-baseline.flex-wrap.gap-2
+  %span.text-muted.fw-light= label
+  - if title.present?
+    %span= title
+  - if toolbar
+    .ms-auto= toolbar

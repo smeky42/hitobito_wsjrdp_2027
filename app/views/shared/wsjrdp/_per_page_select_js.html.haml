@@ -1,0 +1,58 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Listeners for the paging controls of shared/wsjrdp/_expandable_table_paging:
+-#  the per-page select (select.bk-per-select) and the "Seite [n]" jump field
+-#  (input.bk-page-input). Each control carries its target URL as a template
+-#  (data-url-template with a __PER__ / __PAGE__ placeholder); inline handlers
+-#  are blocked by the CSP, so delegated listeners navigate instead. Inside a
+-#  turbo frame only the frame is reloaded, keeping the surrounding page
+-#  untouched. Emitted once per response; the window guard survives Turbo page
+-#  visits.
+- return if @wsjrdp_per_page_select_js_emitted
+- @wsjrdp_per_page_select_js_emitted = true
+:javascript
+  (function () {
+    if (window.__wsjrdpPerPageSelect) return;
+    window.__wsjrdpPerPageSelect = true;
+    function go(control, url) {
+      var frame = control.closest("turbo-frame");
+      if (frame) {
+        frame.setAttribute("src", url);
+      } else if (window.Turbo) {
+        window.Turbo.visit(url);
+      } else {
+        window.location.assign(url);
+      }
+    }
+    // The jump field: the typed page, clamped to 1..N; nothing happens for an
+    // empty field or the page already shown.
+    function jump(input) {
+      var max = parseInt(input.dataset.max, 10) || 1;
+      var page = parseInt(input.value, 10);
+      if (isNaN(page)) return;
+      page = Math.min(Math.max(page, 1), max);
+      if (String(page) === input.defaultValue) { input.value = page; return; }
+      go(input, input.dataset.urlTemplate.replace("__PAGE__", encodeURIComponent(page)));
+    }
+    document.addEventListener("change", function (e) {
+      var select = e.target.closest && e.target.closest("select.bk-per-select");
+      if (select && select.dataset.urlTemplate) {
+        go(select, select.dataset.urlTemplate.replace("__PER__", encodeURIComponent(select.value)));
+        return;
+      }
+      var input = e.target.closest && e.target.closest("input.bk-page-input");
+      if (input && input.dataset.urlTemplate) jump(input);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      var input = e.target.closest && e.target.closest("input.bk-page-input");
+      if (!input || !input.dataset.urlTemplate) return;
+      e.preventDefault();
+      jump(input);
+    });
+  })();

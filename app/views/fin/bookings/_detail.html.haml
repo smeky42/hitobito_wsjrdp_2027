@@ -1,0 +1,101 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a single Buchung: the booking metadata in the standard
+-#  fin_detail layout, a raw area with the original DATEV fields, and the
+-#  manual association blocks (Buchungsstapel + Beitragsbuchung).
+-#
+-#  The values come from Fin::BookingsHelper, the labels from
+-#  de.activerecord.attributes.datev_booking.
+-#
+-#  Locals: booking (DatevBooking), ctx (Fin::AttrFormatContext)
+- form_url = can?(:fin_admin, DatevBooking) && booking.persisted? ? booking_path(booking) : nil
+- editable = {editable: true}
+- cc_options = fin_cost_center_select_options
+- ub_options = [["automatisch", ""], ["ja", "true"], ["nein", "false"]]
+= fin_detail(booking, ctx, form_url: form_url) do |d|
+  - d.header back: bookings_path, back_label: "Zurück zur Liste",
+      label: "Buchung ##{booking.id}", title: booking.posting_text
+  - d.attrs :booking_date, :service_date, :posting_text,
+      service_date: {blank: :hide},
+      posting_text: {label: "Beschreibung"}
+  - d.attrs :base_amount, base_amount: {label: "Betrag"}
+  - d.attrs :account_number, :offsetting_account_number
+  - d.attrs :cost_center_number, :secondary_cost_center_number,
+      :is_unit_budget, :sub_cost_center_number, :sphere_number,
+      secondary_cost_center_number: {blank: :unset, input: :select, options: cc_options, **editable},
+      is_unit_budget: {input: :select, options: ub_options, **editable},
+      sub_cost_center_number: {blank: :unset, input: :text, **editable},
+      sphere_number: {blank: :unset},
+      cost_center_number: {blank: :unset}
+  - d.attrs :document_field_1, :document_field_2, :buchungs_guid,
+      document_field_1: {label: "Belegfeld 1", blank: :hide},
+      document_field_2: {label: "Belegfeld 2", blank: :hide}
+  - d.custom title: "Rohdaten (DATEV)" do
+    .small.font-monospace
+      - booking_raw_fields(booking).each do |label, value|
+        - next if value.blank?
+        .text-break
+          %span.text-muted= "#{label}:"
+          = " #{value}"
+  - d.custom title: "Verknüpfungen" do
+    - if booking.datev_booking_batch_id
+      = wsjrdp_labeled_row("Buchungsstapel") do
+        - batch = booking.batch
+        - batch_path = booking_batch_path(booking.datev_booking_batch_id)
+        - pn = batch&.primanota_number
+        - batch_label = [pn, batch&.label].compact_blank.join(" · ")
+        = link_to batch_label, batch_path
+        = wsjrdp_newtab_link(batch_path)
+    = wsjrdp_labeled_row("Beitragsbuchung") do
+      - if (entry = booking.accounting_entry)
+        = wsjrdp_row_line do
+          = assoc_link_with_newtab(entry, "##{entry.id}")
+          = match_rating_chip(booking_link_rating(booking), compact: false)
+          = button_to booking_path(booking), method: :patch,
+            params: {datev_booking: {accounting_entry_id: ""}},
+            form: {class: "bk-unlink-form d-inline", data: {turbo: false}},
+            class: "btn btn-sm btn-outline-danger py-0", title: "Verknüpfung mit der Beitragsbuchung trennen",
+            "aria-label": "Verknüpfung mit der Beitragsbuchung trennen" do
+            = icon(:unlink)
+        = wsjrdp_row_help(booking_link_provenance(booking))
+      - else
+        - aid = "bk-ae-#{booking.id}"
+        = wsjrdp_row_form(booking_path(booking), css: "bk-connect-entry-form", method: :patch) do
+          %input.form-control.form-control-sm.wsjrdp-lr-entity{type: "text", id: "#{aid}-q",
+            autocomplete: "off", "aria-label": "Beitragsbuchung suchen",
+            placeholder: "ID, Name oder Beschreibung – nur unverknüpfte mit gleichem Betrag …",
+            data: {provide: "entity", id_field: aid, url: query_entries_booking_path(booking),
+              no_results_message: "Keine unverknüpfte Beitragsbuchung mit diesem Betrag"}}
+          %input{type: "hidden", name: "datev_booking[accounting_entry_id]", id: aid}
+          %button.btn.btn-sm.btn-outline-success{type: "submit"} Verbinden
+    :javascript
+      (function () {
+        if (window.__bkConnectEntryConfirm) return;
+        window.__bkConnectEntryConfirm = true;
+        document.addEventListener("submit", function (e) {
+          var form = e.target.closest && e.target.closest(".bk-connect-entry-form");
+          if (!form) return;
+          var idField = form.querySelector('input[name="datev_booking[accounting_entry_id]"]');
+          var q = form.querySelector("input[data-provide]");
+          if (!idField || !idField.value) {
+            e.preventDefault();
+            alert("Bitte zuerst eine Beitragsbuchung aus der Vorschlagsliste auswählen.");
+            return;
+          }
+          var label = (q && q.value) || ("#" + idField.value);
+          if (!confirm("Diese Buchung mit der Beitragsbuchung\n\n" + label + "\n\nverbinden?")) {
+            e.preventDefault();
+          }
+        }, true);
+        document.addEventListener("submit", function (e) {
+          var uf = e.target.closest && e.target.closest(".bk-unlink-form");
+          if (uf && !confirm("Verknüpfung mit der Beitragsbuchung wirklich trennen?")) {
+            e.preventDefault();
+          }
+        }, true);
+      })();

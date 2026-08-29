@@ -1,0 +1,91 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Keeps the set of open detail rows in the URL query string, so the open/closed
+-#  state is bookmarkable and survives a reload (D4). The server renders the
+-#  matching rows open; this only writes the URL back on toggle. ONE delegated,
+-#  window-guarded listener serves every table on the page: a toggled detail is
+-#  attributed to its own table (the nearest .exp-table-wrap, which carries the
+-#  table's open param in data-open-param), and only that table's own rows are
+-#  written under that param -- a nested table inside a detail must neither add
+-#  its rows to the outer table's param nor the outer rows to its own. A table
+-#  living inside a turbo frame (a lazily loaded detail) has its own request URL,
+-#  not the page's, so it never touches the page URL at all.
+= render "shared/wsjrdp/relaxed_query_js"
+:javascript
+  (function () {
+    if (window.__expOpenSync) return;
+    window.__expOpenSync = true;
+    function ownDetails(wrap) {
+      return Array.prototype.filter.call(wrap.querySelectorAll(".exp-detail.show"), function (el) {
+        return el.closest(".exp-table-wrap") === wrap;
+      });
+    }
+    function sync(detail) {
+      var wrap = detail.closest(".exp-table-wrap");
+      if (!wrap || !wrap.dataset.openParam || wrap.closest("turbo-frame")) return;
+      var open = ownDetails(wrap).map(function (el) { return el.dataset.expKey; }).filter(Boolean);
+      var url = new URL(window.location);
+      if (open.length) { url.searchParams.set(wrap.dataset.openParam, open.join(",")); }
+      else { url.searchParams.delete(wrap.dataset.openParam); }
+      // Mutating searchParams re-serialises the query as x-www-form-urlencoded,
+      // re-encoding "," / "~" everywhere; wsjrdpRelaxedQuery.href rebuilds the
+      // relative URL with them literal again (see doc/wsjrdp/url_encoding.md).
+      window.history.replaceState({}, "", window.wsjrdpRelaxedQuery.href(url));
+    }
+    // The detail row is the LAST row of its group, so with sub-rows between the
+    // two it is not the open row's next sibling any more and CSS cannot reach it
+    // by adjacency. Mark it instead: the server renders .exp-open on a row that
+    // starts open, this keeps the class in sync (see the .exp-open rule in
+    // shared/wsjrdp/_expandable_table_styles). The row of the OWN detail is the
+    // nearest one, so a nested table's detail marks its own row, not the outer.
+    function markOpen(detail, open) {
+      var row = detail.closest("tr.exp-detail-row");
+      if (row) row.classList.toggle("exp-open", open);
+    }
+    function onToggle(e) {
+      if (!(e.target.classList && e.target.classList.contains("exp-detail"))) return;
+      markOpen(e.target, e.type === "shown.bs.collapse");
+      sync(e.target);
+    }
+    document.addEventListener("shown.bs.collapse", onToggle);
+    document.addEventListener("hidden.bs.collapse", onToggle);
+  })();
+
+  (function () {
+    // THE scroll-position keeper for the whole finance area: preserve the
+    // vertical scroll position across a table's paging / sorting / page-size
+    // navigation AND across the reload of any form that reloads the page in
+    // place (form.booking-scroll-form -- the filter apply form, the column
+    // picker, the reconciliation connect/assign forms). Turbo Drive otherwise
+    // scrolls to the top, which on a long page feels like the position jumps.
+    // Delegated + window-guarded, so it covers every expandable table on the
+    // page and survives Turbo visits.
+    if (window.__expScrollKeep) return;
+    window.__expScrollKeep = true;
+    var KEY = "wsjrdp.exptbl.scroll";
+    function remember() { try { sessionStorage.setItem(KEY, String(window.scrollY || document.documentElement.scrollTop || 0)); } catch (e) {} }
+    document.addEventListener("click", function (e) {
+      if (e.target.closest(".bk-pagination a, a.exp-sort")) remember();
+    });
+    document.addEventListener("change", function (e) {
+      if (e.target.closest && e.target.closest(".bk-per-select")) remember();
+    });
+    document.addEventListener("submit", function (e) {
+      if (e.target.matches && e.target.matches("form.booking-scroll-form")) remember();
+    });
+    function restore() {
+      var y;
+      try { y = sessionStorage.getItem(KEY); } catch (e) { return; }
+      if (y === null) return;
+      try { sessionStorage.removeItem(KEY); } catch (e) {}
+      requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, parseInt(y, 10) || 0); }); });
+    }
+    document.addEventListener("turbo:load", restore);
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", restore);
+    else restore();
+  })();

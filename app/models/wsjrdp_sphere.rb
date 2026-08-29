@@ -15,8 +15,10 @@ class WsjrdpSphere < ActiveRecord::Base
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
 
+  # The foreign key is spelled out: the column is `manager_person_id`, not the
+  # `manager_id` a belongs_to would derive from the association name.
   belongs_to :manager, class_name: "Person", optional: true,
-    inverse_of: :managed_spheres
+    foreign_key: :manager_person_id, inverse_of: :managed_spheres
 
   validates :number, presence: true, uniqueness: true
 

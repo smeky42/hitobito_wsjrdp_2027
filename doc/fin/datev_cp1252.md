@@ -142,7 +142,7 @@ rule belongs to the *source*, not to a particular table.
 It does **not** apply to:
 
 * **codes, enums and technical identifiers** — account numbers,
-  `account_type`, `country` (ISO), `post_code`, `iban`, `bic`,
+  `account_kind`, `country` (ISO), `post_code`, `iban`, `bic`,
   `datev_nummer_fremdsystem` (a UUID prefix), the numeric
   `datev_function_*` fields: no character outside ASCII can occur, so a
   plain comparison is already correct;

@@ -1,0 +1,31 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The COLOURS of the "Moss Status" cell of the Buchhaltung summaries
+-#  (Sachkonten, Kostenstellen and Kreditoren). Ruby knows the word and the class
+-#  name (Fin::BookkeepingHelper#moss_status_cell), this file knows what they
+-#  look like.
+-#
+-#  EVERY view that shows such a cell must render it:
+-#      = render "shared/wsjrdp/moss_status_styles"
+-#  The guard emits the <style> only once per request, so rendering it from a
+-#  page AND from a partial it embeds is harmless (same pattern as
+-#  shared/wsjrdp/_moss_kind_styles).
+-#
+-#  The status QUALIFIES a row, it does not classify it: it appears in every
+-#  single row of the list, so anything louder than a tint would drown the
+-#  numbers next to it. Hence no badge, no fill, no bold and no marker glyph --
+-#  a colour, with the word carrying the meaning on its own.
+- return if @wsjrdp_moss_status_styles_emitted
+- @wsjrdp_moss_status_styles_emitted = true
+:css
+  /* A muted green for aktiv; for inaktiv the theme's own secondary text colour,
+     which is the grey the rest of the page mutes with (this Bootstrap build has
+     no --bs-secondary-color, a 5.3 token, hence the concrete fallback). */
+  .moss-status { white-space: nowrap; }
+  .moss-status-active { color: #3b7d5b; }
+  .moss-status-inactive { color: var(--bs-secondary-color, #6c757d); }

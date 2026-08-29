@@ -1,0 +1,93 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  THE filter line: one framed strip directly above the table's toolbar,
+-#  present in BOTH states. The pane (shared/wsjrdp/filtering/_builder) opens
+-#  BETWEEN this line and the toolbar, so opening the filter moves nothing that
+-#  sits above it -- in particular the toggle stays exactly under the pointer
+-#  that just clicked it.
+-#
+-#  Left  (.flt-line-left): the "Schnellauswahl" preset bar -- it lives HERE,
+-#        not in the builder, with the id and classes the builder's
+-#        lockPresets() looks up -- followed by the applied filter's chips
+-#        (shared/wsjrdp/filtering/_chips).
+-#  Right (margin-left: auto): the pane's toggle button, with the count of
+-#        applied conditions and the "nicht angewendet" badge (which the
+-#        builder's markDirty() switches on via data-pane-target). The column
+-#        hamburger stays in the toolbar -- no ☰ on this line.
+-#
+-#  The line carries data-pane-line = the pane's id: shared/wsjrdp/_collapsible_panes
+-#  mirrors the pane's open state onto it, so the frame of line and pane reads as
+-#  one open box. The initial state is state.pane (the `e` field / pane cookie),
+-#  resolved by the controller -- nothing here reads the request.
+-#
+-#  Locals:
+-#    state    -- the table's Wsjrdp::TableState
+-#    presets  -- the RESOLVED Wsjrdp::TableState::FilterPreset list; the widget
+-#                resolves the policy's vs. the view's declaration ONCE and hands
+-#                the same list to this line and to the builder
+-#    disabled -- true = read-only filter; the presets are then not shown at all
+-#                (they would apply at once)
+- state = local_assigns.fetch(:state)
+- presets = Array(local_assigns.fetch(:presets, nil))
+- disabled = local_assigns.fetch(:disabled, false)
+- pane_id = et_pane_id(state)
+- presets_id = et_filter_presets_id(state)
+- condition_count = state.filter.user_slots.sum(&:size)
+
+.flt-line{class: ("open" if state.pane), data: {pane_line: pane_id}}
+  .flt-line-left
+    -# "Schnellauswahl": one toggle LINK per entry of the resolved list, in its
+    -# order. That list is flat, so a preset carrying its own slots and one
+    -# member of a group sharing a slot with its siblings render exactly alike;
+    -# whether an entry is pressed and where its toggle leads are computed by the
+    -# state (Wsjrdp::TableState::FilterPreset) from the APPLIED user filter,
+    -# never here and never from the builder's unapplied draft. Styles: see the
+    -# .flt-preset* block in shared/wsjrdp/filtering/_builder (always rendered
+    -# next to this line).
+    - if presets.any? && !disabled
+      .flt-presets.d-flex.flex-wrap.align-items-center.gap-2{id: presets_id}
+        %span.small.text-muted Schnellauswahl
+        - presets.each do |preset|
+          -# A LINK, not a button: a preset applies at once, so it is a GET to a
+          -# shareable URL (et_url drops the page and the open rows, D4). role +
+          -# aria-pressed make the on/off state audible; the lock is aria-disabled
+          -# plus a removed href, which is how a link says "disabled".
+          - preset_title = preset.active? ? "Preset abwählen" : "Preset anwenden"
+          -# icon and css_class are OPTIONAL display extras of the preset (nil by
+          -# default): the icon -- a FontAwesome 5 name without the "fa-" prefix --
+          -# goes between the tick and the label, the class verbatim onto the link,
+          -# so a host can colour its presets. Without them the link is byte for byte
+          -# what it was before.
+          - preset_class = ["btn btn-sm btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" ")
+          = link_to et_url(state, {filter: preset.toggle_wire}),
+            class: preset_class,
+            role: "button", title: preset_title,
+            aria: {pressed: preset.active?.to_s}, data: {title: preset_title} do
+            %span.flt-preset-tick{"aria-hidden": "true"}
+              - if preset.active?
+                %i.fas.fa-check
+            - if preset.icon.present?
+              %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
+            = preset.label
+        %span.small.flt-preset-lock-note
+          ⚠ gesperrt, bis die Änderungen angewendet oder verworfen sind
+    -# The applied filter at a glance. Hidden while the pane is open (the builder
+    -# below then shows the same conditions in full) -- see .flt-line.open
+    -# .flt-applied in shared/wsjrdp/_expandable_table_styles.
+    = render "shared/wsjrdp/filtering/chips", state: state, pane_id: pane_id,
+      presets: presets, disabled: disabled
+  -# The pane's toggle: data-pane-target names the pane, the badges carry the
+  -# applied condition count and the builder's "nicht angewendet" state.
+  %button.btn.btn-sm.btn-outline-secondary.pane-toggle{type: "button", data: {pane_target: pane_id},
+    "aria-expanded": state.pane.to_s, "aria-controls": pane_id,
+    title: (state.pane ? "Filter einklappen" : "Filter ausklappen")}
+    %i.fas.fa-filter{"aria-hidden": "true"}
+    Filter
+    - if condition_count.positive?
+      %span.badge.bg-secondary= condition_count
+    %span.badge.text-bg-warning.flt-dirty-pill{title: "Änderungen im Filter sind noch nicht angewendet"} nicht angewendet

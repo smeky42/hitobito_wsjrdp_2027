@@ -1,0 +1,27 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Reusable labeled key/value grid used in the compact detail views (DATEV
+-#  booking, Beitragsbuchung). Each row is an array of cells; a cell is
+-#  [label, value], [label, value, span] or [label, value, span, align]:
+-#    span 2  -> the cell takes two grid columns (e.g. a long description)
+-#    align :end -> right-align the value (amounts)
+-#  A nil label renders a spacer cell; a blank value renders an em dash. Labels
+-#  are rendered light/muted (see .booking-detail-label in the shared styles).
+-#  Locals: rows
+- rows.each_with_index do |cells, i|
+  .row.g-3{ class: ("mt-1" if i.positive?) }
+    - cells.each do |label, value, span, align|
+      - cols = (span == 2) ? "col-12 col-md-8 col-lg-6" : "col-6 col-md-4 col-lg-3"
+      %div{ class: cols }
+        - if label
+          .booking-detail-label.text-muted.text-uppercase= label
+          .text-break{ class: ("text-end" if align == :end) }
+            - if value.present?
+              = value
+            - else
+              %span.text-muted —

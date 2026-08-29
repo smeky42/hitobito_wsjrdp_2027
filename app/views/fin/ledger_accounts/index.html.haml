@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+= render "shared/wsjrdp/moss_status_styles"
+
+#main
+  %h1 Sachkonten
+  %p.text-muted
+    Übersicht der Sachkonten mit der Summe der gebuchten Beträge (nur aktive Buchungen).
+    Angezeigt werden die sichtbar geschalteten Konten, die in Moss aktiven und die bebuchten.
+    Klick auf eine Zeile zeigt die Buchungen des Kontos.
+
+  -# The filter comes from the controller's policy: this view passes only the
+  -# apply URL. Sorting, paging and the column hamburger are the widget's own
+  -# links and keep the filter.
+  = wsjrdp_expandable_table do |t|
+    - t.rows   ledger_accounts, id: "account"
+    - t.columns sachkonten_columns, menu: true
+    - t.row_key { |a| a.number }
+    - t.detail_page { |a| ledger_account_path(a.number) }
+    - t.detail_src { |a| ledger_account_path(a.number) }
+    - t.paging  per_options: [10, 25, 50, 100, :all]
+    - t.filter  apply_url: apply_ledger_accounts_path
+
+  %p.text-muted.small.mt-2
+    #{ledger_accounts.total_count} Sachkonten angezeigt · #{shown_booking_count} Buchungen · Summe #{fin_money(shown_booking_sum)}

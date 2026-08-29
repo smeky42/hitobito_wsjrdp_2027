@@ -5,8 +5,8 @@
 //  file at the top-level directory or at
 //  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-// Tests for window.wsjrdpRelaxedQuery (doc/url_encoding.md §6). The
-// implementation lives INSIDE app/views/shared/_relaxed_query_js.html.haml (a
+// Tests for window.wsjrdpRelaxedQuery (doc/wsjrdp/url_encoding.md §6). The
+// implementation lives INSIDE app/views/shared/wsjrdp/_relaxed_query_js.html.haml (a
 // :javascript filter block); this test extracts the code between its
 // wsjrdp-relaxed-query-begin/end markers and runs it against a fresh fake
 // `window`, so partial and test cannot drift apart silently.
@@ -22,7 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PARTIAL = join(dirname(fileURLToPath(import.meta.url)),
-  "../../app/views/shared/_relaxed_query_js.html.haml");
+  "../../app/views/shared/wsjrdp/_relaxed_query_js.html.haml");
 
 function loadHelper() {
   const source = readFileSync(PARTIAL, "utf8");

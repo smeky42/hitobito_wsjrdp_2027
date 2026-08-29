@@ -28,7 +28,7 @@ creditors:
   5-digit chart (SKR 42) personal accounts are 6-digit: Debitoren
   `1xxxxx`–`6xxxxx`, Kreditoren `7xxxxx`–`9xxxxx`. Our CHECK constraints
   `chk_personal_account_number_six_digits` and
-  `chk_personal_account_type_matches_number` encode exactly that.
+  `chk_personal_account_kind_matches_number` encode exactly that.
 * **Moss is the primary source for suppliers.** Suppliers are created/edited in
   Moss; an automatic sync (Moss → DATEV, via the DATEV Rechnungsdatenservice
   used by the [Moss–DATEV
@@ -156,7 +156,7 @@ onto `address_second_line`, and both are empty on all 88 rows — see the
 ## Importing
 
 Both DATEV and Moss data is fed into the same table. The import upserts on the
-account number and derives `account_type` (`CREDITOR`/`DEBITOR`) from the number
+account number and derives `account_kind` (`CREDITOR`/`DEBITOR`) from the number
 range. Each writes **only its own** columns: the DATEV branch never touches
 `moss_*` / `other_moss_columns`, the Moss branch never touches `datev_*` /
 `other_datev_columns`, and neither touches the Hitobito-owned `short_name`,
@@ -201,5 +201,5 @@ fields (`name`, `street`, `address_second_line`, `city`):
   second account, that assumption has to be rechecked — the marker to watch is
   `Kennz. Hauptbankverb. n` pointing at a slot with a different IBAN.
 * All 88 personal accounts are Kreditoren today. Debitoren (`1xxxxx`–`6xxxxx`,
-  `account_type = 'DEBITOR'`) are prepared for in the schema (CHECK constraints,
-  `account_ref_type` routing in `datev_bookings`) but unused.
+  `account_kind = 'DEBITOR'`) are prepared for in the schema (CHECK constraints,
+  `account_type` routing in `datev_bookings`) but unused.

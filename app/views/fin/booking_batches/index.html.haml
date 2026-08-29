@@ -1,0 +1,24 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main
+  %h1 Buchungsstapel
+  %p.text-muted
+    Übersicht der DATEV-Buchungsstapel (Primanota-Exporte) mit der Anzahl der enthaltenen Buchungen.
+    Klick auf eine Zeile öffnet die Detailseite des Stapels.
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows   booking_batches, id: "batch"
+    - t.columns buchungsstapel_columns, menu: true
+    - t.row_key { |b| b.id }
+    - t.detail_page { |b| booking_batch_path(b) }
+    - t.detail_src { |b| booking_batch_path(b) }
+    - t.paging  per_options: [10, 25, 50, 100, :all]
+    - t.filter  apply_url: apply_booking_batches_path
+
+  %p.text-muted.small.mt-2
+    #{booking_batches.total_count} Buchungsstapel angezeigt · #{shown_booking_count} Buchungen

@@ -14,7 +14,12 @@ describe "finance abilities" do
       WsjrdpPaymentPlan,
       MossTransaction,
       MossExpense,
-      MossBooking
+      MossBooking,
+      DatevBooking,
+      DatevBookingBatch,
+      WsjrdpLedgerAccount,
+      WsjrdpCostCenter,
+      WsjrdpPersonalAccount
     ]
   end
 

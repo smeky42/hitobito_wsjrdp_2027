@@ -1,0 +1,57 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Thin adapter: renders a bookings Wsjrdp::ExpandableTableRows through the shared widget
+-#  (via wsjrdp_expandable_table). It only maps the booking specifics -- the
+-#  column config, the detail's header links, the inline detail, the
+-#  count+sum summary -- onto the generic options; paging, sorting, the column
+-#  hamburger and row selection all come from the widget. `condensed` renders
+-#  the compact in-detail variant (bare codes, abbreviated headers, no column
+-#  picker).
+-#
+-#  The table's state (prefix, sort, visible columns, paging, open rows, filter,
+-#  nesting level) and its current page both travel with the rows object, which
+-#  the host built from its wsjrdp_expandable_table_policy.
+-#
+-#  Locals: rows (required, a Wsjrdp::ExpandableTableRows); condensed;
+-#  extra_columns (injected columns, e.g. the reconciliation proposal);
+-#  selection; detail_top / detail_extra (booking detail slots).
+- condensed = local_assigns.fetch(:condensed, false)
+- extra_columns = local_assigns.fetch(:extra_columns, nil)
+- selection = local_assigns.fetch(:selection, nil)
+- detail_top = local_assigns.fetch(:detail_top, nil)
+- detail_extra = local_assigns.fetch(:detail_extra, nil)
+= wsjrdp_expandable_table do |t|
+  - t.rows   rows, id: (rows.state.prefix.presence || "bk")
+  - t.columns booking_table_columns(condensed: condensed), menu: !condensed,
+      extra: extra_columns
+  - t.row_key { |b| b.id }
+  - t.detail_page { |booking| booking_path(booking) }
+  -# "In Moss" leads to the Moss record BEHIND this booking, on either of the two
+  -# levels the Moss->DATEV chain posts at: this booking is the clearing booking
+  -# of a transaction, or the expense booking of one of its splits. Unlinked
+  -# bookings (every booking that did not come from Moss) get no group, and
+  -# neither does a top-up -- Moss has no record page for it.
+  - moss_url = ->(booking) { (booking.moss_transaction_as_clearing || booking.moss_booking_as_expense&.moss_transaction)&.moss_record_url }
+  - t.detail_link label: "In Moss", icon: :wallet, title: "Transaktion in Moss öffnen",
+      title_new_tab: "Transaktion in Moss in neuem Tab öffnen", &moss_url
+  - if detail_top || detail_extra
+    - t.detail { |booking, ctx| render "fin/bookings/booking_detail", booking: booking, table_context: ctx, top: detail_top, extra: detail_extra }
+  - else
+    - t.detail_src { |booking| booking_path(booking) }
+  - t.paging
+  - t.filter  local_assigns[:filter]
+  - t.summary(condensed ? nil : "#{rows.total_count} Buchungen · Summe (gefiltert): #{fin_money(rows.total_sum)}")
+  - t.selection selection
+  - t.condensed condensed
+-# The widget styles a condensed table only generically (content-sized, nowrap);
+-# the column widths and the wrapping description are booking specifics and live
+-# with this dataset. AFTER the table, so this block always follows the widget's
+-# own <style> in the document: the two declare table-layout on the same selector
+-# with the same specificity, so the later one has to be the dataset's. Guarded,
+-# so rendering it per embedded table is harmless.
+= render "fin/bookings/condensed_styles" if condensed

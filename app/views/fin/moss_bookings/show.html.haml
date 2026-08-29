@@ -5,7 +5,12 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+-#  The colours of the kind chip in the "Transaktion" line below.
+= render "shared/wsjrdp/moss_kind_styles"
+
 #main.row
+  -# The sheet renders its parent (the Moss tabs), so the page names itself.
+  %h1.mb-3= "Moss Buchung ##{@moss_booking.id}"
   = standard_form(@moss_booking, {url: moss_booking_path, method: :put, data: {turbo: false}}) do |f|
     = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
@@ -21,13 +26,20 @@
       -# context, the booking itself the split dimensions.
       -# The payment has no page of its own here -- the FIN views act on the
       -# booking. Its home is Moss, so the link goes there (the model derives
-      -# the URL from the stored uuid).
+      -# the URL from the stored uuid) -- except for a top-up, for which Moss
+      -# has no derivable record page and the line ends after the name.
       - if (fin_account = @moss_booking.fin_account).present?
         = form_like_labeled("Konto", link_to(fin_account.to_s, url_for(fin_account)))
+      -# The kind chip goes FIRST, before the name: it classifies what follows
+      -# (the label only says "Transaktion"), it is the same reading order as
+      -# the Art column of the wallet list, and at the end of the line it would
+      -# hide behind the Moss link.
       = form_like_labeled("Transaktion") do
+        = moss_kind_chip(transaction.type)
         %span= transaction.link_name
-        %span.muted= " • "
-        %span= link_to("in Moss öffnen", transaction.moss_record_url, target: "_blank", rel: "noopener")
+        - if (moss_url = transaction.moss_record_url).present?
+          %span.muted= " • "
+          %span= link_to("in Moss öffnen", moss_url, target: "_blank", rel: "noopener")
       -# Header facts of the payment that exist only for some kinds: the SEPA
       -# reference of a balance payment, the card merchant, the top-up's
       -# funding account, the invoice's workflow status. The names and texts

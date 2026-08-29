@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A Kostenstelle's detail page. The same frame the Kostenstellen list
+-#  lazy-loads into its expandable row, so a frame request answers with the frame
+-#  alone; back link and heading belong to the partial's header (d.header), which
+-#  renders in :regular mode only.
+- frame = turbo_frame_tag("bkframe-cost_center-#{@cost_center.number}") do
+  = render "fin/cost_centers/detail", cost_center: @cost_center, ctx: @ctx
+
+- if turbo_frame_request?
+  = frame
+- else
+  #main= frame

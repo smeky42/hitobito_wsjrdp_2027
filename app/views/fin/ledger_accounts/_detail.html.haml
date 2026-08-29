@@ -1,0 +1,29 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a Sachkonto: the master data in groups, the raw area with the
+-#  entries blocks of the DATEV and the Moss export, and the account's embedded
+-#  bookings. Shown on the Sachkonto's own page and inside the Sachkonten list's
+-#  detail pane -- `ctx` says which, and the kit (Fin::DetailHelper) picks
+-#  header, layout and the raw area's open state from it.
+-#
+-#  The values come from Fin::LedgerAccountsHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_ledger_account.
+-#
+-#  Locals: account (WsjrdpLedgerAccount), ctx (Fin::AttrFormatContext)
+= render "shared/wsjrdp/moss_status_styles"
+= fin_detail(account, ctx) do |d|
+  - d.header back: ledger_accounts_path, back_label: "Zurück zu Sachkonten",
+      label: "Sachkonto #{account.number}", title: account.name
+  - d.attrs :name, :short_name, :account_kind, :moss_status
+  - d.attrs :description, :comment
+  - d.raw_data do
+    - d.raw_entries :other_datev_columns, title: "DATEV Rohdaten"
+    - d.raw_entries :other_moss_columns, title: "Moss Rohdaten"
+  - d.bookings account_bookings(account.number),
+      show_all_path: bookings_filter_path([[["any_account", "in", account.number]]]),
+      all_label: "In Buchungen-Ansicht öffnen"
