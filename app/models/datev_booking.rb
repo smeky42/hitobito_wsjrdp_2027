@@ -1,0 +1,57 @@
+# frozen_string_literal: true
+
+#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+#
+#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+#  Affero General Public License version 3 or later. See the COPYING
+#  file at the top-level directory or at
+#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+# A single booking extracted from a DATEV Primanota export
+# (Buchungsstapel). Identity: every booking carries the unique DATEV
+# Buchungs GUID (buchungs_guid). Each booking optionally belongs to
+# the datev_booking_batch it was imported from.
+class DatevBooking < ActiveRecord::Base
+  belongs_to :batch, class_name: "DatevBookingBatch",
+    foreign_key: :datev_booking_batch_id,
+    inverse_of: :bookings,
+    optional: true
+
+  delegate :consultant_number, :client_number, :primanota_number, :financial_year, :financial_year_start, :financial_year_end,
+    to: :batch, allow_nil: true
+
+  # account (Konto) / offsetting_account (Gegenkonto) as polymorphic associations
+  belongs_to :account, polymorphic: true, optional: true,
+    foreign_key: :account_number, primary_key: :number
+  belongs_to :offsetting_account, polymorphic: true, optional: true,
+    foreign_key: :offsetting_account_number, primary_key: :number
+
+  # General ledger legs
+  #
+  # Each booking touches account (Konto) and offsetting_account
+  # (Gegenkonto). `signed_base_amount` is signed from the Konto's
+  # perspective only, so summing over the offsetting_account
+  # (Gegenkonto) side (or an account that appears on both sides) with
+  # SUM(signed_base_amount) is wrong. `legs` expands every booking
+  # into two rows -- one per account -- each valued from that
+  # account's OWN perspective (`signed_base_amount` for the Konto leg,
+  # `signed_offsetting_base_amount` for the Gegenkonto
+  # leg). Grouping/filtering by `leg_account` then yields the correct,
+  # two-sided account and supplier balances.
+  #
+  # Realised as a UNION-ALL subquery via #from, aliased `AS
+  # datev_bookings` so the rows stay DatevBooking objects and carry
+  # every original column PLUS the leg_side / leg_account /
+  # leg_account_kind / signed_leg_amount columns -- no database view,
+  # so it round-trips through schema.rb. `id` repeats per booking (A
+  # and O leg), so use `legs` for aggregation/listing, not for
+  # find/update.
+  def self.legs
+    konto = select("datev_bookings.*, 'A' AS leg_side, account_number AS leg_account_number, " \
+      "account_kind AS leg_account_kind, signed_base_amount AS signed_leg_amount")
+    gegen = where.not(offsetting_account_number: nil)
+      .select("datev_bookings.*, 'O' AS leg_side, offsetting_account_number AS leg_account_number, " \
+        "offsetting_account_kind AS leg_account_kind, signed_offsetting_base_amount AS signed_leg_amount")
+    unscoped.from(Arel.sql("(#{konto.to_sql} UNION ALL #{gegen.to_sql}) AS datev_bookings"))
+  end
+end

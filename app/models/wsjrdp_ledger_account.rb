@@ -22,6 +22,14 @@ class WsjrdpLedgerAccount < ActiveRecord::Base
 
   validates :number, presence: true, uniqueness: true
 
+  # Bookings whose Konto (account) is this account
+  # rubocop:disable Rails/HasManyOrHasOneDependent -- deliberately no
+  # :dependent option: bookings are independent facts; deleting an account
+  # must never touch them (and there is no FK to nullify).
+  has_many :bookings, class_name: "DatevBooking", as: :account,
+    primary_key: :number, foreign_key: :account_number, inverse_of: :account
+  # rubocop:enable Rails/HasManyOrHasOneDependent
+
   # moss_status is NULL for accounts without a Moss connection
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
   scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
