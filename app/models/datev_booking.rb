@@ -33,6 +33,29 @@ class DatevBooking < ActiveRecord::Base
   has_one :camt_transaction, class_name: "WsjrdpCamtTransaction",
     inverse_of: :datev_booking, dependent: :nullify
 
+  # Strict 1:1 back-links from the Moss card side. The Moss->DATEV chain posts
+  # the expense booking (Sachkonto -> Sammelkreditor) per SPLIT and the clearing
+  # booking (Sammelkreditor -> Moss-Konto) once per TRANSACTION, so the two
+  # back-links point at different models.
+  #
+  # Naming: THIS booking is the expense resp. clearing booking; the Moss row on
+  # the other end is just a Moss row. The role therefore trails the name and
+  # qualifies the relationship instead of the target -- the target model leads,
+  # as it does for `accounting_entry` / `camt_transaction` above.
+  # No :dependent option: the foreign keys already null these columns on delete
+  # (on_delete: :nullify), so Rails must not load the counterpart as well.
+  # rubocop:disable Rails/HasManyOrHasOneDependent -- see the note above: the
+  # foreign keys null these columns on delete, Rails must not do it a second time.
+  has_one :moss_card_transaction_booking_as_expense,
+    class_name: "MossCardTransactionBooking",
+    foreign_key: :expense_datev_booking_id,
+    inverse_of: :expense_datev_booking
+  has_one :moss_card_transaction_as_clearing,
+    class_name: "MossCardTransaction",
+    foreign_key: :clearing_datev_booking_id,
+    inverse_of: :clearing_datev_booking
+  # rubocop:enable Rails/HasManyOrHasOneDependent
+
   # account (Konto) / offsetting_account (Gegenkonto) as polymorphic associations
   belongs_to :account, polymorphic: true, optional: true,
     foreign_key: :account_number, primary_key: :number
