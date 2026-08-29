@@ -1,0 +1,73 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  How the CONDENSED bookings table sizes its columns -- the compact variant
+-#  embedded in a Buchhaltung item's detail (fin/bookings/_bookings_table with
+-#  condensed: true). The widget only says that a condensed table lays out by
+-#  content and does not wrap (shared/wsjrdp/_expandable_table_styles); which
+-#  column may wrap and how wide the short ones are is a property of THIS
+-#  dataset, so it is declared here.
+-#
+-#  The intent, in three rules:
+-#  * from 700px of CONTAINER width the table switches to table-layout: fixed and
+-#    the percentages below act like flex weights -- every short column grows a
+-#    little with the box, the description (the only widthless column) takes what
+-#    is left over, the largest share and more so the longer its text. The
+-#    percentages reserve space for the short columns, so the table always fits;
+-#  * the description wraps. It has to: a fixed layout does not clip, so the
+-#    widget's nowrap default would run the text straight across the code columns
+-#    to its right;
+-#  * below 460px the box is too tight even for content-sized columns, so the
+-#    code columns drop out (they are still on the full Buchungen page) and
+-#    Datum / Betrag / Beschreibung stay readable without side-scrolling.
+-#
+-#  Widths are relative to the surrounding BOX, not the viewport (@container):
+-#  the detail card is far narrower than the window, so viewport breakpoints
+-#  would not match. The scrolling wrappers are declared as size containers in
+-#  the widget's styles.
+-#
+-#  Each selector addresses one column of Fin::DatevBookingsColumns through the
+-#  css class the widget puts on its cells: "<css_prefix>-<key>", the prefix of
+-#  that column set being "bkcol". So every class below carries a column KEY, and
+-#  a renamed key has to be renamed here too -- which is what
+-#  spec/views/fin/bookings/condensed_styles_spec.rb checks.
+-#
+-#  Rendered from fin/bookings/_bookings_table whenever it renders condensed, and
+-#  AFTER the table, so this block always follows the widget's own <style>: both
+-#  declare table-layout on .bookings-table-condensed, with the same specificity,
+-#  so only the document order makes the fixed layout win over the widget's auto.
+-#  The guard emits the <style> only once per request (same pattern as
+-#  shared/wsjrdp/_moss_kind_styles).
+- return if @fin_bookings_condensed_styles_emitted
+- @fin_bookings_condensed_styles_emitted = true
+:css
+  /* Default (narrow to intermediate boxes): the description is the flexible
+     "leftover" column -- it shrinks and wraps so every other column stays
+     visible and the table fits its box, however little room there is. This is
+     the common case; only a very wide or a very narrow box overrides it. */
+  .bookings-table-condensed .bkcol-signed_base_amount { padding-right: 1rem; }
+  .bookings-table-condensed .bkcol-posting_text { white-space: normal; overflow-wrap: anywhere; }
+  /* Plenty of room: a fixed layout whose percentages act like flex weights, so every
+     column grows a little and the description (the leftover) grows the most. */
+  @container (min-width: 700px) {
+    .bookings-table-condensed { table-layout: fixed; }
+    .bookings-table-condensed .bkcol-booking_date { width: 12%; }
+    .bookings-table-condensed .bkcol-signed_base_amount { width: 13%; }
+    .bookings-table-condensed .bkcol-cost_center_number { width: 8%; }
+    .bookings-table-condensed .bkcol-account_number { width: 9%; }
+    .bookings-table-condensed .bkcol-offsetting_account_number { width: 10%; }
+  }
+  /* Too tight even for content-sized columns (phones, very narrow windows): drop the
+     code columns -- still on the full bookings page -- so Datum / Betrag /
+     Beschreibung stay readable without side-scrolling. */
+  @container (max-width: 460px) {
+    .bookings-table-condensed .bkcol-cost_center_number,
+    .bookings-table-condensed .bkcol-secondary_cost_center_number,
+    .bookings-table-condensed .bkcol-account_number,
+    .bookings-table-condensed .bkcol-offsetting_account_number { display: none; }
+    .bookings-table-condensed .bkcol-posting_text { min-width: 7rem; }
+  }

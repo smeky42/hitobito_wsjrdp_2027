@@ -32,7 +32,9 @@ class MossTransaction < ActiveRecord::Base
 
   # Moss record pages. Every URL is DERIVED from a stored uuid -- Moss URLs are
   # stable, so storing them would only add a second source of truth. The
-  # subclasses add the kind-specific ones (invoice, reimbursement).
+  # subclasses add the kind-specific ones (invoice, reimbursement). The one
+  # exception is a top-up (MossTopUp): Moss addresses it by an internal id that
+  # no export carries, so nothing can be derived and it links nowhere.
   MOSS_APP_URL = "https://getmoss.com/app"
 
   # STI: `type` holds the class name; there is no `source` column, and
@@ -176,7 +178,9 @@ class MossTransaction < ActiveRecord::Base
   # --- Moss URLs -------------------------------------------------------------
 
   # The transaction's own record page. Subclasses override where Moss uses a
-  # different section (the balance kinds live under /export/balance-movements).
+  # different section (the balance kinds live under /export/balance-movements)
+  # and, for a top-up, where no URL is derivable at all -- so a reader may
+  # answer nil and every caller has to cope with that.
   def moss_record_url = "#{MOSS_APP_URL}/transactions/all/#{moss_transaction_uuid}"
 
   def moss_export_url = "#{MOSS_APP_URL}/export/balance-movements/#{moss_transaction_uuid}"
@@ -191,9 +195,14 @@ class MossTransaction < ActiveRecord::Base
 
   def display_text = transaction_posting_text
 
-  # "name – text", whichever exist; the SEPA reference as the last resort.
-  def description
-    [display_name, display_text].compact_blank.join(" – ").presence || payment_reference
+  # "name – text" -- the same composition the wallet statement shows as the
+  # transaction level of a booking (MossBooking#text_lines): a reimbursement's
+  # title and Buchungstext, a card payment's merchant and Buchungstext, ...;
+  # whichever exist, the SEPA reference as the last resort. `length:` truncates
+  # the result to that many characters (with "…"), e.g. for a table cell.
+  def description(length: nil)
+    text = [display_name, display_text].compact_blank.join(" – ").presence || payment_reference.to_s
+    length ? truncate(text, length: length, omission: "…") : text
   end
 
   def value_date = payment_date

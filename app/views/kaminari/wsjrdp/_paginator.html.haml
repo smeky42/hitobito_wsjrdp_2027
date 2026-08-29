@@ -1,0 +1,28 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Kaminari theme "wsjrdp" -- the pager of shared/wsjrdp/_expandable_table_paging,
+-#  which asks for it with `theme: "wsjrdp", left: 1, right: 1`. Kaminari looks
+-#  every tag partial of a themed paginator up under kaminari/wsjrdp/ alone, with
+-#  no fallback to kaminari/, so the theme ships each partial it uses.
+-#
+-#  Layout:  [<] [>] 1 ... 30 31 32 33 [34] 35 36 37 38 ... 137
+-#    * the two step buttons come FIRST and are ALWAYS rendered (disabled on the
+-#      first resp. last page, see _prev_page/_next_page), so paging on stays a
+-#      row of clicks in one place -- neither their own position nor that of the
+-#      numbers behind them depends on where in the range the current page is.
+-#    * no first/last tag: `left: 1, right: 1` turns page 1 and the last page
+-#      into ordinary number links, and the gap tag bridges the rest.
+= paginator.render do
+  %ul.pagination.pagination-sm
+    = prev_page_tag
+    = next_page_tag
+    - each_page do |page|
+      - if page.left_outer? || page.right_outer? || page.inside_window?
+        = page_tag page
+      - elsif !page.was_truncated?
+        = gap_tag

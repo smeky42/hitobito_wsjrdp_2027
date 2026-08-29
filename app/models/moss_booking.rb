@@ -70,7 +70,11 @@ class MossBooking < ActiveRecord::Base
   # `recipient` on the transaction -- and the wallet hangs on the transaction.
   # The short names are adapted here and nowhere else, so the concerns stay
   # shared with WsjrdpCamtTransaction unchanged.
-  def subject = contribution_subject
+  # Without an id there is no subject to read -- and no association reader to
+  # run: a polymorphic belongs_to with a NULL type is never marked as loaded by
+  # a preload, so reading it row by row would look like an N+1 to Bullet
+  # although no query is ever issued.
+  def subject = contribution_subject_id.present? ? contribution_subject : nil
 
   def subject=(person)
     self.contribution_subject = person

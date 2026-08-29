@@ -1,0 +1,45 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a Kostenstelle: the master data in groups, the budgets, and the
+-#  cost center's embedded bookings. Shown on the Kostenstelle's own page and
+-#  inside the Kostenstellen list's detail pane -- `ctx` says which, and the kit
+-#  (Fin::DetailHelper) picks header and layout from it.
+-#
+-#  There is no raw area: the table carries no other_* export columns, and the
+-#  reserved `additional_info` is not master data anybody reads yet.
+-#
+-#  The budgets stand on blank: :unset -- a cost center without a budget for a
+-#  year says so, which is worth reading; every other field simply disappears
+-#  when it is blank.
+-#
+-#  Budget fields (budget_2025..2028, explicit_total_budget) are editable for
+-#  users who can update the cost center; effective_total_budget is a generated
+-#  column and stays read-only.
+-#
+-#  The values come from Fin::CostCentersHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_cost_center.
+-#
+-#  Locals: cost_center (WsjrdpCostCenter), ctx (Fin::AttrFormatContext)
+= render "shared/wsjrdp/moss_status_styles"
+- form_url = can?(:update, cost_center) && cost_center.persisted? ? cost_center_path(cost_center.number) : nil
+- editable = {editable: true}
+= fin_detail(cost_center, ctx, form_url: form_url) do |d|
+  - d.header back: cost_centers_path, back_label: "Zurück zu Kostenstellen",
+      label: "Kostenstelle #{cost_center.number}", title: cost_center.name
+  - d.attrs :name, :short_name, :moss_status
+  - d.attrs :manager, :manager_name,
+      manager: {label: "Verantwortlich", hide: cost_center.manager_person_id.blank?},
+      manager_name: {label: "Verantwortlich", hide: cost_center.manager_person_id.present?}
+  - d.attrs :budget_2025, :budget_2026, :budget_2027, :budget_2028,
+      :explicit_total_budget, :effective_total_budget, blank: :unset,
+      budget_2025: editable, budget_2026: editable, budget_2027: editable,
+      budget_2028: editable, explicit_total_budget: editable
+  - d.attrs :description, :comment
+  - d.bookings cost_center_bookings(cost_center.number),
+      show_all_path: bookings_filter_path([[["cost_center", "in", cost_center.number]]]),
+      all_label: "In Buchungen-Ansicht öffnen"

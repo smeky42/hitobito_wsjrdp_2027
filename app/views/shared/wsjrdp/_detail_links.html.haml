@@ -1,0 +1,39 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The HEADER LINE of a detail row (shared/wsjrdp/_expandable_table): nothing but
+-#  right-aligned "double links". A double link is one Bootstrap button group of
+-#  two buttons -- the left one (icon + text) opens the target in the SAME tab,
+-#  the right one (only the external-link icon) in a NEW tab. It sits in the
+-#  detail row, never in the summary row, so clicking it never toggles the
+-#  disclosure.
+-#
+-#  The primary link ("Detailseite", the row's own page) is the RIGHTMOST group;
+-#  additional links declared with `t.detail_link` sit left of it, in declaration
+-#  order. A link whose block returns no URL for this row renders no group, so a
+-#  row without that target simply shows one group less -- and a row with no
+-#  target at all renders nothing here.
+-#
+-#  Locals: row, detail_page (->(row){ path } or nil), detail_links
+-#    ([{label:, icon:, title:, title_new_tab:, url: ->(row){ url }}]).
+- groups = Array(detail_links).filter_map do |cfg|
+  - url = cfg[:url].call(row)
+  - cfg.merge(url: url) if url.present?
+- if detail_page && (page_url = detail_page.call(row)).present?
+  - groups += [{label: "Detailseite", icon: :eye, title: "Detailseite öffnen",
+      title_new_tab: "Detailseite in neuem Tab öffnen", url: page_url}]
+- if groups.any?
+  .exp-detail-links.d-flex.justify-content-end.align-items-center.gap-2
+    - groups.each do |group|
+      .btn-group.btn-group-sm{ role: "group" }
+        = link_to group[:url], class: "btn btn-outline-primary",
+          title: group[:title], "aria-label": group[:title] do
+          = icon(group[:icon])
+          %span.ms-1= group[:label]
+        = link_to group[:url], class: "btn btn-outline-primary", target: "_blank",
+          rel: "noopener", title: group[:title_new_tab], "aria-label": group[:title_new_tab] do
+          = icon(:"external-link-alt")

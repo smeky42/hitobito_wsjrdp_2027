@@ -1,0 +1,49 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared detail of one Moss transaction: rendered in the expandable table
+-#  row and on /fin/moss/transactions/:id (the "Detailseite" link is the
+-#  table's detail header line, shared/wsjrdp/_detail_links). The
+-#  transaction's own fields as the shared key/value grid plus its links. The
+-#  expense and booking levels are deliberately not shown here for now.
+-#  Locals: transaction (required).
+- tx = transaction
+- currency = tx.currency.presence || "EUR"
+= render "shared/wsjrdp/expandable_table_styles"
+.bk-item-detail.bk-item-detail-plain
+  - head = [["Art", moss_kind_label(tx.type)],
+      ["Status (Moss)", [tx.moss_transaction_state, tx.invoice_status].compact_blank.join(" · ")],
+      ["Betrag", moss_amount_display(tx.signed_total_base_amount, currency), 1, :end]]
+  - if tx.foreign_currency?
+    - head << ["Originalbetrag", moss_amount_display(tx.signed_total_transaction_amount, tx.currency_original), 1, :end]
+    - head << ["Wechselkurs", tx.exchange_rate && number_with_precision(tx.exchange_rate, precision: 6, strip_insignificant_zeros: true, separator: ",", delimiter: ".")]
+  - dates = %i[payment_date booking_date approval_date invoice_date delivery_date due_date submitted_on].filter_map do |attr|
+    - value = tx.public_send(attr)
+    - [MossTransaction.human_attribute_name(attr), value.strftime("%d.%m.%Y")] if value
+  - who = [[moss_transaction_name_label(tx), tx.display_name], ["Buchungstext", tx.display_text, 2]]
+  - party = [[moss_transaction_party_label(tx), moss_transaction_party(tx)],
+      ["Kreditor", moss_code_name_cell([tx.supplier_account_number], moss_account_names)],
+      ["Verwendungszweck", tx.payment_reference, 2]]
+  - party << ["Belegnummer", tx.invoice_number] if tx.invoice_number.present? && !tx.is_a?(MossInvoice)
+  - party << ["Freigeber", tx.approver_name] if tx.approver_name.present?
+  - party << ["Eingereicht von", tx.submitted_by] if tx.submitted_by.present?
+  = render "shared/wsjrdp/kv_grid", rows: [head, dates, who, party].reject(&:empty?)
+
+  -# A top-up has no record page in Moss (MossTopUp#moss_record_url), so its
+  -# "Moss" cell shows the grid's muted dash -- exactly as the two rows below do
+  -# when there is no DATEV clearing booking and no WSJRDP account.
+  - links = [["Moss", tx.moss_record_url && link_to("In Moss öffnen", tx.moss_record_url, target: "_blank", rel: "noopener")]]
+  - links << ["DATEV-Ausgleich", tx.clearing_datev_booking_id && link_to("Buchung ##{tx.clearing_datev_booking_id}", booking_path(tx.clearing_datev_booking_id))]
+  - links << ["WSJRDP-Konto", tx.fin_account && link_to(tx.fin_account.to_s, wsjrdp_fin_account_path(tx.fin_account))]
+  .mt-3.pt-2.border-top
+    .booking-detail-label.text-muted.text-uppercase.mb-1 Verknüpfungen
+    = render "shared/wsjrdp/kv_grid", rows: [links]
+
+  - if tx.comment.present?
+    .mt-2
+      .booking-detail-label.text-muted.text-uppercase.mb-1 Kommentar
+      .small.text-break= tx.comment

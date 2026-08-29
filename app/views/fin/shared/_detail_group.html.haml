@@ -1,0 +1,60 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One group of fields of a finance detail, in one of the three layouts:
+-#    :list     a definition list in the form-like grid of the wagon's tx/ae
+-#              pages (WsjrdpFormHelper#form_like_labeled): one .row per field,
+-#              its labels lightened by .fin-detail-list (fin/shared/_detail_styles)
+-#    :compact  the dense label/value rows of an embedded detail pane
+-#    :grid     cells, with span: 2 for a wide one and align: :end for amounts
+-#  Value, help line, tooltip and the blank marker are the same in all three
+-#  (Fin::DetailHelper#fin_detail_content), so a layout never changes content.
+-#  A group without a single visible row renders nothing at all.
+-#
+-#  When `form` is present and a row is marked editable, both layouts render dual
+-#  content: a .fin-edit-display span (the formatted value) and a .fin-edit-input
+-#  span (the number_field inside an input-group with € suffix). The CSS toggle
+-#  on [data-fin-editing] shows one or the other.
+-#
+-#  Locals: record, ctx, section, layout, blank (the group's blank mode),
+-#          form (ActionView form builder or nil)
+- rows = fin_detail_rows(record, section, ctx, blank)
+- f = local_assigns[:form]
+- if rows.any?
+  - if section.title.present?
+    .booking-detail-label.text-muted.text-uppercase.mb-1= section.title
+  - case layout
+  - when :list
+    %dl.fin-detail-list.m-0.p-2.border-top
+      - rows.each do |row|
+        .row.mb-2
+          %dt.col-md-3.col-xl-2.text-md-end.text-muted{title: row.tooltip}= row.label
+          %dd.col-md-9.col-lg-8.col-xl-8.mw-63ch.mb-0.text-break<
+            - if row.editable && f
+              %span.fin-edit-display= fin_detail_content(row)
+              %span.fin-edit-input
+                = fin_detail_edit_field(f, row)
+            - else
+              = fin_detail_content(row)
+  - when :compact
+    %dl.row.small.mb-3
+      - rows.each do |row|
+        %dt.col-sm-3.col-lg-2.fw-normal.text-muted.mb-1{title: row.tooltip}= row.label
+        %dd.col-sm-9.col-lg-10.mb-1.text-break<
+          - if row.editable && f
+            %span.fin-edit-display= fin_detail_content(row)
+            %span.fin-edit-input
+              = fin_detail_edit_field(f, row)
+          - else
+            = fin_detail_content(row)
+  - when :grid
+    .row.g-3
+      - rows.each do |row|
+        - cols = (row.span == 2) ? "col-12 col-md-8 col-lg-6" : "col-6 col-md-4 col-lg-3"
+        %div{class: cols}
+          .booking-detail-label.text-muted.text-uppercase{title: row.tooltip}= row.label
+          .text-break{class: ("text-end" if row.align == :end)}= fin_detail_content(row)

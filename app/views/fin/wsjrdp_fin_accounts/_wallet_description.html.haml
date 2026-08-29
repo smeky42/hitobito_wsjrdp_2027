@@ -1,0 +1,60 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The "Beschreibung" cell of ONE wallet row (Fin::MossWalletHelper's
+-#  description cell renders this partial). Top to bottom:
+-#
+-#    1. the headline -- the payment's name, the kind's party, the status tags
+-#       (Fin::MossWalletHelper#moss_wallet_headline);
+-#    2. the Buchungstext of the row's levels, the transaction level without its
+-#       prefix (#moss_wallet_text_lines);
+-#    3. everything BELOW the texts, copied UNCHANGED from the camt statement
+-#       (_camt_statement): the parent levels' comments, the booking's own
+-#       comment, the linked Beitragsbuchungen, and the buttons that create or
+-#       propose such a link. Those are the actions this page exists for; they
+-#       stay in the row rather than moving into a detail.
+-#
+-#  Locals: booking (a MossBooking).
+%div= moss_wallet_headline(booking)
+= moss_wallet_text_lines(booking)
+- booking.parent_comments.each do |level, text|
+  %div
+    %div.fw-light.fst-italic= safe_join([content_tag(:span, "#{level}: ", class: "fw-light muted"), auto_link_escaped_multiline(text)])
+- if booking.comment.present?
+  %div
+    %div.fw-light.fst-italic= auto_link_escaped_multiline(booking.comment)
+- booking.accounting_entries.each do |ae|
+  %div
+    %span.fw-light.muted Person:
+    %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
+    %span.ae-linked
+      = " • Verknüpfte Buchung: #{link_to(ae.link_name, url_for(ae))}"
+- if (subject = booking.subject_without_accounting_entry).present?
+  %div
+    %span.fw-light.muted Person:
+    %span= link_to(subject.short_full_name_with_nickname, url_for(subject))
+  %div
+    = action_button("Erzeuge Buchung", "#{url_for(booking)}/create_accounting_entry",
+                    :plus, method: :post, remote: false,
+                    data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
+- if booking.accounting_entries.blank?
+  %div
+    - accounting_entries = booking.accounting_entries_for_subject_with_matching_amount
+    - if accounting_entries.size == 1
+      - entry = accounting_entries[0]
+      = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(booking)}/link_accounting_entry/#{entry.id}",
+                      :plus, method: :post, remote: false,
+                      data: { confirm: "Transaktion #{booking.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
+- if (subject_candidates = booking.subject_candidates).present?
+  - subject_candidates.each do |subject|
+    %div
+      = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(booking, subject),
+                      :plus, method: :post, remote: false,
+                      data: { confirm: "Transaktion #{booking.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
+      = action_button("Keine Verknüpfung mit #{subject.link_name}", disallow_link_subject_path(booking, subject),
+                      :trash, method: :post, remote: false,
+                      data: { confirm: "Verknüpfung von Transaktion #{booking.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })

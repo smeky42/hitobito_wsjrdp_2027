@@ -88,10 +88,119 @@ Rails.application.routes.draw do
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"
       end
-      resources :wsjrdp_fin_accounts, path: "acc", only: [:index, :show, :update]
+      resources :wsjrdp_fin_accounts, path: "acc", only: [:index, :show, :update] do
+        member do
+          # PRG target of the CNF filter builder on the Moss wallet's statement
+          # (Fin::WsjrdpFinAccountsController#apply) -- a member route because
+          # the filter belongs to ONE account's table.
+          post :apply
+        end
+      end
       resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]
       resources :wsjrdp_payment_plans, path: "payment_plans", only: [:index, :show, :update]
-      get :fin, path: "", to: "wsjrdp_fin_accounts#index"
+      # "Moss" section: overview at /fin/moss (own controller) + the transactions
+      # list at /fin/moss/transactions (own controller). See doc/navigation.md.
+      get :moss, path: "moss", to: "moss#index", as: "moss"
+      resources :moss_transactions, path: "moss/transactions", only: [:index, :show] do
+        collection do
+          post :apply # PRG target of the CNF filter builder
+        end
+      end
+      # The four kind tabs (Kartenzahlungen, Rechnungen, Erstattungen,
+      # Einzahlungen): the same transactions list pinned to one kind. The kind
+      # travels as a route default, the way hitobito's Anlässe / Kurse tabs
+      # share events#index -- so every tab has a path helper of its own
+      # (moss_invoices_path, apply_moss_invoices_path, ...) for Sheet::Fin::Moss.
+      # Fin::MossTransactionsController::KIND_TABS mirrors this map.
+      {card_transactions: "MossCardTransaction", reimbursements: "MossReimbursement",
+       invoices: "MossInvoice", top_ups: "MossTopUp"}.each do |slug, kind|
+        get "moss/#{slug}", to: "moss_transactions#index", kind: kind, as: "moss_#{slug}"
+        post "moss/#{slug}/apply", to: "moss_transactions#apply", kind: kind, as: "apply_moss_#{slug}"
+      end
+      # "Beiträge" section: its overview page at /fin/fees; the two lists it
+      # links to (person_fees, payment_plans) have their own routes above.
+      # See doc/navigation.md.
+      get :fees, path: "fees", to: "fees#index", as: "fees"
+      # "Controlling" section: still empty, one overview page at
+      # /fin/controlling. See doc/navigation.md.
+      get :controlling, path: "controlling", to: "controlling#index", as: "controlling"
+      # /fin is the finance overview page, linking to the sections.
+      get :fin, path: "", to: "overview#index"
+
+      # Buchhaltung (accounting) at /fin/bookkeeping: one resource controller
+      # per master-data entity plus the section overview.
+      get "bookkeeping", to: "bookkeeping#overview", as: "bookkeeping"
+      scope "bookkeeping" do
+        # Ledger accounts (Sachkonten) and personal accounts (Kreditoren /
+        # Debitoren) are keyed by their numeric DATEV account number.
+        resources :ledger_accounts, param: :number, only: [:index, :show],
+          constraints: {number: /\d+/} do
+          collection do
+            # Apply target of the generic CNF filter builder (PRG; see
+            # Fin::LedgerAccountsController#apply).
+            post :apply
+          end
+        end
+        # Cost-center numbers may contain LETTERS -- deliberately unconstrained.
+        resources :cost_centers, param: :number, only: [:index, :show, :update] do
+          collection do
+            # Apply target of the generic CNF filter builder (PRG; see
+            # Fin::CostCentersController#apply).
+            post :apply
+          end
+        end
+        resources :personal_accounts, param: :number, only: [:index, :show],
+          constraints: {number: /\d+/} do
+          collection do
+            # Apply target of the generic CNF filter builder (PRG; see
+            # Fin::PersonalAccountsController#apply).
+            post :apply
+          end
+        end
+        # Buchungsstapel (DATEV booking batch / Primanota) list and detail pages.
+        resources :booking_batches, only: [:index, :show] do
+          collection do
+            post :apply
+          end
+        end
+        # :update is the ONE endpoint for all manual associations of the booking
+        # detail view (person assign/clear, entry connect/unlink): each mini-form
+        # PATCHes a field subset of datev_booking (see BookingsController#update).
+        resources :bookings, only: [:index, :show, :update] do
+          collection do
+            # Apply target of the generic CNF filter builder (PRG; see
+            # Fin::BookingsController#apply).
+            post :apply
+          end
+          member do
+            # JSON source for the entry autocomplete (same-amount unlinked
+            # entries) in the booking detail view.
+            get :query_entries
+          end
+        end
+      end
+
+      # Abstimmung (reconciliation) -- matching accounting entries with DATEV
+      # bookings. Finanzen nav item next to Beiträge / Buchhaltung.
+      get "reconciliation", to: "reconciliation#overview", as: "reconciliation"
+      get "reconciliation/participant_fees", to: "reconciliation#participant_fees",
+        as: "reconciliation_participant_fees"
+      post "reconciliation/participant_fees/apply", to: "reconciliation#apply_participant_fees",
+        as: "apply_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect", to: "reconciliation#connect_participant_fees",
+        as: "connect_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect_single", to: "reconciliation#connect_single",
+        as: "connect_single_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect_entries", to: "reconciliation#connect_participant_entries",
+        as: "connect_entries_reconciliation_participant_fees"
+      post "reconciliation/participant_fees/connect_single_entry", to: "reconciliation#connect_single_entry",
+        as: "connect_single_entry_reconciliation_participant_fees"
+      # DEVELOPMENT ONLY: reset every DATEV booking's links, to replay the
+      # reconciliation while testing. The route does not exist in production.
+      if Rails.env.development?
+        post "reconciliation/participant_fees/reset_links", to: "reconciliation#reset_links",
+          as: "reset_links_reconciliation_participant_fees"
+      end
     end
 
     namespace "contingent" do

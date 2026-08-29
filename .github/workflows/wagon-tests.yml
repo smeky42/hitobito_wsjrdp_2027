@@ -59,7 +59,7 @@ jobs:
         run: |
           bundle exec rake app:rubocop
 
-  # Client-side helper tests (doc/url_encoding.md §6). No core, no bundle, no DB:
+  # Client-side helper tests (doc/wsjrdp/url_encoding.md §6). No core, no bundle, no DB:
   # the suites use only node's built-in test runner, so this job is seconds long.
   # Without it the JS half of the mandatory URL-encoding helpers would rest on
   # developer discipline alone, while its Ruby twin runs in wagon_specs.

@@ -1,0 +1,291 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  THE shared table widget. One row = one clickable summary row + a per-row
+-#  expandable detail row (Bootstrap collapse; several open at once). Every extra
+-#  element is optional and off by default, so a bare call renders just a table;
+-#  turning options on adds a filter, a summary line, paging, a column hamburger,
+-#  row selection, sortable headers, etc. Several independent tables coexist on
+-#  one page via distinct `prefix`es. FULL GUIDE: doc/wsjrdp/expandable_table.md.
+-#
+-#  Core locals:
+-#    state     -- the controller-resolved Wsjrdp::TableState (REQUIRED): param
+-#                 namespace, sort, visible columns, page size, page, open rows,
+-#                 filter and nesting level. The widget reads the state, never
+-#                 params (D8.4 of doc/plans/2026-09_expandable-table-state.md).
+-#    columns   -- [{ key:, label:, cell: ->(row){..}, numeric:, width:,
+-#                    sort_key:, css_class:, condensed_label:, abbr: }] (FULL set)
+-#    rows      -- the collection (a Kaminari page when paginating, else any list)
+-#    row_key   -- ->(row){ String } unique key (URL param + DOM id + selection)
+-#    detail     -- ->(row){ html }   server-rendered detail  (OR)
+-#    detail_src -- ->(row){ url }     lazy-loaded detail (turbo frame)
+-#    detail_top / detail_extra -- ->(row){ html } injected at the top / bottom
+-#                 of each detail (see fin/bookings/_booking_detail for the slots)
+-#    detail_page  -- ->(row){ path } the primary "Detailseite" double link of the
+-#                 detail's header line [t.detail_page]
+-#    detail_links -- [{label:, icon:, title:, title_new_tab:, url: ->(row){..}}]
+-#                 further double links, LEFT of the primary one [t.detail_link]
+-#    id_prefix -- DOM id prefix (default: the state's prefix, else "exp")
+-#    sub_rows  -- ->(row){ [sub, ..] } the rows THIS row brings with it, drawn
+-#                 right after it inside the same tbody.exp-group
+-#    sub_cell  -- ->(sub, col){ html } one sub-row cell (required with sub_rows)
+-#    sub_row_class / group_class -- ->(sub){ css } / ->(row){ css }
+-#  Optional feature locals (see the guide): multi_sort, pagination, per_options,
+-#    columns_menu, summary, selection, filter, condensed.
+- state = local_assigns.fetch(:state)
+- prefix = state.prefix
+- id_prefix = local_assigns.fetch(:id_prefix, prefix.presence || "exp")
+- detail = local_assigns.fetch(:detail, nil)
+- detail_src = local_assigns.fetch(:detail_src, nil)
+- detail_top = local_assigns.fetch(:detail_top, nil)
+- detail_extra = local_assigns.fetch(:detail_extra, nil)
+-# The detail's header line (shared/wsjrdp/_detail_links): right-aligned double
+-# links, the primary "Detailseite" one rightmost. It is the ONLY place a row
+-# links to its own page -- the summary row carries no action cell.
+- detail_page = local_assigns.fetch(:detail_page, nil)
+- detail_links = Array(local_assigns.fetch(:detail_links, nil))
+- has_detail_links = !(detail_page.nil? && detail_links.empty?)
+-# The per-row detail is optional like every other element: a table that declares
+-# neither `detail` nor `detail_src` (the Moss wallet -- its rows show everything
+-# its detail page would repeat) still gets a detail row when it declares links,
+-# holding the header line alone. Without both it gets NO detail row, and its
+-# rows are not disclosure controls, so they carry neither role="button" nor the
+-# collapse trigger.
+- expandable = !(detail.nil? && detail_src.nil?) || has_detail_links
+- detail_level = state.level
+- param = state.param_name(:open)
+- open_keys = state.open_keys
+- condensed = local_assigns.fetch(:condensed, false)
+- all_columns = local_assigns.fetch(:columns)
+- columns_menu = local_assigns.fetch(:columns_menu, false)
+-# extra_columns: host-injected columns appended after the (menu-managed) ones
+-# and NOT part of the column picker -- e.g. the reconciliation match-proposal
+-# column. Always shown.
+- extra_columns = Array(local_assigns.fetch(:extra_columns, nil))
+-# Visible columns + their order: resolved by the controller (the <prefix>c param
+-# on top of the policy's default), matched to these column configs by key. The
+-# controller also says which of the dataset's columns THIS table has and what it
+-# calls them (cols: exclude: / labels:), so an excluded column is neither
+-# rendered here nor offered in the picker below.
+- columns = et_visible_columns(state, all_columns) + extra_columns
+-# Sort: one <prefix>s param holds the column(s) + direction(s). Clicking a header
+-# makes it primary and cycles asc/desc/off. When multi_sort is false, only one
+-# sort key is shown and kept (single-sort on the same infrastructure). The list
+-# is already resolved (including the policy's default sort), so the arrows show
+-# exactly what the controller ordered by.
+- multi_sort = local_assigns.fetch(:multi_sort, true)
+- sort_list = multi_sort ? state.sort_list : state.sort_list.first(1)
+- display_sort_list = sort_list
+- selection = local_assigns.fetch(:selection, nil)
+-# on_filter_change: :clear (default) drops a remembered selection when the
+-# filter changes. :narrow (keep the still-matching rows) is a planned option --
+-# accepted here but not implemented yet.
+- raise NotImplementedError, "expandable_table selection on_filter_change: :narrow is not implemented yet" if selection && selection[:on_filter_change].to_s == "narrow"
+- pagination = local_assigns.fetch(:pagination, nil)
+-# per_options is set by t.paging (with the builder's default list when the host
+-# names none), so its presence IS "this table has paging". The two lines differ:
+-# below the table the page-size select shows even on a single page, above it
+-# only when there is more than one page -- see the paging partial.
+- per_options = local_assigns.fetch(:per_options, nil)
+- summary = local_assigns.fetch(:summary, nil)
+- filter = local_assigns.fetch(:filter, nil)
+-# Sub-rows: a row may bring rows of its own. They are drawn right after it,
+-# inside the same tbody.exp-group, through the table's VISIBLE columns -- so a
+-# column hidden in the menu is hidden in every row of the group. They have no
+-# detail of their own: on an expandable table they carry the head row's
+-# disclosure attributes and toggle the group's ONE detail. Nothing about them
+-# reaches Wsjrdp::ExpandableTableRows or the state (sorting, paging, the filter,
+-# the selection, the open-rows param and the summary all count PARENT rows).
+- sub_rows = local_assigns.fetch(:sub_rows, nil)
+- sub_cell = local_assigns.fetch(:sub_cell, nil)
+- sub_row_class = local_assigns.fetch(:sub_row_class, nil)
+- group_class = local_assigns.fetch(:group_class, nil)
+-# Same check as Wsjrdp::ExpandableTableBuilder#to_locals, for the (rare) host
+-# that renders this partial without the builder.
+- raise ArgumentError, "expandable_table declares sub_rows but no sub_cell -- a sub-row's cells are rendered by sub_cell(sub, col)" if sub_rows && sub_cell.nil?
+- lead_cols = (selection ? 1 : 0)
+- cols_count = lead_cols + columns.size
+- min_rem = columns.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 } + (selection ? 2.0 : 0)
+- paging_top_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :top) if per_options
+- paging_bottom_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :bottom) if per_options
+-# The filter has its OWN two lines above the toolbar (the filter line and the
+-# pane between it and the toolbar), so it does not make a toolbar by itself.
+- has_toolbar = columns_menu || paging_top_html.present? || summary || (selection && selection[:all_param])
+
+= render "shared/wsjrdp/expandable_table_styles"
+= render "shared/wsjrdp/row_click_guard"
+- if selection
+  = render "shared/wsjrdp/table_selection_js"
+
+-# The filter: a fixed LINE (presets + applied chips + the pane's toggle),
+-# then the pane, then the toolbar, then the table. Both lines are there in both
+-# states -- opening the pane only makes it appear BETWEEN them, so nothing above
+-# the pointer moves.
+- if filter
+  = render "shared/wsjrdp/collapsible_panes"
+  - filter_disabled = filter.fetch(:disabled, false)
+  -# Presets are declared EITHER in the controller's policy OR in the view
+  -# (declaring both raises in Wsjrdp::ExpandableTableBuilder). Both end up in
+  -# the same Wsjrdp::TableState::FilterPreset object; resolving them HERE, once,
+  -# gives the line (which renders the bar) and the builder (which marks the
+  -# matching slots) exactly the same list.
+  - declared_presets = Array(filter[:presets])
+  -# A view-declared GROUP resolves to one preset per member (state.filter.preset
+  -# returns the Array), a slot preset to one -- hence the flat_map.
+  - filter_presets = declared_presets.any? ? declared_presets.flat_map { |p| Array(state.filter.preset(**p.to_h.symbolize_keys)) } : state.filter.presets
+  = render "shared/wsjrdp/filtering/line", state: state,
+    presets: filter_presets, disabled: filter_disabled
+  = render "shared/wsjrdp/filtering/builder", state: state,
+    apply_url: filter[:apply_url],
+    presets: filter_presets,
+    condensed_locked: filter.fetch(:condensed_locked, false),
+    disabled: filter_disabled
+
+-# The remembered selection is keyed per page AND per table, so two pages that
+-# happen to share a prefix / id_prefix never see each other's selection.
+- selection_key = selection && (selection[:remember_key] || "#{state.store_key}:#{prefix.presence || id_prefix}")
+.bk-select-scope{ data: (selection ? {select_key: selection_key, filter_sig: (selection[:filter_sig] || state.wire(:filter)), select_name: selection[:name], select_form: selection[:form], on_filter_change: selection.fetch(:on_filter_change, "clear").to_s} : {}) }
+  - if has_toolbar
+    -# Left: summary, paging and the (optional) select-all bar. Right: the column
+    -# hamburger, bottom-aligned so it sits at the bottom of a tall left block.
+    -# Below a filter the toolbar keeps a small gap to the line/pane above it
+    -# (.exp-toolbar-below-filter).
+    .d-flex.flex-wrap.justify-content-between.align-items-end.gap-2.mb-2{ class: ("exp-toolbar-below-filter" if filter) }
+      .d-flex.flex-column.gap-1.flex-grow-1{ style: "min-width: 0" }
+        - if summary
+          .text-muted.small= summary
+        - if paging_top_html.present?
+          = paging_top_html
+        - if selection && selection[:all_param]
+          .bk-select-bar.small{ style: "display: none", data: { total: selection[:total_count] } }
+            %span.bk-select-info.text-muted
+            %a.bk-select-all-pages.ms-2{ href: "#" }
+            %a.bk-select-clear.ms-2{ href: "#" } Auswahl aufheben
+            %input{ type: "hidden", name: selection[:all_param], value: "", form: selection[:form], class: "bk-select-all-field" }
+      -# Right: the table's controls as one joined group -- only the column
+      -# hamburger; the filter toggle sits in the filter line above
+      -# (shared/wsjrdp/filtering/_line), where it does not move when the pane
+      -# opens. The group stays, so a further toolbar control would join it.
+      - if columns_menu
+        .exp-tools{ role: "group", "aria-label": "Tabelle einstellen" }
+          - menu = capture do
+            = render "shared/wsjrdp/expandable_table_columns_form", state: state, all_columns: all_columns
+          = render "shared/wsjrdp/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
+
+  .table-responsive.exp-table-wrap{ class: ("bk-condensed-wrap" if condensed), data: { exptbl: id_prefix, open_param: param } }
+    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: ("bookings-table-condensed" if condensed), style: (condensed ? nil : "min-width: #{min_rem}rem") }
+      %thead
+        %tr
+          - if selection
+            %th.bk-select-cell{ style: "width: 2rem" }
+              %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+          - columns.each do |col|
+            - label = (condensed && col[:condensed_label]) || col[:label]
+            %th.text-nowrap.exp-col{ class: [col[:css_class], ("text-end" if col[:numeric])].compact, style: ("width: #{col[:width]}" if col[:width] && !condensed), data: { colkey: col[:key] } }
+              - if col[:sort_key] && !state.fixed?(:sort)
+                - dir, rank = et_sort_state(display_sort_list, col[:sort_key].to_s)
+                = link_to et_sort_toggle_url(state, col[:sort_key].to_s, multi: multi_sort), class: ["exp-sort text-reset text-decoration-none", ("exp-sort-active" if dir)], aria: { sort: (dir ? "#{dir}ending" : nil) } do
+                  = label
+                  - if dir
+                    %span.exp-sort-caret.exp-sort-on{ "aria-hidden": "true" }= (dir.to_s == "asc") ? "↑" : "↓"
+                    - if multi_sort && display_sort_list.size >= 2
+                      %span.exp-sort-rank.text-muted{ "aria-hidden": "true" }= rank
+                  - else
+                    %span.exp-sort-caret{ "aria-hidden": "true" } ⇅
+              - else
+                -# A fixed sort (D8.8) is rendered without a link -- as a
+                -# courtesy, not as the protection: the ORDER BY comes from the
+                -# state either way.
+                = label
+                - if col[:sort_key] && (fixed_dir = et_sort_state(display_sort_list, col[:sort_key].to_s).first)
+                  %span.exp-sort-caret.exp-sort-on{ "aria-hidden": "true" }= (fixed_dir.to_s == "asc") ? "↑" : "↓"
+      - if rows.blank?
+        %tbody
+          %tr
+            %td.text-muted.text-center.py-4{ colspan: cols_count } Keine Einträge gefunden.
+      -# ONE tbody per row: the row, its sub-rows and its detail row are one
+      -# GROUP, which is what lets the CSS separate the rows inside a group from
+      -# the border that ends it. A table without sub-rows renders the same
+      -# group, so there is one structure to style and to read.
+      - rows.each do |row|
+        - key = row_key.call(row).to_s
+        - detail_id = "#{id_prefix}-#{key}"
+        - is_open = open_keys.include?(key)
+        -# The disclosure half of the group's rows -- the head row and each of
+        -# its sub-rows carry it, so every one of them toggles the same detail.
+        -# Built as a Hash so a table WITHOUT a detail emits none of these
+        -# attributes at all (a nil inside the literal would still render
+        -# role='' / tabindex='').
+        - disclosure = expandable ? { role: "button", tabindex: 0,
+          data: { "bs-toggle": "collapse", "bs-target": "##{detail_id}" },
+          aria: { expanded: is_open.to_s, controls: detail_id } } : {}
+        %tbody.exp-group{ class: (group_class && group_class.call(row)) }
+          %tr.exp-row{ { class: (local_assigns[:row_class] && local_assigns[:row_class].call(row)) }.merge(disclosure) }
+            - if selection
+              %td.bk-select-cell
+                - if !selection[:enabled] || selection[:enabled].call(row)
+                  %input.form-check-input.bk-select-check{ type: "checkbox", name: selection[:name],
+                    value: selection[:id_field].call(row), form: selection[:form], "aria-label": "Zeile auswählen",
+                    data: (selection[:row_data] ? selection[:row_data].call(row) : {}) }
+            - columns.each do |col|
+              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= col[:cell].call(row)
+          - Array(sub_rows && sub_rows.call(row)).each do |sub|
+            -# A sub-row is a disclosure control like the row it belongs to: the
+            -# SAME collapse target, so it opens and closes the group's one
+            -# detail, and Bootstrap mirrors aria-expanded onto every trigger of
+            -# that detail. A link or a button inside a sub-row keeps its own
+            -# click (shared/wsjrdp/_row_click_guard).
+            %tr.exp-sub-row{ { class: (sub_row_class && sub_row_class.call(sub)) }.merge(disclosure) }
+              -# The selection belongs to the PARENT row: the sub-row gets the
+              -# cell so the columns keep lining up, and nothing in it.
+              - if selection
+                %td.bk-select-cell
+              - columns.each do |col|
+                %td.exp-col.exp-sub-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= sub_cell.call(sub, col)
+          - if expandable
+            -# The detail is the group's LAST row: it opens under the whole
+            -# group, sub-rows included. exp-open marks the open one for the CSS
+            -# (shared/wsjrdp/_expandable_table_js keeps it in sync on toggle) --
+            -# with sub-rows in between, the detail row is no longer the open
+            -# row's next sibling.
+            %tr.exp-detail-row{ class: ("exp-open" if is_open) }
+              %td.p-0{ colspan: cols_count }
+                .collapse.exp-detail{ id: detail_id, class: ("show" if is_open), data: { "exp-key": key } }
+                  - links_html = has_detail_links ? render("shared/wsjrdp/detail_links", row: row, detail_page: detail_page, detail_links: detail_links) : nil
+                  - if detail_src
+                    -# The header line stays OUTSIDE the turbo frame, above it: it
+                    -# is there the moment the row opens, while the frame still
+                    -# shows "Wird geladen …", and it survives the frame's later
+                    -# replacement. .exp-detail-linkbar repeats the padding the
+                    -# direct detail's .booking-detail.p-3 gives it, so the line
+                    -# sits in the same place in both modes.
+                    - if links_html.present?
+                      .booking-detail.exp-detail-linkbar= links_html
+                    -# The detail's nesting level travels in the frame URL so the
+                    -# lazily-rendered partial knows it sits inside a table row.
+                    - src = detail_src.call(row)
+                    - src = "#{src}#{src.include?("?") ? "&" : "?"}#{state.param_name(:level)}=#{detail_level + 1}"
+                    = turbo_frame_tag "bkframe-#{id_prefix}-#{key}", src: src, loading: "lazy" do
+                      .booking-detail.p-3.text-center.text-muted.small Wird geladen …
+                  - elsif detail
+                    .booking-detail.p-3
+                      = links_html
+                      - if detail_top && (top_html = detail_top.call(row)).present?
+                        .mb-3= top_html
+                      -# Detail lambdas may take (row) or (row, table_context).
+                      = (detail.arity == 1) ? detail.call(row) : detail.call(row, Wsjrdp::TableContext.for_detail(detail_level, lazy: false))
+                      - if detail_extra && (extra_html = detail_extra.call(row)).present?
+                        .mt-3.pt-2.border-top= extra_html
+                  - elsif links_html.present?
+                    -# Links only (the Moss wallet): the detail row is the slim
+                    -# header-line bar, nothing below it.
+                    .booking-detail.exp-detail-linkbar.exp-detail-linkbar-only= links_html
+
+  - if paging_bottom_html.present?
+    .mt-2= paging_bottom_html
+
+= render "shared/wsjrdp/expandable_table_js"

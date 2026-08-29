@@ -46,6 +46,16 @@ de:
       group/extern/member:
         one: Extern
 
+
+      ### FINANZEN
+
+      wsjrdp_personal_account:
+        one: Kreditor
+        other: Kreditoren
+      wsjrdp_cost_center:
+        one: Kostenstelle
+        other: Kostenstellen
+
     alert:
       only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
 
@@ -374,6 +384,99 @@ de:
         cdtr_address: Kreditor Adresse
         creditor_id: Gläubiger-Identifikationsnummer
 
+      # de.activerecord.attributes.wsjrdp_personal_account (Kreditor)
+      wsjrdp_personal_account:
+        number: Nummer
+        name: Name
+        short_name: Kurzname
+        aliases: Aliasse
+        description: Beschreibung
+        comment: Kommentar
+        represented_person: Vertretene Person
+        moss_status: Moss Status
+        moss_account_holder_name: Kontoinhaber
+        iban: IBAN
+        bic: BIC
+        moss_vat_id: USt-IdNr.
+        moss_default_payment_method: Zahlungsart
+        moss_default_ledger_account_number: Standard-Konto
+        moss_default_cost_center_number: Standard-Kostenstelle
+        moss_default_sphere_number: Standard-Sphäre
+        moss_default_team_name: Team
+        # the Rechnungsadresse on one line, composed by Fin::PersonalAccountsHelper
+        address: Adresse
+
+      # de.activerecord.attributes.wsjrdp_cost_center (Kostenstelle)
+      wsjrdp_cost_center:
+        number: Nummer
+        name: Bezeichnung
+        short_name: Kurzname
+        moss_status: Moss Status
+        manager_name: Verantwortlich (Name)
+        # the belongs_to :manager, linked by Fin::CostCentersHelper
+        manager: Verantwortliche Person
+        budget_2025: Budget 2025
+        budget_2026: Budget 2026
+        budget_2027: Budget 2027
+        budget_2028: Budget 2028
+        explicit_total_budget: Gesamtbudget (explizit)
+        effective_total_budget: Gesamtbudget
+        description: Beschreibung
+        comment: Kommentar
+
+      # de.activerecord.attributes.wsjrdp_ledger_account (Sachkonto)
+      wsjrdp_ledger_account:
+        number: Nummer
+        name: Bezeichnung
+        short_name: Kurzname
+        account_kind: Kontoart
+        moss_status: Moss Status
+        description: Beschreibung
+        comment: Kommentar
+
+      # de.activerecord.attributes.datev_booking (Buchung)
+      datev_booking:
+        booking_date: Buchungsdatum
+        service_date: Leistungsdatum
+        posting_text: Buchungstext
+        base_amount: Betrag
+        account_number: Konto
+        offsetting_account_number: Gegenkonto
+        cost_center_number: Kostenstelle
+        secondary_cost_center_number: Sekundäre Kostenstelle
+        is_unit_budget: Unit-Budget
+        sub_cost_center_number: Unter-Kostenstelle
+        sphere_number: Sphäre
+        document_field_1: Belegfeld 1
+        document_field_2: Belegfeld 2
+        buchungs_guid: Buchungs-GUID
+        debit_credit: Soll/Haben
+        base_currency: Währung
+        transaction_amount: Fremdwährungsbetrag
+        transaction_currency: Fremdwährung
+        exchange_rate: Wechselkurs
+
+      # de.activerecord.attributes.datev_booking_batch (Buchungsstapel)
+      datev_booking_batch:
+        label: Bezeichnung
+        period_from: Zeitraum Beginn
+        period_to: Zeitraum Ende
+        consultant_number: Berater
+        client_number: Mandant
+        financial_year_start: Wirtschaftsjahr-Beginn
+        ledger_account_number_length: Sachkontenlänge
+        datev_chart_of_accounts_number: Kontenrahmen
+        base_currency: Währung
+        booking_type: Buchungstyp
+        origin_indicator: Herkunft (HK)
+        primanota_number: Primanota-Nr.
+        is_finalized: Festschreibung
+        datev_created_at: DATEV-Erstellung
+        source_file: Quelldatei
+        import_export: Import/Export
+        description: Beschreibung
+        comment: Kommentar
+
       # de.activerecord.attributes.wsjrdp_fin_account
       wsjrdp_fin_account:
         account_identification: Konto
@@ -653,10 +756,133 @@ de:
       ul_bar_label: "UL: %{count} Units"
 
   fin:
+    nav:
+      overview: "Übersicht"
+      accounts: "Konten & Wallets"
+      fees: "Beiträge"
+      moss: "Moss"
+      accounting: "Buchhaltung"
+      reconciliation: "Abstimmung"
+      controlling: "Controlling"
+    # One sentence per area, shown on its card on the Finanzen entry page
+    # (/fin): what the area is for. The keys are Fin::OverviewHelper::AREAS,
+    # the words of the heading above stay in fin.nav.
+    # The key figures on the /fin cards (Fin::OverviewHelper#fin_area_figures).
+    overview:
+      figures:
+        accounts: "Konten"
+        camt_transactions: "Kontoauszug-Umsätze"
+        camt_last_value_date: "Letzter Umsatz"
+        accounting_entries: "Beitragsbuchungen"
+        accounting_entries_unlinked: "ohne DATEV-Buchung"
+        moss_transactions_bookings: "Transaktionen · Buchungen"
+        moss_last_payment_date: "Letzte Transaktion"
+        moss_clearing_unlinked: "DATEV-Ausgleich offen"
+        datev_bookings_in_batches: "Buchungen in Stapeln"
+        datev_last_booking_date: "Letzter Beleg"
+        cost_centers_personal_accounts: "Kostenstellen · Kreditoren"
+        reconciliation_entries_unlinked: "Beitragsbuchungen ohne DATEV-Buchung"
+        reconciliation_moss_unlinked: "Moss-Buchungen ohne DATEV-Buchung"
+        none: "Noch keine Kennzahlen."
+    areas:
+      accounts:
+        purpose: "Die Konten und Wallets des Kontingents."
+      fees:
+        purpose: "Beiträge und Ratenpläne der Teilnehmenden."
+      moss:
+        purpose: "Kartenzahlungen, Erstattungen, Rechnungen und Einzahlungen aus den Moss-Exporten, mit Ausgaben und Buchungen."
+      accounting:
+        purpose: "DATEV-Buchungen und Stammdaten."
+      reconciliation:
+        purpose: "Beitragsbuchungen und DATEV-Buchungen einander zuordnen, Vorschläge prüfen, Verknüpfungen setzen."
+      controlling:
+        purpose: "Auswertungen und Kennzahlen."
     tabs:
       accounts: "Konten"
       person_fees: "Personen"
       plans: "Ratenpläne"
+      overview: "Übersicht"
+      ledger_accounts: "Sachkonten"
+      personal_accounts: "Kreditoren"
+      cost_centers: "Kostenstellen"
+      suppliers: "Kreditoren"
+      bookkeeping: "Buchhaltung"
+      booking_batches: "Buchungsstapel"
+      bookings: "Buchungen"
+      participant_fees: "TN-Beiträge"
+      transactions: "Transaktionen"
+      # The Moss kind tabs (Fin::MossTransactionsController::KIND_TABS): the
+      # plural of fin.moss.kinds.
+      card_transactions: "Kartenzahlungen"
+      invoices: "Rechnungen"
+      reimbursements: "Erstattungen"
+      top_ups: "Einzahlungen"
+    account_kind:
+      BANK: "Bank"
+      TRANSIT: "Geldtransit"
+      CLEARING: "Verrechnung"
+      LIABILITY: "Verbindlichkeit"
+      CREDITOR: "Kreditor"
+      INCOME: "Ertrag"
+      EXPENSE: "Aufwand"
+      EQUITY: "Eigenkapital"
+      UNKNOWN: "Unbekannt"
+    status:
+      active: "Aktiv"
+      deactivated: "Deaktiviert"
+      soft_deleted: "Gelöscht"
+    # The Kreditoren list collapses the Moss status to these two values: an
+    # account Moss does not know (moss_status NULL) counts as inaktiv. Lower
+    # case, because they appear as a table cell value and as filter options.
+    moss_status:
+      active: "aktiv"
+      deactivated: "inaktiv"
+    # The detail-partial kit (doc/fin/detail_partials.md): the value side of a
+    # field the blank mode :unset keeps visible (Fin::DetailValue::BLANK_MODES),
+    # and the summary of the one collapsible raw area of a detail.
+    detail:
+      unset: "nicht gesetzt"
+      raw_title: "Rohdaten"
+    # debit_credit is stored canonically English (D/C); shown as the German
+    # abbreviations S/H (Soll/Haben) in the booking detail view.
+    debit_credit:
+      D: "S"
+      C: "H"
+    moss:
+      # The four kinds of a Moss transaction (the STI types of moss_transactions).
+      kinds:
+        MossCardTransaction: "Kartenzahlung"
+        MossInvoice: "Rechnung"
+        MossReimbursement: "Erstattung"
+        MossTopUp: "Einzahlung"
+      # The SHORT word of the same kind, used by the kind chip in a table row
+      # (Fin::MossTransactionsHelper#moss_kind_chip). Tabs and tiles keep the
+      # longer words above; only the chip abbreviates, because it shares its
+      # row with the amount and the description.
+      kind_chips:
+        MossCardTransaction: "Karte"
+        MossInvoice: "Rechnung"
+        MossReimbursement: "Erstattung"
+        MossTopUp: "Einzahlung"
+      # One sentence per kind, shown as the chip's tooltip: what the kind means
+      # for the wallet balance -- the chip word alone does not say who pays whom.
+      kind_hints:
+        MossCardTransaction: "Zahlung mit einer Moss-Karte; der Betrag wird der Wallet belastet."
+        MossInvoice: "Lieferantenrechnung, aus der Wallet an den Kreditor bezahlt."
+        MossReimbursement: "Auslagen einer Person, aus der Wallet an sie ausgezahlt."
+        MossTopUp: "Aufladung der Wallet vom Vereinskonto (Geldtransit 13720 → Moss-Konto 36100)."
+      # A top-up has no Buchungstext worth showing; its second line in the
+      # wallet list is this fixed account chain instead (Geldtransit -> Moss).
+      top_up_line: "Geldtransit 13720 → Moss-Konto 36100"
+      # The expense rows of a reimbursement in the transactions list
+      # (Fin::MossExpenseRowsHelper): the two links of a group whose expenses
+      # go beyond the cap -- the rest row reveals the remaining ones, the last
+      # row of the opened group folds them away again.
+      expense_rows:
+        show_more:
+          one: "%{count} weitere Ausgabe anzeigen"
+          other: "%{count} weitere Ausgaben anzeigen"
+        collapse: "einklappen"
 
   contingent:
     tabs:

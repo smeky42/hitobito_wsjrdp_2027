@@ -135,7 +135,8 @@ module ContractHelper
 
     def format_cents_de(cents, currency = "EUR", delimiter: ".", zero_cents: ",—", space: " ", format: nil)
       return nil if cents.blank?
-      currency = "€" if currency == "EUR"
+      # The same symbol map the money format of the Finanzen lists uses.
+      currency = Fin::MoneyHelper.currency_symbol(currency)
       format = "%n#{space}%u" if format.blank?
       number = BigDecimal(cents) / BigDecimal(100)
       number_to_currency(number, separator: ",", delimiter: delimiter, unit: currency, format: format).sub(",00", zero_cents)

@@ -8,10 +8,10 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Sheet
-  class Fin::WsjrdpFin < Base
+  class Fin::Accounts < Base
     class Fin::WsjrdpFinAccount < Base
       class_attribute :always_render_parent
-      self.parent_sheet = Sheet::Fin::WsjrdpFin
+      self.parent_sheet = Sheet::Fin::Accounts
       self.always_render_parent = true
 
       def title

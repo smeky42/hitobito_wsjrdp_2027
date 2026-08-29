@@ -1,138 +1,21 @@
-:css
-  .amount {
-    text-align: right;
-    padding-right: 12px !important;
-  }
-  .info-col {
-    padding-left: 0.25rem !important;
-    padding: 0;
-  }
-  .ae-linked {
-    color: #00a030;
-  }
-
-#main.row
-  %p
-    %a{ href: return_url} Zurück
-  %table.table.table-striped.table-sm.table-custom
-    %thead
-      %tr
-        %th Valuta
-        %th.amount Betrag
-        %th Beschreibung
-        %th
-    %tbody
-      %tr
-        %td
-        %td.amount= @wsjrdp_fin_account.closing_balance_eur_display
-        %td Aktuelles Saldo
-        %td
-      - ordered_transactions.each do |tx|
-        - if tx.respond_to?(:return_reason) && tx.return_reason.present?
-          - return_msg = "#{Settings.return_debit_status[tx.return_status]}: Retoure mit Rückgabe-Grund #{tx.return_reason}"
-        - else
-          - return_msg = ""
-        %tr
-          %td= tx.value_date
-          %td.amount
-            - if tx.respond_to?(:original_currency) && (tx.currency != tx.original_currency)
-              %span.fw-semibold(style="color:var(--bs-indigo);")= tx.amount_eur_display
-            - else
-              %span= tx.amount_eur_display
-          %td
-            - if return_msg.present?
-              - if tx.return_status == "in_review"
-                %div.fw-semibold(style="color:var(--bs-danger);")= return_msg
-              - elsif tx.return_status == "planned"
-                %div.fw-semibold(style="color:var(--bs-indigo);")= return_msg
-              - elsif tx.return_status == "depreciated" || tx.return_status == "partially_depreciated"
-                %div(style="color:var(--bs-primary);")= return_msg
-              - elsif tx.return_status == "paid"
-                %div(style="color:var(--bs-secondary);")= return_msg
-              - else
-                %div= return_msg
-            -# A Moss booking: one line per level (payment, receipt, split), each
-            -# the level's name, then its Buchungstext. A camt transaction keeps
-            -# its description and note.
-            - if tx.respond_to?(:text_lines)
-              - tx.text_lines.each do |level, name, text|
-                %div= moss_text_line(level, name, text)
-            - else
-              %div= html_escape_multiline(tx.description)
-              - if tx.respond_to?(:note) && tx.note.present?
-                %div
-                  %div.fst-italic= auto_link_escaped_multiline(tx.note)
-            - if tx.respond_to?(:parent_comments)
-              - tx.parent_comments.each do |level, text|
-                %div
-                  %div.fw-light.fst-italic= safe_join([content_tag(:span, "#{level}: ", class: "fw-light muted"), auto_link_escaped_multiline(text)])
-            - if tx.comment.present?
-              %div
-                %div.fw-light.fst-italic= auto_link_escaped_multiline(tx.comment)
-            - tx.accounting_entries.each do |ae|
-              %div
-                %span.fw-light.muted Person:
-                %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
-                %span.ae-linked
-                  = " • Verknüpfte Buchung: #{link_to(ae.link_name, url_for(ae))}"
-            - if (subject = tx.subject_without_accounting_entry).present?
-              %div
-                %span.fw-light.muted Person:
-                %span= link_to(subject.short_full_name_with_nickname, url_for(subject))
-              %div
-                = action_button("Erzeuge Buchung", "#{url_for(tx)}/create_accounting_entry",
-                                :plus, method: :post, remote: false,
-                                data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
-            - if tx.accounting_entries.blank?
-              %div
-                - accounting_entries = tx.accounting_entries_for_subject_with_matching_amount
-                - if accounting_entries.size == 1
-                  - entry = accounting_entries[0]
-                  = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(tx)}/link_accounting_entry/#{entry.id}",
-                                  :plus, method: :post, remote: false,
-                                  data: { confirm: "Transaktion #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
-            - if tx.respond_to?(:subject_candidates) && (subject_candidates = tx.subject_candidates).present?
-              - subject_candidates.each do |subject|
-                %div
-                  = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(tx, subject),
-                                  :plus, method: :post, remote: false,
-                                  data: { confirm: "Transaktion #{tx.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
-                  = action_button("Keine Verknüpfung mit #{subject.link_name}", disallow_link_subject_path(tx, subject),
-                                  :trash, method: :post, remote: false,
-                                  data: { confirm: "Verknüpfung von Transaktion #{tx.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })
-          %td.info-col
-            %a{href: url_for(tx), target: "_blank"}
-              %span.fa.fa-info-circle(aria-label="info" role="img")
-      %tr
-        %td
-        %td.amount
-          = fin_account.opening_balance_eur_display
-        %td Eröffnungs-Saldo
-        %td
-
-  = standard_form(fin_account, {url: fin_account_path, method: :put, data: {turbo: false}}) do |f|
-    = hidden_field_tag("fin_admin", can_fin_admin?)
-    = hidden_field_tag("return_url", return_url)
-    = f.error_messages
-    = form_buttons(f, cancel_url: cancel_url)
-
-    .mt-3
-    = field_set_tag do
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :short_name)
-      = input_or_render_attrs(f, :account_identification)
-      = input_or_render_attrs(f, :opening_balance_eur, :opening_balance_currency)
-      = input_or_render_attrs(f, :opening_balance_date)
-      = input_or_render_attrs(f, :description)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :iban)
-      = input_or_render_attrs(f, :owner_name)
-      = input_or_render_attrs(f, :owner_address)
-      = input_or_render_attrs(f, :servicer_name)
-      = input_or_render_attrs(f, :servicer_bic)
-      = input_or_render_attrs(f, :servicer_address)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :created_at, :updated_at)
-      = input_or_render_attrs(f, :status)
-
-    = form_buttons(f, cancel_url: cancel_url)
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The statement of one finance account. TWO kinds of account share this page
+-#  and it branches on exactly the marker WsjrdpFinAccount#transactions branches
+-#  on (Fin::WsjrdpFinAccountsController#moss_wallet? --
+-#  transaction_type == "MossBalanceMovement"):
+-#
+-#    * the Moss WALLET -> _moss_wallet: the expandable table with the kind
+-#      chips, the filter and its four kind presets;
+-#    * every BANK account -> _camt_statement: the plain camt table, unchanged.
+-#
+-#  Both end with the account's own form (_account_form).
+- if moss_wallet?
+  = render "fin/wsjrdp_fin_accounts/moss_wallet"
+- else
+  = render "fin/wsjrdp_fin_accounts/camt_statement"

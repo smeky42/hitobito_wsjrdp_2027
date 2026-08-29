@@ -1,0 +1,130 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The APPLIED filter as compact chips, shown in the filter line
+-#  (shared/wsjrdp/filtering/_line) next to the "Schnellauswahl" presets: what
+-#  the table is currently filtered by, readable WITHOUT opening the pane. While
+-#  the pane IS open the chips hide (.flt-line.open .flt-applied in
+-#  shared/wsjrdp/_expandable_table_styles), because the builder right below then
+-#  shows the same conditions in full.
+-#
+-#  WHAT IS RENDERED: a `.flt-applied` container with the muted word "Filter",
+-#  then ONE chip per chip of Wsjrdp::FilterChips (= one per CNF slot of the
+-#  applied user filter, in slot order), consecutive chips separated by a
+-#  `.flt-and` "und" -- the slots are ANDed, and saying so is the whole point of
+-#  showing them side by side. Which slots become chips and how each is worded is
+-#  decided ENTIRELY by the domain class (app/domain/wsjrdp/filter_chips.rb):
+-#  fixed (host-pinned) slots never arrive here at all -- `user_slots` is the
+-#  user half alone -- and a slot equal to an ACTIVE preset's is dropped, because
+-#  the preset toggle in the bar to the left already shows that state. Nothing is
+-#  re-decided in this file; it only lays the result out.
+-#
+-#  A chip is a way INTO the builder, never out of it: its control is a
+-#  `.pane-opener[data-pane-target]` (shared/wsjrdp/_collapsible_panes), which
+-#  only ever OPENS the pane -- a second click on a chip must not close the pane
+-#  the first one just opened. The chips themselves are READ-ONLY: they carry no
+-#  remove "x", because removing one is an edit, and edits happen in the builder.
+-#  No JS of their own is needed; the delegated pane listener does it all.
+-#
+-#  THE THREE EMPTY CASES -- what to show when there is no chip at all:
+-#    1. no presets and no fixed slots -> "Kein Filter aktiv". Nothing else would
+-#       be on the left of the line, and a silently blank strip reads like a
+-#       rendering bug rather than like "everything is shown".
+-#    2. fixed slots but neither user slots nor presets (the reconciliation
+-#       bookings table) -> NOTHING. The table IS filtered, by conditions the
+-#       user cannot remove; its body describes them in the builder's condensed
+-#       locked summary, so "Kein Filter aktiv" would be plainly wrong here.
+-#    3. presets declared -> NOTHING. The preset bar is then the line's content,
+-#       and it already says that none of them is switched on.
+-#
+-#  Locals:
+-#    state    -- the table's Wsjrdp::TableState (the applied user slots, the
+-#                catalog that labels them; nothing is read from the request)
+-#    pane_id  -- the filter pane's DOM id, for the chips' data-pane-target
+-#    presets  -- the RESOLVED Wsjrdp::TableState::FilterPreset list, the same
+-#                one the line and the builder render: handed to
+-#                Wsjrdp::FilterChips, which drops an ACTIVE preset's slots, and
+-#                read for its emptiness here (case 3)
+-#    disabled -- true = read-only filter. Deliberately ignored: a chip is not an
+-#                edit control, and looking at the (locked) conditions in the
+-#                builder stays useful, so the chips render and open exactly as
+-#                they always do.
+- state = local_assigns.fetch(:state)
+- pane_id = local_assigns.fetch(:pane_id)
+- presets = Array(local_assigns.fetch(:presets, nil))
+- chips = et_filter_chips(state, presets: presets)
+
+- if chips.any?
+  %span.flt-applied
+    %span.flt-label Filter
+    - chips.each_with_index do |chip, index|
+      - if index.positive?
+        %span.flt-and und
+      -# A button, not a link: it changes nothing on the server, it only opens
+      -# the pane next to it. `.pane-opener` is the open-only control of
+      -# shared/wsjrdp/_collapsible_panes -- see the header above.
+      %button.flt-chip.pane-opener{type: "button", data: {pane_target: pane_id},
+        title: "Filter öffnen"}= chip.text
+- elsif presets.empty? && !state.filter.fixed?
+  -# Case 1: neither a Schnellauswahl, nor a pinned condition, nor one of the
+  -# user's own -- say so, rather than leaving the left half of the line blank.
+  %span.flt-nofilter.text-muted.fst-italic.small Kein Filter aktiv
+
+-# The chips' looks, emitted ONCE per request (same pattern as
+-# shared/wsjrdp/_moss_kind_styles) -- but as a block around the :css only, NOT
+-# as an early `- return`: the markup above must render for EVERY table on the
+-# page, only the <style> must not repeat.
+- unless @wsjrdp_filter_chips_styles_emitted
+  - @wsjrdp_filter_chips_styles_emitted = true
+  :css
+    /* SCOPING, deliberate and load-bearing: the filter BUILDER
+       (shared/wsjrdp/filtering/_builder) names its own, differently shaped
+       chips `.flt-chip` too, and it is rendered right AFTER this line -- its
+       style block therefore comes later in the document and wins every tie. So
+       each rule here is qualified with `.flt-applied`, which outranks the
+       builder's bare `.flt-chip` no matter the order, and at the same time
+       keeps these declarations out of the pane.
+       hitobito has no dark theme, so this single (light) palette is the whole
+       story; the Bootstrap tokens carry the theme's own values as fallbacks
+       because this build predates --bs-secondary-color (a 5.3 token). */
+    .flt-applied { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .35rem; }
+    /* The little word in front of the chips, so the strip reads as a sentence
+       ("Filter: <chip> UND <chip>") instead of as a row of loose labels. */
+    .flt-applied .flt-label { color: var(--bs-secondary-color, #6c757d); font-size: .76rem;
+      margin-right: .1rem; }
+    /* One applied slot. Square-ish and with a thick primary left edge -- on
+       purpose NOT the builder's round pill: these are read-only summaries, the
+       pill shape belongs to the editable chips inside the pane.
+       `appearance: none` (with the -webkit- twin) because Bootstrap's reboot
+       gives every <button> the native button appearance, under which WebKit
+       ignores `display: inline-flex`; `font: inherit` before `font-size` for
+       the same reason, and `min-width: 0` so the chip may shrink and wrap
+       inside the flex line instead of forcing it wider. */
+    .flt-applied .flt-chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      -webkit-appearance: none; appearance: none; min-width: 0; margin: 0;
+      border: 1px solid rgba(var(--bs-primary-rgb, 33, 105, 124), .5);
+      border-left: 3px solid var(--bs-primary, #21697c);
+      border-radius: 4px; padding: .1rem .45rem;
+      background: var(--bs-body-bg, #fff); color: var(--bs-body-color, #212529);
+      font: inherit; font-size: .78rem; line-height: 1.4;
+      cursor: pointer; white-space: nowrap; }
+    /* The builder's `.flt-chip[title] { cursor: help }` ties with the rule
+       above (two class-level parts each) and would win by source order -- these
+       chips DO carry a title ("Filter öffnen"), so the pointer is restated with
+       the attribute in the selector. The hover rule needs no such help: a
+       pseudo-class makes it a part longer than the builder's. */
+    .flt-applied .flt-chip[title] { cursor: pointer; }
+    .flt-applied .flt-chip:hover { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .08);
+      border-color: rgba(var(--bs-primary-rgb, 33, 105, 124), .5);
+      border-left-color: var(--bs-primary, #21697c); }
+    /* The AND between two slots: small caps, muted -- a connector, not a chip. */
+    .flt-applied .flt-and { color: var(--bs-secondary-color, #6c757d); font-size: .7rem;
+      text-transform: uppercase; letter-spacing: .04em; }
+    /* "Kein Filter aktiv" -- the .text-muted.fst-italic.small utilities do the
+       rest; only the size is nudged to match the chips. */
+    .flt-nofilter { font-size: .8rem; }

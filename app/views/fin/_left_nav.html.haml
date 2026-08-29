@@ -1,0 +1,27 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Sub-items of the "Finanzen" main-nav section (entered at /fin, the overview
+-#  page): Konten & Wallets holds the money accounts, their statements and the
+-#  camt transactions; Beiträge the person fees and the payment plans behind its
+-#  own overview; Moss the
+-#  Moss overview / transactions; Buchhaltung the DATEV bookkeeping / bookings;
+-#  Abstimmung matches accounting entries with bookings; Controlling is still
+-#  empty.
+-#
+-#  Every entry lists ONLY its own path fragments, so no two light up at once
+-#  and none of them needs an inactive_for.
+-#  See doc/navigation.md for how nav / sheets / tabs fit together.
+%ul.nav-left-list
+  -# The overview entry needs no fragments: current_page? matches /fin exactly.
+  = nav t("fin.nav.overview"), fin_path
+  = nav t("fin.nav.accounts"), wsjrdp_fin_accounts_path, %w[fin/acc fin/tx]
+  = nav t("fin.nav.fees"), fees_path, %w[fin/fees fin/person_fees fin/payment_plans]
+  = nav t("fin.nav.moss"), moss_path, %w[fin/moss]
+  = nav t("fin.nav.accounting"), bookkeeping_path, %w[fin/bookkeeping]
+  = nav t("fin.nav.reconciliation"), reconciliation_path, %w[fin/reconciliation]
+  = nav t("fin.nav.controlling"), controlling_path, %w[fin/controlling]

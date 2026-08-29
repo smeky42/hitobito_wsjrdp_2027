@@ -1,0 +1,120 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The COLOURS of the four Moss kinds (Fin::MossKinds) and the small marks that
+-#  go with them: the kind chip (Fin::MossTransactionsHelper#moss_kind_chip), the
+-#  coloured rail on a wallet row, the kind tiles of /fin/moss, the status tags
+-#  and the green of an incoming amount. Ruby knows the icon and the class name,
+-#  this file knows what they look like -- no colour value exists twice.
+-#
+-#  EVERY view that shows a chip, a rail, a tile or a tag must render it:
+-#      = render "shared/wsjrdp/moss_kind_styles"
+-#  The guard emits the <style> only once per request, so rendering it from a
+-#  page AND from a partial it embeds is harmless (same pattern as
+-#  shared/wsjrdp/_expandable_table_styles).
+-#
+-#  hitobito has no dark theme, so the light palette below is the whole story.
+-#  The four hues (blue, ochre, violet, blue-green) stay apart under the common
+-#  colour-vision deficiencies; green is reserved for money coming in and red for
+-#  returns and warnings, so neither marks a kind.
+- return if @wsjrdp_moss_kind_styles_emitted
+- @wsjrdp_moss_kind_styles_emitted = true
+:css
+  /* The only place the palette is written down: each kind class carries its two
+     colours as custom properties, everything below reads them. --moss-kind-fg
+     is the text/line colour, --moss-kind-bg the pale fill of the chip. The
+     class itself (moss-kind-<expense_type>) comes from Fin::MossKinds. */
+  .moss-kind-card_transaction { --moss-kind-fg: #1d5cb0; --moss-kind-bg: #e2ecfa; }
+  .moss-kind-invoice          { --moss-kind-fg: #a66a0c; --moss-kind-bg: #fbecd2; }
+  .moss-kind-reimbursement    { --moss-kind-fg: #6b4aa6; --moss-kind-bg: #ebe4f7; }
+  .moss-kind-top_up           { --moss-kind-fg: #166f5c; --moss-kind-bg: #dcefe8; }
+
+  /* The chip: a small pill of icon + word. The gap keeps the two apart, the
+     transparent border keeps the height stable in forced-colors mode (where the
+     background disappears and only the outline remains). */
+  .moss-kind {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .12rem .5rem .12rem .38rem; border: 1px solid transparent;
+    border-radius: 999px; white-space: nowrap;
+    font-size: .76rem; font-weight: 500; line-height: 1.5;
+    color: var(--moss-kind-fg); background: var(--moss-kind-bg);
+  }
+  .moss-kind .fas { font-size: .85em; }
+
+  /* The rail: a 3px line inside the row's first cell, so the kind stays
+     readable while scrolling even when the chip has scrolled out of view. It
+     is painted in the chip's pale FILL colour (--moss-kind-bg), not the text
+     colour, so a page of rows reads as a quiet margin rather than a stack of
+     bars. An inset box-shadow, not a border -- a border would move the cell's
+     content and fight the table's own borders. Bootstrap 5.2 paints a row's
+     hover and stripe tint through an inset box-shadow of its own
+     (--bs-table-accent-bg) on every cell; that one is repeated here, or the
+     first cell would lose the tint the rest of the row gets. The cell's own
+     padding grows by the rail's width, so the content keeps its distance from
+     the rail the same as from the cell edge.
+     A row carries the class where one row is one record (the wallet); where a
+     record owns a GROUP of rows -- the transactions list, whose reimbursement
+     brings an expense row per expense -- the group's tbody carries it, and the
+     rail then runs along every row of the group. */
+  tr.moss-kind-card_transaction > td:first-child,
+  tr.moss-kind-invoice > td:first-child,
+  tr.moss-kind-reimbursement > td:first-child,
+  tr.moss-kind-top_up > td:first-child,
+  tbody.moss-kind-card_transaction > tr > td:first-child,
+  tbody.moss-kind-invoice > tr > td:first-child,
+  tbody.moss-kind-reimbursement > tr > td:first-child,
+  tbody.moss-kind-top_up > tr > td:first-child {
+    box-shadow: inset 3px 0 0 var(--moss-kind-bg), inset 0 0 0 9999px var(--bs-table-accent-bg, transparent);
+    padding-left: 7px; /* the table's 4px cell padding plus the 3px rail */
+  }
+
+  /* The overview tiles (/fin/moss): the kind's colour as a top edge. The
+     fallback keeps a tile without a kind class (the total tile) unmarked
+     instead of borderless-but-shifted. !important because the tiles also wear
+     Bootstrap's .border utility, which declares the whole border !important
+     and would otherwise paint every edge grey. */
+  .moss-kind-tile { border-top: 3px solid var(--moss-kind-fg, transparent) !important; }
+
+  /* Status tags after the first line of a row (foreign currency, Gutschrift,
+     a deviating status): outline only, no fill -- they qualify a row, they do
+     not classify it, so they must not compete with the chip. This Bootstrap
+     build has no --bs-secondary-color (a 5.3 token), hence the concrete
+     fallbacks. */
+  .moss-tag {
+    display: inline-block; margin-left: .4rem; padding: 0 .4rem;
+    font-size: .7rem; line-height: 1.5; white-space: nowrap; vertical-align: 1px;
+    border: 1px solid var(--bs-border-color, #ced4da); border-radius: 3px;
+    background: transparent; color: var(--bs-secondary-color, #6c757d);
+  }
+
+  /* Money coming IN (a top-up, the rare card credit note): green, and the "+"
+     sign is rendered next to it -- again, colour is never the only cue. */
+  .moss-amount-in { color: #1e7b3d; }
+
+  /* A filter preset that stands for one kind (Wsjrdp::TableState::FilterPreset
+     with icon + css_class): the toggle link keeps its plain button shape, only
+     its icon is tinted, and switching it on fills it with the kind's pale
+     background. The :hover variants are spelled out because the builder's own
+     [aria-pressed="true"]:hover rule has the same specificity as the plain one
+     here and would otherwise win by source order. */
+  .flt-preset.moss-kind-card_transaction .fas,
+  .flt-preset.moss-kind-invoice .fas,
+  .flt-preset.moss-kind-reimbursement .fas,
+  .flt-preset.moss-kind-top_up .fas { color: var(--moss-kind-fg); }
+  /* ... except the on/off tick, which is a filled dot with a white check of its
+     own. Same specificity as the rule above, so it has to come after it. */
+  .flt-preset .flt-preset-tick .fas { color: inherit; }
+  .flt-preset.moss-kind-card_transaction[aria-pressed="true"],
+  .flt-preset.moss-kind-invoice[aria-pressed="true"],
+  .flt-preset.moss-kind-reimbursement[aria-pressed="true"],
+  .flt-preset.moss-kind-top_up[aria-pressed="true"],
+  .flt-preset.moss-kind-card_transaction[aria-pressed="true"]:hover,
+  .flt-preset.moss-kind-invoice[aria-pressed="true"]:hover,
+  .flt-preset.moss-kind-reimbursement[aria-pressed="true"]:hover,
+  .flt-preset.moss-kind-top_up[aria-pressed="true"]:hover {
+    background: var(--moss-kind-bg); border-color: var(--moss-kind-fg);
+  }

@@ -1,0 +1,87 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The look and the one interaction of the EXPENSE SUB-ROWS of a Moss
+-#  reimbursement in the transactions list (Fin::MossExpenseRowsHelper builds
+-#  them, the shared widget renders them inside the transaction's row group).
+-#  The dashed separators, the muted smaller text and the right-aligned numeric
+-#  cells belong to the widget's sub-rows; what is here is what makes an expense
+-#  row read as part of the head row above it -- the indent with its angle
+-#  marker, the ordinal, and the two links that reveal and hide the expenses
+-#  beyond the cap (Fin::MossExpenseRowsHelper::MOSS_EXPENSE_ROW_CAP).
+-#
+-#  Rendered from fin/moss_transactions/index; the guard emits the <style> and
+-#  the <script> only once per request (same pattern as
+-#  shared/wsjrdp/_moss_kind_styles).
+- return if @wsjrdp_moss_expense_rows_emitted
+- @wsjrdp_moss_expense_rows_emitted = true
+:css
+  /* The description of an expense row: indented, with a small angle in the
+     indent that ties it to the head row above. The angle is drawn as the two
+     inner edges of a box (left + bottom border) rather than as a glyph, so it
+     stays a hairline at any font size and is invisible to a screen reader. The
+     span carries it, not the cell: the cell is the table's own column box. */
+  .moss-expense-desc { position: relative; display: inline-block; padding-left: 1.6rem; }
+  .moss-expense-desc::before {
+    content: ""; position: absolute; left: .45rem; top: .45em;
+    width: .5rem; height: .55rem;
+    border-left: 1px solid var(--bs-border-color, #ced4da);
+    border-bottom: 1px solid var(--bs-border-color, #ced4da);
+  }
+  /* The expense's place in the group (1, 2, 3 …): quiet, and with tabular
+     figures so the names behind it start at the same x in every row. */
+  .moss-expense-ordinal {
+    margin-right: .35rem; font-variant-numeric: tabular-nums;
+    color: var(--bs-secondary-color, #6c757d);
+  }
+  /* The amount keeps the head row's tabular figures, so the column's decimal
+     points line up over the whole group. Its colour comes from the cell:
+     text-muted for money going out, .moss-amount-in (green, with a "+") for
+     money coming back -- see shared/wsjrdp/_moss_kind_styles. */
+  .moss-expense-amount { font-variant-numeric: tabular-nums; }
+  /* The rest row's "n weitere Ausgaben anzeigen" and the collapse row's
+     "einklappen": indented like the expense texts above them, but WITHOUT the
+     angle -- neither stands for an expense. */
+  .moss-expense-rest .moss-expense-toggle,
+  .moss-expense-collapse .moss-expense-toggle {
+    display: inline-block; padding-left: 1.6rem; text-decoration: none;
+  }
+  .moss-expense-rest .moss-expense-toggle:hover,
+  .moss-expense-collapse .moss-expense-toggle:hover { text-decoration: underline; }
+  .moss-expense-caret { font-size: .85em; }
+  /* The group's last VISIBLE row keeps the table's solid rule. While the group
+     is capped, the collapse row waits hidden behind the rest row -- and a
+     hidden row is still a sibling, so the widget's dashed separator (a row
+     FOLLOWED by a sub-row) would end the group dashed. */
+  .moss-expense-rest:has(+ .moss-expense-collapse.d-none) > td { border-bottom-style: solid; }
+:javascript
+  // Reveal / hide the expense rows beyond the cap, inside the group and
+  // without a request: they are rendered with the page (hidden by .d-none), so
+  // the two links only switch classes. The state is CLIENT-SIDE ONLY -- nothing
+  // goes into the URL, nothing is remembered, and a reload starts capped again.
+  // One delegated, window-guarded listener serves every group on the page (and
+  // survives Turbo visits, which replace the body but not the window).
+  (function () {
+    if (window.__mossExpenseRows) return;
+    window.__mossExpenseRows = true;
+    document.addEventListener("click", function (e) {
+      var toggle = e.target.closest && e.target.closest("[data-moss-expense-toggle]");
+      if (!toggle) return;
+      e.preventDefault();
+      var group = toggle.closest("tbody.exp-group");
+      if (!group) return;
+      var expand = toggle.dataset.mossExpenseToggle === "expand";
+      function show(selector, visible) {
+        Array.prototype.forEach.call(group.querySelectorAll(selector), function (row) {
+          row.classList.toggle("d-none", !visible);
+        });
+      }
+      show("tr.moss-expense-extra", expand);
+      show("tr.moss-expense-rest", !expand);
+      show("tr.moss-expense-collapse", expand);
+    });
+  })();

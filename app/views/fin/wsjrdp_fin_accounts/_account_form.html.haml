@@ -1,0 +1,35 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The account's own master data, below whichever statement the page rendered.
+-#  Shared verbatim by the camt statement and the Moss wallet.
+= standard_form(fin_account, {url: fin_account_path, method: :put, data: {turbo: false}}) do |f|
+  = hidden_field_tag("fin_admin", can_fin_admin?)
+  = hidden_field_tag("return_url", return_url)
+  = f.error_messages
+  = form_buttons(f, cancel_url: cancel_url)
+
+  .mt-3
+  = field_set_tag do
+    %div.border-top.py-2
+    = input_or_render_attrs(f, :short_name)
+    = input_or_render_attrs(f, :account_identification)
+    = input_or_render_attrs(f, :opening_balance_eur, :opening_balance_currency)
+    = input_or_render_attrs(f, :opening_balance_date)
+    = input_or_render_attrs(f, :description)
+    %div.border-top.py-2
+    = input_or_render_attrs(f, :iban)
+    = input_or_render_attrs(f, :owner_name)
+    = input_or_render_attrs(f, :owner_address)
+    = input_or_render_attrs(f, :servicer_name)
+    = input_or_render_attrs(f, :servicer_bic)
+    = input_or_render_attrs(f, :servicer_address)
+    %div.border-top.py-2
+    = input_or_render_attrs(f, :created_at, :updated_at)
+    = input_or_render_attrs(f, :status)
+
+  = form_buttons(f, cancel_url: cancel_url)

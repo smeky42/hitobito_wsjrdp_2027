@@ -16,7 +16,7 @@
 module WsjrdpBudgetable
   extend ActiveSupport::Concern
 
-  # Year = calendar year = rdp fiscal year. Fixed for the project runtime;
+  # Year = calendar year = rdp financial year. Fixed for the project runtime;
   # extending it means a migration plus this constant.
   BUDGET_YEARS = (2025..2028)
 

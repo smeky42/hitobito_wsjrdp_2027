@@ -1,0 +1,217 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared styles for the expandable-detail tables (shared/wsjrdp/_expandable_table), the
+-#  bookings table (fin/bookings/_bookings_table) and the item detail views. It is
+-#  rendered from several of those partials; the guard emits the <style> only once
+-#  per request. hitobito core forces td/th padding to 4px 4px 4px 0; the override
+-#  restores symmetric side padding.
+- return if @wsjrdp_table_styles_emitted
+- @wsjrdp_table_styles_emitted = true
+:css
+  .bookings-table { table-layout: fixed; width: 100%; }
+  .bookings-table td { overflow-wrap: anywhere; }
+  .bookings-table td, .bookings-table th,
+  .bookings-table td:last-child, .bookings-table th:last-child { padding: .4rem 4px; }
+  .bookings-table-condensed td, .bookings-table-condensed th,
+  .bookings-table-condensed td:last-child, .bookings-table-condensed th:last-child { padding: .25rem 4px; }
+  /* Numeric columns (money, counts) are right-aligned, so their digits end at
+     the cell's right edge -- 4px from the next column, which reads as if the
+     number were glued to it. Give the whole numeric column a little more air on
+     that side, header, head-row cell and sub-row cell alike, so the figures keep
+     their distance from what follows. The condensed table gets the same gesture,
+     scaled to its tighter cells. */
+  .bookings-table td.text-end, .bookings-table th.text-end { padding-right: .75rem; }
+  .bookings-table-condensed td.text-end,
+  .bookings-table-condensed th.text-end { padding-right: .5rem; }
+  /* Sortable column headers. Inactive sortable columns show a faint muted
+     up/down glyph (⇅); the active column shows a solid, bold single arrow in
+     the current direction (↑ asc / ↓ desc). Shared, so both tables look alike. */
+  .exp-sort { cursor: pointer; white-space: nowrap; }
+  .exp-sort:hover { text-decoration: underline !important; }
+  .exp-sort-caret { margin-left: .3rem; font-size: .75em; opacity: .35; }
+  .exp-sort:hover .exp-sort-caret { opacity: .6; }
+  .exp-sort-caret.exp-sort-on { opacity: 1; font-weight: 700; font-size: .82em; }
+  .exp-sort-active { font-weight: 600; }
+  /* Priority rank for multi-column sort (1, 2, 3 …): muted, superscript-ish. */
+  .exp-sort-rank { margin-left: .1rem; font-size: .7em; vertical-align: super; opacity: .75; }
+  /* The scrolling table wrappers are size containers: the 100cqw sticky width
+     below and the container queries a dataset writes for its condensed table
+     (fin/bookings/_condensed_styles) both measure the *visible* box, not the
+     (possibly wider, scrolled) table. */
+  .exp-table-wrap, .bk-table-wrap, .bk-condensed-wrap { container-type: inline-size; }
+  /* A detail row's cell spans the full table width, which may be wider than the
+     visible area when the table scrolls horizontally (min-width). Pin the detail
+     content to the visible scrollport instead: exactly as wide as the wrapper
+     (100cqw) and stuck to its left edge. Everything inside -- metadata, paging,
+     the embedded bookings table and its container queries -- then lays out and
+     shrinks against the width the user actually sees. */
+  .exp-detail { position: sticky; left: 0; width: 100cqw; }
+  /* The condensed table, generically: content-sized columns that do not wrap, so
+     every column stays visible and as narrow as its text. WHICH column is the
+     flexible, wrapping "leftover" one and how wide the short ones get is a
+     property of the dataset, not of the widget -- the dataset declares that in a
+     styles partial of its own, addressing its columns by their css class (the
+     bookings: fin/bookings/_condensed_styles). */
+  .bookings-table-condensed { table-layout: auto; }
+  .bookings-table-condensed td, .bookings-table-condensed th { white-space: nowrap; }
+  .exp-row { cursor: pointer; }
+  /* ... except on a table that declares neither a detail nor detail links: the
+     widget then renders no disclosure attributes at all, so there is nothing to
+     expand and nothing to point at. */
+  .exp-row:not([role]) { cursor: default; }
+  .exp-row[aria-expanded="true"] > td { background: var(--bs-secondary-bg); font-weight: 500; }
+  /* Detail rows are content, not clickable rows: no pointer, no default cell borders. */
+  .exp-detail-row { cursor: default; }
+  .exp-detail-row > td { border: 0; }
+  /* Bracket the expanded row + its detail with a top and a bottom rule only (no
+     side borders); the detail's own light background defines the open block.
+     The closing rule follows the .exp-open CLASS rather than the open row's
+     adjacency: the detail row is the last row of its group, so with sub-rows
+     between the two it is no longer the open row's next sibling. The server
+     renders the class on a row that starts open, the collapse listener in
+     shared/wsjrdp/_expandable_table_js keeps it in sync from then on. */
+  .exp-row[aria-expanded="true"] > td { border-top: 1px solid var(--bs-border-color); }
+  .exp-detail-row.exp-open > td { border-bottom: 1px solid var(--bs-border-color); }
+  /* ---- row groups: a row that brings sub-rows ------------------------------
+     One tbody.exp-group per row holds the row, its sub-rows and its detail row.
+     Bootstrap draws a row's separator as the BOTTOM border of its cells, so a
+     row that is FOLLOWED by a sub-row draws that border dashed and the group's
+     last visible row keeps the solid one -- the group reads as one block that
+     ends where the table's normal rule is. (Where :has() is unsupported the
+     separators simply stay solid.)
+     A sub-row is quieter than the row it belongs to -- a touch smaller, muted,
+     less vertical padding -- but it opens the same detail, so on an expandable
+     table it points like the row above it. */
+  tbody.exp-group > tr:has(+ tr.exp-sub-row) > td { border-bottom-style: dashed; }
+  .exp-sub-row > td.exp-sub-col { padding-top: .2rem; padding-bottom: .2rem;
+    font-size: .9em; color: var(--bs-secondary-color, #6c757d); }
+  .exp-sub-row[role] { cursor: pointer; }
+  /* The inline (expanded) detail sits on a very light card, tinted independently
+     of hovering. On the sides and bottom the breathing room is split in two -- the
+     outer half is margin (untinted), the inner half is padding -- so the tint fills
+     only about half of it. The top has no margin, so the card meets the toggled row
+     directly; only the bottom keeps its gap to the next row. */
+  .exp-detail .bk-item-detail {
+    margin: 0 .5rem .5rem;
+    padding: .4rem .5rem .5rem;
+    /* A translucent dark-red wash -> a very light gray with a subtle warm/red tint
+       on the white page. Bootstrap 5.0-5.2 here has no --bs-tertiary-bg (that is a
+       5.3 token), so an rgba wash is used instead of a theme surface token. */
+    background: rgba(140, 0, 0, .04);
+  }
+  /* Plain variant (DATEV booking detail): the same card layout, but without
+     the tinted background. Keeps its spacing also outside .exp-detail (the
+     standalone /fin/bookings/:id page). */
+  .bk-item-detail-plain, .exp-detail .bk-item-detail-plain { background: transparent; }
+  .bk-item-detail-plain { margin: 0 .5rem .5rem; padding: .4rem .5rem .5rem; }
+  /* The condensed table paints an opaque white background on the <table> element;
+     clear it (its cells are already transparent) so the detail card's tint shows
+     through the whole embedded list. */
+  .bk-item-detail .bookings-table-condensed { background-color: transparent; }
+  /* Suppress the hover tint where it is unwanted: the outer detail row (A), any
+     nested booking-detail row (B), and the embedded table's HEADER row (C). The
+     booking rows themselves keep their hover highlight. Note (C): hitobito's
+     `.table-hover tbody tr:hover > th` uses loose (descendant) combinators, so it
+     reaches the inner <thead> -- which sits inside the outer table's <tbody> -- and
+     would otherwise pink the header on hover. This build tints via a box-shadow
+     (var --bs-table-accent-bg) AND a plain background-color; neutralise both
+     (bg-state covers newer Bootstrap too). */
+  .table-hover > tbody > tr.exp-detail-row:hover > *,
+  .bk-item-detail .bookings-table > thead > tr:hover > th {
+    --bs-table-accent-bg: transparent;
+    --bs-table-bg-state: transparent;
+    background-color: transparent;
+  }
+  /* The pointer highlights the GROUP, not the single row: over the head row or
+     over one of its sub-rows, head row and sub-rows are tinted together, so a
+     row and the rows it brings read as one unit. The detail row neither triggers
+     the tint nor takes it -- it is content, and a tall one. The trigger is a
+     DIRECT child of the group (:has), so a table nested inside a detail tints
+     its own group only, never the outer one; where :has() is unsupported the
+     rows simply keep the plain per-row hover.
+     Both of the build's paints are repeated on every row of the group, so all of
+     them look exactly like a hovered row: Bootstrap's accent inset
+     (--bs-table-accent-bg) and the theme's opaque wash on the cells
+     (hitobito/_table.scss `$table-color-hover`), which --exp-group-hover-bg
+     carries so it is stated in one place. */
+  .bookings-table { --exp-group-hover-bg: #fae1e3; }
+  .table-hover > tbody.exp-group:has(> tr.exp-row:hover, > tr.exp-sub-row:hover) > tr:not(.exp-detail-row) > * {
+    --bs-table-accent-bg: var(--bs-table-hover-bg);
+    background-color: var(--exp-group-hover-bg);
+  }
+  .booking-detail { background: var(--bs-tertiary-bg); }
+  /* The detail's header line of double links (shared/wsjrdp/_detail_links) sits
+     in the SAME place in both detail modes. A DIRECT detail carries it as the
+     first child of .booking-detail.p-3, which already pads it, and the line then
+     keeps a full gap to the content below. A LAZY detail carries it in
+     .exp-detail-linkbar ABOVE the turbo frame -- so it is there while "Wird
+     geladen …" shows -- which repeats that top/side padding and leaves the
+     bottom to the frame's own padding, giving the same gap. The links-only
+     variant (a table with no detail at all) closes the bar to a slim strip. */
+  .booking-detail.exp-detail-linkbar { padding: 1rem 1rem 0; }
+  .booking-detail.exp-detail-linkbar-only { padding: .5rem 1rem; }
+  .booking-detail:not(.exp-detail-linkbar) > .exp-detail-links { margin-bottom: 1rem; }
+  /* Grid labels in the detail views (booking + Beitragsbuchung): light weight so
+     the values stand out against them. */
+  .booking-detail-label { font-size: .68rem; letter-spacing: .04em; font-weight: 300; }
+  /* Embedded bookings section: thin rule above the heading, small split button. */
+  .fin-embedded-rule { margin: 0 0 .5rem; opacity: .25; }
+  .fin-embedded-open .btn { font-size: .78rem; padding-top: .1rem; padding-bottom: .1rem; }
+  /* Paging mini-control (shared/wsjrdp/_expandable_table_paging): keep the page links, the
+     "Seite X von Y" label and the per-page select on one tight baseline. */
+  .bk-pagination .pagination, .bk-pagination .pagination-bar { margin: 0; }
+  .bk-pagination .pagination { flex-wrap: wrap; }
+  /* The "Seite [n] von N" jump field: as wide as a page number, not the ~270px
+     hitobito's stylesheet gives every input. */
+  .bk-pagination .bk-page-input { width: 4.25rem !important; min-width: 0; text-align: center;
+    padding-left: .25rem; padding-right: .25rem; }
+  /* The two step buttons "<" ">" that open the pager (kaminari/wsjrdp/_prev_page,
+     _next_page): as wide as a two-digit page number so the numbers behind them
+     sit still, and the chevron a touch smaller than the digits beside it. The
+     disabled look on the first/last page is Bootstrap's .page-item.disabled. */
+  .bk-pagination .bk-page-step .page-link { min-width: 2.2rem; text-align: center; }
+  .bk-pagination .bk-page-step .fas { font-size: .75em; }
+  /* ---- the filter's two fixed lines above the toolbar ---------------------
+     Layout contract: .flt-line (shared/wsjrdp/filtering/_line) and, right below
+     it, .wsjrdp-pane.flt-pane (shared/wsjrdp/filtering/_builder) are BOTH always
+     rendered, and only the pane appears/disappears -- so opening the filter
+     never moves the line, the toggle inside it, or anything above. The closed
+     pane is display:none (no height, no margin at all); the open one continues
+     the line's frame downwards into one box.
+     Colours use the Bootstrap tokens with the theme's own fallbacks (hitobito
+     has no dark theme, so a single palette is enough). */
+  .flt-line { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem;
+    padding: .3rem .5rem; border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 4px; background: var(--bs-tertiary-bg, #f8f9fa); }
+  .flt-line-left { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem;
+    min-width: 0; }
+  /* The toggle is the line's right end, however much (or little) is on the left. */
+  .flt-line > .pane-toggle { margin-left: auto; }
+  /* Open: a light primary tint and the primary border, square at the bottom so
+     the pane below continues the same box. The toggle's own pressed look comes
+     from .btn.pane-toggle[aria-expanded="true"] in shared/wsjrdp/_collapsible_panes. */
+  .flt-line.open { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .08);
+    border-color: rgba(var(--bs-primary-rgb, 33, 105, 124), .5);
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  /* While the pane is open the applied-filter chips hide: the builder right
+     below shows the same conditions in full, editable. */
+  .flt-line.open .flt-applied { display: none; }
+  .wsjrdp-pane.flt-pane:not(.open) { display: none; }
+  .wsjrdp-pane.flt-pane.open { border: 1px solid rgba(var(--bs-primary-rgb, 33, 105, 124), .5);
+    border-top: 0; border-radius: 0 0 4px 4px; padding: .7rem .85rem .75rem;
+    background: rgba(var(--bs-primary-rgb, 33, 105, 124), .03); }
+  /* The gap below the filter block. Normally it is the toolbar's margin-top
+     (which collapses with the fallback below, so the two never add up); the
+     fallback covers a filtered table that renders no toolbar at all. */
+  .exp-toolbar-below-filter { margin-top: .35rem; }
+  .flt-line:not(.open), .wsjrdp-pane.flt-pane.open { margin-bottom: .35rem; }
+  /* The toolbar's controls: the column hamburger, a standalone button (the
+     filter toggle sits in the filter line). The hamburger's button sits inside
+     its .tbl-burger wrapper, which positions the panel. */
+  .exp-tools { display: inline-flex; align-items: stretch; flex: 0 0 auto; gap: .35rem; }
+  .exp-tools > .btn:hover, .exp-tools > .btn[aria-expanded="true"] { position: relative; z-index: 1; }

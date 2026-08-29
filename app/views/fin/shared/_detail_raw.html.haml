@@ -1,0 +1,34 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One raw area of a detail (d.raw_data): a collapsible block holding the
+-#  entries blocks declared inside it (d.raw_entries), each with its own title,
+-#  so a reader opens or closes the whole area at once. An entries block lists
+-#  the entries of its jsonb column as monospace `Schlüssel: Wert` lines, the
+-#  keys verbatim as the export wrote them, followed by its also: columns -- one
+-#  line per entry, because a DATEV export puts many Beleginfo /
+-#  Zusatzinformation pairs into one record. The area stands open on the
+-#  record's own page and collapsed in an embedded pane, unless the area's
+-#  open: says otherwise, and it is headed by its own title: or by
+-#  fin.detail.raw_title. An entries block without a single shown entry renders
+-#  nothing, and neither does an area without a single such block.
+-#
+-#  Locals: record, ctx, section (the :raw_data section)
+- blocks = fin_detail_raw_blocks(record, section, ctx)
+- if blocks.any?
+  .mt-3.pt-2.border-top
+    %details.fin-detail-raw{open: fin_detail_raw_area_open?(section, ctx)}
+      %summary.booking-detail-label.text-muted.text-uppercase
+        = section.title || t("fin.detail.raw_title")
+      - blocks.each do |title, entries|
+        .mt-2
+          .booking-detail-label.text-muted.text-uppercase.mb-1= title
+          .small.font-monospace
+            - entries.each do |key, value|
+              .text-break
+                %span.text-muted= "#{key}:"
+                = safe_join([" ", value])

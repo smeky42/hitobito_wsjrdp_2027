@@ -1,0 +1,67 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Paging control for shared/wsjrdp/_expandable_table: Kaminari page links, the
+-#  "Seite [n] von N" jump field and the "pro Seite" select. Rendered above and
+-#  below the table.
+-#
+-#  WHAT APPEARS WHERE:
+-#    * page links + the jump field: whenever there is more than one page --
+-#      above and below the table. The line reads
+-#          [<] [>] 1 ... 30 31 32 33 [34] 35 36 37 38 ... 137
+-#      The two step buttons open it and are always there, disabled on the first
+-#      resp. last page, so paging on is a row of clicks in one spot; page 1 and
+-#      the last page are plain number links, with four pages on either side of
+-#      the current one (one fewer than Kaminari's default of five), which is
+-#      the room the jump field takes: a number input that goes straight to the
+-#      typed page (Enter, or leaving the field), clamped to 1..N by the JS in
+-#      shared/wsjrdp/_per_page_select_js. The markup comes from the wagon's
+-#      Kaminari theme in app/views/kaminari/wsjrdp/.
+-#    * the page-size select: whenever the size is not fixed by the controller.
+-#      It stays even when everything fits on one page, because it is the only
+-#      way BACK to a smaller page (or forward to "Alle") -- a select that
+-#      disappears as soon as it took effect cannot be undone. A single-page
+-#      table therefore renders the select alone, and only BELOW (place:
+-#      :bottom); above it would claim a toolbar line for a table that has no
+-#      paging to speak of.
+-#  Both the page links and the select are namespaced by the state's prefix
+-#  (<prefix>p / <prefix>z), so sibling tables page independently.
+-#
+-#  Locals: state (Wsjrdp::TableState), pagination (Kaminari page or nil),
+-#  per_options (the select's choices; :all becomes "Alle"), place (:top/:bottom).
+- state = local_assigns.fetch(:state)
+- pagination = local_assigns.fetch(:pagination, nil)
+- per_options = local_assigns.fetch(:per_options, nil)
+- place = local_assigns.fetch(:place, :bottom)
+- pages = pagination ? pagination.total_pages : 1
+- per_value = state.per_value
+- show_per = per_options.present? && !state.fixed?(:per_page) && (pages > 1 || place == :bottom)
+- if pages > 1 || show_per
+  - if show_per
+    = render "shared/wsjrdp/per_page_select_js"
+  .d-flex.flex-wrap.align-items-center.column-gap-3.row-gap-1.bk-pagination
+    - if pages > 1
+      -# D4: a page change closes the open rows, so the page links drop `o` --
+      -# and so does the jump field's URL template (et_url drops it with `p`).
+      -# left/right 1: page 1 and the last page as numbers instead of the core
+      -# theme's "Erste"/"Letzte"; the wsjrdp theme puts the step buttons first.
+      .pagination-bar= paginate pagination, theme: "wsjrdp", window: 4, left: 1, right: 1, param_name: state.param_name(:page), params: {state.param_name(:open) => nil}
+      .d-flex.align-items-center.gap-1.text-muted.small.text-nowrap.mx-2
+        %span Seite
+        = number_field_tag nil, pagination.current_page, id: nil, min: 1, max: pages, step: 1,
+          class: "form-control form-control-sm bk-page-input", "aria-label": "Seite wählen",
+          title: "Seite eingeben und mit Enter bestätigen",
+          data: { url_template: et_url(state, {page: "__PAGE__"}), max: pages }
+        %span= "von #{pages}"
+    - if show_per
+      - choices = per_options.map { |v| (v.to_s == "all") ? ["Alle", "all"] : [v.to_s, v.to_s] }
+      - choices = [[per_value, per_value]] + choices unless choices.any? { |_l, v| v == per_value }
+      .d-flex.align-items-center.gap-1
+        = select_tag state.param_name(:per_page), options_for_select(choices, per_value),
+          id: nil, class: "form-select form-select-sm w-auto bk-per-select",
+          "aria-label": "Einträge pro Seite", data: { url_template: et_url(state, {per_page: "__PER__"}) }
+        %span.text-muted.small.text-nowrap pro Seite

@@ -1,0 +1,65 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a finance record, rendered from the sections a partial declared
+-#  through fin_detail (Fin::DetailHelper / Fin::DetailBuilder). One dispatch per
+-#  section kind, in declaration order; the header belongs to the record's own
+-#  page, where an embedded pane gets its header line from the table widget.
+-#  The .bk-item-detail wrapper is the shared item-detail card (it suppresses the
+-#  table's hover highlighting inside a detail); fin_detail_styles puts the kit's
+-#  style block in front of it, once per response.
+-#
+-#  When form_url is present, the editable-fields form wraps only the header and
+-#  fields sections. Sections that carry their own forms (custom, raw_data,
+-#  bookings) render OUTSIDE the editable-fields form so their button_to /
+-#  wsjrdp_row_form elements stay standalone — nested <form> tags are illegal in
+-#  HTML and would break both the outer form and the inner ones.
+-#
+-#  Locals: record, ctx (Fin::AttrFormatContext), sections,
+-#          default_layout (:list / :compact / :grid), default_blank,
+-#          form_url (nil or the PATCH target for editable fields),
+-#          editing (true in regular mode, false in embedded mode)
+= fin_detail_styles
+.bk-item-detail
+  - editing = local_assigns.fetch(:editing, true)
+  - form_kinds = [:header, :fields]
+  = fin_detail_form_tag(record, local_assigns[:form_url], editing: editing) do |f|
+    - if f && !editing
+      .fin-edit-toggle.text-end.p-2
+        %button.btn.btn-sm.btn-outline-primary{type: "button",
+          onclick: "this.closest('[data-fin-editing]').dataset.finEditing='true'"}
+          Bearbeiten
+    - sections.each do |section|
+      - next unless form_kinds.include?(section.kind)
+      - case section.kind
+      - when :header
+        - if ctx.regular?
+          = render "fin/shared/detail_header", label: section.options[:label],
+            back: section.options[:back], back_label: section.options[:back_label],
+            title: section.title, toolbar: section.options[:toolbar]
+      - when :fields
+        = render "fin/shared/detail_group", record: record, ctx: ctx, section: section,
+          layout: section.layout || default_layout, blank: section.blank || default_blank,
+          form: f
+    - if f
+      = fin_detail_edit_actions(f, editing)
+  - sections.each do |section|
+    - next if form_kinds.include?(section.kind)
+    - case section.kind
+    - when :raw_data
+      = render "fin/shared/detail_raw", record: record, ctx: ctx, section: section
+    - when :custom
+      - if section.title.present?
+        .mt-3.pt-2.border-top
+          .booking-detail-label.text-muted.text-uppercase.mb-1= section.title
+          = section.html
+      - else
+        = section.html
+    - when :bookings
+      = render "fin/bookings/embedded", rows: section.options[:rows],
+        show_all_path: section.options[:show_all_path],
+        all_label: section.options[:all_label]

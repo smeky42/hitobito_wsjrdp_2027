@@ -1,0 +1,34 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a Buchungsstapel: the batch metadata, the raw area with the
+-#  DATEV header data, and the batch's embedded bookings. Rendered both as a
+-#  full page and as an inline expandable row (via turbo frame from the index).
+-#
+-#  All fields are read-only (no form_url).
+-#
+-#  The values come from Fin::BookingBatchesHelper, the labels from
+-#  de.activerecord.attributes.datev_booking_batch.
+-#
+-#  Locals: batch (DatevBookingBatch), ctx (Fin::AttrFormatContext)
+= fin_detail(batch, ctx) do |d|
+  - d.header back: bookings_path, back_label: "Zurück zu Buchungen",
+      label: "Buchungsstapel ##{batch.id}", title: batch.label
+  - d.attrs :label, :period_from, :consultant_number, :client_number,
+      :financial_year_start,
+      period_from: {label: "Zeitraum"}
+  - d.attrs :ledger_account_number_length, :datev_chart_of_accounts_number,
+      :base_currency, :booking_type
+  - d.attrs :origin_indicator, :primanota_number, :is_finalized,
+      :datev_created_at, :source_file
+  - d.attrs :description, :comment
+  - d.raw_data do
+    - d.raw_entries :header_raw, title: "DATEV Header Rohdaten"
+    - d.raw_entries :additional_info, title: "Zusätzliche Informationen"
+  - d.bookings booking_batch_bookings(batch.id),
+      show_all_path: bookings_path,
+      all_label: "In Buchungen-Ansicht öffnen"

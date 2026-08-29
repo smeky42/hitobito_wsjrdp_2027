@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The "one page back" step button, icon only. On page 1 it stays in place as a
+-#  disabled item instead of disappearing (kaminari/wsjrdp/_paginator).
+%li.page-item.bk-page-step{class: ("disabled" if current_page.first?)}
+  - if current_page.first?
+    %span.page-link{"aria-disabled": "true", "aria-label": "Vorherige Seite", title: "Vorherige Seite"}
+      %i.fas.fa-chevron-left{"aria-hidden": "true"}
+  - else
+    = link_to url, {rel: "prev", remote: remote, class: "page-link", title: "Vorherige Seite", "aria-label": "Vorherige Seite"} do
+      %i.fas.fa-chevron-left{"aria-hidden": "true"}

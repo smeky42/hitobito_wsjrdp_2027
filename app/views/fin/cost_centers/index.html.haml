@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+= render "shared/wsjrdp/moss_status_styles"
+
+#main
+  %h1 Kostenstellen
+  %p.text-muted
+    Übersicht der Kostenstellen mit der Summe der gebuchten Beträge (nur aktive Buchungen).
+    Standardmäßig werden alle Kostenstellen angezeigt, auch solche ohne Buchungen.
+    Klick auf eine Zeile zeigt die Buchungen der Kostenstelle.
+
+  -# The filter (and its "Schnellauswahl" preset) comes from the controller's
+  -# policy: this view passes only the apply URL. Sorting, paging and the column
+  -# hamburger are the widget's own links and keep the filter.
+  = wsjrdp_expandable_table do |t|
+    - t.rows   cost_centers, id: "cost_center"
+    - t.columns kostenstellen_columns, menu: true
+    - t.row_key { |c| c.number }
+    - t.detail_page { |c| cost_center_path(c.number) }
+    - t.detail_src { |c| cost_center_path(c.number) }
+    - t.paging  per_options: [10, 25, 50, 100, :all]
+    - t.filter  apply_url: apply_cost_centers_path
+
+  %p.text-muted.small.mt-2
+    #{cost_centers.total_count} Kostenstellen angezeigt · #{shown_booking_count} Buchungen · Summe #{fin_money(shown_booking_sum)}

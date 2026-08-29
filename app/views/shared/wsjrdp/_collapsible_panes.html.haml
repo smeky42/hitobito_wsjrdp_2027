@@ -1,0 +1,89 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Shared chrome for collapsible "panes". A pane is toggled EITHER by a slim
+-#  pill button inside it (the body then sits to the pill's right when there is
+-#  room) OR by a remote toggle button anywhere on the page that names the pane
+-#  in data-pane-target (the filter pane: its toggle sits at the right end of the
+-#  filter line above it, the pane opens full width between that line and the
+-#  table's toolbar). A third control only ever OPENS a pane -- .pane-opener,
+-#  used by the applied-filter chips, which are a way INTO the builder and must
+-#  not close what a first click opened. The open state is remembered per pane
+-#  cookie (data-pane-cookie). All listeners are document-delegated, so render
+-#  position and Turbo re-renders don't matter. Render once per page.
+-#  (Scroll-position keeping across form reloads lives in
+-#  shared/wsjrdp/_expandable_table_js.)
+-#
+-#  Markup contract:
+-#    .wsjrdp-pane(.open){id: "...", data: {pane_cookie: "..."}}
+-#      %button.pane-pill{type: "button"} <i.fas.fa-chevron-right.pane-caret> Label [badge]   (optional)
+-#      .pane-body ...
+-#    %button.btn.pane-toggle{type: "button", data: {pane_target: "<pane id>"}, aria: {expanded:, controls:}}
+-#      (anywhere else on the page; aria-expanded="true" paints it as pressed)
+-#    <any>.pane-opener{data: {pane_target: "<pane id>"}}
+-#      (anywhere else on the page; opens the pane, never closes it)
+-#    <any>(.open){data: {pane_line: "<pane id>"}}
+-#      (anywhere else on the page; follows its pane's open state, so a framed
+-#       line above the pane can join it visually -- see .flt-line)
+
+:css
+  html { scrollbar-gutter: stable; }
+  .wsjrdp-pane { display: flex; align-items: flex-start; gap: .75rem; flex-wrap: wrap; }
+  .pane-pill { flex: 0 0 auto; width: 8em; display: inline-flex; align-items: center;
+    gap: .45rem; padding: .3rem .8rem; border: 1px solid var(--bs-border-color);
+    border-radius: 999px; background: var(--bs-body-bg); cursor: pointer;
+    font-weight: 600; font-size: .875rem; color: var(--bs-body-color); text-align: left; }
+  .pane-pill:hover { background: var(--bs-secondary-bg); }
+  .pane-pill .badge { margin-left: auto; }
+  .pane-caret { transition: transform .15s ease; color: var(--bs-secondary-color, #6c757d);
+    font-size: .7em; flex: 0 0 auto; }
+  .wsjrdp-pane.open .pane-caret { transform: rotate(90deg); }
+  .pane-body { display: none; flex: 1 1 28rem; min-width: 0; }
+  .wsjrdp-pane.open .pane-body { display: block; }
+  /* Remote toggle: a normal small outline button; while its pane is open it is
+     painted as pressed (primary fill, explicit white text -- hitobito's
+     `.btn { color }` rule would otherwise keep the dark text). */
+  .pane-toggle { display: inline-flex; align-items: center; gap: .4rem; }
+  .btn.pane-toggle[aria-expanded="true"] { background: var(--bs-primary, #21697c);
+    border-color: var(--bs-primary, #21697c); color: #fff; }
+  .btn.pane-toggle[aria-expanded="true"] .badge.bg-secondary { background: #fff !important;
+    color: var(--bs-primary, #21697c); }
+
+:javascript
+  (function () {
+    // Document-delegated: works regardless of where panes sit in the DOM and
+    // survives Turbo body swaps.
+    if (window.__wsjrdpPanes) return;
+    window.__wsjrdpPanes = true;
+    document.addEventListener("click", function (e) {
+      var control = e.target.closest(".pane-pill, .pane-toggle, .pane-opener");
+      if (!control) return;
+      // An in-pane pill toggles its own pane; a remote control names its pane.
+      var pane = control.closest(".wsjrdp-pane") ||
+        (control.dataset.paneTarget && document.getElementById(control.dataset.paneTarget));
+      if (!pane) return;
+      // A .pane-opener only OPENS (clicking an applied-filter chip takes the
+      // user into the builder -- it must never close the pane again).
+      var open = control.classList.contains("pane-opener") || !pane.classList.contains("open");
+      pane.classList.toggle("open", open);
+      // Lines that follow this pane (the framed filter line above it) so the
+      // two read as one open box.
+      document.querySelectorAll('[data-pane-line="' + pane.id + '"]').forEach(function (line) {
+        line.classList.toggle("open", open);
+      });
+      // aria-expanded belongs on the pane's TOGGLES -- an in-pane pill is its
+      // own, a remote toggle names the pane (and an opener is neither).
+      if (control.classList.contains("pane-pill")) {
+        control.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      document.querySelectorAll('.pane-toggle[data-pane-target="' + pane.id + '"]').forEach(function (toggle) {
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      var cookie = pane.dataset.paneCookie;
+      if (cookie) document.cookie = cookie + "=" + (open ? "1" : "0") + ";path=/;max-age=31536000";
+    });
+  })();

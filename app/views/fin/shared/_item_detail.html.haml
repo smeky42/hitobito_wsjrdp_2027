@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Detail view of a Buchhaltung item (ledger account / cost center / supplier):
+-#  its metadata fields plus the embedded, paged bookings. Rendered inside a lazy
+-#  turbo frame for the inline expandable rows and directly on the dedicated detail
+-#  page -- the same view either way. The .bk-item-detail wrapper suppresses hover
+-#  highlighting inside the detail view.
+-# This detail is rendered directly on the dedicated /bookkeeping/... page
+-# (level 0) and lazily inside the list's expandable row (the widget puts the
+-# depth into the frame URL, as the summary table's `l` param). The embedded
+-# bookings table picks that depth up through its own state, so ITS rows'
+-# details count one deeper.
+.bk-item-detail
+  = render "shared/wsjrdp/detail_fields", fields: fields
+
+  = render "fin/bookings/embedded", rows: item_bookings, show_all_path: show_all_path,
+    all_label: all_label

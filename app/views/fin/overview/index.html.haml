@@ -1,0 +1,107 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Entry page of the Finanzen section: one card per area of the left
+-#  sub-navigation -- icon, what the area is for, quick links to its tabs and
+-#  its key figures. Nothing on this page is written here: the areas, their
+-#  titles and their tabs come from the areas' sheets, the sentences from the
+-#  locale (fin.areas.<key>.purpose) and the numbers from Fin::OverviewFigures;
+-#  all of it through Fin::OverviewHelper#fin_areas.
+
+-#  The card layout. /fin is the only page wearing these classes, so the styles
+-#  live here instead of in a shared partial (the Moss overview does the same
+-#  with .moss-structure). Bootstrap here is 5.2: it has no --bs-tertiary-bg and
+-#  no .text-warning-emphasis, hence the tokens with explicit fallbacks below.
+:css
+  /* As many cards per row as fit. The minimum is set by the widest row a card
+     holds: an account under "Konten" -- its short name (the longest in the
+     data is 26 characters), the new-tab icon, and a seven-figure balance --
+     plus the list indent and the card padding. Anything narrower would break
+     that row, or a figure row, into two lines, so the card moves to the next
+     row instead. */
+  .fin-areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); gap: .9rem; }
+  /* A column, so the figures can be pushed to the bottom (margin-top: auto)
+     and the hairlines of neighbouring cards line up whatever the card holds. */
+  .fin-area { display: flex; flex-direction: column; }
+  .fin-area-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; }
+  /* The icon badge: the area's mark, in the primary colour on a pale tint of
+     it. flex: none keeps it square when a long area title wraps beside it. */
+  .fin-area-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: none; width: 2rem; height: 2rem; border-radius: .35rem;
+    color: var(--bs-primary, #21697c);
+    background: rgba(var(--bs-primary-rgb, 33, 105, 124), .12);
+  }
+  .fin-area-icon .fas { font-size: .95rem; }
+  .fin-area-purpose { margin-bottom: .6rem; }
+  .fin-area-links { margin-bottom: .6rem; }
+  .fin-area-links li + li { margin-top: .15rem; }
+  /* The accounts under the "Konten" quick link: indented under it, name left,
+     balance right -- tabular figures so the balances align under each other. */
+  .fin-area-accounts { margin: .15rem 0 0 1.1rem; font-size: .9em; }
+  .fin-area-accounts li { display: flex; justify-content: space-between; gap: .5rem; }
+  /* Name and new-tab icon stay together on one line. The card is wide enough
+     for every name in the data (see .fin-areas); should a longer one turn up,
+     it is cut with an ellipsis rather than wrapped under its balance --
+     min-width: 0 is what lets a flex item shrink far enough for that. */
+  .fin-area-account-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fin-area-account-balance {
+    flex: none; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+    color: var(--bs-secondary-color, #6c757d);
+  }
+  .fin-area-figures { margin-top: auto; padding-top: .5rem; border-top: 1px solid var(--bs-border-color, #dee2e6); }
+  .fin-figure { display: flex; justify-content: space-between; gap: .5rem; font-size: .85rem; }
+  .fin-figure-label { color: var(--bs-secondary-color, #6c757d); }
+  /* Tabular figures so the numbers of a card align under each other. */
+  .fin-figure-value { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* Open work: an ochre that carries on white and stays apart from the green
+     of money coming in and the red of an error. Never the only cue -- the row
+     label says what is open. */
+  .fin-figure-warn { color: #8a5a00; font-weight: 600; }
+
+#main
+  %h1 Finanzen
+  %p.text-muted
+    Konten, Beiträge, Moss, Buchhaltung, Abstimmung und Controlling des Kontingents.
+
+  .fin-areas
+    - fin_areas.each do |area|
+      .fin-area.border.rounded.p-3
+        .fin-area-head
+          %span.fin-area-icon
+            %i.fas{class: "fa-#{area.icon}", "aria-hidden": "true"}
+          = link_to area.title, area.path, class: "fw-semibold"
+        %p.fin-area-purpose.text-muted.small= area.purpose
+        -# The tabs exactly as the sheet declares them -- a label that already
+        -# carries an icon (the Moss kinds) brings it along. Every quick link
+        -# gets the new-tab companion icon; the card's title link does not, so
+        -# the heading stays a heading.
+        - if area.tabs.any?
+          %ul.fin-area-links.list-unstyled
+            - area.tabs.each do |label, path|
+              %li
+                = link_to label, path
+                = wsjrdp_newtab_link(path)
+                -# Under "Konten", the accounts themselves: one link each, with
+                -# the balance the Konten list shows (Fin::OverviewHelper).
+                - if area.key == :accounts && path == wsjrdp_fin_accounts_path
+                  %ul.fin-area-accounts.list-unstyled
+                    - fin_accounts_with_balance.each do |account, balance_cents|
+                      - account_path = url_for(account)
+                      %li
+                        %span.fin-area-account-name
+                          = link_to fin_account_label(account), account_path
+                          = wsjrdp_newtab_link(account_path)
+                        %span.fin-area-account-balance= format_cents_de(balance_cents)
+        .fin-area-figures
+          - if area.figures.any?
+            - area.figures.each do |label, value, warn|
+              .fin-figure
+                %span.fin-figure-label= label
+                %span.fin-figure-value{class: ("fin-figure-warn" if warn)}= value
+          - else
+            %p.text-muted.small.mb-0= t("fin.overview.figures.none")

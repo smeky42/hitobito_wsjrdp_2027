@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The kit's own CSS, emitted once per response by Fin::DetailHelper's
+-#  fin_detail_styles. The :list layout renders a definition list in the
+-#  form-like grid of the tx/ae pages, whose dt is bold and full size by
+-#  Bootstrap's default; on a finance detail the label steps back and the eye
+-#  goes to the value. The .fin-detail-list class on the dl carries that; the
+-#  colour comes from the dt's own text-muted. The other two layouts state their
+-#  label typography in their own classes (:compact fw-normal text-muted in
+-#  small, :grid .booking-detail-label) and need nothing here.
+:css
+  .fin-detail-list dt { font-weight: 400; font-size: .875rem; }
+  [data-fin-editing="false"] .fin-edit-input,
+  [data-fin-editing="false"] .fin-edit-actions { display: none !important; }
+  [data-fin-editing="true"] .fin-edit-display,
+  [data-fin-editing="true"] .fin-edit-toggle { display: none !important; }

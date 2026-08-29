@@ -1,0 +1,13 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The "..." between the outer pages and the window. Markup as in the core's
+-#  kaminari/_gap, so hitobito's Bootstrap pagination styling carries over
+-#  unchanged; the theme only needs its own copy because a themed paginator has
+-#  no fallback to kaminari/.
+%li.disabled.page-item
+  = link_to raw(t("views.pagination.truncate")), "#", class: "page-link"
