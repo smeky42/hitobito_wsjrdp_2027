@@ -1,0 +1,36 @@
+# Gemfile of the combined core+wagon ruby-lsp workspace: one workspace
+# rooted at development/app so that go-to-definition & Co. work across
+# core AND wagon in both directions.
+#
+# It is tracked here and symlinked as development/app/Gemfile, because
+# app/ itself is completely gitignored.  Bundler resolves the relative
+# paths below from the symlink's location (app/), not from this
+# directory.  See README.md next to this file; apply changes with
+# ./setup-ruby-lsp.sh.
+#
+# Only the language server reads this bundle -- the containers keep
+# using the core and wagon Gemfiles.
+
+source "https://rubygems.org"
+
+eval_gemfile "hitobito/Gemfile"
+
+# The core Wagonfile globs ../hitobito_* relative to the CWD of the
+# bundler run and finds nothing when bundling from this directory, so
+# declare the wagon explicitly.
+gem "hitobito_wsjrdp_2027", path: "hitobito_wsjrdp_2027"
+
+group :development do
+  # ruby-lsp only auto-includes its Rails add-on when bin/rails exists
+  # in the workspace root, which is not the case here — request it
+  # manually.  Runtime-based features (schema hover etc.) still need
+  # bin/rails and stay off in this combined workspace; static Rails
+  # support works.
+  gem "ruby-lsp-rails", require: false
+
+  # RSpec add-on: spec structure as document symbols, and go-to-
+  # definition for `let'/`subject'.  Its CodeLens buttons do not work
+  # from this workspace root — run specs with rspec-mode instead
+  # (README.md explains why).
+  gem "ruby-lsp-rspec", require: false
+end

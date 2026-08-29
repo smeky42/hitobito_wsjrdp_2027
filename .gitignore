@@ -1,6 +1,8 @@
 !.github
 
 .bundle/
+.ruby-lsp/
+vendor/bundle/
 log/*.log
 tmp/
 pkg/
