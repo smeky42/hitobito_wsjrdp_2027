@@ -12,6 +12,7 @@
 # Buchungs GUID (buchungs_guid). Each booking optionally belongs to
 # the datev_booking_batch it was imported from.
 class DatevBooking < ActiveRecord::Base
+  # The Buchungsstapel / Primanota this booking was imported from (optional).
   belongs_to :batch, class_name: "DatevBookingBatch",
     foreign_key: :datev_booking_batch_id,
     inverse_of: :bookings,
@@ -19,6 +20,18 @@ class DatevBooking < ActiveRecord::Base
 
   delegate :consultant_number, :client_number, :primanota_number, :financial_year, :financial_year_start, :financial_year_end,
     to: :batch, allow_nil: true
+
+  has_one :accounting_entry, inverse_of: :datev_booking, dependent: :nullify
+
+  # Bookings not reconciled with any accounting entry (the link lives on the
+  # entry now). A NOT IN subquery, deliberately NOT where.missing(:accounting_entry):
+  # the latter LEFT JOINs accounting_entries, and the matcher's raw-SQL filters
+  # reference booking_date, which BOTH tables carry (ambiguous under the join).
+  scope :without_accounting_entry, -> {
+    where.not(id: AccountingEntry.where.not(datev_booking_id: nil).select(:datev_booking_id))
+  }
+  has_one :camt_transaction, class_name: "WsjrdpCamtTransaction",
+    inverse_of: :datev_booking, dependent: :nullify
 
   # account (Konto) / offsetting_account (Gegenkonto) as polymorphic associations
   belongs_to :account, polymorphic: true, optional: true,

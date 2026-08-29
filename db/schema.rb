@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_28_000400) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_28_000600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -51,7 +51,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_28_000400) do
     t.bigint "camt_transaction_id"
     t.date "booking_date", null: false
     t.bigint "moss_balance_movement_id"
+    t.bigint "datev_booking_id", comment: "Optional 1:1 (<-> datev_bookings)"
+    t.jsonb "datev_booking_link_meta", default: {}, null: false
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
+    t.index ["datev_booking_id"], name: "index_accounting_entries_on_datev_booking_id", unique: true
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
     t.index ["payment_initiation_id"], name: "index_accounting_entries_on_payment_initiation_id"
@@ -1563,8 +1566,24 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_28_000400) do
     t.jsonb "tx_dtls", comment: "<TxDtls>"
     t.jsonb "additional_info", default: {}
     t.string "entry_or_details", default: "entry", null: false, comment: "'entry' (Ntry) or 'details' (TxDtls)"
+    t.bigint "datev_booking_id", comment: "Optional 1:1 (<-> datev_bookings)"
+    t.jsonb "datev_booking_link_meta", default: {}, null: false
+    t.string "cost_center_number"
+    t.string "sphere_number", default: "3", comment: "Tax sphere (steuerliche Sphäre)"
+    t.bigint "account_id"
+    t.string "account_type"
+    t.bigint "offsetting_account_id"
+    t.string "offsetting_account_type"
+    t.string "datev_posting_text", comment: "DATEV Buchungstext"
+    t.string "datev_document_field_1", comment: "DATEV Belegfeld 1"
+    t.string "datev_document_field_2", comment: "DATEV Belegfeld 2"
+    t.jsonb "datev_beleginfo", default: [], null: false, comment: "DATEV Beleginfo as [{num,key,value}] (like datev_bookings.beleginfo)"
+    t.jsonb "datev_zusatzinformation", default: [], null: false, comment: "DATEV Zusatzinformation as [{num,key,value}] (like datev_bookings.zusatzinformation)"
+    t.bigint "datev_booking_batch_id", comment: "Optional n:1 (<-> datev_booking_batches)"
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
+    t.index ["datev_booking_batch_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_batch_id"
+    t.index ["datev_booking_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_id", unique: true
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
   end
 
@@ -1842,6 +1861,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_28_000400) do
 
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
   add_foreign_key "accounting_entries", "accounting_entries", column: "reverses_id"
+  add_foreign_key "accounting_entries", "datev_bookings", on_delete: :nullify
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id"
   add_foreign_key "accounting_entries", "wsjrdp_payment_initiations", column: "payment_initiation_id"
@@ -1856,6 +1876,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_28_000400) do
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
   add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"
+  add_foreign_key "wsjrdp_camt_transactions", "datev_booking_batches"
+  add_foreign_key "wsjrdp_camt_transactions", "datev_bookings", on_delete: :nullify
   add_foreign_key "wsjrdp_cost_centers", "people", column: "manager_person_id"
   add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
