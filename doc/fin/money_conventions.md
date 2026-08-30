@@ -121,3 +121,107 @@ keep their dialects; this document only maps them.
   the mirror image of `datev_bookings`, because they are
   account-perspective tables (R2).
 * `moss_balance_movements` (in production) - yet to be cleaned up.
+
+
+## Money conventions (database)
+
+This section describes how monetary amounts and exchange rates are
+modelled in the database for `hitobito_wsjrdp_2027`. This applies to
+new finance/bookkeeping tables (`datev_*`, `moss_*`,
+`wsjrdp_cost_centers`/`wsjrdp_spheres` budgets, ...). The older
+integer-cents idiom (`accounting_entries.amount_cents` & co.) is a
+coexisting pattern that stays as it is for now.
+
+### The two column types
+
+* **Currency amounts: `numeric(20, 3)`** — up to 17 integer digits and
+  3 fractional digits. Scale 3 covers every ISO 4217 currency (minor
+  units are 0–3 decimals — most currencies 2, e.g. JPY 0, BHD/KWD/OMR 3)
+  and leaves one guard digit beyond EUR cents.
+* **Exchange rates: `numeric(28, 12)`** — up to 16 integer digits and
+  12 fractional digits. Rates are not amounts: sources quote them with
+  6 (DATEV Kurs), 8 (Moss conversion rates) or up to 10 fractional
+  digits (ISO 20022 `BaseOneRate`: totalDigits 11 / fractionDigits
+  10), so scale 12 is a superset of everything we may have to store
+  losslessly. 16 integer digits cover every exchange rate ever quoted
+  for a traded currency — including the historical extremes
+  (Papiermark 1923: ~4.2 × 10¹² per USD; Zimbabwe dollar 2008/09:
+  ~10¹³). Sole exception: The 1946 Hungarian pengő (~4 × 10²⁹), a
+  magnitude no messaging standard can carry either.
+* **Never `float`/`double precision`** for money or rates (see below).
+
+### Why these shapes: how `numeric` storage works
+
+PostgreSQL stores `numeric` values by VALUE, not by declared type: the
+docs state the requirement as “two bytes for each group of four
+decimal digits, plus three to eight bytes overhead”. In a heap tuple
+that is
+
+    1 byte varlena header + 2 bytes numeric header
+    + 2 bytes per group of four decimal digits,
+
+where the four-digit groups are aligned at the decimal point and
+counted separately for the integer and the fractional side; leading
+and trailing all-zero groups are not stored at all. The declared
+`precision` is never stored — it is only an input constraint — so the
+*maximum* size of a column is
+
+    max bytes = 3 + 2 * ( ceil((p - s) / 4) + ceil(s / 4) )
+
+* `numeric(20, 3)`: ⌈17/4⌉ + ⌈3/4⌉ = 6 groups → **max 15 bytes**
+* `numeric(28, 12)`: ⌈16/4⌉ + ⌈12/4⌉ = 7 groups → **max 17 bytes**
+
+Both scales sit at four-digit group boundaries, so they waste nothing:
+scale 3 costs the same as scale 4 would, scale 12 fills its three
+fraction groups exactly, and 13–16 integer digits all cost the same
+four groups.
+
+In practice the footprint is much smaller and *variable*: a typical
+Euro amount takes 5–9 bytes (measured over the imported some DATEV
+bookings: ~79 % of rows at 5 bytes, ~21 % at 7, a handful at 9), zero
+takes 3 bytes, and NULL only the row's null-bitmap bit — i.e. usually
+**less than a fixed 8-byte `bigint` of cents**. The trade-off is
+arithmetic speed: `numeric` math is implemented in software, integer
+math in hardware; at our data volumes that is irrelevant.
+
+### What others do
+
+* The [PostgreSQL docs](https://www.postgresql.org/docs/current/datatype-numeric.html)
+  explicitly recommend `numeric` “for storing monetary amounts and other
+  quantities where exactness is required”.
+* The integer-minor-units pattern (store cents in an integer; Stripe’s
+  API model) is the main alternative — that is exactly what
+  `accounting_entries.amount_cents` does. See [Storing currency
+  values: data types, caveats, best
+  practices](https://cardinalby.github.io/blog/post/best-practices/storing-currency-values-data-types/)
+  for a survey of both patterns and the ISO 4217 minor-unit pitfalls.
+* Microsoft [recommends `decimal` with at least four decimal places
+  over the legacy `money(19,4)` type](https://learn.microsoft.com/en-us/sql/t-sql/data-types/money-and-smallmoney-transact-sql)
+  — the classic accounting shape `numeric(19,4)` that our `(20,3)`
+  is a close relative of.
+* For rates, ISO 20022 defines
+  [`BaseOneRate`](https://javadoc.io/static/com.tools20022/tools20022-api-payments/0.1.1/com/tools20022/repository/datatype/BaseOneRate.html)
+  with totalDigits 11 / fractionDigits 10 (used e.g. by the camt
+  `XchgRate` element); XML-Schema digit limits are not fixed SQL
+  scales, which is why our column is a strict superset.
+
+### Language mappings: why this is exact (and float is not)
+
+* **Ruby / Rails** maps `numeric` to
+  [`BigDecimal`](https://docs.ruby-lang.org/en/master/BigDecimal.html);
+* **Python / psycopg** maps it to
+  [`decimal.Decimal`](https://docs.python.org/3/library/decimal.html).
+
+Both are arbitrary-precision *decimal* representations: `0.10` is
+stored exactly, and addition, subtraction and multiplication are exact
+— the same guarantee PostgreSQL gives for `numeric`. Sums, comparisons
+and round-trips therefore match the database bit for bit.
+
+IEEE-754 `float`/`double` cannot represent most decimal fractions:
+`0.1 + 0.2 == 0.30000000000000004`, and accumulating thousands of such
+values drifts by real cents. That is why values must stay
+`BigDecimal`/`Decimal` end to end — never parse an amount into a float
+“just briefly”, and format for display via helpers, not via float
+conversion. Division and currency conversion still need an explicit
+rounding decision (target scale + rounding mode) even with decimals;
+exactness only comes for free for +, −, ×.
