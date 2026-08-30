@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_29_000200) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_30_000400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -946,8 +946,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_29_000200) do
     t.decimal "original_amount_excl_vat", precision: 20, scale: 3
     t.decimal "original_amount", precision: 20, scale: 3
     t.string "original_currency"
-    t.decimal "conversion_rate", precision: 20, scale: 8
-    t.decimal "conversion_rate_including_fees", precision: 20, scale: 8
+    t.decimal "conversion_rate", precision: 28, scale: 12
+    t.decimal "conversion_rate_including_fees", precision: 28, scale: 12
     t.decimal "fees_amount", precision: 20, scale: 3
     t.decimal "payment_fee", precision: 20, scale: 3
     t.decimal "transaction_amount_excluding_fees", precision: 20, scale: 3
@@ -1687,6 +1687,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_29_000200) do
     t.jsonb "datev_beleginfo", default: [], null: false, comment: "DATEV Beleginfo as [{num,key,value}] (like datev_bookings.beleginfo)"
     t.jsonb "datev_zusatzinformation", default: [], null: false, comment: "DATEV Zusatzinformation as [{num,key,value}] (like datev_bookings.zusatzinformation)"
     t.bigint "datev_booking_batch_id", comment: "Optional n:1 (<-> datev_booking_batches)"
+    t.bigint "imported_subject_id", comment: "Person derived at import time"
+    t.string "imported_subject_type", comment: "Polymorphic type for imported_subject_id (usually 'Person')"
+    t.jsonb "imported_subject_link_meta", default: {}, null: false, comment: "Link metadata for imported_subject_id"
+    t.jsonb "subject_link_meta", default: {}, null: false, comment: "Link metadata for subject_id"
+    t.string "category"
+    t.string "sub_category"
+    t.string "source_file", comment: "CAMT file that inserted or last genuinely changed this row"
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
     t.index ["datev_booking_batch_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_batch_id"
@@ -1829,7 +1836,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_29_000200) do
     t.jsonb "additional_info", default: {}
     t.string "transaction_type", default: "WsjrdpCamtTransaction", null: false
     t.string "banking_url"
+    t.string "bookkeeping_account_number", comment: "Number of the bookkeeping account this bank account/wallet maps to"
+    t.string "bookkeeping_account_type", default: "WsjrdpLedgerAccount", comment: "Polymorphic type for bookkeeping_account_number (default WsjrdpLedgerAccount)"
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
+    t.index ["bookkeeping_account_type", "bookkeeping_account_number"], name: "index_wsjrdp_fin_accounts_on_bookkeeping_account"
   end
 
   create_table "wsjrdp_ledger_accounts", comment: "Ledger accounts (Sachkonten)", force: :cascade do |t|

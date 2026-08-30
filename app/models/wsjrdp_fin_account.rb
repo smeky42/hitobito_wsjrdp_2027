@@ -22,6 +22,15 @@ class WsjrdpFinAccount < ActiveRecord::Base
     class_name: "MossBalanceMovement",
     dependent: :restrict_with_error
 
+  # The bookkeeping account this bank account / wallet maps to,
+  # referenced by its `number` (not id). Polymorphic to allow pointing
+  # at any account class.
+  belongs_to :bookkeeping_account,
+    polymorphic: true,
+    primary_key: :number,
+    foreign_key: :bookkeeping_account_number,
+    optional: true
+
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 

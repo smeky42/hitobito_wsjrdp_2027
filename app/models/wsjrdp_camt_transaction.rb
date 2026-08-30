@@ -13,6 +13,12 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   include WsjrdpTransaction
 
   belongs_to :subject, polymorphic: true, optional: true
+
+  # The subject (usually a Person) derived at import time from the payment
+  # reference, kept separate from the (possibly hand-corrected) subject.
+  # Details are recorded in imported_subject_link_meta.
+  belongs_to :imported_subject, polymorphic: true, optional: true
+
   belongs_to :fin_account,
     optional: true,
     class_name: "WsjrdpFinAccount"
