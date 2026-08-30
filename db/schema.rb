@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_30_000400) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1623,8 +1623,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_000400) do
     t.string "account_identification", null: false
     t.string "account_servicer_reference", null: false, comment: "<AcctSvcrRef>"
     t.string "credit_debit_indication", null: false, comment: "<CdtDbtInd>"
-    t.integer "amount_cents", null: false
-    t.string "amount_currency", default: "EUR", null: false
+    t.string "base_currency", default: "EUR", null: false, comment: "Base/ledger currency, always EUR (check-constrained)"
     t.date "value_date", null: false
     t.string "description", null: false
     t.string "message_identification", comment: "<MsgId>"
@@ -1694,11 +1693,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_000400) do
     t.string "category"
     t.string "sub_category"
     t.string "source_file", comment: "CAMT file that inserted or last genuinely changed this row"
+    t.decimal "signed_base_amount", precision: 20, scale: 3, null: false, comment: "Signed booking amount in the base currency (EUR), account perspective (+ = inflow: CRDT +, DBIT -)"
+    t.virtual "base_amount", type: :decimal, precision: 20, scale: 3, comment: "Sign-less base-currency amount", as: "abs(signed_base_amount)", stored: true
+    t.virtual "debit_credit", type: :string, comment: "Debit/credit (C/D) derived from the ISO credit_debit_indication", as: "\nCASE\n    WHEN ((credit_debit_indication)::text = 'CRDT'::text) THEN 'C'::text\n    ELSE 'D'::text\nEND", stored: true
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
     t.index ["datev_booking_batch_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_batch_id"
     t.index ["datev_booking_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_id", unique: true
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
+    t.check_constraint "base_currency::text = 'EUR'::text", name: "chk_wsjrdp_camt_tx_base_currency"
+    t.check_constraint "credit_debit_indication::text = ANY (ARRAY['CRDT'::character varying, 'DBIT'::character varying]::text[])", name: "chk_wsjrdp_camt_tx_credit_debit_indication"
   end
 
   create_table "wsjrdp_configs", id: :serial, force: :cascade do |t|
@@ -1836,7 +1840,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_000400) do
     t.jsonb "additional_info", default: {}
     t.string "transaction_type", default: "WsjrdpCamtTransaction", null: false
     t.string "banking_url"
-    t.string "bookkeeping_account_number", comment: "Number of the bookkeeping account this bank account/wallet maps to"
+    t.string "bookkeeping_account_number", comment: "Number of the (DATEV) bookkeeping account this bank account/wallet maps to"
     t.string "bookkeeping_account_type", default: "WsjrdpLedgerAccount", comment: "Polymorphic type for bookkeeping_account_number (default WsjrdpLedgerAccount)"
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
     t.index ["bookkeeping_account_type", "bookkeeping_account_number"], name: "index_wsjrdp_fin_accounts_on_bookkeeping_account"

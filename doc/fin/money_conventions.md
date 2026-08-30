@@ -105,11 +105,10 @@ cancel. The flag is informational (make reversals visible/filterable).
 | `datev_booking_batches` | — | — | — | `base_currency` (= EUR, checked) | — |
 | `moss_card_transactions` / `_bookings` | numeric(20,3) | signed inputs + generated unsigned views | `debit_credit` D/C (generated from the sign) | `base_*` / `transaction_*` on the lines | `exchange_rate` (28,12), derived |
 | `moss_balance_movements` | numeric(20,3) | signed (− = charge) | none | `currency` (= account EUR) / `original_*` | `conversion_rate` (20,8): **junk (1.0) on FX rows** |
-| `wsjrdp_camt_transactions` | integer cents | signed | additionally `credit_debit_indication` CRDT/DBIT (ISO source mirror; redundant with the sign, deliberately) | EUR only | — |
+| `wsjrdp_camt_transactions` | numeric(20,3) | signed input (`signed_base_amount`) + generated `base_amount` = ABS | `debit_credit` D/C, generated from `credit_debit_indication` (which stays as the ISO CRDT/DBIT source mirror) | EUR only (`base_currency` = EUR, checked) | — (EUR only) |
 
-Not to be touched: `wsjrdp_camt_transactions` (ISO 20022 source
-mirror) and `accounting_entries` (`amount_cents`, hitobito heritage)
-keep their dialects; this document only maps them.
+Not to be touched: `accounting_entries` (`amount_cents`, hitobito
+heritage) keeps its integer-cents dialect; this document only maps it.
 
 
 ## Status / plans
@@ -120,6 +119,13 @@ keep their dialects; this document only maps them.
   the signed amount is the input and the unsigned one is generated --
   the mirror image of `datev_bookings`, because they are
   account-perspective tables (R2).
+* `wsjrdp_camt_transactions` follows this standard too (Tier 2,
+  account-perspective, EUR-only): `signed_base_amount` numeric(20,3) is
+  the input, `base_amount` = ABS is generated, `debit_credit` is
+  generated from the ISO `credit_debit_indication`. It has no
+  `transaction_*` / `exchange_rate` axis (EUR-only; the CAMT importer
+  exposes no FX). Migrated off integer `amount_cents` in
+  2026-08 (see `doc/plans/2026-08_migrate-wsjrdp_camt_transactions-to-house-money-standard.md`).
 * `moss_balance_movements` (in production) - yet to be cleaned up.
 
 

@@ -51,6 +51,11 @@ class WsjrdpFinAccount < ActiveRecord::Base
   end
 
   def closing_balance_cents
-    @closing_balance_cents ||= opening_balance_cents + transactions.map { |e| e.amount_cents }.sum
+    # transactions are camt (bank accounts) or moss (the Moss wallet). Camt now
+    # stores the numeric signed_base_amount (house money standard); moss still
+    # uses integer amount_cents. Sum in cents across both.
+    @closing_balance_cents ||= opening_balance_cents + transactions.sum { |e|
+      e.respond_to?(:signed_base_amount) ? (e.signed_base_amount * 100).round : e.amount_cents
+    }
   end
 end
