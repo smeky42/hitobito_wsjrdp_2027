@@ -30,6 +30,15 @@ class WsjrdpLedgerAccount < ActiveRecord::Base
     primary_key: :number, foreign_key: :account_number, inverse_of: :account
   # rubocop:enable Rails/HasManyOrHasOneDependent
 
+  # Bank accounts / wallets that map to this ledger account (by
+  # number).  dependent: :nullify -- removing a ledger account clears
+  # the mapping on the fin accounts (there is no FK; the link is
+  # polymorphic, by number).
+  has_many :fin_accounts, class_name: "WsjrdpFinAccount",
+    as: :bookkeeping_account, primary_key: :number,
+    foreign_key: :bookkeeping_account_number,
+    inverse_of: :bookkeeping_account, dependent: :nullify
+
   # moss_status is NULL for accounts without a Moss connection
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
   scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
