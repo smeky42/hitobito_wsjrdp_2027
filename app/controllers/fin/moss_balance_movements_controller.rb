@@ -9,7 +9,7 @@
 
 class Fin::MossBalanceMovementsController < Fin::FinController
   include WsjrdpFormHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
   include SubjectLinking
 
   prepend_before_action :map_id_to_moss_balance_movement_id

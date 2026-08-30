@@ -9,7 +9,7 @@
 
 class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   include WsjrdpFormHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
   include SubjectLinking
 
   before_action :map_id_to_wsjrdp_camt_transaction_id

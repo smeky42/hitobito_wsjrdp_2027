@@ -7,7 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-module WsjrdpFinHelper
+module Fin::AccessHelper
   extend ActiveSupport::Concern
 
   included do

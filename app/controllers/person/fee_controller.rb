@@ -10,7 +10,7 @@
 class Person::FeeController < Fin::FinController
   include PersonInPrimaryGroup
   include ContractHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
 
   before_action :authorize_action
 

@@ -9,7 +9,7 @@
 
 class Fin::WsjrdpPaymentPlansController < ApplicationController
   include WsjrdpFormHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
   include ContractHelper
 
   before_action :map_id_to_wsjrdp_payment_plan_id

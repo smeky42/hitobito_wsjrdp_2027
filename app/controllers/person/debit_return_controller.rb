@@ -9,7 +9,7 @@
 
 class Person::DebitReturnController < ApplicationController
   include ContractHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
   include WsjrdpFormHelper
 
   before_action :authorize_action
