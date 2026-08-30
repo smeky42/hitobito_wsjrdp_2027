@@ -49,8 +49,9 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
     entry = AccountingEntry.create!(
       subject: subject,
       author: current_user,
-      amount_cents: tx.amount_cents,
-      amount_currency: tx.amount_currency,
+      # AccountingEntry keeps integer cents; camt now stores numeric EUR.
+      amount_cents: (tx.signed_base_amount * 100).round,
+      amount_currency: tx.base_currency,
       description: tx.description,
       comment: tx.comment,
       value_date: tx.value_date,
@@ -131,8 +132,9 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   end
 
   def matching_accounting_entries
+    camt_cents = (camt_transaction.signed_base_amount * 100).round
     @matching_accounting_entries ||= camt_transaction.accounting_entries_for_subject.select { |e|
-      e.amount_cents == camt_transaction.amount_cents
+      e.amount_cents == camt_cents
     }
   end
 

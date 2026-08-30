@@ -222,7 +222,10 @@ de:
         credit_debit_indication: Kredit/Debit
         amount_eur: Betrag in Euro
         amount_eur_display: Betrag in Euro
-        amount_currency: Währung
+        signed_base_amount: Betrag in Euro
+        base_amount: Betrag in Euro (Betrag)
+        base_currency: Währung
+        debit_credit: Soll/Haben
         value_date: Valuta
         description: Verwendungszweck
         # message

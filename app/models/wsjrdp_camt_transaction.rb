@@ -33,7 +33,34 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   # details are recorded in datev_booking_link_meta.
   belongs_to :datev_booking, optional: true
 
-  eur_attribute :amount_eur, cents_attr: :amount_cents
+  # Money is stored on the house standard now (doc/fin/money_conventions.md):
+  # signed_base_amount numeric(20,3) (+ = inflow), with base_amount = ABS and
+  # debit_credit generated in the DB. The amount_eur* accessors are kept but
+  # backed by signed_base_amount (EUR) -- the shared fin_account statement view
+  # and link_name use amount_eur_display polymorphically with MossBalanceMovement.
+  def amount_eur
+    signed_base_amount
+  end
+
+  def amount_eur=(value)
+    self.signed_base_amount = value
+  end
+
+  def amount_eur_display
+    eur_display_or_nil(signed_base_amount)
+  end
+
+  def amount_eur_input_field_options
+    {value: eur_display_or_nil(signed_base_amount, delimiter: ""),
+     type: "number", lang: "de-DE", step: 0.01, autocomplete: "off"}
+  end
+
+  # WsjrdpTransaction#accounting_entries_for_subject_with_matching_amount compares
+  # against AccountingEntry.amount_cents (integer cents, hitobito heritage); camt
+  # stores the numeric signed_base_amount, so convert at this cross-dialect edge.
+  def accounting_entries_for_subject_with_matching_amount
+    accounting_entries_for_subject(amount_cents: (signed_base_amount * 100).round)
+  end
 
   attribute :accounting_entry_id, :integer
 
