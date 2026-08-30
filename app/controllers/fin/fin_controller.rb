@@ -8,7 +8,7 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 class Fin::FinController < ApplicationController
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
 
   before_action :check_fin_params_and_cookies
 end

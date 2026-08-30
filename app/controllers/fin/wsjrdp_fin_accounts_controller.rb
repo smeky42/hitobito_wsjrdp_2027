@@ -9,7 +9,7 @@
 
 class Fin::WsjrdpFinAccountsController < Fin::FinController
   include WsjrdpFormHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
   include WsjrdpNumberHelper
 
   decorates :person

@@ -2,7 +2,7 @@
 
 class Fin::AccountingEntriesController < Fin::FinController
   include WsjrdpFormHelper
-  include WsjrdpFinHelper
+  include Fin::AccessHelper
   include FormatHelper
   include UtilityHelper
   include ::ActionView::Helpers::TagHelper
