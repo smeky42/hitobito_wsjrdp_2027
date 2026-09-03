@@ -500,7 +500,10 @@ top-up rows need no enrichment: their bookings derive 1:1 from the row itself
 `down` is the exact inverse of the legacy state. Every mapping is a plain
 column join, which is what makes it exact; the account names the legacy tables
 carried are derived from the standing data by number, the creditor's name and
-bank details come back from `legacy_supplier_*`. It does **not** write the
+bank details come back from `legacy_supplier_*`. Rows the importer created
+after the migration carry none of that scaffolding; for them `down` builds the
+legacy row identity from the constructed keys, so it still runs but is no
+longer byte-exact. It does **not** write the
 enrichment's scaffolding (`moss_bookings`, `moss_expense_uuid`) back into the
 flat rows; that comes from the reimbursement export, so before running `up`
 again the enrichment script runs again, and the guard makes sure of it. The
@@ -761,6 +764,12 @@ green on the gates of §9:
   additionally writes the `(excl. VAT)` figures `down` needs);
 - the detail gate on each of its branches, proven on mutated export copies:
   exactly the affected transaction skipped with its reason, nothing deleted;
+- the migration on empty legacy tables (a database that never held Moss
+  data): the guard passes, the three tables are created empty, `down`
+  recreates the legacy tables empty, the importer then fills the three tables
+  from the exports, and `down` runs on that freshly imported state as well; a
+  dangling `accounting_entries.moss_balance_movement_id` (a link into an
+  empty table) stops the migration with a message of its own;
 - the schema dumped and loaded into the wagon's test database behind the
   database-name interlock, the finance ability spec green;
 - the DATEV reconciliation re-run from the migrated tables: all bookings but
