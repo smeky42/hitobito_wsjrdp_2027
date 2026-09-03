@@ -16,8 +16,8 @@ module AccountingEntryHelper
     _format_link_to(ae.camt_transaction)
   end
 
-  def format_accounting_entry_moss_balance_movement(ae)
-    _format_link_to(ae.moss_balance_movement)
+  def format_accounting_entry_moss_booking(ae)
+    _format_link_to(ae.moss_booking)
   end
 
   private

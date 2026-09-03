@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -50,13 +50,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
     t.string "return_reason"
     t.bigint "camt_transaction_id"
     t.date "booking_date", null: false
-    t.bigint "moss_balance_movement_id"
     t.bigint "datev_booking_id", comment: "Optional 1:1 (<-> datev_bookings)"
     t.jsonb "datev_booking_link_meta", default: {}, null: false
+    t.bigint "moss_booking_id"
+    t.jsonb "moss_booking_link_meta", default: {}, null: false
+    t.jsonb "camt_transaction_link_meta", default: {}, null: false
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
     t.index ["datev_booking_id"], name: "index_accounting_entries_on_datev_booking_id", unique: true
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
+    t.index ["moss_booking_id"], name: "index_accounting_entries_on_moss_booking_id"
     t.index ["payment_initiation_id"], name: "index_accounting_entries_on_payment_initiation_id"
     t.index ["reversed_by_id"], name: "index_accounting_entries_on_reversed_by_id"
     t.index ["reverses_id"], name: "index_accounting_entries_on_reverses_id"
@@ -290,13 +293,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
     t.string "original_offsetting_account_number", comment: "Original DATEV Gegenkonto if mapped on import"
     t.string "account_kind", null: false, comment: "DATEV Kontenart of account_number"
     t.string "offsetting_account_kind", null: false, comment: "DATEV Kontenart of offsetting_account_number"
-    t.virtual "account_type", type: :string, comment: "Target class of the polymorphic `account` association", as: "\nCASE\n    WHEN ((account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
-    t.virtual "offsetting_account_type", type: :string, comment: "Target class of the polymorphic `offsetting_account` association", as: "\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "account_type", type: :string, comment: "Target class of the polymorphic `account` association", as: "\nCASE\n    WHEN ((account_kind)::text = ANY (ARRAY[('CREDITOR'::character varying)::text, ('DEBITOR'::character varying)::text])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "offsetting_account_type", type: :string, comment: "Target class of the polymorphic `offsetting_account` association", as: "\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY (ARRAY[('CREDITOR'::character varying)::text, ('DEBITOR'::character varying)::text])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
     t.decimal "base_amount", precision: 20, scale: 3, null: false, comment: "Sign-less booking amount in the base currency (EUR): DATEV Basis-Umsatz for foreign-currency bookings, else the Umsatz"
     t.string "debit_credit", null: false, comment: "Debit/credit indicator derived from DATEV S/H: D = debit, C = credit"
     t.string "base_currency", default: "EUR", null: false, comment: "Base/ledger currency: DATEV WKZ Basis-Umsatz for foreign-currency bookings, else WKZ Umsatz; the importer refuses non-EUR values"
-    t.virtual "signed_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the account (Konto) perspective (incoming +, outgoing -)", as: "((base_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
-    t.virtual "signed_offsetting_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the offsetting (Gegenkonto) perspective, same sign convention as signed_base_amount", as: "(((- base_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "signed_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the account (Konto) perspective (incoming +, outgoing -)", as: "((base_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_kind)::text = ANY (ARRAY[('INCOME'::character varying)::text, ('EXPENSE'::character varying)::text])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "signed_offsetting_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the base currency (EUR) from the offsetting (Gegenkonto) perspective, same sign convention as signed_base_amount", as: "(((- base_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY (ARRAY[('INCOME'::character varying)::text, ('EXPENSE'::character varying)::text])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
     t.string "posting_text", comment: "Display/working posting text; initially copied from original_posting_text (with mojibake repair for the 2025 KOST1=9500/Konto=1200 batch), then hand-editable and left untouched on re-import"
     t.string "original_posting_text", comment: "DATEV Buchungstext"
     t.string "cost_center_number", comment: "DATEV KOST1 (year <= 2025) or KOST2 (year >= 2026)"
@@ -311,8 +314,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
     t.boolean "is_general_reversal", default: false, null: false, comment: "DATEV Generalumkehr (GU) record column: true = reversal posting (exported side-flipped; no extra sign factor needed)"
     t.decimal "transaction_amount", precision: 20, scale: 3, null: false, comment: "DATEV Umsatz (record field 1, sign-less) in the transaction currency; equals base_amount for EUR bookings"
     t.string "transaction_currency", default: "EUR", null: false, comment: "DATEV WKZ Umsatz (record field 3): currency the booking was entered in (mostly EUR, else e.g. PLN)"
-    t.virtual "signed_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the account (Konto) perspective", as: "((transaction_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
-    t.virtual "signed_offsetting_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the offsetting (Gegenkonto) perspective", as: "(((- transaction_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY ((ARRAY['INCOME'::character varying, 'EXPENSE'::character varying])::text[])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "signed_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the account (Konto) perspective", as: "((transaction_amount * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((account_kind)::text = ANY (ARRAY[('INCOME'::character varying)::text, ('EXPENSE'::character varying)::text])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
+    t.virtual "signed_offsetting_transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Signed booking value in the transaction currency from the offsetting (Gegenkonto) perspective", as: "(((- transaction_amount) * (\nCASE\n    WHEN ((debit_credit)::text = 'C'::text) THEN '-1'::integer\n    ELSE 1\nEND)::numeric) * (\nCASE\n    WHEN ((offsetting_account_kind)::text = ANY (ARRAY[('INCOME'::character varying)::text, ('EXPENSE'::character varying)::text])) THEN '-1'::integer\n    ELSE 1\nEND)::numeric)", stored: true
     t.decimal "exchange_rate", precision: 28, scale: 12, comment: "DATEV Kurs (record field 4); only present for foreign-currency bookings"
     t.uuid "bedi_guid", comment: "DATEV Beleglink BEDI GUID (record field 20): reference to the document image in DATEV Unternehmen online"
     t.string "origin_indicator", comment: "DATEV Herkunft-Kz (HK), e.g. SV (batch processing) or RE (accounting)"
@@ -334,9 +337,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
     t.index ["offsetting_account_number"], name: "index_datev_bookings_on_offsetting_account_number"
     t.index ["sphere_number"], name: "index_datev_bookings_on_sphere_number"
     t.index ["zusatzinformation"], name: "index_datev_bookings_on_zusatzinformation", opclass: :jsonb_path_ops, using: :gin
-    t.check_constraint "account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[])", name: "chk_datev_booking_account_kind"
-    t.check_constraint "debit_credit::text = ANY (ARRAY['D'::character varying, 'C'::character varying]::text[])", name: "chk_datev_booking_debit_credit"
-    t.check_constraint "offsetting_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[])", name: "chk_datev_booking_offsetting_account_kind"
+    t.check_constraint "account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text])", name: "chk_datev_booking_account_kind"
+    t.check_constraint "debit_credit::text = ANY (ARRAY['D'::character varying::text, 'C'::character varying::text])", name: "chk_datev_booking_debit_credit"
+    t.check_constraint "offsetting_account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text])", name: "chk_datev_booking_offsetting_account_kind"
   end
 
   create_table "delayed_jobs", id: :serial, force: :cascade do |t|
@@ -924,164 +927,162 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
     t.index ["sender_id"], name: "index_messages_on_sender_id"
   end
 
-  create_table "moss_balance_movements", id: :serial, force: :cascade do |t|
+  create_table "moss_bookings", comment: "L3: one row per split -- the grain DATEV books at", force: :cascade do |t|
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
-    t.bigint "fin_account_id", default: 4, null: false
-    t.bigint "subject_id"
-    t.string "subject_type"
-    t.text "comment", default: "", null: false
-    t.string "status"
-    t.jsonb "additional_info", default: {}
-    t.string "unique_item_number", null: false
-    t.string "moss_transaction_id", null: false
-    t.integer "sub_row_number", default: 0, null: false
-    t.string "transaction_state"
-    t.string "transaction_type"
-    t.date "payment_date", null: false
-    t.date "booking_date", null: false
-    t.decimal "amount_excl_vat", precision: 20, scale: 3
-    t.decimal "amount", precision: 20, scale: 3, null: false
-    t.string "currency", null: false
-    t.decimal "original_amount_excl_vat", precision: 20, scale: 3
-    t.decimal "original_amount", precision: 20, scale: 3
-    t.string "original_currency"
-    t.decimal "conversion_rate", precision: 28, scale: 12
-    t.decimal "conversion_rate_including_fees", precision: 28, scale: 12
-    t.decimal "fees_amount", precision: 20, scale: 3
-    t.decimal "payment_fee", precision: 20, scale: 3
-    t.decimal "transaction_amount_excluding_fees", precision: 20, scale: 3
-    t.string "supplier_account"
-    t.string "supplier_name"
-    t.string "account_number"
-    t.string "name_of_expense_account"
-    t.string "category"
-    t.string "moss_balance_account"
-    t.string "cash_in_transit_account"
-    t.string "reason_for_purchase"
-    t.string "note", default: "", null: false
-    t.string "recipient_account_number"
-    t.string "recipient_bank_code"
-    t.string "payment_reference"
-    t.string "invoice_number"
-    t.string "team_name"
-    t.string "cardholder"
-    t.string "client_number"
-    t.date "first_export_date"
-    t.string "moss_expense_id"
-    t.string "moss_invoice_id"
-    t.string "moss_reimbursement_id"
-    t.string "moss_attachment_url"
-    t.index ["moss_transaction_id", "sub_row_number"], name: "index_moss_balance_movements_tx_id_sub_row", unique: true
-    t.index ["subject_type", "subject_id"], name: "index_moss_balance_movements_subject"
-    t.index ["unique_item_number"], name: "index_moss_balance_movements_unique_item_number", unique: true
+    t.bigint "moss_transaction_id", null: false, comment: "FK moss_transactions (ON DELETE CASCADE)"
+    t.uuid "moss_transaction_uuid", null: false, comment: "Denormalised from the transaction"
+    t.bigint "moss_expense_id", null: false, comment: "FK moss_expenses (ON DELETE CASCADE); never NULL"
+    t.string "booking_unique_item_number", null: false, comment: "Constructed: <transaction uuid>_<CSV Sub-row Number> (card, invoice, top-up) / <CSV Unique Expense ID>_<CSV Sub-row Number> (reimbursement)"
+    t.decimal "signed_base_amount", precision: 20, scale: 3, null: false, comment: "CSV Home Amount (card export) / CSV Amount (balance + reimbursement exports)"
+    t.virtual "base_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_base_amount)", stored: true
+    t.decimal "signed_transaction_amount", precision: 20, scale: 3, comment: "CSV Original Amount (card + balance exports) / CSV Amount in Original Currency (reimbursement export)"
+    t.virtual "transaction_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_transaction_amount)", stored: true
+    t.virtual "debit_credit", type: :string, as: "\nCASE\n    WHEN (signed_base_amount > (0)::numeric) THEN 'C'::text\n    ELSE 'D'::text\nEND", stored: true
+    t.string "account_number", comment: "CSV Account Number (card export) / CSV Expense Account (reimbursement export) / CSV Expense Account - Number (invoice export)"
+    t.string "account_kind", comment: "Kontenart, derived from the number"
+    t.virtual "account_type", type: :string, as: "\nCASE\n    WHEN (account_kind IS NULL) THEN NULL::text\n    WHEN ((account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.string "cost_center_number", comment: "CSV Cost Center - Number (card + invoice exports) / CSV Cost Center - Name (reimbursement export)"
+    t.string "sphere_number", comment: "CSV Cost Carrier - Number (card, reimbursement and invoice exports)"
+    t.string "distribution_combination", comment: "CSV Distribution combination (card, reimbursement and invoice exports)"
+    t.string "booking_posting_text", default: "", null: false, comment: "CSV Note (card export) / CSV Expense Description (reimbursement export) / CSV Booking Text (invoice export)"
+    t.bigint "expense_datev_booking_id", comment: "datev_bookings: the expense booking (Sachkonto -> creditor)"
+    t.jsonb "expense_datev_booking_link_meta", default: {}, null: false, comment: "Provenance of expense_datev_booking_id (doc/fin/recon_linking.md)"
+    t.bigint "contribution_subject_id", comment: "Person whose CONTRIBUTION (Beitrag) this booking concerns"
+    t.string "contribution_subject_type", comment: "Polymorphic type of contribution_subject (Person)"
+    t.jsonb "other_moss_columns", default: {}, null: false, comment: "Raw Moss fields without a column, keyed by CSV header"
+    t.string "source_file", comment: "The CSV file the row was last imported from"
+    t.text "comment", default: "", null: false, comment: "App-side free text"
+    t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
+    t.index ["account_number"], name: "index_moss_bookings_account_number"
+    t.index ["base_amount"], name: "index_moss_bookings_base_amount"
+    t.index ["booking_unique_item_number"], name: "index_moss_bookings_unique_item_number", unique: true
+    t.index ["contribution_subject_type", "contribution_subject_id"], name: "index_moss_bookings_contribution_subject"
+    t.index ["expense_datev_booking_id"], name: "index_moss_bookings_expense_datev"
+    t.index ["moss_expense_id"], name: "index_moss_bookings_expense"
+    t.index ["moss_transaction_id"], name: "index_moss_bookings_transaction"
+    t.check_constraint "account_kind IS NULL OR (account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_bookings_account_kind"
   end
 
-  create_table "moss_card_transaction_bookings", comment: "Splits (bookings) of Moss card transactions", force: :cascade do |t|
+  create_table "moss_expenses", comment: "L2: one row per expense of a reimbursement (N); one SHELL row for a card payment, invoice or top-up", force: :cascade do |t|
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
-    t.string "unique_item_number", comment: "Unique per-line/booking key"
-    t.integer "sub_row_number", default: 0, null: false, comment: "Split position within the transaction (WSJ27, 1-based)"
-    t.uuid "card_transaction_uuid", null: false, comment: "mandatory n:1 moss_card_transactions"
-    t.bigint "expense_datev_booking_id", comment: "1:1 -> datev_bookings: step-1 booking Sachkonto -> creditor (receipt/expense)"
-    t.jsonb "expense_datev_booking_link_meta", default: {}, null: false, comment: "Provenance of expense_datev_booking_id: created_at, author_id, score, automatic_manual"
-    t.jsonb "other_moss_columns", default: {}, null: false, comment: "Booking-level WSJ27 CSV columns without a dedicated column"
-    t.decimal "signed_base_amount", precision: 20, scale: 3, null: false, comment: "CSV Home Amount -- signed (+ = inflow, i.e. refund; card purchases are negative)"
-    t.virtual "base_amount", type: :decimal, precision: 20, scale: 3, comment: "Sign-less base-currency amount; reconciliation anchor against datev_bookings.base_amount", as: "abs(signed_base_amount)", stored: true
-    t.decimal "signed_transaction_amount", precision: 20, scale: 3, null: false, comment: "CSV Original Amount -- signed, in the currency the card was charged in"
-    t.virtual "transaction_amount", type: :decimal, precision: 20, scale: 3, comment: "Sign-less transaction-currency amount", as: "abs(signed_transaction_amount)", stored: true
-    t.virtual "debit_credit", type: :string, comment: "Debit/credit of the expense side, derived from the sign: D = purchase, C = refund (matches the S/H of the step-1 DATEV booking)", as: "\nCASE\n    WHEN (signed_base_amount > (0)::numeric) THEN 'C'::text\n    ELSE 'D'::text\nEND", stored: true
-    t.string "base_currency", null: false, comment: "CSV Home Currency -- our ledger currency, always EUR (check-constrained)"
-    t.string "transaction_currency", null: false, comment: "CSV Original Currency"
-    t.decimal "exchange_rate", precision: 28, scale: 12, comment: "transaction = base * exchange_rate (EUR->PLN ~ 4.24)"
-    t.string "account_number", comment: "Ledger (expense) account of this booking"
-    t.string "account_kind", comment: "DATEV Kontenart of account_number, derived by the importer (UNKNOWN when the number is not classifiable); nullable for rows created outside the import"
-    t.virtual "account_type", type: :string, comment: "Target class of the polymorphic `account` association", as: "\nCASE\n    WHEN (account_kind IS NULL) THEN NULL::text\n    WHEN ((account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
-    t.string "name_of_expense_account"
-    t.string "cost_center_number", comment: "Links to wsjrdp_cost_centers; = DATEV KOST1. CSV Cost Center - Name is ignored"
-    t.string "sphere_number", comment: "CSV Cost Carrier - Number = tax sphere of this booking (mostly 3 = Zweckbetrieb); Cost Carrier - Name is ignored"
-    t.string "distribution_combination"
-    t.string "posting_text", default: "", null: false, comment: "CSV Note -- booking text of this booking"
-    t.string "source_file", comment: "File of the CSV import that inserted or last genuinely changed this row"
-    t.text "comment", default: "", null: false, comment: "Manual note on this single booking (not from the import), preserved on import"
-    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for our own, non-Moss extension data"
-    t.index ["account_number"], name: "index_moss_card_transaction_bookings_account_number"
-    t.index ["base_amount"], name: "index_moss_card_transaction_bookings_base_amount"
-    t.index ["card_transaction_uuid", "sub_row_number"], name: "index_moss_card_transaction_bookings_uuid_sub_row", unique: true
-    t.index ["cost_center_number"], name: "index_moss_card_transaction_bookings_cost_center_number"
-    t.index ["expense_datev_booking_id"], name: "index_moss_card_transaction_bookings_expense_datev", unique: true
-    t.index ["unique_item_number"], name: "index_moss_card_transaction_bookings_unique_item_number", unique: true
-    t.check_constraint "account_kind IS NULL OR (account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_card_transaction_booking_account_kind"
-    t.check_constraint "base_currency::text = 'EUR'::text", name: "chk_moss_card_transaction_booking_base_currency"
+    t.bigint "moss_transaction_id", null: false, comment: "FK moss_transactions (ON DELETE CASCADE)"
+    t.uuid "moss_transaction_uuid", null: false, comment: "Denormalised; part of the natural key below"
+    t.string "type", null: false, comment: "STI: MossCardTransactionExpense | MossInvoiceExpense | MossReimbursementExpense | MossTopUpExpense"
+    t.uuid "moss_expense_uuid", comment: "CSV Unique Expense ID (reimbursement export) / CSV Invoice ID (invoice export) / CSV Transaction ID (card + balance exports)"
+    t.integer "expense_number", default: 1, null: false, comment: "CSV Sub-row Number (balance export, reimbursements), else 1"
+    t.decimal "signed_expense_base_amount", precision: 20, scale: 3, null: false, comment: "CSV Amount (balance export, reimbursements) / the transaction total (card, invoice, top-up)"
+    t.virtual "expense_base_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_expense_base_amount)", stored: true
+    t.decimal "signed_expense_transaction_amount", precision: 20, scale: 3, comment: "CSV Original Amount (balance export, reimbursements) / the transaction total in the transaction currency"
+    t.virtual "expense_transaction_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_expense_transaction_amount)", stored: true
+    t.string "expense_posting_text", comment: "CSV Parent Booking Text (reimbursement export)"
+    t.string "expense_name", comment: "CSV Expense Name (reimbursement export)"
+    t.string "moss_expense_type", comment: "CSV Expense type (reimbursement export)"
+    t.date "purchased_on", comment: "CSV Purchased On (reimbursement export)"
+    t.jsonb "other_moss_columns", default: {}, null: false, comment: "Raw Moss fields without a column, keyed by CSV header"
+    t.string "source_file", comment: "The CSV file the row was last imported from"
+    t.text "comment", default: "", null: false, comment: "App-side free text"
+    t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
+    t.index ["moss_expense_uuid"], name: "index_moss_expenses_expense_uuid"
+    t.index ["moss_transaction_id"], name: "index_moss_expenses_transaction"
+    t.index ["moss_transaction_uuid", "expense_number"], name: "index_moss_expenses_transaction_expense_number", unique: true
+    t.index ["type"], name: "index_moss_expenses_type"
   end
 
-  create_table "moss_card_transactions", comment: "Moss card transactions: one row per Moss Transaction ID", force: :cascade do |t|
+  create_table "moss_transactions", comment: "L1: one row per Moss transaction (card payment, invoice, reimbursement, top-up)", force: :cascade do |t|
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
-    t.uuid "card_transaction_uuid", null: false, comment: "CSV Transaction ID"
-    t.string "transaction_state", comment: "e.g., ACCEPTED"
-    t.string "transaction_type", comment: "STANDARD or CREDIT"
-    t.string "general_transaction_type", comment: "STANDARD or CREDIT"
-    t.string "is_prepayment"
-    t.bigint "clearing_datev_booking_id", comment: "Optional 1:1 (<-> datev_bookings)"
-    t.jsonb "clearing_datev_booking_link_meta", default: {}, null: false
-    t.date "payment_date", comment: "Card charge date; the Moss period (YYYY-MM) derives from it"
-    t.date "booking_date"
-    t.date "settlement_date"
-    t.date "first_export_date"
-    t.date "last_export_date"
-    t.date "receipt_date", comment: "Receipt/document date (Belegdatum)"
-    t.date "service_date", comment: "Service date (Leistungsdatum); partly empty"
-    t.date "approval_date"
-    t.decimal "signed_total_base_amount", precision: 20, scale: 3, null: false, comment: "Transaction total in the base currency, signed (+ = inflow, i.e. refund); sum of the bookings"
-    t.virtual "total_base_amount", type: :decimal, precision: 20, scale: 3, comment: "Sign-less transaction total in the base currency", as: "abs(signed_total_base_amount)", stored: true
-    t.string "merchant_name"
-    t.string "merchant_city"
-    t.string "merchant_country"
-    t.string "supplier_name"
-    t.string "supplier_account_number", comment: "CSV Supplier Account"
-    t.string "supplier_account_kind"
+    t.string "type", null: false, comment: "STI: MossCardTransaction | MossInvoice | MossReimbursement | MossTopUp"
+    t.virtual "expense_type", type: :string, as: "\nCASE type\n    WHEN 'MossCardTransaction'::text THEN 'card_transaction'::text\n    WHEN 'MossInvoice'::text THEN 'invoice'::text\n    WHEN 'MossReimbursement'::text THEN 'reimbursement'::text\n    ELSE 'top_up'::text\nEND", stored: true
+    t.uuid "moss_transaction_uuid", null: false, comment: "CSV Transaction ID (card + balance exports)"
+    t.string "moss_transaction_state", comment: "CSV Transaction State (card + balance exports)"
+    t.string "status", comment: "App-side status"
+    t.string "transaction_type", comment: "CSV Transaction Type (card + balance exports)"
+    t.date "payment_date", comment: "CSV Payment Date (card + balance exports)"
+    t.date "booking_date", comment: "CSV Booking Date (card + balance exports)"
+    t.date "first_export_date", comment: "CSV First Export Date (card + balance exports)"
+    t.date "last_export_date", comment: "CSV Last Export Date (card + invoice exports)"
+    t.date "settlement_date", comment: "CSV Settlement Date (card export)"
+    t.date "receipt_date", comment: "CSV Receipt Date (card export)"
+    t.date "service_date", comment: "CSV Service Date (card export)"
+    t.date "approval_date", comment: "CSV Approval Date (card, reimbursement and invoice exports)"
+    t.date "invoice_date", comment: "CSV Invoice Date (invoice export)"
+    t.string "invoice_status", comment: "CSV Invoice Status (invoice export)"
+    t.date "due_date", comment: "CSV Due Date (invoice export)"
+    t.date "delivery_date", comment: "CSV Delivery Date (invoice export)"
+    t.date "submitted_date", comment: "CSV Submitted Date (invoice export)"
+    t.date "created_in_moss_on", comment: "CSV Creation date (reimbursement export)"
+    t.date "submitted_on", comment: "CSV Submitted On (reimbursement export)"
+    t.decimal "signed_total_base_amount", precision: 20, scale: 3, null: false, comment: "CSV Total Amount (card export) / sum of CSV Amount (balance export)"
+    t.virtual "total_base_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_total_base_amount)", stored: true
+    t.decimal "signed_total_transaction_amount", precision: 20, scale: 3, comment: "CSV Total Original Amount (card export) / sum of CSV Original Amount (balance export)"
+    t.virtual "total_transaction_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_total_transaction_amount)", stored: true
+    t.string "currency", comment: "CSV Home Currency (card export) / CSV Currency (balance export)"
+    t.string "currency_original", comment: "CSV Original Currency (card + balance exports)"
+    t.decimal "exchange_rate", precision: 28, scale: 12, comment: "CSV Conversion Rate (invoice + reimbursement exports)"
+    t.decimal "payment_fee", precision: 20, scale: 3, comment: "CSV Payment Fee (balance export)"
+    t.decimal "fees_amount", precision: 20, scale: 3, comment: "CSV Fees Amount (card + balance exports)"
+    t.decimal "total_amount_excluding_fees", precision: 20, scale: 3, comment: "CSV Transaction Amount Excluding Fees (balance export) / sum of CSV Transaction Amount Excluding Fees (card export)"
+    t.decimal "conversion_rate_including_fees", precision: 28, scale: 12, comment: "CSV Conversion Rate Including Fees (card + balance exports)"
+    t.string "supplier_account_number", comment: "CSV Supplier Account (card + balance exports)"
+    t.string "supplier_account_kind", comment: "Kontenart, derived from the number"
     t.virtual "supplier_account_type", type: :string, as: "\nCASE\n    WHEN (supplier_account_kind IS NULL) THEN NULL::text\n    WHEN ((supplier_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
-    t.string "moss_balance_account_number", comment: "CSV Moss Balance Account"
-    t.string "moss_balance_account_kind"
+    t.string "recipient_iban", comment: "CSV Recipient Account Number (balance export)"
+    t.string "recipient_bic", comment: "CSV Recipient Bank Code (balance export)"
+    t.string "recipient_name", comment: "Parsed from CSV Reason for Purchase (balance export)"
+    t.string "top_up_sender", comment: "CSV Reason for Purchase (balance export, top-ups)"
+    t.string "moss_balance_account_number", comment: "CSV Moss Balance Account (card + balance exports)"
+    t.string "moss_balance_account_kind", comment: "Kontenart, derived from the number"
     t.virtual "moss_balance_account_type", type: :string, as: "\nCASE\n    WHEN (moss_balance_account_kind IS NULL) THEN NULL::text\n    WHEN ((moss_balance_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
-    t.string "cash_in_transit_account_number", comment: "CSV Cash in Transit Account"
-    t.string "cash_in_transit_account_kind"
+    t.string "cash_in_transit_account_number", comment: "CSV Cash in Transit Account (card + balance exports)"
+    t.string "cash_in_transit_account_kind", comment: "Kontenart, derived from the number"
     t.virtual "cash_in_transit_account_type", type: :string, as: "\nCASE\n    WHEN (cash_in_transit_account_kind IS NULL) THEN NULL::text\n    WHEN ((cash_in_transit_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
-    t.string "cardholder"
-    t.string "card_used", comment: "e.g. VIRTUAL - 2557 (last 4 card digits)"
-    t.string "card_holder_name"
-    t.string "card_holder_label", comment: "Constantly Kreditkarteninhaber"
-    t.string "card_label", comment: "Constantly Kreditkarte"
-    t.string "card_purpose"
-    t.string "team_name"
-    t.string "approver_name"
-    t.string "post_spend_approval_status", comment: "APPROVED or NA"
-    t.string "reason_for_purchase"
-    t.string "parent_booking_text", comment: "Booking text of the whole transaction"
-    t.string "invoice_number", comment: "= DATEV Belegfeld 1: bridge to datev_bookings.document_field_1 (step-1 booking EXPENSE -> creditor)"
-    t.string "invoice_file_name", comment: "Receipt file names (several, pipe-separated)"
-    t.string "sage_payment_type", comment: "PA or PR"
-    t.string "sage_transaction_type", comment: "PI or PC"
-    t.jsonb "other_moss_columns", default: {}, null: false, comment: "Transaction-level Moss columns without a dedicated column"
-    t.bigint "subject_id"
-    t.string "subject_type"
-    t.string "source_file", comment: "File of the CSV import that inserted or last genuinely changed this row"
-    t.text "comment", default: "", null: false
-    t.string "status", comment: "Manual status (not from the import), preserved on import"
-    t.jsonb "additional_info", default: {}, null: false
-    t.index ["booking_date"], name: "index_moss_card_transactions_booking_date"
-    t.index ["card_transaction_uuid"], name: "index_moss_card_transactions_uuid", unique: true
-    t.index ["cardholder"], name: "index_moss_card_transactions_cardholder"
-    t.index ["clearing_datev_booking_id"], name: "index_moss_card_transactions_clearing_datev", unique: true
-    t.index ["invoice_number"], name: "index_moss_card_transactions_invoice_number"
-    t.index ["payment_date"], name: "index_moss_card_transactions_payment_date"
-    t.index ["subject_type", "subject_id"], name: "index_moss_card_transactions_subject"
-    t.index ["total_base_amount"], name: "index_moss_card_transactions_total_base_amount"
-    t.index ["transaction_state"], name: "index_moss_card_transactions_transaction_state"
-    t.check_constraint "cash_in_transit_account_kind IS NULL OR (cash_in_transit_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_card_transaction_cash_in_transit_account_kind"
-    t.check_constraint "moss_balance_account_kind IS NULL OR (moss_balance_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_card_transaction_moss_balance_account_kind"
-    t.check_constraint "supplier_account_kind IS NULL OR (supplier_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_card_transaction_supplier_account_kind"
+    t.string "merchant_name", comment: "CSV Merchant Name (card export)"
+    t.string "merchant_city", comment: "CSV Merchant City (card export)"
+    t.string "merchant_country", comment: "CSV Merchant Country (card export)"
+    t.string "card_holder_name", comment: "CSV Cardholder (card export)"
+    t.string "card_holder_team_name", comment: "CSV Team Name (card export)"
+    t.string "card_used", comment: "CSV Card Used (card export)"
+    t.string "card_purpose", comment: "CSV Card Purpose (card export)"
+    t.string "approver_name", comment: "CSV Approver Name (card, reimbursement and invoice exports)"
+    t.string "post_spend_approval_status", comment: "CSV Post Spend Approval Status (card export)"
+    t.string "payout_user_name", comment: "CSV Cardholder (balance export, invoices and reimbursements)"
+    t.string "payout_team_name", comment: "CSV Team Name (balance export, invoices and reimbursements)"
+    t.string "transaction_posting_text", default: "", null: false, comment: "CSV Parent Booking Text (card + invoice exports) / CSV Reimbursement Description (reimbursement export)"
+    t.string "payment_reference", comment: "CSV Payment Reference (balance export), house-normalised"
+    t.string "transaction_name", comment: "CSV Reimbursement Name (reimbursement export)"
+    t.string "invoice_number", comment: "CSV Invoice Number (card + balance exports)"
+    t.string "po_number", comment: "CSV PO Number (invoice export)"
+    t.string "pr_number", comment: "CSV PR Number (invoice export)"
+    t.string "submitted_by", comment: "CSV Submitted By (reimbursement + invoice exports)"
+    t.uuid "moss_reimbursement_uuid", comment: "CSV Linked Reimbursement ID (balance export) = the reimbursement export's Unique Reimbursement ID"
+    t.uuid "moss_invoice_uuid", comment: "CSV Linked Invoice ID (balance export) = the invoice export's Invoice ID"
+    t.bigint "fin_account_id", comment: "The Moss wallet"
+    t.bigint "recipient_id", comment: "Person the money is paid to (belongs_to :recipient)"
+    t.jsonb "recipient_link_meta", default: {}, null: false, comment: "Provenance of recipient_id (doc/fin/recon_linking.md)"
+    t.bigint "clearing_datev_booking_id", comment: "datev_bookings: the clearing booking (creditor -> 36100)"
+    t.jsonb "clearing_datev_booking_link_meta", default: {}, null: false, comment: "Provenance of clearing_datev_booking_id (doc/fin/recon_linking.md)"
+    t.bigint "camt_transaction_id", comment: "wsjrdp_camt_transactions: the bank transfer that funded a top-up"
+    t.jsonb "camt_transaction_link_meta", default: {}, null: false, comment: "Provenance of camt_transaction_id (doc/fin/recon_linking.md)"
+    t.boolean "manually_paid", default: false, null: false, comment: "App-side flag: paid on a non-Moss route"
+    t.boolean "manually_booked", default: false, null: false, comment: "App-side flag: DATEV bookings created by hand"
+    t.jsonb "other_moss_columns", default: {}, null: false, comment: "Raw Moss fields without a column, keyed by CSV header"
+    t.string "source_file", comment: "The CSV file the row was last imported from"
+    t.text "comment", default: "", null: false, comment: "App-side free text"
+    t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
+    t.index ["camt_transaction_id"], name: "index_moss_transactions_camt"
+    t.index ["clearing_datev_booking_id"], name: "index_moss_transactions_clearing_datev"
+    t.index ["invoice_number"], name: "index_moss_transactions_invoice_number"
+    t.index ["moss_transaction_uuid"], name: "index_moss_transactions_uuid", unique: true
+    t.index ["payment_date"], name: "index_moss_transactions_payment_date"
+    t.index ["recipient_id"], name: "index_moss_transactions_recipient"
+    t.index ["total_base_amount"], name: "index_moss_transactions_total_base_amount"
+    t.index ["type"], name: "index_moss_transactions_type"
+    t.check_constraint "cash_in_transit_account_kind IS NULL OR (cash_in_transit_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_transactions_cash_in_transit_account_kind"
+    t.check_constraint "moss_balance_account_kind IS NULL OR (moss_balance_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_transactions_moss_balance_account_kind"
+    t.check_constraint "supplier_account_kind IS NULL OR (supplier_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_transactions_supplier_account_kind"
+    t.check_constraint "type::text = ANY (ARRAY['MossCardTransaction'::character varying, 'MossInvoice'::character varying, 'MossReimbursement'::character varying, 'MossTopUp'::character varying]::text[])", name: "chk_moss_transactions_type"
   end
 
   create_table "mounted_attributes", force: :cascade do |t|
@@ -1702,7 +1703,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
     t.index ["datev_booking_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_id", unique: true
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
     t.check_constraint "base_currency::text = 'EUR'::text", name: "chk_wsjrdp_camt_tx_base_currency"
-    t.check_constraint "credit_debit_indication::text = ANY (ARRAY['CRDT'::character varying, 'DBIT'::character varying]::text[])", name: "chk_wsjrdp_camt_tx_credit_debit_indication"
+    t.check_constraint "credit_debit_indication::text = ANY (ARRAY['CRDT'::character varying::text, 'DBIT'::character varying::text])", name: "chk_wsjrdp_camt_tx_credit_debit_indication"
   end
 
   create_table "wsjrdp_configs", id: :serial, force: :cascade do |t|
@@ -1983,6 +1984,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
   add_foreign_key "accounting_entries", "accounting_entries", column: "reverses_id"
   add_foreign_key "accounting_entries", "datev_bookings", on_delete: :nullify
+  add_foreign_key "accounting_entries", "moss_bookings", on_delete: :nullify
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id"
   add_foreign_key "accounting_entries", "wsjrdp_payment_initiations", column: "payment_initiation_id"
@@ -1990,8 +1992,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_30_001100) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade
   add_foreign_key "datev_bookings", "datev_booking_batches", on_delete: :nullify
-  add_foreign_key "moss_card_transaction_bookings", "datev_bookings", column: "expense_datev_booking_id", on_delete: :nullify
-  add_foreign_key "moss_card_transactions", "datev_bookings", column: "clearing_datev_booking_id", on_delete: :nullify
+  add_foreign_key "moss_bookings", "datev_bookings", column: "expense_datev_booking_id", on_delete: :nullify
+  add_foreign_key "moss_bookings", "moss_expenses", on_delete: :cascade
+  add_foreign_key "moss_bookings", "moss_transactions", on_delete: :cascade
+  add_foreign_key "moss_expenses", "moss_transactions", on_delete: :cascade
+  add_foreign_key "moss_transactions", "datev_bookings", column: "clearing_datev_booking_id", on_delete: :nullify
+  add_foreign_key "moss_transactions", "wsjrdp_camt_transactions", column: "camt_transaction_id", on_delete: :nullify
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade

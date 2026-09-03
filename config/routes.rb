@@ -82,8 +82,8 @@ Rails.application.routes.draw do
       get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       post :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]
-      resources :moss_balance_movements, controller: "moss_balance_movements", path: "moss_bm", only: [:show, :update] do
-        concerns :tx_actions, controller: "moss_balance_movements"
+      resources :moss_bookings, controller: "moss_bookings", path: "moss_booking", only: [:show, :update] do
+        concerns :tx_actions, controller: "moss_bookings"
       end
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"

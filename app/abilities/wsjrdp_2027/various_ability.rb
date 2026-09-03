@@ -26,7 +26,15 @@ module Wsjrdp2027::VariousAbility
       permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
     end
 
-    on(MossBalanceMovement) do
+    on(MossTransaction) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(MossExpense) do
+      permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
+    end
+
+    on(MossBooking) do
       permission(:finance).may(:fin_admin, :create, :log, :manage, :show, :update).if_finance_on_root
     end
   end

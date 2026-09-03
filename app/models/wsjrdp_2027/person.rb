@@ -118,9 +118,11 @@ module Wsjrdp2027::Person
       has_many :managed_cost_centers, -> { order(:number, :id) }, inverse_of: :manager, class_name: "WsjrdpCostCenter", foreign_key: :manager_person_id, dependent: :nullify
       has_many :managed_spheres, -> { order(:number, :id) }, inverse_of: :manager, class_name: "WsjrdpSphere", foreign_key: :manager_person_id, dependent: :nullify
       has_many :personal_accounts, -> { order(:number, :id) }, inverse_of: :represented_person, class_name: "WsjrdpPersonalAccount", foreign_key: :represented_person_id, dependent: :nullify
-      # as: :subject sets the subject_type filter too (the associations above
-      # match on subject_id alone), so this only ever returns Person rows.
-      has_many :moss_card_transactions, -> { order(:booking_date, :id) }, as: :subject, inverse_of: :subject, dependent: :nullify
+      # The Moss subject moved to the BOOKING level with the unification and is
+      # now the CONTRIBUTION subject (whose Beitrag a booking concerns).
+      # as: sets the *_type filter too, so this only ever returns Person rows.
+      has_many :moss_bookings, -> { order(:id) },
+        as: :contribution_subject, inverse_of: :contribution_subject, dependent: :nullify
 
       # Overwrite addition_emails to establish a default ordering
       has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy

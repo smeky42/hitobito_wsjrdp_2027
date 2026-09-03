@@ -7,10 +7,7 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-module Sheet
-  class Fin::MossBalanceMovement < Base
-    def title
-      "Moss Wallet Konto-Bewegung #{entry.id}"
-    end
-  end
+# The expense of a Moss card payment: the card payment itself; its splits are this expense's bookings.
+# See MossExpense for the level itself.
+class MossCardTransactionExpense < MossExpense
 end

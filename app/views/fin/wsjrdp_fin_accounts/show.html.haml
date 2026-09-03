@@ -51,11 +51,21 @@
                 %div(style="color:var(--bs-secondary);")= return_msg
               - else
                 %div= return_msg
-            %div= html_escape_multiline(tx.description)
-            - if tx.respond_to?(:note)
-              - if tx.note.present?
+            -# A Moss booking: one line per level (payment, receipt, split), each
+            -# the level's name, then its Buchungstext. A camt transaction keeps
+            -# its description and note.
+            - if tx.respond_to?(:text_lines)
+              - tx.text_lines.each do |level, name, text|
+                %div= moss_text_line(level, name, text)
+            - else
+              %div= html_escape_multiline(tx.description)
+              - if tx.respond_to?(:note) && tx.note.present?
                 %div
                   %div.fst-italic= auto_link_escaped_multiline(tx.note)
+            - if tx.respond_to?(:parent_comments)
+              - tx.parent_comments.each do |level, text|
+                %div
+                  %div.fw-light.fst-italic= safe_join([content_tag(:span, "#{level}: ", class: "fw-light muted"), auto_link_escaped_multiline(text)])
             - if tx.comment.present?
               %div
                 %div.fw-light.fst-italic= auto_link_escaped_multiline(tx.comment)

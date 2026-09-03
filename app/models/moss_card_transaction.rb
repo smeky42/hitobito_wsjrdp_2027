@@ -7,78 +7,33 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# Moss card transactions, imported from a Moss Custom-CSV export. One
-# row per Moss `Transaction ID`; the per-split fields live in
-# moss_card_transaction_bookings.
+# A Moss CARD payment (STI subclass of MossTransaction).
 #
-# `moss_record_url`, `moss_attachment_url` and `transaction_id_pdf_filename` have
-# no own column: they are derivable from `card_transaction_uuid`. The importer
-# only stores a value in `other_moss_columns` if it deviates from the derived one;
-# the reader methods below return that override, otherwise the derived value.
-class MossCardTransaction < ActiveRecord::Base
-  # Base URL of a Moss transaction record; the rest is derivable from the UUID.
-  MOSS_RECORD_URL_PREFIX = "https://getmoss.com/app/transactions/all/"
+# The card payment IS the expense, so it always has exactly ONE MossExpense; its
+# splits are that expense's bookings. Since the unification the card side also
+# carries the Moss wallet in `fin_account`, so card payments appear in the wallet
+# statement next to the balance movements.
+#
+# Its DATEV date anchor is `booking_date`, matched against
+# datev_bookings.booking_date (the DATEV Belegdatum).
+class MossCardTransaction < MossTransaction
+  # The card section of the Moss app; the export view uses its own path.
+  def moss_record_url = "#{MOSS_APP_URL}/transactions/all/#{moss_transaction_uuid}"
 
-  # Polymorphic like moss_balance_movements / wsjrdp_camt_transactions carry it
-  # (usually the cardholder as a Person); set manually, never by the import.
-  belongs_to :subject, polymorphic: true, optional: true
+  def moss_export_url = "#{MOSS_APP_URL}/export/card-transactions/#{moss_transaction_uuid}"
 
-  # Step-2 of the Moss->DATEV chain (Moss-Konto 36100 ->
-  # Sammelkreditor 700002).  It is posted once per transaction with
-  # the transaction total, so the link lives here and not on the
-  # individual bookings (see doc/fin/moss_data_model.md).
-  belongs_to :clearing_datev_booking,
-    optional: true,
-    class_name: "DatevBooking",
-    inverse_of: :moss_card_transaction_as_clearing
+  # File name of the combined receipt PDF in the attachments export.
+  def transaction_id_pdf_filename = "#{moss_transaction_uuid}.pdf"
 
-  # The three accounts of the Moss->DATEV chain, matched on their
-  # unique `number` like the booking lines are; the generated
-  # `*_type` columns carry the target class (see the migration).
-  # Optional because the master-data tables are imported separately
-  # and a number may not be resolvable yet.
-  belongs_to :supplier_account, polymorphic: true, optional: true,
-    foreign_key: :supplier_account_number, primary_key: :number
-  belongs_to :moss_balance_account, polymorphic: true, optional: true,
-    foreign_key: :moss_balance_account_number, primary_key: :number
-  belongs_to :cash_in_transit_account, polymorphic: true, optional: true,
-    foreign_key: :cash_in_transit_account_number, primary_key: :number
+  # The card payment IS its expense (as in Moss's CardTransactionMetadata), so
+  # the merchant and the receipt file live on the transaction.
+  def merchant = [merchant_name, merchant_city, merchant_country].compact_blank.join(", ")
 
-  # Bookings reference the transaction by its natural key
-  # (card_transaction_uuid).
-  has_many :bookings,
-    inverse_of: :card_transaction,
-    class_name: "MossCardTransactionBooking",
-    primary_key: :card_transaction_uuid,
-    foreign_key: :card_transaction_uuid,
-    dependent: :destroy
+  # The one expense of this card payment (the payment IS the expense).
+  def expense = expenses.first
 
-  # The transaction-currency counterpart of
-  # `signed_total_base_amount`, which is stored. Not a column: it is
-  # only meaningful when all bookings share one transaction currency
-  # (they do -- one card payment, one merchant).  Enumerable#sum on
-  # purpose: works off the preloaded association instead of firing an
-  # extra query per transaction in list views.
-  def signed_total_transaction_amount = bookings.sum(&:signed_transaction_amount)
+  # The date DATEV books this transaction under (see the class comment).
+  def datev_date_anchor = booking_date
 
-  # Moss record URL, e.g. https://getmoss.com/app/transactions/all/<uuid>
-  def moss_record_url
-    other_moss_columns["moss_record_url"] || derived_moss_record_url
-  end
-
-  # Moss attachment URL = the record URL without the "https://" scheme.
-  def moss_attachment_url
-    other_moss_columns["moss_attachment_url"] || derived_moss_record_url.delete_prefix("https://")
-  end
-
-  # File name of the combined receipt PDF in the attachments export, "<uuid>.pdf".
-  def transaction_id_pdf_filename
-    other_moss_columns["transaction_id_pdf_filename"] || "#{card_transaction_uuid}.pdf"
-  end
-
-  private
-
-  def derived_moss_record_url
-    "#{MOSS_RECORD_URL_PREFIX}#{card_transaction_uuid}"
-  end
+  def display_name = merchant_name
 end

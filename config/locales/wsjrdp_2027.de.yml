@@ -211,7 +211,7 @@ de:
         direct_debit_pre_notification: SEPA Pre-Notification
         wsjrdp_camt_transaction: Kontobewegung
         camt_transaction: Kontobewegung
-        moss_balance_movement: Moss Wallet Buchung
+        moss_booking: Moss Buchung
 
       # de.activerecord.attributes.wsjrdp_camt_transaction
       wsjrdp_camt_transaction:
@@ -266,25 +266,86 @@ de:
         accounting_entry: Assoziierte Buchung
         accounting_entry_id: Assoziierte Buchung
 
-      # de.activerecord.attributes.moss_balance_movement
-      moss_balance_movement:
+      # de.activerecord.attributes.moss_transaction (L1: one Moss payment)
+      moss_transaction:
         fin_account: Konto
-        account_identification: Konto
-        amount: Betrag
-        amount_with_currency: Betrag
-        original_amount: Original-Betrag
-        original_amount_with_currency: Original-Betrag
-        value_date: Valuta
+        type: Art
+        moss_transaction_state: Transaktionsstatus (Moss)
+        invoice_status: Rechnungsstatus (Moss)
+        status: Status
         payment_date: Zahlungsdatum
         booking_date: Buchungsdatum
+        settlement_date: Abrechnungsdatum
+        receipt_date: Belegdatum
+        service_date: Leistungsdatum
+        approval_date: Freigegeben am
+        invoice_date: Rechnungsdatum
+        due_date: Fälligkeitsdatum
+        delivery_date: Lieferdatum
+        submitted_date: Eingereicht am
+        submitted_on: Beantragt am
+        created_in_moss_on: Erstellt in Moss
+        first_export_date: Erster Export
+        last_export_date: Letzter Export
+        signed_total_base_amount: Betrag
+        amount_eur_display: Betrag
         currency: Währung
-        note: Moss Buchungstext
-        comment: Kommentar
+        currency_original: Original-Währung
+        exchange_rate: Wechselkurs
+        supplier_account_number: Kreditor
+        recipient_iban: IBAN des Empfängers
+        recipient_bic: BIC des Empfängers
+        recipient_name: Empfänger
+        top_up_sender: Absender (Aufladung)
+        recipient: Empfänger
+        merchant_name: Händler
+        merchant_city: Händler-Ort
+        merchant_country: Händler-Land
+        card_holder_name: Karteninhaber
+        card_holder_team_name: Team des Karteninhabers
+        payout_user_name: Auszahlung durch
+        payout_team_name: Team der Auszahlung
+        transaction_posting_text: Buchungstext
+        transaction_name: Name (Moss)
         payment_reference: Verwendungszweck
+        invoice_number: Belegnummer
+        po_number: PO-Nummer
+        pr_number: PR-Nummer
+        submitted_by: Eingereicht von
+        manually_paid: Manuell bezahlt
+        manually_booked: Manuell gebucht
+        comment: Kommentar
         created_at: Erstellt
         updated_at: Geändert
-        deleted_at: Gelöscht
-        subject: Beteiligte Person
+
+      # de.activerecord.attributes.moss_expense (L2: one receipt)
+      moss_expense:
+        type: Art
+        expense_number: Ausgabe-Nr.
+        signed_expense_base_amount: Betrag
+        amount_eur_display: Betrag
+        expense_posting_text: Buchungstext der Ausgabe
+        expense_name: Bezeichnung
+        moss_expense_type: Ausgabenart
+        purchased_on: Kaufdatum
+        comment: Kommentar
+
+      # de.activerecord.attributes.moss_booking (L3: one split -- the DATEV grain)
+      moss_booking:
+        moss_transaction: Transaktion
+        moss_expense: Ausgabe
+        signed_base_amount: Betrag
+        amount_eur_display: Betrag
+        amount_with_currency: Betrag
+        original_amount_with_currency: Original-Betrag
+        account_number: Sachkonto
+        cost_center_number: Kostenstelle
+        sphere_number: Sphäre
+        booking_posting_text: Buchungstext
+        comment: Kommentar
+        contribution_subject: Beteiligte Person
+        created_at: Erstellt
+        updated_at: Geändert
 
       # de.activerecord.attributes.wsjrdp_direct_debit_pre_notification
       wsjrdp_direct_debit_pre_notification:

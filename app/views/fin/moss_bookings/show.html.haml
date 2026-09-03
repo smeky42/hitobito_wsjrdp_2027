@@ -1,0 +1,91 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+#main.row
+  = standard_form(@moss_booking, {url: moss_booking_path, method: :put, data: {turbo: false}}) do |f|
+    = hidden_field_tag("fin_admin", can_fin_admin?)
+    = hidden_field_tag("return_url", return_url)
+    = f.error_messages
+    = form_buttons(f, cancel_url: cancel_url)
+
+    .mt-3
+    - transaction = @moss_booking.moss_transaction
+    - expense = @moss_booking.moss_expense
+    = field_set_tag do
+      %div.border-top.py-2
+      -# The booking is L3: its transaction and its expense carry the
+      -# context, the booking itself the split dimensions.
+      -# The payment has no page of its own here -- the FIN views act on the
+      -# booking. Its home is Moss, so the link goes there (the model derives
+      -# the URL from the stored uuid).
+      - if (fin_account = @moss_booking.fin_account).present?
+        = form_like_labeled("Konto", link_to(fin_account.to_s, url_for(fin_account)))
+      = form_like_labeled("Transaktion") do
+        %span= transaction.link_name
+        %span.muted= " • "
+        %span= link_to("in Moss öffnen", transaction.moss_record_url, target: "_blank", rel: "noopener")
+      -# Header facts of the payment that exist only for some kinds: the SEPA
+      -# reference of a balance payment, the card merchant, the top-up's
+      -# funding account, the invoice's workflow status. The names and texts
+      -# of the three levels are in the Buchungstext block below.
+      = moss_labeled_attr_if_present(transaction, :payment_reference)
+      = moss_labeled_attr_if_present(transaction, :merchant_name)
+      = moss_labeled_attr_if_present(transaction, :top_up_sender)
+      = moss_labeled_attr_if_present(transaction, :invoice_status)
+      -# The expense of a reimbursement: its name, purchase date and, when
+      -# Moss booked it against more than one account, the split.
+      - if expense.display_name.present? || expense.purchased_on.present?
+        = form_like_labeled("Ausgabe") do
+          %span= expense.display_name
+          - if expense.purchased_on.present?
+            %span.muted= " • Kaufdatum #{l(expense.purchased_on)}"
+          - if expense.split?
+            %span.muted= " • aufgeteilt auf #{expense.bookings.size} Buchungen"
+      = input_or_render_attrs(f, :amount_with_currency)
+      - if @moss_booking.foreign_currency?
+        = input_or_render_attrs(f, :original_amount_with_currency)
+      %div.border-top.py-2
+      -# The dates of the payment, each only where the export carries it. Not
+      -# shown (decision of 2026-09-03; the columns stay): the card payment's
+      -# settlement and receipt dates, the creation date in Moss and the two
+      -# DATEV export dates.
+      - %i[payment_date booking_date service_date invoice_date delivery_date due_date submitted_date submitted_on approval_date].each do |attr|
+        = moss_labeled_attr_if_present(transaction, attr)
+      %div.border-top.py-2
+      = input_or_render_attrs(f, :account_number, :cost_center_number, :sphere_number)
+      -# One line per level, top down: the transaction's, the expense's, the
+      -# split's -- each the level's name, then its Buchungstext (a split that
+      -# only repeats the expense's text is dropped).
+      = form_like_labeled("Buchungstext") do
+        - @moss_booking.text_lines.each do |level, name, text|
+          %div= moss_text_line(level, name, text)
+      -# Only the booking's own comment is editable; the parents' are shown.
+      - @moss_booking.parent_comments.each do |level, text|
+        = form_like_labeled("Kommentar (#{level})") do
+          %div.fw-light.fst-italic= auto_link_escaped_multiline(text)
+      = input_or_render_attrs(f, :comment)
+      %div.border-top.py-2
+      = input_or_render_attrs(f, :contribution_subject, show_previous_as_help_inline: true)
+      -# The contribution bookings (accounting entries) settled by this Moss
+      -# booking -- one Moss booking may be split across several people.
+      - accounting_entries = f.object.accounting_entries
+      = form_like_labeled("Beitragsbuchungen") do
+        - if accounting_entries.empty?
+          %span.muted keine
+        - accounting_entries.each do |ae|
+          %div
+            %span= link_to(ae.link_name, url_for(ae))
+            %span.muted= " • "
+            %span.fw-light.muted Person:
+            %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
+
+      -# %div.border-top.py-2
+      -# = input_or_render_attrs(f, :status)
+      -# %div.border-top.py-2
+      -# = input_or_render_attrs(f, :created_at, :updated_at)
+
+    = form_buttons(f, cancel_url: cancel_url)

@@ -7,12 +7,10 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-module MossBalanceMovementHelper
-  def format_moss_balance_movement_accounting_entry_id(tx)
-    link_to(tx.accounting_entry_id, url_for(tx.accounting_entry))
-  end
-
-  def format_moss_balance_movement_amount(tx)
-    tx.amount_eur_display
+module Sheet
+  class Fin::MossBooking < Base
+    def title
+      "Moss Buchung #{entry.id}"
+    end
   end
 end
