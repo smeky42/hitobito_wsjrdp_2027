@@ -1019,6 +1019,19 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
        WHERE ae.moss_balance_movement_id = old.id
     SQL
 
+    # A link whose balance row no longer exists cannot be remapped and is not
+    # silently dropped either: an empty legacy table with links pointing into
+    # it is an inconsistency to look at, not a fresh database.
+    dangling = select_value(<<~SQL.squish)
+      SELECT count(*) FROM accounting_entries ae
+       WHERE ae.moss_balance_movement_id IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM moss_balance_movements m WHERE m.id = ae.moss_balance_movement_id)
+    SQL
+    if dangling.to_i.positive?
+      raise "#{dangling} accounting_entries link to balance movements that do not exist " \
+        "(moss_balance_movement_id without a row); clear or fix those links first"
+    end
+
     unmapped = select_value(<<~SQL.squish)
       SELECT count(*) FROM accounting_entries
        WHERE moss_balance_movement_id IS NOT NULL AND moss_booking_id IS NULL
@@ -1310,7 +1323,9 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
   # (its bookings are summed back), for invoice/top-up the BOOKING. Both carry
   # their legacy identity in additional_info and the row's Category in
   # other_moss_columns (all written by `up`); the row's Client Number sits on
-  # its booking(s), and the account name comes from the standing data.
+  # its booking(s), and the account name comes from the standing data. Rows the
+  # import created after the migration carry no legacy identity; for them the
+  # constructed keys stand in, so `down` still runs but is not byte-exact.
   def restore_balance
     execute <<~SQL
       INSERT INTO moss_balance_movements
@@ -1329,9 +1344,10 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
       -- reimbursements: one row per expense
       SELECT t.fin_account_id, b.contribution_subject_id, b.contribution_subject_type,
              b.comment, t.status, b.additional_info,
-             e.additional_info ->> 'legacy_balance_unique_item_number',
+             coalesce(e.additional_info ->> 'legacy_balance_unique_item_number',
+                      t.moss_transaction_uuid::text || '_' || e.expense_number::text),
              t.moss_transaction_uuid::text,
-             (e.additional_info ->> 'legacy_balance_sub_row_number')::integer,
+             coalesce((e.additional_info ->> 'legacy_balance_sub_row_number')::integer, e.expense_number),
              t.moss_transaction_state, t.transaction_type, t.payment_date, t.booking_date,
              b.legacy_amount_excl_vat, e.signed_expense_base_amount, coalesce(t.currency, 'EUR'),
              b.legacy_original_amount_excl_vat, e.signed_expense_transaction_amount, t.currency_original,
@@ -1339,7 +1355,7 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
              t.conversion_rate_including_fees, t.fees_amount, t.payment_fee,
              t.total_amount_excluding_fees,
              t.supplier_account_number, t.additional_info ->> 'legacy_supplier_name',
-             e.additional_info ->> 'legacy_balance_account_number',
+             b.legacy_account_number,
              coalesce(la.name, ''),
              e.other_moss_columns ->> 'Category',
              t.moss_balance_account_number, t.cash_in_transit_account_number,
@@ -1352,9 +1368,11 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
              e.created_at, e.updated_at
       FROM moss_expenses e
       JOIN moss_transactions t ON t.id = e.moss_transaction_id
-      LEFT JOIN wsjrdp_ledger_accounts la ON la.number = e.additional_info ->> 'legacy_balance_account_number'
       JOIN LATERAL (
              SELECT min(comment) AS comment,
+                    CASE WHEN e.additional_info ? 'legacy_balance_unique_item_number'
+                         THEN e.additional_info ->> 'legacy_balance_account_number'
+                         ELSE (array_agg(account_number ORDER BY booking_unique_item_number))[1] END AS legacy_account_number,
                     min(other_moss_columns ->> 'Client Number') AS client_number,
                     (array_agg(additional_info ORDER BY booking_unique_item_number))[1] AS additional_info,
                     min(contribution_subject_id) AS contribution_subject_id,
@@ -1367,6 +1385,7 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
                     sign(e.signed_expense_base_amount)
                       * sum(abs(NULLIF(other_moss_columns ->> 'Original Amount (excl. VAT)', '')::numeric)) AS legacy_original_amount_excl_vat
                FROM moss_bookings WHERE moss_expense_id = e.id) b ON true
+      LEFT JOIN wsjrdp_ledger_accounts la ON la.number = b.legacy_account_number
       WHERE t.type = 'MossReimbursement'
 
       UNION ALL
@@ -1374,9 +1393,11 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
       SELECT t.fin_account_id, b.contribution_subject_id, b.contribution_subject_type,
              b.comment, t.status,
              b.additional_info - 'legacy_balance_unique_item_number' - 'legacy_balance_sub_row_number',
-             b.additional_info ->> 'legacy_balance_unique_item_number',
+             coalesce(b.additional_info ->> 'legacy_balance_unique_item_number',
+                      NULLIF(b.other_moss_columns ->> 'Unique Item Number', ''), b.booking_unique_item_number),
              t.moss_transaction_uuid::text,
-             (b.additional_info ->> 'legacy_balance_sub_row_number')::integer,
+             coalesce((b.additional_info ->> 'legacy_balance_sub_row_number')::integer,
+                      split_part(b.booking_unique_item_number, '_', 2)::integer),
              t.moss_transaction_state, t.transaction_type, t.payment_date, t.booking_date,
              NULLIF(b.other_moss_columns ->> 'Amount (excl. VAT)', '')::numeric,
              b.signed_base_amount, coalesce(t.currency, 'EUR'),
@@ -1407,7 +1428,8 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
   def restore_contribution_link
     add_column :accounting_entries, :moss_balance_movement_id, :bigint, null: true
     # The legacy id is rebuilt purely by (transaction uuid, sub_row_number),
-    # both of which `up` preserved on the level the flat row came from.
+    # both of which `up` preserved on the level the flat row came from (rows
+    # the import created fall back to the constructed key's split index).
     execute <<~SQL
       UPDATE accounting_entries ae
          SET moss_balance_movement_id = m.id
@@ -1418,7 +1440,8 @@ class UnifyMossTransactions < ActiveRecord::Migration[7.1]
           ON m.moss_transaction_id = t.moss_transaction_uuid::text
          AND m.sub_row_number = CASE WHEN t.type = 'MossReimbursement'
                                      THEN e.expense_number
-                                     ELSE (b.additional_info ->> 'legacy_balance_sub_row_number')::integer END
+                                     ELSE coalesce((b.additional_info ->> 'legacy_balance_sub_row_number')::integer,
+                                                   split_part(b.booking_unique_item_number, '_', 2)::integer) END
        WHERE ae.moss_booking_id = b.id
     SQL
     remove_column :accounting_entries, :camt_transaction_link_meta
