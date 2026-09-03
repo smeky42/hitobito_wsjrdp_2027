@@ -45,10 +45,10 @@
                 %span.fw-light.muted= "Kontobewegung: "
                 %span.fw-light= link_to(entry.camt_transaction.link_name, url_for(entry.camt_transaction))
             %div
-            - if can_fin? && entry.respond_to?(:moss_balance_movement) && entry.moss_balance_movement.present?
+            - if can_fin? && entry.respond_to?(:moss_booking) && entry.moss_booking.present?
               %div
                 %span.fw-light.muted= "Moss Kontobewegung: "
-                %span.fw-light= link_to(entry.moss_balance_movement.link_name, url_for(entry.moss_balance_movement))
+                %span.fw-light= link_to(entry.moss_booking.link_name, url_for(entry.moss_booking))
             - if can_fin? && entry.respond_to?(:direct_debit_pre_notification) && entry.direct_debit_pre_notification.present?
               %div
                 %span.fw-light.muted= "Pre-Notification: "

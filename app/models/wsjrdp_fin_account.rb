@@ -16,11 +16,19 @@ class WsjrdpFinAccount < ActiveRecord::Base
     class_name: "WsjrdpCamtTransaction",
     dependent: :restrict_with_error
 
-  has_many :moss_balance_movements,
+  # The wallet holds EVERY Moss kind (card payments included) of
+  # payment/expense.
+  has_many :moss_transactions,
     foreign_key: "fin_account_id",
     inverse_of: :fin_account,
-    class_name: "MossBalanceMovement",
+    class_name: "MossTransaction",
     dependent: :restrict_with_error
+
+  # The wallet STATEMENT is a list of bookings, not of payments: the booking is
+  # the row the FIN views act on (it carries the contribution subject, the
+  # accounting-entry link and the deny list) and the only one with a route of
+  # its own. Summing them gives the same balance as summing the payments.
+  has_many :moss_bookings, through: :moss_transactions, source: :bookings
 
   # The bookkeeping account this bank account / wallet maps to,
   # referenced by its `number` (not id). Polymorphic to allow pointing
@@ -34,9 +42,12 @@ class WsjrdpFinAccount < ActiveRecord::Base
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
+  # `transaction_type` is the stored discriminator of the account; its value is
+  # still the pre-unification class name, so it is treated as an opaque marker
+  # for "this is the Moss wallet".
   def transactions
     if transaction_type == "MossBalanceMovement"
-      moss_balance_movements
+      moss_bookings
     else
       camt_transactions
     end
@@ -51,11 +62,12 @@ class WsjrdpFinAccount < ActiveRecord::Base
   end
 
   def closing_balance_cents
-    # transactions are camt (bank accounts) or moss (the Moss wallet). Camt now
-    # stores the numeric signed_base_amount (house money standard); moss still
-    # uses integer amount_cents. Sum in cents across both.
-    @closing_balance_cents ||= opening_balance_cents + transactions.sum { |e|
-      e.respond_to?(:signed_base_amount) ? (e.signed_base_amount * 100).round : e.amount_cents
-    }
+    # A statement row is either a camt transaction (bank accounts) or
+    # a Moss booking (the wallet). Both expose the signed EUR amount
+    # as `amount_eur`, so one sum covers both; the account's own
+    # balance is kept in integer cents (hitobito heritage), hence the
+    # conversion at this edge.
+    @closing_balance_cents ||=
+      opening_balance_cents + (transactions.sum(&:amount_eur) * 100).round
   end
 end

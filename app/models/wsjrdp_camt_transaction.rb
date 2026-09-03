@@ -37,7 +37,7 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   # signed_base_amount numeric(20,3) (+ = inflow), with base_amount = ABS and
   # debit_credit generated in the DB. The amount_eur* accessors are kept but
   # backed by signed_base_amount (EUR) -- the shared fin_account statement view
-  # and link_name use amount_eur_display polymorphically with MossBalanceMovement.
+  # and link_name use amount_eur_display polymorphically with MossTransaction.
   def amount_eur
     signed_base_amount
   end

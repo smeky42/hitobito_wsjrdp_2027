@@ -46,12 +46,16 @@ class DatevBooking < ActiveRecord::Base
   # (on_delete: :nullify), so Rails must not load the counterpart as well.
   # rubocop:disable Rails/HasManyOrHasOneDependent -- see the note above: the
   # foreign keys null these columns on delete, Rails must not do it a second time.
-  has_one :moss_card_transaction_booking_as_expense,
-    class_name: "MossCardTransactionBooking",
+  # The two Moss sides of the posting chain, on the two levels DATEV posts at:
+  # step 1 (Sachkonto -> creditor) is per SPLIT, step 2 (creditor -> 36100) is
+  # per TRANSACTION. Both target the STI base classes, so they resolve for every
+  # Moss kind (card, invoice, reimbursement, top-up).
+  has_one :moss_booking_as_expense,
+    class_name: "MossBooking",
     foreign_key: :expense_datev_booking_id,
     inverse_of: :expense_datev_booking
-  has_one :moss_card_transaction_as_clearing,
-    class_name: "MossCardTransaction",
+  has_one :moss_transaction_as_clearing,
+    class_name: "MossTransaction",
     foreign_key: :clearing_datev_booking_id,
     inverse_of: :clearing_datev_booking
   # rubocop:enable Rails/HasManyOrHasOneDependent

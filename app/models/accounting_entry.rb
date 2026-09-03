@@ -23,7 +23,11 @@ class AccountingEntry < ActiveRecord::Base
   belongs_to :direct_debit_pre_notification, optional: true, class_name: "WsjrdpDirectDebitPreNotification"
   belongs_to :payment_initiation, optional: true, class_name: "WsjrdpPaymentInitiation"
   belongs_to :camt_transaction, optional: true, class_name: "WsjrdpCamtTransaction"
-  belongs_to :moss_balance_movement, optional: true, class_name: "MossBalanceMovement"
+  # The Moss BOOKING (L3) this contribution booking settles. The link lives here
+  # because one Moss booking may be split across several Beitragsbuchungen
+  # (e.g. one card payment for three registered letters -> three people); the
+  # sum of the entries must stay within the booking's amount.
+  belongs_to :moss_booking, optional: true, class_name: "MossBooking"
 
   belongs_to :reversed_by, inverse_of: "reverses", optional: true, class_name: "AccountingEntry"
   belongs_to :reverses, inverse_of: "reversed_by", optional: true, class_name: "AccountingEntry"
