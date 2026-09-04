@@ -1,0 +1,4 @@
+# Canonical author identities (see `git help mailmap`). Used by git log,
+# git shortlog, git check-mailmap
+David Fritzsche <david.fritzsche@worldscoutjamboree.de> <dfritzsche@daffi.net>
+David Fritzsche <david.fritzsche@worldscoutjamboree.de> <9479371+davidfritzsche@users.noreply.github.com>
