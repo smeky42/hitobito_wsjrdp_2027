@@ -66,4 +66,46 @@ describe MossTransaction do
       expect(tx.moss_export_url).to be_nil
     end
   end
+
+  # The uuid ARRAY holding every Moss id a row stands for. All uuids below are
+  # invented.
+  describe "#all_moss_transaction_uuids" do
+    let(:uuids) { ["aaaaaaaa-1111-2222-3333-444444444444", "bbbbbbbb-5555-6666-7777-888888888888"] }
+
+    def top_up(**attrs)
+      MossTopUp.new(moss_transaction_uuid: "cccccccc-9999-0000-1111-222222222222",
+        signed_total_base_amount: 500, currency: "EUR",
+        payment_date: Date.new(2026, 5, 3), **attrs)
+    end
+
+    it "defaults to an empty array" do
+      expect(MossTopUp.new.all_moss_transaction_uuids).to eq([])
+      expect(MossCardTransaction.new.all_moss_transaction_uuids).to eq([])
+    end
+
+    it "round-trips a list of uuids as strings" do
+      tx = top_up(all_moss_transaction_uuids: uuids)
+      tx.save!
+      expect(tx.reload.all_moss_transaction_uuids).to eq(uuids)
+    end
+
+    it "round-trips back to an empty array" do
+      tx = top_up(all_moss_transaction_uuids: uuids)
+      tx.save!
+      tx.update!(all_moss_transaction_uuids: [])
+      expect(tx.reload.all_moss_transaction_uuids).to eq([])
+    end
+
+    it "finds a row by any of its uuids" do
+      tx = top_up(all_moss_transaction_uuids: uuids)
+      tx.save!
+      expect(MossTransaction.where("? = ANY(all_moss_transaction_uuids)", uuids.last).pluck(:id))
+        .to eq([tx.id])
+    end
+
+    it "is backed by a GIN index for those lookups" do
+      expect(ActiveRecord::Base.connection.index_exists?(:moss_transactions,
+        :all_moss_transaction_uuids, name: "index_moss_transactions_all_uuids")).to be(true)
+    end
+  end
 end

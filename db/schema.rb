@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -327,6 +327,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
     t.string "sub_cost_center_number", comment: "Manually maintained sub cost center; not from DATEV"
     t.boolean "is_unit_budget", comment: "Flag to override automatic logic if a booking belongs to the budget of a unit"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.text "comment", default: "", null: false
+    t.text "user_comment", default: "", null: false, comment: "Comment visible for users"
     t.index ["account_number"], name: "index_datev_bookings_on_account_number"
     t.index ["bedi_guid"], name: "index_datev_bookings_on_bedi_guid"
     t.index ["beleginfo"], name: "index_datev_bookings_on_beleginfo", opclass: :jsonb_path_ops, using: :gin
@@ -941,7 +943,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
     t.virtual "debit_credit", type: :string, as: "\nCASE\n    WHEN (signed_base_amount > (0)::numeric) THEN 'C'::text\n    ELSE 'D'::text\nEND", stored: true
     t.string "account_number", comment: "CSV Account Number (card export) / CSV Expense Account (reimbursement export) / CSV Expense Account - Number (invoice export)"
     t.string "account_kind", comment: "Kontenart, derived from the number"
-    t.virtual "account_type", type: :string, as: "\nCASE\n    WHEN (account_kind IS NULL) THEN NULL::text\n    WHEN ((account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "account_type", type: :string, as: "\nCASE\n    WHEN (account_kind IS NULL) THEN NULL::text\n    WHEN ((account_kind)::text = ANY (ARRAY[('CREDITOR'::character varying)::text, ('DEBITOR'::character varying)::text])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
     t.string "cost_center_number", comment: "CSV Cost Center - Number (card + invoice exports) / CSV Cost Center - Name (reimbursement export)"
     t.string "sphere_number", comment: "CSV Cost Carrier - Number (card, reimbursement and invoice exports)"
     t.string "distribution_combination", comment: "CSV Distribution combination (card, reimbursement and invoice exports)"
@@ -961,7 +963,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
     t.index ["expense_datev_booking_id"], name: "index_moss_bookings_expense_datev"
     t.index ["moss_expense_id"], name: "index_moss_bookings_expense"
     t.index ["moss_transaction_id"], name: "index_moss_bookings_transaction"
-    t.check_constraint "account_kind IS NULL OR (account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_bookings_account_kind"
+    t.check_constraint "account_kind IS NULL OR (account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_bookings_account_kind"
   end
 
   create_table "moss_expenses", comment: "L2: one row per expense of a reimbursement (N); one SHELL row for a card payment, invoice or top-up", force: :cascade do |t|
@@ -995,7 +997,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
     t.datetime "updated_at"
     t.string "type", null: false, comment: "STI: MossCardTransaction | MossInvoice | MossReimbursement | MossTopUp"
     t.virtual "expense_type", type: :string, as: "\nCASE type\n    WHEN 'MossCardTransaction'::text THEN 'card_transaction'::text\n    WHEN 'MossInvoice'::text THEN 'invoice'::text\n    WHEN 'MossReimbursement'::text THEN 'reimbursement'::text\n    ELSE 'top_up'::text\nEND", stored: true
-    t.uuid "moss_transaction_uuid", null: false, comment: "CSV Transaction ID (card + balance exports)"
+    t.uuid "moss_transaction_uuid", null: false, comment: "CSV Transaction ID (card + balance exports) - most recent seen; see also all_moss_transaction_uuids"
     t.string "moss_transaction_state", comment: "CSV Transaction State (card + balance exports)"
     t.string "status", comment: "App-side status"
     t.string "transaction_type", comment: "CSV Transaction Type (card + balance exports)"
@@ -1027,17 +1029,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
     t.decimal "conversion_rate_including_fees", precision: 28, scale: 12, comment: "CSV Conversion Rate Including Fees (card + balance exports)"
     t.string "supplier_account_number", comment: "CSV Supplier Account (card + balance exports)"
     t.string "supplier_account_kind", comment: "Kontenart, derived from the number"
-    t.virtual "supplier_account_type", type: :string, as: "\nCASE\n    WHEN (supplier_account_kind IS NULL) THEN NULL::text\n    WHEN ((supplier_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "supplier_account_type", type: :string, as: "\nCASE\n    WHEN (supplier_account_kind IS NULL) THEN NULL::text\n    WHEN ((supplier_account_kind)::text = ANY (ARRAY[('CREDITOR'::character varying)::text, ('DEBITOR'::character varying)::text])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
     t.string "recipient_iban", comment: "CSV Recipient Account Number (balance export)"
     t.string "recipient_bic", comment: "CSV Recipient Bank Code (balance export)"
     t.string "recipient_name", comment: "Parsed from CSV Reason for Purchase (balance export)"
     t.string "top_up_sender", comment: "CSV Reason for Purchase (balance export, top-ups)"
     t.string "moss_balance_account_number", comment: "CSV Moss Balance Account (card + balance exports)"
     t.string "moss_balance_account_kind", comment: "Kontenart, derived from the number"
-    t.virtual "moss_balance_account_type", type: :string, as: "\nCASE\n    WHEN (moss_balance_account_kind IS NULL) THEN NULL::text\n    WHEN ((moss_balance_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "moss_balance_account_type", type: :string, as: "\nCASE\n    WHEN (moss_balance_account_kind IS NULL) THEN NULL::text\n    WHEN ((moss_balance_account_kind)::text = ANY (ARRAY[('CREDITOR'::character varying)::text, ('DEBITOR'::character varying)::text])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
     t.string "cash_in_transit_account_number", comment: "CSV Cash in Transit Account (card + balance exports)"
     t.string "cash_in_transit_account_kind", comment: "Kontenart, derived from the number"
-    t.virtual "cash_in_transit_account_type", type: :string, as: "\nCASE\n    WHEN (cash_in_transit_account_kind IS NULL) THEN NULL::text\n    WHEN ((cash_in_transit_account_kind)::text = ANY ((ARRAY['CREDITOR'::character varying, 'DEBITOR'::character varying])::text[])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
+    t.virtual "cash_in_transit_account_type", type: :string, as: "\nCASE\n    WHEN (cash_in_transit_account_kind IS NULL) THEN NULL::text\n    WHEN ((cash_in_transit_account_kind)::text = ANY (ARRAY[('CREDITOR'::character varying)::text, ('DEBITOR'::character varying)::text])) THEN 'WsjrdpPersonalAccount'::text\n    ELSE 'WsjrdpLedgerAccount'::text\nEND", stored: true
     t.string "merchant_name", comment: "CSV Merchant Name (card export)"
     t.string "merchant_city", comment: "CSV Merchant City (card export)"
     t.string "merchant_country", comment: "CSV Merchant Country (card export)"
@@ -1071,18 +1073,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_200000) do
     t.string "source_file", comment: "The CSV file the row was last imported from"
     t.text "comment", default: "", null: false, comment: "App-side free text"
     t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
+    t.uuid "all_moss_transaction_uuids", default: [], null: false, comment: "All Transaction Id's this row stands for; contains moss_transaction_uuid", array: true
+    t.string "sender_iban", comment: "CSV Bank account (custom statement)"
+    t.string "sender_bic", comment: "CSV Bank account (custom statement)"
+    t.string "sender_name"
+    t.date "value_date", comment: "CSV Value date (custom statement)"
+    t.index ["all_moss_transaction_uuids"], name: "index_moss_transactions_all_uuids", using: :gin
     t.index ["camt_transaction_id"], name: "index_moss_transactions_camt"
     t.index ["clearing_datev_booking_id"], name: "index_moss_transactions_clearing_datev"
     t.index ["invoice_number"], name: "index_moss_transactions_invoice_number"
+    t.index ["moss_invoice_uuid"], name: "index_moss_transactions_invoice_uuid", unique: true, where: "(moss_invoice_uuid IS NOT NULL)"
+    t.index ["moss_reimbursement_uuid"], name: "index_moss_transactions_reimbursement_uuid", unique: true, where: "(moss_reimbursement_uuid IS NOT NULL)"
     t.index ["moss_transaction_uuid"], name: "index_moss_transactions_uuid", unique: true
     t.index ["payment_date"], name: "index_moss_transactions_payment_date"
     t.index ["recipient_id"], name: "index_moss_transactions_recipient"
     t.index ["total_base_amount"], name: "index_moss_transactions_total_base_amount"
     t.index ["type"], name: "index_moss_transactions_type"
-    t.check_constraint "cash_in_transit_account_kind IS NULL OR (cash_in_transit_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_transactions_cash_in_transit_account_kind"
-    t.check_constraint "moss_balance_account_kind IS NULL OR (moss_balance_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_transactions_moss_balance_account_kind"
-    t.check_constraint "supplier_account_kind IS NULL OR (supplier_account_kind::text = ANY (ARRAY['BANK'::character varying, 'TRANSIT'::character varying, 'CLEARING'::character varying, 'LIABILITY'::character varying, 'CREDITOR'::character varying, 'DEBITOR'::character varying, 'INCOME'::character varying, 'EXPENSE'::character varying, 'EQUITY'::character varying, 'UNKNOWN'::character varying]::text[]))", name: "chk_moss_transactions_supplier_account_kind"
-    t.check_constraint "type::text = ANY (ARRAY['MossCardTransaction'::character varying, 'MossInvoice'::character varying, 'MossReimbursement'::character varying, 'MossTopUp'::character varying]::text[])", name: "chk_moss_transactions_type"
+    t.check_constraint "cash_in_transit_account_kind IS NULL OR (cash_in_transit_account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_transactions_cash_in_transit_account_kind"
+    t.check_constraint "moss_balance_account_kind IS NULL OR (moss_balance_account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_transactions_moss_balance_account_kind"
+    t.check_constraint "supplier_account_kind IS NULL OR (supplier_account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_transactions_supplier_account_kind"
+    t.check_constraint "type::text = ANY (ARRAY['MossCardTransaction'::character varying::text, 'MossInvoice'::character varying::text, 'MossReimbursement'::character varying::text, 'MossTopUp'::character varying::text])", name: "chk_moss_transactions_type"
   end
 
   create_table "mounted_attributes", force: :cascade do |t|
