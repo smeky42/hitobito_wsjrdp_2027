@@ -155,6 +155,49 @@ module WsjrdpFormHelper
       end
     end
 
+    # Wraps a detail view's body in the turbo frame THIS REQUEST asks for, and in
+    # the page's #main when nobody asks (a direct visit). Used by the fin detail
+    # views that double as the pane an expandable table lazy-loads.
+    #
+    # The requesting frame decides the id, because one and the same detail is
+    # loaded from tables with different prefixes -- the Buchungen list asks as
+    # "bkframe-bk-<id>", the bookings table embedded in a Buchhaltung item detail
+    # as "bkframe-b-<id>" (its policy prefix is "b"). An id hardcoded in the view
+    # answers the wrong frame, and Turbo renders "Content missing" instead of the
+    # detail.
+    #
+    # `prefix` + `key` give the canonical id a direct visit gets, where the frame
+    # only scopes the links inside it -- and `key` is also what a header must NAME
+    # to be honoured (see #requested_detail_frame_id).
+    def wsjrdp_detail_frame(prefix, key, &block)
+      id = requested_detail_frame_id(key) || wsjrdp_detail_frame_id(prefix, key)
+      frame = turbo_frame_tag(id) { safe_join([wsjrdp_detail_frame_flash, capture(&block)]) }
+      turbo_frame_request? ? frame : content_tag(:div, frame, id: "main")
+    end
+
+    # The flash INSIDE the frame. A frame response renders turbo-rails' minimal
+    # layout, which carries no flash slot -- so a detail that redirects to itself
+    # after a save (Fin::BookingsController#redirect_after_update) would swallow
+    # its own message. On a full page the layout renders the flash, and rendering
+    # it here as well would show every message twice.
+    def wsjrdp_detail_frame_flash
+      return "".html_safe unless turbo_frame_request?
+
+      render partial: "layouts/flash", collection: %i[notice warning alert], as: :level
+    end
+
+    # The `Turbo-Frame` header, honoured ONLY when it names a detail frame of THIS
+    # record: "bkframe-<any table prefix>-<key>". Binding it to the key is what
+    # keeps a STRAY header harmless -- a form inside an embedded pane submits with
+    # the header of the row's frame, and its redirect may land on a detail PAGE of
+    # another record; without this check that page would rename its own outer
+    # frame to the row's id, so Turbo would find two nodes of that id and inject
+    # the whole page into the row. Anything else falls back to the canonical id.
+    def requested_detail_frame_id(key)
+      id = turbo_frame_request_id
+      id if id.present? && id.match?(/\Abkframe-[A-Za-z0-9_]+-#{Regexp.escape(key.to_s)}\z/)
+    end
+
     def return_url_or_fallback(fallback)
       if params[:return_url].present?
         params[:return_url]

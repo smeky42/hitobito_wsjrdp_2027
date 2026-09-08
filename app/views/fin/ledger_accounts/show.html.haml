@@ -8,10 +8,5 @@
 -#  Rendered as a full page for a direct visit (the "Detailseite" link), and as
 -#  just the turbo frame when lazy-loaded into the inline expandable row on the
 -#  Sachkonten list.
-- frame = turbo_frame_tag("bkframe-account-#{@account.number}") do
+= wsjrdp_detail_frame("account", @account.number) do
   = render "detail", account: @account, ctx: @ctx
-
-- if turbo_frame_request?
-  = frame
-- else
-  #main= frame

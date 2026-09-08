@@ -12,7 +12,8 @@
 # expandable detail, and how deep. The shared table (shared/wsjrdp/_expandable_table)
 # hands one of these to every detail it renders; the SAME object is produced for
 # a directly-rendered detail and for a lazily-loaded one (turbo frame -- the
-# level travels in the frame URL as the table's `l` param and is resolved back by
+# level travels in the frame URL as the shared `expandable_table_level` param and
+# is resolved back by
 # the target controller's own policy into that table's state, see
 # Wsjrdp::TableState#level and Fin::BookkeepingSummaries), so a partial reads its
 # situation the same way either way.

@@ -73,7 +73,7 @@ end
 ```
 
 The level comes from the table's own state, because the widget appends the
-detail's depth to the frame URL as that table's `l` param
+detail's depth to the frame URL as the shared `expandable_table_level` param
 (`doc/wsjrdp/expandable_table.md` §4).
 
 A table that renders a detail **directly** — its `detail` lambda taking
@@ -433,7 +433,10 @@ auto-included by the engine.
    `de.activerecord.models.<model>`) in `config/locales/wsjrdp_2027.de.yml` —
    one key per listed attribute, virtual ones included.
 4. **The controller's `show`**: load the record and build the context, then
-   render the partial inside the turbo frame the list lazy-loads into.
+   render the partial inside `wsjrdp_detail_frame(<table id prefix>, <row key>)`
+   — that helper answers in the frame the `Turbo-Frame` request header names and
+   wraps a direct visit in `#main`, so the view never builds a frame id itself
+   (`doc/wsjrdp/expandable_table.md`).
 5. **The specs**: a helper spec for the formatters and a controller spec with
    `render_views` covering both modes — page (`h1`, `dl.fin-detail-list`, the
    raw area open) and frame request (no `h1`, `dl.row.small`, the raw area
@@ -464,9 +467,10 @@ The Kreditoren detail is the worked example of all five:
 
 Its `show` builds the record — an account number the DATEV export never
 described still shows its bookings, so a missing master-data record becomes a
-stub carrying just the number — and the context of §1; `show.html.haml` wraps
-one `render` of the partial in the frame the list loads into, and answers a
-frame request with the frame alone.
+stub carrying just the number — and the context of §1; `show.html.haml` is one
+`render` of the partial inside `wsjrdp_detail_frame("supplier",
+@account.number)`, and a frame request comes back as that frame alone, without a
+layout.
 
 ---
 

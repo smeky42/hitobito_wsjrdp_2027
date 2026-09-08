@@ -103,7 +103,7 @@ forces `P1 == P2`. *Why:* shorter URLs.
 | `per_page` | `z` | integer or `all` | `state.per_page` → `Integer` or the symbol `:all`; `state.per_value` is the wire form | `:remember` |
 | `page` | `p` | integer | `state.page`, applied by `state.paginate` (D4) | `:remember` |
 | `open` | `o` | comma list of row keys | `state.open_keys` (a Set) | `:url`, never remembered (D4) |
-| `level` | `l` | integer (nesting depth of a lazy detail) | `state.level` | `:url`, never remembered |
+| `level` | `expandable_table_level` | integer (nesting depth of a lazy detail) | `state.level` | `:url`, never remembered, never prefixed |
 | `pane` | `e` | `1` / `0` | `state.pane` | `:remember`, store `:cookie` |
 
 `Wsjrdp::TableStatePolicy::FIELD_DEFINITIONS` is that table in code: adding a
@@ -494,7 +494,8 @@ The guarantee is structural, not a UI convention:
 7. **Nested requests re-fix on the server.** A lazy detail is its own request to
    its own controller; whatever the parent fixes (e.g. the cost center of an
    embedded bookings table) is fixed again by that controller from its own path
-   id and authorization, never taken from a frame-URL param. `level` (`l`) is the
+   id and authorization, never taken from a frame-URL param. `level`
+   (`expandable_table_level`) is the
    only thing a frame URL carries, and it only affects nesting depth, never
    scope.
 8. **Reset skips fixed fields** (D3), and the widget renders fixed fields without
@@ -650,7 +651,7 @@ database and the dev server); nothing here ran against production.
 The only nested table in the app is the condensed bookings table inside a
 Buchhaltung item's detail (prefix `"b"`, level 1), and its own rows' details embed
 no further table. The mechanism is in place and exercised (the `level:` lambda,
-the `l` frame param, the per-item `store_key:`), but the recursive case beyond one
+the `expandable_table_level` frame param, the per-item `store_key:`), but the recursive case beyond one
 step is untested by anything but the unit specs.
 
 ### Verification
@@ -674,7 +675,7 @@ the standalone specs have none of that.
 | `spec/domain/fin/personal_accounts_filter_schema_spec.rb` | **18** | Rails: the same protocol against the Kreditoren schema and its relation -- the two aggregate columns of `with_booking_summary` (compared against the plain per-account totals), `gt` / `between` / two ANDed slots, the text search over both name columns, and the COALESCEd Moss status counting a NULL as inaktiv on both `in` and `not_in` |
 | `spec/controllers/fin/moss_transactions_controller_spec.rb` | **19** | `?s=`, `?c=`, a Rison `?f=`, the remembered sort and filter on a bare revisit, the blank-param apply, the "Zurücksetzen" href (filter-only, D3), `?r=1`, and a page beyond the last one |
 | `spec/controllers/fin/personal_accounts_controller_spec.rb` | **26** | the relation-backed Kreditoren page end to end: a `?f=` per attribute (a NULL Moss status showing and filtering as inaktiv), the sorts on the aggregates, `?z=all`, the remembered filter and the filter-only reset, the footer totals against a direct SQL sum, the `post :apply` PRG, the lazy detail -- and the presets: their hrefs and `aria-pressed`, toggling on and off through the URL, the overlapping pair activating and deactivating together, and an OR-widened slot not counting |
-| `spec/controllers/fin/ledger_accounts_controller_spec.rb` | **15** | standing in for the two array-backed Buchhaltung summary pages (they share `Fin::BookkeepingSummaries`): the natural order, `?s=` and its memory, the blank param clearing a remembered sort or column selection, the D4 page clamp, `?r=1`, the lazy detail with its `?l=1`, and the per-item memory of the embedded bookings table |
+| `spec/controllers/fin/ledger_accounts_controller_spec.rb` | **15** | standing in for the two array-backed Buchhaltung summary pages (they share `Fin::BookkeepingSummaries`): the natural order, `?s=` and its memory, the blank param clearing a remembered sort or column selection, the D4 page clamp, `?r=1`, the lazy detail with its `?expandable_table_level=1`, and the per-item memory of the embedded bookings table |
 
 Everything under `spec/domain/wsjrdp/` runs on the macOS host from the wagon root
 (**311 examples**, all standalone since `844b041b`); the `spec/domain/fin/` and
@@ -682,7 +683,7 @@ Everything under `spec/domain/wsjrdp/` runs on the macOS host from the wagon roo
 "Running tests") — **118 examples** together with
 `spec/abilities/finance_ability_spec.rb`. Beyond that, every round was checked in
 the running dev app: the three Buchhaltung summary indexes, an item detail as
-its own page *and* as a lazily loaded turbo frame with `?l=1`, and a
+its own page *and* as a lazily loaded turbo frame with `?expandable_table_level=1`, and a
 Buchungsstapel page all render 200 with their embedded `b…` table, and the
 resolved nesting levels were read back per controller.
 

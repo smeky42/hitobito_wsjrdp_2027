@@ -90,7 +90,7 @@ is the form-side sibling with the `<attr>_display` convention;
 `Fin::MoneyHelper` (`fin_money`, `fin_currency_symbol`) are the finance
 formats. `Wsjrdp::TableContext` (`level`, `lazy?`, `root?`, `nested?`) is
 handed to every table detail; the widget appends the detail's level to a lazy
-frame's URL as the table's `l` param, and the target controller resolves it
+frame's URL as the shared `expandable_table_level` param, and the target controller resolves it
 into `summary_table_state.level`.
 
 **Wagon, finance detail views today.** Three field renderers compete:
@@ -113,11 +113,10 @@ there is no attribute level, and Hitobito's ability DSL compiles only
 **Kreditoren specifically.** `Fin::PersonalAccountsController` (`param:
 :number`, `Fin::BookkeepingSummaries`), index with `t.detail_src { |a|
 personal_account_path(a.number) }` and `t.detail_page`, show =
-`turbo_frame_tag("bkframe-supplier-#{@number}") { supplier_item_detail(@number) }`
-plus, outside a frame request, the back link and an `h1` built in the view.
-`supplier_item_detail` renders `fin/shared/_item_detail` (fields +
-`fin/bookings/_embedded` over `supplier_bookings(number)`, i.e.
-`DatevBooking.legs` of the account). The model has 35 columns
+`wsjrdp_detail_frame("supplier", @account.number)` around one `render` of the
+detail partial, which shows the fields plus `fin/bookings/_embedded` over
+`supplier_bookings(number)`, i.e. `DatevBooking.legs` of the account. The frame
+id is the asking table's, so the view never builds one (§4 B). The model has 35 columns
 (`db/schema.rb`, `create_table "wsjrdp_personal_accounts"`), among them the
 generated `display_short_name`, the array `aliases`, `visibility`,
 `represented_person_id` (→ `Person`), the three jsonb columns and
@@ -506,16 +505,39 @@ Specs (all green before the commit):
 |---|---|
 | `app/views/fin/personal_accounts/_detail.html.haml` | **new**, the partial of §3.6 |
 | `app/helpers/fin/personal_accounts_helper.rb` | **new**: `fin_format_wsjrdp_personal_account_moss_status` (→ `fin_status_label`), `…_address` (street, `post_code city`, country — today's `bookkeeping_address`, which moves here), `…_iban` (grouped in blocks of four for reading; the same string as stored), `…_represented_person` (→ `assoc_link_with_newtab`), `…_moss_default_ledger_account_number` / `…_cost_center_number` (code + name through `datev_account_names` / `datev_cost_center_names`, i.e. `datev_code_cell`), `…_moss_default_sphere_number`, `…_aliases` (joined; empty array is blank); `fin_raw_format_other_wsjrdp_personal_account` with the two DATEV code fields that have a known meaning (`Adressattyp`, `Zahlungsträger`, codes in `doc/fin/personal_accounts.md`); everything else falls to the defaults |
-| `app/controllers/fin/personal_accounts_controller.rb` | `show` loads the record and builds the context: `@account = WsjrdpPersonalAccount.find_by(number: params[:number]) \|\| WsjrdpPersonalAccount.new(number: params[:number])` (a number without master data still shows its bookings, as today), `@ctx = turbo_frame_request? ? Fin::AttrFormatContext.embedded(Wsjrdp::TableContext.new(level: summary_table_state.level, lazy: true)) : Fin::AttrFormatContext.regular` |
-| `app/views/fin/personal_accounts/show.html.haml` | the frame wraps `render "fin/personal_accounts/detail", account: @account, ctx: @ctx`; the page branch is `#main= frame` — back link and `h1` now come from `d.header` |
+| `app/controllers/fin/personal_accounts_controller.rb` | `show` loads the record and builds the context: `@account = WsjrdpPersonalAccount.find_by(number: params[:number]) \|\| WsjrdpPersonalAccount.new(number: params[:number])` (a number without master data still shows its bookings), `@ctx = detail_format_context`, i.e. `Fin::AttrFormatContext.embedded(Wsjrdp::TableContext.new(level: summary_table_state.level, lazy: true))` on a frame request and `Fin::AttrFormatContext.regular` otherwise; `render_item_detail` (`Fin::BookkeepingSummaries`) drops the layout on a frame request |
+| `app/views/fin/personal_accounts/show.html.haml` | `= wsjrdp_detail_frame("supplier", @account.number)` around `render "fin/personal_accounts/detail", account: @account, ctx: @ctx` — the helper picks the frame id and wraps a direct visit in `#main`; back link and `h1` come from `d.header` |
 | `app/helpers/fin/bookkeeping_helper.rb` | `supplier_item_detail`, `supplier_detail_fields`, `bookkeeping_address` removed (Sachkonten/Kostenstellen keep `_item_detail` until part C step 1) |
 | `config/locales/wsjrdp_2027.de.yml` | `activerecord.models.wsjrdp_personal_account`, `activerecord.attributes.wsjrdp_personal_account.*` for every listed attribute incl. `address` |
-| `spec/controllers/fin/personal_accounts_controller_spec.rb` | show as a page: `h1` with the number, `dl.dl-horizontal`, no `dl.row.small`, the raw `<details open>`; show as a frame request (`Turbo-Frame` header, `?l=1`): no `h1`, `dl.row.small`, `<details>` closed, the embedded bookings table present; a blank field leaves no `dt`; an unknown number still renders (fixtures: create records in the spec, no real names or bank data) |
+| `spec/controllers/fin/personal_accounts_controller_spec.rb` | show as a page: the `h1` inside `#main` with the number, `dl.fin-detail-list`, no `dl.row.small`, the raw area open; show as a frame request (a `Turbo-Frame` header naming the row's frame, `?expandable_table_level=1`): no `h1`, `dl.row.small`, the raw area collapsed, the embedded bookings table present; a blank field leaves no `dt` unless it is one of the `blank: :unset` rows; an unknown number still renders (fixtures: create records in the spec, no real names or bank data) |
 | `spec/helpers/fin/personal_accounts_helper_spec.rb` | the formatters above, incl. the address composition with missing parts |
 
-Index view: unchanged (`detail_src` + `detail_page` already point at the show
-URL; the frame id `bkframe-supplier-<number>` must stay in sync with
-`t.rows …, id: "supplier"`).
+Index view: unchanged — `detail_src` + `detail_page` already point at the show
+URL, and the widget names the row's frame itself
+(`wsjrdp_detail_frame_id(id_prefix, key)` → `bkframe-<id_prefix>-<key>`, with
+the prefix from `t.rows …, id: "supplier"`).
+
+### The frame contract
+
+`WsjrdpFormHelper#wsjrdp_detail_frame(prefix, key)` answers in the frame the
+`Turbo-Frame` request header names — honouring it only when it names a detail
+frame of THIS record (`bkframe-<any table prefix>-<key>`, so a stray header
+cannot rename another page's frame) — and otherwise in the canonical
+`bkframe-<prefix>-<key>`, wrapped in `div#main` for the page. One and the same
+detail is lazy-loaded from tables with different prefixes (the Buchungen list
+asks as `bkframe-bk-<id>`, the condensed bookings table inside a Buchhaltung
+item detail as `bkframe-b-<id>`), so an id built in the view answers the wrong
+frame and Turbo renders "Content missing". The rules and their reasons are
+written up in `doc/wsjrdp/expandable_table.md`; a form inside a pane follows the
+same line and redirects to the record's own path on a frame request, so the
+submitting frame is re-rendered (`Fin::BookingsController#redirect_after_update`).
+
+Coverage per host: `spec/controllers/fin/bookings_controller_spec.rb` and
+`spec/controllers/fin/booking_batches_controller_spec.rb` assert the frame id of
+the response — the canonical id inside `#main` on a direct visit, the header's
+id under either table prefix, and the canonical fallback for a header naming
+another record; the Kreditoren, Sachkonten and Kostenstellen controller specs
+each cover their own frame request.
 
 ### Docs
 
