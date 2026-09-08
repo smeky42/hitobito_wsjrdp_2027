@@ -354,11 +354,11 @@ describe Fin::LedgerAccountsController do
 
     it "renders only the turbo frame for a lazily loaded detail row" do
       request.headers["Turbo-Frame"] = "bkframe-account-1200"
-      get :show, params: {number: "1200", l: "1"}
+      get :show, params: {number: "1200", expandable_table_level: "1"}
       expect(response).to be_successful
       # The embedded table lives under the "b" prefix and keeps the nesting level
       # the summary list put into the frame URL.
-      expect(response.body).to include("bs=").and include("l=1")
+      expect(response.body).to include("bs=").and include("expandable_table_level=1")
       expect(response.body).not_to include("<html")
     end
 

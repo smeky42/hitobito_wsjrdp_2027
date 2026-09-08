@@ -144,6 +144,37 @@ Instead of an inline `detail:`, pass `t.detail_src { |thing| url }` to
 **lazy-load** the detail into a turbo frame the first time the row opens (keeps
 big lists fast — the Buchhaltung summaries do this).
 
+**The frame id is the table's, not the detail's.** The widget names the frame
+`wsjrdp_detail_frame_id(id_prefix, key)` → `bkframe-<id_prefix>-<key>`, and
+`id_prefix` is the table's (`t.rows … id:`, defaulting to the policy prefix).
+The **same** detail is loaded from tables with **different** prefixes — the
+Buchungen list asks as `bkframe-bk-<id>`, the condensed bookings table inside a
+Buchhaltung item detail as `bkframe-b-<id>` — so the answering view must **never
+build the id itself**:
+
+```haml
+= wsjrdp_detail_frame("bk", @booking.id) do
+  = render "detail", booking: @booking, ctx: @ctx
+```
+
+`wsjrdp_detail_frame(prefix, key)` answers in the frame the `Turbo-Frame`
+request header names, and falls back to the canonical `bkframe-<prefix>-<key>`
+(wrapped in `#main`) on a direct visit. A hardcoded id answers the wrong frame,
+and Turbo then renders **"Content missing"** instead of the detail. The header is
+honoured only when it names **this** record (`…-<key>`), so a stray header — a
+form in one pane redirecting onto another record's page — cannot rename that
+page's own frame.
+
+**A form inside a lazy detail must redirect to the DETAIL, not back.** In an
+embedded pane the detail's forms submit *inside* the frame (only the `:regular`
+full page sets `data-turbo=false`), so the response has to re-render that frame.
+`redirect_back` lands on the host page, which contains no frame of that row —
+Turbo shows "Content missing", or leaves the row on its `Wird geladen …`
+placeholder. Redirect to the record's own path on a frame request instead; see
+`Fin::BookingsController#redirect_after_update`. Note that a frame response
+renders turbo-rails' minimal layout, which has **no flash slot**: a `notice:` on
+that path is never seen.
+
 Every detail opens with a **header line of double links** (§2) — that is where a
 row links to its own page; the summary row itself carries no action icon.
 
@@ -239,7 +270,7 @@ that table lives:
 | `per_page` | `z` | integer or `all` | `state.per_page` → `Integer` or `:all`; `state.per_value` is its wire form | `:remember` |
 | `page` | `p` | integer | `state.page`, applied by `state.paginate(source)` | `:remember` |
 | `open` | `o` | comma list of row keys | `state.open_keys` (a Set) | `:url` (cannot be remembered) |
-| `level` | `l` | integer (nesting depth) | `state.level` | `:url` (cannot be remembered) |
+| `level` | `expandable_table_level` | integer (nesting depth) | `state.level` | `:url` (cannot be remembered; **not** prefixed — see below) |
 | `pane` | `e` | `1` / `0` | `state.pane` | `:remember`, store `:cookie` |
 
 Two more params are commands, not state: `<prefix>r=1` resets **that** table and
@@ -729,12 +760,12 @@ def item_bookings_table_state = wsjrdp_expandable_table_state(ITEM_BOOKINGS_POLI
   (`params[:number]` for the Buchhaltung pages) into the key, which is what makes
   the memory per item;
 - the `level:` lambda inherits the depth the parent list put into the detail's
-  frame URL (`?l=…`), so the nesting keeps counting up (§4). It reads
+  frame URL (`?expandable_table_level=…`), so the nesting keeps counting up (§4). It reads
   `summary_table_state`, so only a section that HAS a summary list asks for it —
   that is what `nested: true` says. The Buchungsstapel page has no summary list,
   omits `nested:` and starts at level 0.
 - a lazy detail is its own request to its own controller: whatever the parent
-  pins is pinned again there, from its own path id and authorization — `l` is the
+  pins is pinned again there, from its own path id and authorization — the level is the
   only thing the frame URL carries, and it only affects nesting depth, never
   scope (D8.7).
 
@@ -1087,9 +1118,12 @@ prefixes, which is why there is no separator:
 
 | prefix | params | reset |
 |---|---|---|
-| `""` (default) | `s`, `c`, `f`, `z`, `p`, `o`, `l`, `e` | `r` |
-| `"bk"` | `bks`, `bkc`, `bkf`, `bkz`, `bkp`, `bko`, `bkl`, `bke` | `bkr` |
-| `"ae"` | `aes`, `aec`, `aef`, `aez`, `aep`, `aeo`, `ael`, `aee` | `aer` |
+| `""` (default) | `s`, `c`, `f`, `z`, `p`, `o`, `e` | `r` |
+| `"bk"` | `bks`, `bkc`, `bkf`, `bkz`, `bkp`, `bko`, `bke` | `bkr` |
+| `"ae"` | `aes`, `aec`, `aef`, `aez`, `aep`, `aeo`, `aee` | `aer` |
+
+`expandable_table_level` stands outside this scheme — it is shared, so it is
+never prefixed and appears once per URL whatever tables the page carries (§4).
 
 Page-wide, `table_state_reset` resets every table declared on the page.
 
@@ -1146,9 +1180,15 @@ ctx.lazy?    # loaded into a turbo frame?
 
 The widget hands a `Wsjrdp::TableContext` to a detail rendered **directly** (the
 detail lambda may take `(row)` or `(row, ctx)`), and for a **lazy** detail it
-appends the depth to the frame URL as the table's `l` param, which the target
+appends the depth to the frame URL as `expandable_table_level`, which the target
 controller resolves back into its own table's `state.level` — so a partial reads
-its nesting the same way either way. A detail that embeds another table gets the
+its nesting the same way either way. It is the one param that is **not**
+namespaced by the table prefix (`Wsjrdp::TableStatePolicy::SHARED_PARAMS`): the
+table that WRITES it and the table that READS it live in different controllers
+and generally carry different prefixes, so a namespaced name would leave the
+reader at depth 0. One request carries one depth, so a single shared name stays
+unambiguous — and since it is never concatenated with a prefix, it spells itself
+out instead of being a cryptic letter in a URL that several tables share. A detail that embeds another table gets the
 count going up through that table's `level:` policy option (see "Nesting" in
 §1); the view threads nothing through. See `fin/bookings/_booking_detail` (takes
 `table_context`) and `fin/shared/_item_detail` (rendered at level 0 as a page and

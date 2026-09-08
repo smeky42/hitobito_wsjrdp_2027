@@ -339,9 +339,9 @@ describe Fin::CostCentersController do
 
     it "renders only the turbo frame for a lazily loaded detail row" do
       request.headers["Turbo-Frame"] = "bkframe-cost_center-K100"
-      get :show, params: {number: "K100", l: "1"}
+      get :show, params: {number: "K100", expandable_table_level: "1"}
       expect(response).to be_successful
-      expect(response.body).to include("bs=").and include("l=1")
+      expect(response.body).to include("bs=").and include("expandable_table_level=1")
       expect(response.body).not_to include("<html")
     end
 
@@ -425,13 +425,13 @@ describe Fin::CostCentersController do
     it "renders the compact detail without a heading for a lazily loaded row" do
       add_budgets
       request.headers["Turbo-Frame"] = "bkframe-cost_center-K100"
-      get :show, params: {number: "K100", l: "1"}
+      get :show, params: {number: "K100", expandable_table_level: "1"}
 
       expect(response.body).not_to include("<h1")
       expect(doc.css("dl.row.small")).to be_present
       expect(doc.css("dl.fin-detail-list")).to be_empty
       expect(doc.css(".fin-embedded-bookings")).to be_present
-      expect(response.body).to include("l=1")
+      expect(response.body).to include("expandable_table_level=1")
     end
 
     # A number the master data does not describe is a stub record: no field has

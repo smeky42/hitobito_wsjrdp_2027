@@ -195,7 +195,7 @@ describe Wsjrdp::TableStatePolicy do
     expect(policy.param_name(:per_page)).to eq("bkz")
     expect(policy.param_name(:page)).to eq("bkp")
     expect(policy.param_name(:open)).to eq("bko")
-    expect(policy.param_name(:level)).to eq("bkl")
+    expect(policy.param_name(:level)).to eq("expandable_table_level") # SHARED_PARAMS
     expect(policy.param_name(:pane)).to eq("bke")
     expect(policy.reset_param).to eq("bkr")
   end
@@ -206,11 +206,30 @@ describe Wsjrdp::TableStatePolicy do
     expect(policy.reset_param).to eq("r")
   end
 
-  it "uses one letter per field, uniquely" do
-    shorts = described_class::FIELD_DEFINITIONS.values.pluck(:short)
+  # A namespaced param is <prefix><short>, so its short has to stay ONE unique
+  # letter: that is what makes P1 + x == P2 + y force P1 == P2.
+  it "uses one letter per namespaced field, uniquely" do
+    namespaced = described_class::FIELD_DEFINITIONS.except(*described_class::SHARED_PARAMS)
+    shorts = namespaced.values.pluck(:short)
+
     expect(shorts.map(&:length).uniq).to eq([1])
     expect(shorts.uniq.size).to eq(shorts.size)
     expect(shorts).not_to include(described_class::RESET_SHORT)
+  end
+
+  # A SHARED_PARAMS field is never concatenated with a prefix, so the one-letter
+  # argument does not apply to it -- but it must not be mistakable for a param
+  # that IS namespaced. A prefix is [a-z]* and a short one letter, so every
+  # namespaced param matches /\A[a-z]+\z/; staying outside that shape settles it.
+  it "keeps a shared param out of the <prefix><short> namespace" do
+    namespaced_shape = /\A[a-z]+\z/
+
+    described_class::SHARED_PARAMS.each do |name|
+      short = described_class::FIELD_DEFINITIONS.fetch(name)[:short]
+
+      expect(short).not_to match(namespaced_shape)
+      expect(short.length).to be > 1
+    end
   end
 
   it "applies the D6 default policies" do
@@ -1166,7 +1185,7 @@ describe Wsjrdp::TableState do
   describe "#wire_params" do
     it "carries what the URL chose, but not defaults, stored values or the level" do
       session["wsjrdp_table_state"] = {"fin/bookings#index" => {"z" => "100"}}
-      state = resolve(policy, {"s" => "cc~", "p" => "2", "o" => "5", "l" => "1"})
+      state = resolve(policy, {"s" => "cc~", "p" => "2", "o" => "5", "expandable_table_level" => "1"})
       expect(state.wire_params).to eq({"s" => "cc~", "p" => "2", "o" => "5"})
     end
 

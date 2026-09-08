@@ -74,14 +74,14 @@ class Fin::BookingsController < Fin::FinController
 
   def show
     @booking = DatevBooking.find(params[:id])
-    @ctx = if request.headers["Turbo-Frame"].present?
+    @ctx = if turbo_frame_request?
       Fin::AttrFormatContext.embedded(
         Wsjrdp::TableContext.new(level: booking_table_state.level, lazy: true)
       )
     else
       Fin::AttrFormatContext.regular
     end
-    render layout: false if request.headers["Turbo-Frame"].present?
+    render layout: false if turbo_frame_request?
   end
 
   # --- manual associations (booking detail view, all hosts) ------------------
@@ -138,20 +138,43 @@ class Fin::BookingsController < Fin::FinController
     elsif attrs.key?(:accounting_entry_id)
       update_entry_link(booking, attrs[:accounting_entry_id])
     else
-      redirect_back fallback_location: booking_path(booking), alert: "Keine Änderung übermittelt."
+      redirect_after_update booking, alert: "Keine Änderung übermittelt."
     end
   end
 
   private
 
+  # Where a mini-form of the detail view goes after its update.
+  #
+  # Inside a turbo frame the answer has to RE-RENDER THE FRAME that submitted --
+  # #show does exactly that -- so a frame request goes to the booking's own path.
+  # `redirect_back` would land on the HOST page (the Kostenstellen list, a
+  # Sachkonto detail, ...), and that page carries no frame of this row: Turbo then
+  # renders "Content missing", or, on the Buchungen list, replaces the row with
+  # the still-unloaded "Wird geladen ..." placeholder. Outside a frame the form
+  # runs with data-turbo=false and `redirect_back` is right -- it keeps the user
+  # on the list they came from.
+  #
+  # The flash is only seen on the non-frame path: a frame response renders
+  # turbo-rails' minimal layout, which has no flash slot.
+  def redirect_after_update(booking, **flash_args)
+    if turbo_frame_request?
+      redirect_to booking_path(booking), **flash_args
+    else
+      redirect_back fallback_location: booking_path(booking), **flash_args
+    end
+  end
+
+  def turbo_frame_request? = request.headers["Turbo-Frame"].present?
+
   def update_fields(booking, attrs)
     coerce_nullable_boolean!(attrs, :is_unit_budget)
     blank_to_nil!(attrs, :secondary_cost_center_number)
     if booking.update(attrs)
-      redirect_back fallback_location: booking_path(booking),
+      redirect_after_update booking,
         notice: "Buchung ##{booking.id} aktualisiert."
     else
-      redirect_back fallback_location: booking_path(booking),
+      redirect_after_update booking,
         alert: "Fehler: #{booking.errors.full_messages.join(", ")}"
     end
   end
@@ -163,13 +186,13 @@ class Fin::BookingsController < Fin::FinController
 
     entry = AccountingEntry.find_by(id: raw_id)
     if entry.nil?
-      redirect_back fallback_location: booking_path(booking),
+      redirect_after_update booking,
         alert: "Keine Beitragsbuchung ausgewählt."
     elsif Fin::DatevBookingMatcher.connect_pair!(booking, entry, linked_by_id: current_user&.id)
-      redirect_back fallback_location: booking_path(booking),
+      redirect_after_update booking,
         notice: "Buchung ##{booking.id} mit Beitragsbuchung ##{entry.id} verknüpft."
     else
-      redirect_back fallback_location: booking_path(booking),
+      redirect_after_update booking,
         alert: "Verknüpfung nicht möglich (Buchung oder Beitragsbuchung bereits verknüpft)."
     end
   end
@@ -188,7 +211,7 @@ class Fin::BookingsController < Fin::FinController
           .update_all(datev_booking_id: nil, updated_at: Time.zone.now)
       end
     end
-    redirect_back fallback_location: booking_path(booking),
+    redirect_after_update booking,
       notice: entry ?
         "Verknüpfung von Buchung ##{booking.id} mit Beitragsbuchung ##{entry.id} entfernt." :
         "Buchung ##{booking.id} war nicht verknüpft."

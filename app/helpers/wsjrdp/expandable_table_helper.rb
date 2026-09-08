@@ -40,6 +40,16 @@ module Wsjrdp::ExpandableTableHelper
     render "shared/wsjrdp/expandable_table", **builder.to_locals
   end
 
+  # --- the lazily loaded row detail ------------------------------------------
+
+  # The DOM id of one row's detail frame. The widget writes it into the frame it
+  # renders per row (`t.detail_src`); the detail's own view answers in the frame
+  # the REQUEST names (WsjrdpFormHelper#wsjrdp_detail_frame), never in one it
+  # builds itself -- the same detail is loaded from tables with different
+  # prefixes. This stays the one place that knows the format, for the writing
+  # side and for a canonical id.
+  def wsjrdp_detail_frame_id(prefix, key) = "bkframe-#{prefix}-#{key}"
+
   # --- URL building ----------------------------------------------------------
   # THE only methods that touch the request (see the note above).
 

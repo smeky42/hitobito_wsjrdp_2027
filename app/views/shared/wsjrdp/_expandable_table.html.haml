@@ -269,7 +269,7 @@
                     -# lazily-rendered partial knows it sits inside a table row.
                     - src = detail_src.call(row)
                     - src = "#{src}#{src.include?("?") ? "&" : "?"}#{state.param_name(:level)}=#{detail_level + 1}"
-                    = turbo_frame_tag "bkframe-#{id_prefix}-#{key}", src: src, loading: "lazy" do
+                    = turbo_frame_tag wsjrdp_detail_frame_id(id_prefix, key), src: src, loading: "lazy" do
                       .booking-detail.p-3.text-center.text-muted.small Wird geladen …
                   - elsif detail
                     .booking-detail.p-3

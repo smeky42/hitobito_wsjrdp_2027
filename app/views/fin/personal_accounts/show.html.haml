@@ -9,10 +9,5 @@
 -#  its expandable row, so a frame request answers with the frame alone; back
 -#  link and heading belong to the partial's header (d.header), which renders in
 -#  :regular mode only.
-- frame = turbo_frame_tag("bkframe-supplier-#{@account.number}") do
+= wsjrdp_detail_frame("supplier", @account.number) do
   = render "fin/personal_accounts/detail", account: @account, ctx: @ctx
-
-- if turbo_frame_request?
-  = frame
-- else
-  #main= frame

@@ -4,10 +4,5 @@
 -#  Affero General Public License version 3 or later.
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
-- frame = turbo_frame_tag("bkframe-batch-#{@batch.id}") do
+= wsjrdp_detail_frame("batch", @batch.id) do
   = render "detail", batch: @batch, ctx: @ctx
-
-- if turbo_frame_request?
-  = frame
-- else
-  #main= frame

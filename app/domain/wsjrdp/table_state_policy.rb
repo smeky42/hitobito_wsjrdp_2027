@@ -62,20 +62,24 @@ class Wsjrdp::TableStatePolicy
   PAGE_RESET_PARAM = "table_state_reset"
   RESET_SHORT = "r"
 
-  # THE field table (D2a). A query param is `<prefix><short>` -- the prefix
+  # THE field table (D2a). A NAMESPACED param is `<prefix><short>` -- the prefix
   # followed directly by a ONE-character field name, so param names can never
   # collide across prefixes (P1 + x == P2 + y forces P1 == P2). Adding a field
   # means adding one row here; the letter must stay unique.
   #
-  #   field     short  wire form                     default policy
-  #   sort      s      RISON list "bez,nr~"          :remember
-  #   cols      c      "nr,~bez,sum" (~ = hidden)    :remember
-  #   filter    f      Rison CNF tree                :url
-  #   per_page  z      integer or "all" (=> :all)    :remember
-  #   page      p      integer                       :remember
-  #   open      o      comma list of row keys        :url  (never remembered, D4)
-  #   level     l      integer (nesting depth)       :url
-  #   pane      e      "1" / "0"                     :remember, store :cookie
+  # A SHARED_PARAMS field is never concatenated with a prefix, so the argument
+  # for a single letter does not apply to it and it spells its name out: it
+  # appears bare in a URL that several tables share, where "l" says nothing.
+  #
+  #   field     short                    wire form                     default policy
+  #   sort      s                        RISON list "bez,nr~"          :remember
+  #   cols      c                        "nr,~bez,sum" (~ = hidden)    :remember
+  #   filter    f                        Rison CNF tree                :url
+  #   per_page  z                        integer or "all" (=> :all)    :remember
+  #   page      p                        integer                       :remember
+  #   open      o                        comma list of row keys        :url  (never remembered, D4)
+  #   level     expandable_table_level   integer (nesting depth)       :url  (shared, see below)
+  #   pane      e                        "1" / "0"                     :remember, store :cookie
   FIELD_DEFINITIONS = {
     sort: {short: "s", policy: :remember},
     cols: {short: "c", policy: :remember},
@@ -83,9 +87,20 @@ class Wsjrdp::TableStatePolicy
     per_page: {short: "z", policy: :remember},
     page: {short: "p", policy: :remember},
     open: {short: "o", policy: :url},
-    level: {short: "l", policy: :url},
+    level: {short: "expandable_table_level", policy: :url},
     pane: {short: "e", policy: :remember, store: :cookie}
   }.freeze
+
+  # The fields whose param is NOT namespaced by the prefix. Namespacing keeps
+  # SIBLING tables on one page apart -- but `level` crosses the table boundary:
+  # the widget of the EMBEDDING table writes it into the lazy detail's frame URL,
+  # and the table of the ANSWERING controller reads it back (§4 of
+  # doc/wsjrdp/expandable_table.md). Those are two different tables, so a prefix
+  # makes writer and reader disagree whenever their prefixes differ -- the depth
+  # then silently falls back to 0. A request carries exactly ONE nesting depth,
+  # so one shared name is unambiguous even with several tables on the page --
+  # and because it is never prefixed, it is spelled out rather than a letter.
+  SHARED_PARAMS = %i[level].freeze
 
   FIELDS = FIELD_DEFINITIONS.keys.freeze
   POLICIES = %i[url remember fixed].freeze
@@ -138,7 +153,11 @@ class Wsjrdp::TableStatePolicy
   def field?(name) = @fields.key?(name.to_sym)
 
   # The concrete query-param name of a field, e.g. param_name(:sort) => "bks".
-  def param_name(name) = "#{@prefix}#{field(name).short}"
+  # A SHARED_PARAMS field keeps its own name in every table, unprefixed.
+  def param_name(name)
+    field = field(name)
+    SHARED_PARAMS.include?(field.name) ? field.short : "#{@prefix}#{field.short}"
+  end
 
   # Per-table reset param (D3): "?<prefix>r=1".
   def reset_param = "#{@prefix}#{RESET_SHORT}"

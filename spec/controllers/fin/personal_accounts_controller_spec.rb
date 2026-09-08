@@ -523,9 +523,9 @@ describe Fin::PersonalAccountsController do
 
     it "renders only the turbo frame for a lazily loaded detail row" do
       request.headers["Turbo-Frame"] = "bkframe-supplier-700101"
-      get :show, params: {number: "700101", l: "1"}
+      get :show, params: {number: "700101", expandable_table_level: "1"}
       expect(response).to be_successful
-      expect(response.body).to include("bs=").and include("l=1")
+      expect(response.body).to include("bs=").and include("expandable_table_level=1")
       expect(response.body).not_to include("<html")
     end
 
@@ -600,7 +600,7 @@ describe Fin::PersonalAccountsController do
     it "renders the compact detail without a heading for a lazily loaded row" do
       add_raw_columns
       request.headers["Turbo-Frame"] = "bkframe-supplier-700101"
-      get :show, params: {number: "700101", l: "1"}
+      get :show, params: {number: "700101", expandable_table_level: "1"}
 
       expect(response.body).not_to include("<h1")
       expect(doc.css("dl.row.small")).to be_present
@@ -609,7 +609,7 @@ describe Fin::PersonalAccountsController do
       expect(doc.css("details[open]")).to be_empty
       expect(doc.at_css("details.fin-detail-raw summary").text.strip).to eq("Rohdaten")
       expect(doc.css(".fin-embedded-bookings")).to be_present
-      expect(response.body).to include("l=1")
+      expect(response.body).to include("expandable_table_level=1")
     end
 
     # A number the master data does not describe is a stub record: no field has
