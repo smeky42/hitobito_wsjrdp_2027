@@ -74,16 +74,35 @@ module Fin::DatevBookingMatcher
   # :heuristic_low. Used by Match#tier.
   HEURISTIC_MIDDLE_MIN_PERCENT = 50
 
+  # The automatic classification_string values, as the DATEV importer
+  # (wsjrdp_scripts, packages/wsjrdp2027/src/wsjrdp2027/datev_fee_links.py)
+  # writes them into accounting_entries.datev_booking_link_meta.
+  CLASSIFICATION_2025_FEE = "2025_fee_booking"
+  CLASSIFICATION_PRE_NOTIFICATION = "document_field_1_pre_notification"
+  CLASSIFICATION_CAMT_RETURN = "retoure_matching_camt_return_by_amount_and_date"
+
+  # THE one place the automatic (import-equivalent) classification values and
+  # their human labels live -- the value list of doc/fin/recon_linking.md §3.
+  # A link carrying one of them is rated deterministically (tier :automatic,
+  # 100 %, the mapped label as the Match#basis; see rate_pair), whoever wrote it.
+  AUTOMATIC_LINK_BASES = {
+    CLASSIFICATION_2025_FEE => "Beitrag aus 2025 (Personen-Nr + Valuta)",
+    CLASSIFICATION_PRE_NOTIFICATION => "Pre-Notification-ID in Belegfeld 1",
+    CLASSIFICATION_CAMT_RETURN => "Retoure: Rücklastschrift nach Betrag und Buchungsdatum"
+  }.freeze
+
   # One proposed link. score: 0..100. kind distinguishes HOW the pair was
   # found -- and that, not the score, drives the confidence level:
   #
-  #   :import    the DATEV import itself would create this exact link. Two
-  #              rules qualify, both mirroring the importer: the
-  #              Ende-zu-Ende-ID channel (Belegfeld 1 -> pre-notification),
-  #              and -- for 2025 bookings -- the person id with its role prefix
-  #              in the Buchungstext plus the entry's Valuta exactly on the
-  #              booking date (see import_equivalent_2025?). level :sure --
-  #              shown green.
+  #   :import    the DATEV import itself would create (or did create) this exact
+  #              link: either the link already carries one of the automatic
+  #              classification values (AUTOMATIC_LINK_BASES), or this matcher
+  #              re-derives one of the two rules it can decide from the pair
+  #              alone -- the Ende-zu-Ende-ID channel (Belegfeld 1 ->
+  #              pre-notification), and -- for 2025 bookings -- the person id
+  #              with its role prefix in the Buchungstext plus the entry's
+  #              Valuta exactly on the booking date (see
+  #              import_equivalent_2025?). level :sure -- shown green.
   #   :heuristic a scored person/date/initials guess. level :heuristic --
   #              shown amber EVEN AT score 100: a heuristic full hit is still a
   #              heuristic, not something the import would have produced.
@@ -100,8 +119,9 @@ module Fin::DatevBookingMatcher
     def level = (kind == :import) ? :sure : :heuristic
 
     # Four-tier confidence for DISPLAY (see doc/fin/recon_linking.md):
-    #   :automatic        a link the DATEV import itself would create -- the
-    #                     2025 fee rule or the Ende-zu-Ende-ID (Einzug) channel
+    #   :automatic        a link the DATEV import itself would create -- one of
+    #                     the AUTOMATIC_LINK_BASES classifications, the 2025 fee
+    #                     rule or the Ende-zu-Ende-ID (Einzug) channel
     #                     (kind :import). Always 100 %.
     #   :heuristic_high   computed score 100 %
     #   :heuristic_middle computed score OVER HEURISTIC_MIDDLE_MIN_PERCENT
@@ -162,21 +182,18 @@ module Fin::DatevBookingMatcher
   #
   # An explicit automatic classification_string (in datev_booking_link_meta)
   # FIXES the rating deterministically (tier :automatic, 100 %, its canonical
-  # basis) without re-deriving it from the current texts -- the importer AND the
-  # UI connect record that classification for the two import-equivalent cases
-  # (see write_pairs / detect_link_type). Otherwise the two matcher channels
-  # apply: the Ende-zu-Ende-ID (Einzug) channel (=> :automatic) and the scored
-  # person/date channel (=> a heuristic tier).
+  # basis from AUTOMATIC_LINK_BASES) without re-deriving it from the current
+  # texts -- the importer records every one of those classifications, the UI
+  # connect the two it can decide from the pair alone (see write_pairs /
+  # detect_link_type). Otherwise the two matcher channels apply: the
+  # Ende-zu-Ende-ID (Einzug) channel (=> :automatic) and the scored person/date
+  # channel (=> a heuristic tier).
   #
   def self.rate_pair(booking, entry)
     return nil unless booking && entry
 
-    case entry.datev_booking_link_meta&.dig("classification_string")
-    when "2025_fee_booking"
-      return automatic_pair_match(booking, entry, "Beitrag aus 2025 (Personen-Nr + Valuta)")
-    when "document_field_1_pre_notification"
-      return automatic_pair_match(booking, entry, "Ende-zu-Ende-ID in Belegfeld 1")
-    end
+    basis = AUTOMATIC_LINK_BASES[entry.datev_booking_link_meta&.dig("classification_string")]
+    return automatic_pair_match(booking, entry, basis) if basis
 
     rate_einzug_pair(booking, entry) || rate_scored_pair(booking, entry)
   end
@@ -243,18 +260,25 @@ module Fin::DatevBookingMatcher
           "Automatisch verknüpft (entspricht dem DATEV-Import-Kriterium)\nScore: 100 %")
     end
 
-    # The automatic classification_string a link should carry, mirroring the
-    # importer's two rules: "document_field_1_pre_notification" when the pair
-    # satisfies the Ende-zu-Ende-ID (Einzug Belegfeld 1) channel,
-    # "2025_fee_booking" when it satisfies the importer's 2025 fee rule (person id
-    # with role prefix in the text + Valuta exactly on the booking date), else nil
-    # (a genuine heuristic/manual link, whose quality the rating derives on the
-    # fly). Used by write_pairs so a UI connect of one of those two cases is
-    # stamped exactly like the importer would.
+    # The automatic classification_string a link should carry. Only the two of
+    # the importer's rules that are decidable from this pair alone are detected:
+    # CLASSIFICATION_PRE_NOTIFICATION when the pair satisfies the Ende-zu-Ende-ID
+    # (Einzug Belegfeld 1) channel, CLASSIFICATION_2025_FEE when it satisfies the
+    # importer's 2025 fee rule (person id with role prefix in the text + Valuta
+    # exactly on the booking date), else nil (a genuine heuristic/manual link,
+    # whose quality the rating derives on the fly). Used by write_pairs so a UI
+    # connect of one of those two cases is stamped exactly like the importer would.
+    #
+    # CLASSIFICATION_CAMT_RETURN is deliberately NOT detected here: the Retoure
+    # rule needs the camt side (the returned bank transaction behind the entry)
+    # and the importer's +-14-day uniqueness window over BOTH whole tables --
+    # neither is available to a pair-local check. A UI connect of such a pair
+    # therefore stays unclassified; the importer's own link carries the value,
+    # and rate_pair honours it (AUTOMATIC_LINK_BASES).
     def detect_link_type(booking, entry)
       return nil unless booking && entry
-      return "document_field_1_pre_notification" if rate_einzug_pair(booking, entry)
-      return "2025_fee_booking" if import_equivalent_2025?(booking, entry, booking_context(booking))
+      return CLASSIFICATION_PRE_NOTIFICATION if rate_einzug_pair(booking, entry)
+      return CLASSIFICATION_2025_FEE if import_equivalent_2025?(booking, entry, booking_context(booking))
       nil
     end
 
@@ -290,8 +314,8 @@ module Fin::DatevBookingMatcher
     # provenance on the entry as datev_booking_link_meta (see doc/fin/recon_linking.md
     # and the migration for the JSON shape). Every UI connect (bulk or single)
     # is recorded automatic_manual = "manual" -- only the DATEV importer writes
-    # "automatic"; the score is the matcher rating (1.0 for the two
-    # import-equivalent rules, else the scored value, else null) and
+    # "automatic"; the score is the matcher rating (1.0 for a detected
+    # import-equivalent rule, else the scored value, else null) and
     # classification_string the import-equivalent rule (detect_link_type) or
     # null. Only entries that pass the guard (still unlinked, and the booking not
     # already taken) are touched, so the provenance is stamped exactly on the
@@ -337,8 +361,8 @@ module Fin::DatevBookingMatcher
       }
     end
 
-    # Match quality as 0.0..1.0: the two import-equivalent rules (non-nil
-    # classification) are deterministic 100 %; a scored pair maps its 0..100
+    # Match quality as 0.0..1.0: a detected import-equivalent rule (non-nil
+    # classification) is deterministic 100 %; a scored pair maps its 0..100
     # score; a pure hand-pick with no signal returns nil.
     def link_score(booking, entry, classification)
       return 1.0 if classification
