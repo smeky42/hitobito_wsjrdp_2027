@@ -182,11 +182,10 @@ describe Fin::OverviewController do
       transaction = MossTransaction.create!(type: "MossTopUp", moss_transaction_uuid: uuid,
         fin_account: wallet, signed_total_base_amount: 40, currency: "EUR",
         payment_date: Date.new(2026, 3, 6))
-      expense = MossExpense.create!(moss_transaction: transaction, moss_transaction_uuid: uuid,
+      expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
         type: "MossTopUpExpense", expense_number: 1, signed_expense_base_amount: 40)
       MossBooking.create!(moss_transaction: transaction, moss_expense: expense,
-        moss_transaction_uuid: uuid, booking_unique_item_number: "#{uuid}_1",
-        signed_base_amount: 40)
+        sub_row_number: 1, signed_base_amount: 40)
     end
 
     # The balance is the one the Konten list shows: the opening balance plus

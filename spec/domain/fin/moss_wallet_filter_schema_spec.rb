@@ -27,11 +27,10 @@ describe Fin::MossWalletFilterSchema do
     transaction = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
       signed_total_base_amount: amount, currency: "EUR", payment_date: date,
       transaction_posting_text: transaction_text, **attrs)
-    expense = MossExpense.create!(moss_transaction: transaction, moss_transaction_uuid: uuid,
+    expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
     MossBooking.create!(moss_transaction: transaction, moss_expense: expense,
-      moss_transaction_uuid: uuid, booking_unique_item_number: "#{uuid}_1",
-      signed_base_amount: amount, booking_posting_text: booking_text)
+      sub_row_number: 1, signed_base_amount: amount, booking_posting_text: booking_text)
   end
 
   before do

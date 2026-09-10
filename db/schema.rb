@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_10_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -933,9 +933,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
     t.bigint "moss_transaction_id", null: false, comment: "FK moss_transactions (ON DELETE CASCADE)"
-    t.uuid "moss_transaction_uuid", null: false, comment: "Denormalised from the transaction"
     t.bigint "moss_expense_id", null: false, comment: "FK moss_expenses (ON DELETE CASCADE); never NULL"
-    t.string "booking_unique_item_number", null: false, comment: "Constructed: <transaction uuid>_<CSV Sub-row Number> (card, invoice, top-up) / <CSV Unique Expense ID>_<CSV Sub-row Number> (reimbursement)"
     t.decimal "signed_base_amount", precision: 20, scale: 3, null: false, comment: "CSV Home Amount (card export) / CSV Amount (balance + reimbursement exports)"
     t.virtual "base_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_base_amount)", stored: true
     t.decimal "signed_transaction_amount", precision: 20, scale: 3, comment: "CSV Original Amount (card + balance exports) / CSV Amount in Original Currency (reimbursement export)"
@@ -956,11 +954,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
     t.string "source_file", comment: "The CSV file the row was last imported from"
     t.text "comment", default: "", null: false, comment: "App-side free text"
     t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
+    t.integer "sub_row_number", null: false, comment: "CSV Sub-row Number of the defining export: split within the card transaction (card export) / within the expense (reimbursement export), line within the invoice (invoice export), 1 for a top-up"
     t.index ["account_number"], name: "index_moss_bookings_account_number"
     t.index ["base_amount"], name: "index_moss_bookings_base_amount"
-    t.index ["booking_unique_item_number"], name: "index_moss_bookings_unique_item_number", unique: true
     t.index ["contribution_subject_type", "contribution_subject_id"], name: "index_moss_bookings_contribution_subject"
     t.index ["expense_datev_booking_id"], name: "index_moss_bookings_expense_datev"
+    t.index ["moss_expense_id", "sub_row_number"], name: "index_moss_bookings_expense_sub_row", unique: true
     t.index ["moss_expense_id"], name: "index_moss_bookings_expense"
     t.index ["moss_transaction_id"], name: "index_moss_bookings_transaction"
     t.check_constraint "account_kind IS NULL OR (account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_bookings_account_kind"
@@ -970,9 +969,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
     t.bigint "moss_transaction_id", null: false, comment: "FK moss_transactions (ON DELETE CASCADE)"
-    t.uuid "moss_transaction_uuid", null: false, comment: "Denormalised; part of the natural key below"
     t.string "type", null: false, comment: "STI: MossCardTransactionExpense | MossInvoiceExpense | MossReimbursementExpense | MossTopUpExpense"
-    t.uuid "moss_expense_uuid", comment: "CSV Unique Expense ID (reimbursement export) / CSV Invoice ID (invoice export) / CSV Transaction ID (card + balance exports)"
+    t.uuid "moss_expense_uuid", null: false, comment: "CSV Unique Expense ID (reimbursement export); card, invoice and top-up shells: the transaction's moss_object_uuid"
     t.integer "expense_number", default: 1, null: false, comment: "CSV Sub-row Number (balance export, reimbursements), else 1"
     t.decimal "signed_expense_base_amount", precision: 20, scale: 3, null: false, comment: "CSV Amount (balance export, reimbursements) / the transaction total (card, invoice, top-up)"
     t.virtual "expense_base_amount", type: :decimal, precision: 20, scale: 3, as: "abs(signed_expense_base_amount)", stored: true
@@ -986,9 +984,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
     t.string "source_file", comment: "The CSV file the row was last imported from"
     t.text "comment", default: "", null: false, comment: "App-side free text"
     t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
-    t.index ["moss_expense_uuid"], name: "index_moss_expenses_expense_uuid"
+    t.index ["moss_expense_uuid"], name: "index_moss_expenses_expense_uuid", unique: true
+    t.index ["moss_transaction_id", "expense_number"], name: "index_moss_expenses_transaction_expense_number", unique: true
     t.index ["moss_transaction_id"], name: "index_moss_expenses_transaction"
-    t.index ["moss_transaction_uuid", "expense_number"], name: "index_moss_expenses_transaction_expense_number", unique: true
     t.index ["type"], name: "index_moss_expenses_type"
   end
 
@@ -997,7 +995,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
     t.datetime "updated_at"
     t.string "type", null: false, comment: "STI: MossCardTransaction | MossInvoice | MossReimbursement | MossTopUp"
     t.virtual "expense_type", type: :string, as: "\nCASE type\n    WHEN 'MossCardTransaction'::text THEN 'card_transaction'::text\n    WHEN 'MossInvoice'::text THEN 'invoice'::text\n    WHEN 'MossReimbursement'::text THEN 'reimbursement'::text\n    ELSE 'top_up'::text\nEND", stored: true
-    t.uuid "moss_transaction_uuid", null: false, comment: "CSV Transaction ID (card + balance exports) - most recent seen; see also all_moss_transaction_uuids"
+    t.uuid "moss_transaction_uuid", null: false, comment: "First seen CSV Transaction ID (card + balance exports); every id seen is in all_moss_transaction_uuids"
     t.string "moss_transaction_state", comment: "CSV Transaction State (card + balance exports)"
     t.string "status", comment: "App-side status"
     t.string "transaction_type", comment: "CSV Transaction Type (card + balance exports)"
@@ -1078,11 +1076,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_120000) do
     t.string "sender_bic", comment: "CSV Bank account (custom statement)"
     t.string "sender_name"
     t.date "value_date", comment: "CSV Value date (custom statement)"
+    t.virtual "moss_object_uuid", type: :uuid, null: false, comment: "Identity of the row: Moss Expense id (reimbursement, invoice) or the first seen Transaction ID (card, top-up)", as: "COALESCE(moss_reimbursement_uuid, moss_invoice_uuid, moss_transaction_uuid)", stored: true
     t.index ["all_moss_transaction_uuids"], name: "index_moss_transactions_all_uuids", using: :gin
     t.index ["camt_transaction_id"], name: "index_moss_transactions_camt"
     t.index ["clearing_datev_booking_id"], name: "index_moss_transactions_clearing_datev"
     t.index ["invoice_number"], name: "index_moss_transactions_invoice_number"
     t.index ["moss_invoice_uuid"], name: "index_moss_transactions_invoice_uuid", unique: true, where: "(moss_invoice_uuid IS NOT NULL)"
+    t.index ["moss_object_uuid"], name: "index_moss_transactions_object_uuid", unique: true
     t.index ["moss_reimbursement_uuid"], name: "index_moss_transactions_reimbursement_uuid", unique: true, where: "(moss_reimbursement_uuid IS NOT NULL)"
     t.index ["moss_transaction_uuid"], name: "index_moss_transactions_uuid", unique: true
     t.index ["payment_date"], name: "index_moss_transactions_payment_date"

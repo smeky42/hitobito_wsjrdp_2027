@@ -108,4 +108,45 @@ describe MossTransaction do
         :all_moss_transaction_uuids, name: "index_moss_transactions_all_uuids")).to be(true)
     end
   end
+
+  # The generated identity of a row: the id of the Moss object it stands for --
+  # the reimbursement's or the invoice's where the kind has one, else the first
+  # seen Transaction ID. All uuids below are invented.
+  describe "#moss_object_uuid" do
+    let(:transaction_uuid) { "dddddddd-1111-2222-3333-444444444444" }
+    let(:kind_uuid) { "eeeeeeee-5555-6666-7777-888888888888" }
+
+    def transaction(klass, **attrs)
+      klass.create!(signed_total_base_amount: 500, currency: "EUR",
+        payment_date: Date.new(2026, 5, 3), **attrs)
+    end
+
+    it "is a reimbursement's own uuid" do
+      row = transaction(MossReimbursement, moss_transaction_uuid: transaction_uuid,
+        moss_reimbursement_uuid: kind_uuid)
+      expect(row.reload.moss_object_uuid).to eq(kind_uuid)
+    end
+
+    it "is an invoice's own uuid" do
+      row = transaction(MossInvoice, moss_transaction_uuid: transaction_uuid,
+        moss_invoice_uuid: kind_uuid)
+      expect(row.reload.moss_object_uuid).to eq(kind_uuid)
+    end
+
+    it "is the transaction uuid of a top-up and of a card payment" do
+      top_up = transaction(MossTopUp, moss_transaction_uuid: transaction_uuid)
+      card = transaction(MossCardTransaction, moss_transaction_uuid: kind_uuid)
+      expect(top_up.reload.moss_object_uuid).to eq(transaction_uuid)
+      expect(card.reload.moss_object_uuid).to eq(kind_uuid)
+    end
+
+    # A reimbursement's uuid and another row's Transaction ID name the same Moss
+    # object; only the unique index over the generated column catches that.
+    it "is unique across the kinds" do
+      transaction(MossReimbursement, moss_transaction_uuid: transaction_uuid,
+        moss_reimbursement_uuid: kind_uuid)
+      expect { transaction(MossTopUp, moss_transaction_uuid: kind_uuid) }
+        .to raise_error(ActiveRecord::RecordNotUnique)
+    end
+  end
 end
