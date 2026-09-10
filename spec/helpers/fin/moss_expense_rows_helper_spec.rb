@@ -35,12 +35,11 @@ describe Fin::MossExpenseRowsHelper do
   def expense(transaction, number, amount:, name: "Ausgabe #{number}", text: nil,
     codes: [["66500", "2300"]])
     row = MossExpense.create!(moss_transaction: transaction, type: "#{transaction.type}Expense",
-      moss_transaction_uuid: transaction.moss_transaction_uuid, expense_number: number,
+      moss_expense_uuid: SecureRandom.uuid, expense_number: number,
       signed_expense_base_amount: amount, expense_name: name, expense_posting_text: text)
     codes.each_with_index do |(account, cost_center), index|
       MossBooking.create!(moss_transaction: transaction, moss_expense: row,
-        moss_transaction_uuid: transaction.moss_transaction_uuid,
-        booking_unique_item_number: "#{transaction.moss_transaction_uuid}_#{number}_#{index}",
+        sub_row_number: index + 1,
         signed_base_amount: amount / codes.size, account_number: account,
         cost_center_number: cost_center)
     end

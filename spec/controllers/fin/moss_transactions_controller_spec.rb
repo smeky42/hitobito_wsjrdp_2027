@@ -26,10 +26,10 @@ describe Fin::MossTransactionsController do
     tx = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
       signed_total_base_amount: amount, currency: "EUR",
       payment_date: Date.new(2026, 5, 3), transaction_posting_text: "Verpflegung Vortreffen", **attrs)
-    expense = MossExpense.create!(moss_transaction: tx, moss_transaction_uuid: uuid,
+    expense = MossExpense.create!(moss_transaction: tx, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
-    MossBooking.create!(moss_transaction: tx, moss_expense: expense, moss_transaction_uuid: uuid,
-      booking_unique_item_number: "#{uuid}_1", signed_base_amount: amount,
+    MossBooking.create!(moss_transaction: tx, moss_expense: expense,
+      sub_row_number: 1, signed_base_amount: amount,
       account_number: "66500", account_kind: "EXPENSE", cost_center_number: "3100",
       booking_posting_text: "Split eins")
     tx
@@ -382,11 +382,10 @@ describe Fin::MossTransactionsController do
     def grouped_expense(tx, number, amount:, name: nil, text: nil,
       account: "66910", cost_center: "2300")
       expense = MossExpense.create!(moss_transaction: tx, type: "#{tx.type}Expense",
-        moss_transaction_uuid: tx.moss_transaction_uuid, expense_number: number,
+        moss_expense_uuid: SecureRandom.uuid, expense_number: number,
         signed_expense_base_amount: amount, expense_name: name, expense_posting_text: text)
       MossBooking.create!(moss_transaction: tx, moss_expense: expense, account_kind: "EXPENSE",
-        moss_transaction_uuid: tx.moss_transaction_uuid, signed_base_amount: amount,
-        booking_unique_item_number: "#{tx.moss_transaction_uuid}_#{number}",
+        signed_base_amount: amount, sub_row_number: 1,
         account_number: account, cost_center_number: cost_center)
     end
 

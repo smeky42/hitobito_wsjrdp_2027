@@ -36,11 +36,11 @@ describe Fin::MossController do
     uuid = SecureRandom.uuid
     tx = MossTransaction.create!(type: type, moss_transaction_uuid: uuid, signed_total_base_amount: amount,
       currency: "EUR", payment_date: Date.new(2026, 3, 6), **attrs)
-    expense = MossExpense.create!(moss_transaction: tx, moss_transaction_uuid: uuid,
+    expense = MossExpense.create!(moss_transaction: tx, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
     bookings.times do |i|
-      MossBooking.create!(moss_transaction: tx, moss_expense: expense, moss_transaction_uuid: uuid,
-        booking_unique_item_number: "#{uuid}_#{i + 1}", signed_base_amount: amount / bookings)
+      MossBooking.create!(moss_transaction: tx, moss_expense: expense,
+        sub_row_number: i + 1, signed_base_amount: amount / bookings)
     end
     tx
   end

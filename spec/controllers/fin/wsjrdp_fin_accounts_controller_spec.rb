@@ -38,11 +38,10 @@ describe Fin::WsjrdpFinAccountsController do
     transaction = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
       fin_account: wallet, signed_total_base_amount: amount, currency: "EUR",
       payment_date: date, **attrs)
-    expense = MossExpense.create!(moss_transaction: transaction, moss_transaction_uuid: uuid,
+    expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
     MossBooking.create!(moss_transaction: transaction, moss_expense: expense,
-      moss_transaction_uuid: uuid, booking_unique_item_number: "#{uuid}_1",
-      signed_base_amount: amount, booking_posting_text: text)
+      sub_row_number: 1, signed_base_amount: amount, booking_posting_text: text)
   end
 
   # One booking per kind, ordered by Valuta so the default sort (desc) is

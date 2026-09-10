@@ -37,9 +37,9 @@ essential additional data. That is what makes three levels necessary:
 
 | level | table | one row per | key |
 |---|---|---|---|
-| **L1** | `moss_transactions` | Moss transaction: a card payment, an invoice, a reimbursement or a top-up | `moss_transaction_uuid` |
-| **L2** | `moss_expenses` | one expense: a card payment, an invoice, or one expense of a reimbursement | `(moss_transaction_uuid, expense_number)` |
-| **L3** | `moss_bookings` | one **split**, the grain DATEV books at | `booking_unique_item_number` |
+| **L1** | `moss_transactions` | Moss transaction: a card payment, an invoice, a reimbursement or a top-up | `moss_object_uuid` |
+| **L2** | `moss_expenses` | one expense: a card payment, an invoice, or one expense of a reimbursement | `moss_expense_uuid` |
+| **L3** | `moss_bookings` | one **split**, the grain DATEV books at | `(moss_expense_id, sub_row_number)` |
 
 A card transaction **is** a payment. An invoice or reimbursement transaction
 **has** one payment in Moss, which is not modelled as a database entity of its
@@ -222,23 +222,29 @@ reconciled by hand, in which case `*_link_meta` records `automatic_manual =
 
 The same CSV column name means different things in different exports.
 `Sub-row Number` counts *expenses* in the balance export but *splits within one
-expense* in the reimbursement export. So the keys are **built**, never taken
-from the CSV:
+expense* in the reimbursement export, and the `Transaction ID` of a wallet
+movement differs between export profiles. So the keys are the ids that do not
+move, and a child is numbered **within its parent**:
 
-| kind | `expense_number` (L2) | `booking_unique_item_number` (L3) |
-|---|---|---|
-| card | 1 | `<transaction uuid>_<Sub-row Number>` (card export) |
-| invoice | 1 | `<transaction uuid>_<Sub-row Number>` (balance export) |
-| top-up | 1 | `<transaction uuid>_<Sub-row Number>` (balance export) |
-| reimbursement | balance `Sub-row Number` | `<Unique Expense ID>_<Sub-row Number>` (reimbursement export) |
+| kind | `moss_object_uuid` (L1) | `moss_expense_uuid` (L2) | `expense_number` (L2) | `sub_row_number` (L3) |
+|---|---|---|---|---|
+| card | first seen `Transaction ID` | the transaction's `moss_object_uuid` | 1 | `Sub-row Number` (card export) |
+| invoice | `Invoice ID` | the transaction's `moss_object_uuid` | 1 | `Sub-row Number` (invoice export) |
+| top-up | first seen `Transaction ID` | the transaction's `moss_object_uuid` | 1 | 1 |
+| reimbursement | `Reimbursement ID` | `Unique Expense ID` | balance `Sub-row Number` | `Sub-row Number` (reimbursement export) |
 
-The CSV `Unique Item Number` is **not** usable as a key: its suffix is a
-running, file-position-dependent counter (offset by one on balance rows,
-file-global in the reimbursement export), and it is empty on most reimbursement
-rows. The raw value is preserved in `other_moss_columns["Unique Item Number"]`
-(accessor `MossBooking#unique_item_number`). The constructed keys are unique
-across all four kinds (a unique index enforces it), and `Sub Item Row Number` is
-ignored entirely.
+`moss_object_uuid` is generated in the database as `COALESCE(moss_reimbursement_uuid,
+moss_invoice_uuid, moss_transaction_uuid)`; `moss_transaction_uuid` holds the
+first `Transaction ID` a row was seen under and every further one is collected
+in `all_moss_transaction_uuids`. The CSV `Unique Item Number` is **not** usable
+as a key: its suffix is a running, file-position-dependent counter (offset by
+one on balance rows, file-global in the reimbursement export), and it is empty
+on most reimbursement rows. The raw value is preserved in
+`other_moss_columns["Unique Item Number"]` (accessor
+`MossBooking#unique_item_number`). Unique indexes enforce the keys:
+`moss_object_uuid` on L1, `moss_expense_uuid` and `(moss_transaction_id,
+expense_number)` on L2, `(moss_expense_id, sub_row_number)` on L3.
+`Sub Item Row Number` is ignored entirely.
 
 The importer attaches each real `Unique Expense ID` to the right expense **by
 ordinal**: for every reimbursement the sequence of balance-row amounts equals

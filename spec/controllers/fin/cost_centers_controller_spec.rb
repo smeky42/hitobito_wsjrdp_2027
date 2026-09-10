@@ -322,11 +322,10 @@ describe Fin::CostCentersController do
       transaction = MossTransaction.create!(type: "MossCardTransaction", moss_transaction_uuid: uuid,
         signed_total_base_amount: -170, currency: "EUR", payment_date: Date.new(2026, 2, 1),
         clearing_datev_booking: clearing)
-      moss_expense = MossExpense.create!(moss_transaction: transaction, moss_transaction_uuid: uuid,
+      moss_expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
         type: "MossCardTransactionExpense", expense_number: 1, signed_expense_base_amount: -170)
       MossBooking.create!(moss_transaction: transaction, moss_expense: moss_expense,
-        moss_transaction_uuid: uuid, booking_unique_item_number: "#{uuid}_1",
-        signed_base_amount: -170, expense_datev_booking: expense)
+        sub_row_number: 1, signed_base_amount: -170, expense_datev_booking: expense)
 
       get :show, params: {number: "K100"}
 

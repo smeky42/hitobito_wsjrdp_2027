@@ -35,7 +35,7 @@ class MossExpense < ActiveRecord::Base
 
   belongs_to :moss_transaction, inverse_of: :expenses
 
-  has_many :bookings, -> { order(:booking_unique_item_number) },
+  has_many :bookings, -> { order(:sub_row_number) },
     inverse_of: :moss_expense,
     class_name: "MossBooking",
     foreign_key: :moss_expense_id,

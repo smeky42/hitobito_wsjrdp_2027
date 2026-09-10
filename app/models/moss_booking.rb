@@ -18,11 +18,14 @@
 # everything constant within one expense of a reimbursement (its name, text
 # and purchase date) on the expense.
 #
-# `booking_unique_item_number` is the natural key and is CONSTRUCTED, not taken
-# from the CSV: the Moss "Unique Item Number" suffix is a running counter that
-# depends on the export's position, so it would not be stable across imports.
-# The raw Moss value is kept in `other_moss_columns["Unique Item Number"]`
-# (accessor `unique_item_number`).
+# The key is `(moss_expense_id, sub_row_number)`: `sub_row_number` is the CSV
+# `Sub-row Number` of the export that defines the booking -- the split within
+# the card transaction (card export), the split within its expense
+# (reimbursement export), the line within the invoice (invoice export), and 1
+# for a top-up. The Moss "Unique Item Number" is NOT a key: its suffix is a
+# running counter that depends on the row's position in the export. The raw
+# Moss value is kept in `other_moss_columns["Unique Item Number"]` (accessor
+# `unique_item_number`).
 #
 # Two links live here: the step-1 DATEV booking (Sachkonto -> creditor) and the
 # person whose CONTRIBUTION this booking concerns. The contribution link to
