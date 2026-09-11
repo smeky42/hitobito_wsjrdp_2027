@@ -91,7 +91,7 @@ class Fin::LedgerAccountsController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, WsjrdpLedgerAccount)
+    authorize!(:show, WsjrdpLedgerAccount)
   end
 
   def detail_format_context

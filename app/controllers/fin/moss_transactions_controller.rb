@@ -203,6 +203,6 @@ class Fin::MossTransactionsController < Fin::FinController
   end
 
   def authorize_action
-    authorize!(:fin_admin, MossTransaction)
+    authorize!(:show, MossTransaction)
   end
 end

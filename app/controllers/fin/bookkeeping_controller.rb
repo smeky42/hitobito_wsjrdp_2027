@@ -21,6 +21,6 @@ class Fin::BookkeepingController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, DatevBooking)
+    authorize!(:show, DatevBooking)
   end
 end

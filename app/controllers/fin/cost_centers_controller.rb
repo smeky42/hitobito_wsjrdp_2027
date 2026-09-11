@@ -121,7 +121,7 @@ class Fin::CostCentersController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, WsjrdpCostCenter)
+    authorize!(:show, WsjrdpCostCenter)
   end
 
   def cost_center_params

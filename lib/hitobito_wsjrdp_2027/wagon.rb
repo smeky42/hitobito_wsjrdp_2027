@@ -22,8 +22,46 @@ module HitobitoWsjrdp2027
 
       # Models
       # Role first: Group::Root's role classes use admin_only_assignment at
-      # class-definition time, and including Wsjrdp2027::Group loads them.
+      # class-definition time, and including Wsjrdp2027::Group loads them. It
+      # must also precede the permission registration below: that references
+      # Role, which can pull the role classes in with it -- and they would then
+      # be defined before admin_only_assignment exists.
       Role.include Wsjrdp2027::Role
+
+      # Own permissions, extending the core's Role::Permissions (the core keeps
+      # that constant mutable precisely to allow this). Our finance access is
+      # three-tiered: :finance_read (see), the core's :finance (edit) and
+      # :finance_admin (manage).
+      #
+      # This MUST run before the ability concerns further down: AbilityDsl's
+      # recorder rejects any permission missing from Role::Permissions
+      # ("Unknown permission"), and the concerns register their rules on
+      # `include`. It belongs in to_prepare rather than an initializer because
+      # Role is autoloaded (and is reloaded in development, which resets the
+      # constant) -- hence also the idempotence guard.
+      %i[finance_read finance_admin].each do |permission|
+        Role::Permissions << permission unless Role::Permissions.include?(permission)
+      end
+      # Marks the tier as write-granting. The core only defines this constant
+      # and does not read it (yet); the entry keeps the semantics right should
+      # it start to.
+      unless Role::WRITING_PERMISSIONS.include?(:finance_admin)
+        Role::WRITING_PERMISSIONS << :finance_admin
+      end
+      # AbilityDsl::UserContext only builds its group/layer lookup for the
+      # permissions listed here (init_permission_groups / init_permission_layers),
+      # and both constants are explicitly meant to be extended. Without this,
+      # permission_layer_ids(:finance_read) would simply return nil and every
+      # constraint built on it would fail. Both are layer-scoped, like :finance.
+      %i[finance_read finance_admin].each do |permission|
+        unless AbilityDsl::UserContext::GROUP_PERMISSIONS.include?(permission)
+          AbilityDsl::UserContext::GROUP_PERMISSIONS << permission
+        end
+        unless AbilityDsl::UserContext::LAYER_PERMISSIONS.include?(permission)
+          AbilityDsl::UserContext::LAYER_PERMISSIONS << permission
+        end
+      end
+
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
       Event.include Wsjrdp2027::Event
@@ -71,6 +109,22 @@ module HitobitoWsjrdp2027
       PaperTrail::Events::Base.include Wsjrdp2027::PaperTrail::Events::Base
 
       ActiveSupport.on_load(:action_view) { include Chartkick::Helper }
+    end
+
+    # Role carries admin_only_assignment, and the group role classes use it at
+    # CLASS-DEFINITION time (Group::Root::Admin, Group::Extern::FinanceAuditor,
+    # ...). A to_prepare include is not enough: after a code reload a role class
+    # can be autoloaded before to_prepare has re-included the concern, and the
+    # class body then dies with
+    #   NoMethodError: undefined method `admin_only_assignment='
+    # (reproducible in development: touch any of those files, the FIRST request
+    # afterwards fails, the second succeeds). Zeitwerk's on_load fires exactly
+    # when Role is defined -- on every load, reloads included -- so the
+    # attribute is guaranteed to exist before any subclass body runs.
+    initializer "wsjrdp_2027.role_extensions" do |_app|
+      Rails.autoloaders.main.on_load("Role") do |klass, _abspath|
+        klass.include Wsjrdp2027::Role
+      end
     end
 
     initializer "wsjrdp_2027.add_settings" do |_app|

@@ -20,6 +20,6 @@ class Fin::MossController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, MossTransaction)
+    authorize!(:show, MossTransaction)
   end
 end

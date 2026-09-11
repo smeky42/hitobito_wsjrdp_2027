@@ -192,7 +192,7 @@ class Fin::ReconciliationController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, DatevBooking)
+    authorize!(:show, DatevBooking)
   end
 
   # The resolved state of the entries table (the bookings one is

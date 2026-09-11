@@ -14,5 +14,13 @@ class Group::Extern < ::Group
     self.permissions = []
   end
 
-  roles Member
+  # Read-only finance access for auditors: the finance data and
+  # nothing else. No layer_* permission, so the role grants no access
+  # to any person's data.
+  class FinanceAuditor < ::Role
+    self.permissions = [:finance_read]
+    self.admin_only_assignment = true
+  end
+
+  roles Member, FinanceAuditor
 end

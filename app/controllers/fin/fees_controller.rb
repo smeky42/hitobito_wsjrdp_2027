@@ -19,7 +19,8 @@ class Fin::FeesController < Fin::FinController
 
   private
 
+  # Personal data, require :log, not just :show
   def authorize_action
-    authorize!(:fin_admin, WsjrdpFinAccount)
+    authorize!(:log, WsjrdpFinAccount)
   end
 end
