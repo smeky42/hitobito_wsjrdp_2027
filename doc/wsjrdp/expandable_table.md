@@ -954,7 +954,7 @@ makes of that description is part of its declaration — the view keeps passing
 the full list:
 
 ```ruby
-cols: {default: %w[payment_date signed_total_base_amount description],
+cols: {default: %w[booking_date signed_total_base_amount description],
        exclude: %w[kind top_up_sender],            # columns THIS table lacks
        labels:  {"party" => "Karteninhaber"}}      # ... and its own names
 ```

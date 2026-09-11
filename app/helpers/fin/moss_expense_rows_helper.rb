@@ -128,8 +128,8 @@ module Fin::MossExpenseRowsHelper
 
   # ONE cell of a sub-row, by column key. A sub-row fills five of the table's
   # columns; every other one stays empty -- the cell is there, keeps the
-  # column's width and shows nothing. Datum and Art are among them: the head
-  # row above says both for the whole group.
+  # column's width and shows nothing. Buchungsdatum and Art are among them: the
+  # head row above says both for the whole group.
   def moss_expense_row_cell(sub, key)
     return moss_expense_description_cell(sub) if key == "description"
 

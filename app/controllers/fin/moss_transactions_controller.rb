@@ -51,21 +51,21 @@ class Fin::MossTransactionsController < Fin::FinController
   # reimbursement, cost centers on a top-up) leave the picker.
   KIND_COLUMNS = {
     "MossCardTransaction" => {
-      default: %w[payment_date signed_total_base_amount description card_holder_name cost_centers account_numbers],
+      default: %w[booking_date signed_total_base_amount description card_holder_name cost_centers account_numbers],
       exclude: %w[kind party recipient_name payout_user_name top_up_sender]
     },
     "MossReimbursement" => {
-      default: %w[payment_date signed_total_base_amount description recipient_name bookings_count cost_centers
+      default: %w[booking_date signed_total_base_amount description recipient_name bookings_count cost_centers
         account_numbers],
       exclude: %w[kind party card_holder_name top_up_sender invoice_number]
     },
     "MossInvoice" => {
-      default: %w[payment_date signed_total_base_amount invoice_number description supplier_account_number
+      default: %w[booking_date signed_total_base_amount invoice_number description supplier_account_number
         cost_centers account_numbers],
       exclude: %w[kind party card_holder_name top_up_sender]
     },
     "MossTopUp" => {
-      default: %w[payment_date signed_total_base_amount description],
+      default: %w[booking_date signed_total_base_amount description],
       exclude: %w[kind party card_holder_name recipient_name payout_user_name invoice_number cost_centers
         account_numbers]
     }
@@ -95,7 +95,7 @@ class Fin::MossTransactionsController < Fin::FinController
   # would promise a list the pin cannot give.
   TRANSACTIONS_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::MossTransactionsColumns.codec,
-    sort: {default: [["payment_date", "desc"]]},
+    sort: {default: [["booking_date", "desc"]]},
     cols: {default: -> { kind_columns[:default] }, exclude: -> { kind_columns[:exclude] }},
     per_page: {default: 50},
     filter: {policy: :remember, schema: Fin::MossTransactionsFilterSchema,

@@ -32,6 +32,37 @@ describe MossTransaction do
     end
   end
 
+  # THE date of a transaction: the day the movement was booked in the Moss
+  # wallet. All dates below are invented.
+  describe "#value_date" do
+    # A card payment is the one kind that carries both dates, and its payout day
+    # is the earlier one -- the row is dated by the booking day all the same.
+    it "is the booking date, not the payout day of the export" do
+      tx = MossCardTransaction.new(payment_date: Date.new(2026, 5, 3),
+        booking_date: Date.new(2026, 5, 6))
+      expect(tx.value_date).to eq(Date.new(2026, 5, 6))
+    end
+
+    # The kinds whose export carries no payout day at all are dated by the same
+    # column as every other row.
+    it "dates a payment without a payout day by the same column" do
+      tx = MossReimbursement.new(booking_date: Date.new(2026, 6, 15))
+      expect(tx.value_date).to eq(Date.new(2026, 6, 15))
+      expect(tx.payment_date).to be_nil
+    end
+
+    it "is nil while the row carries no booking date" do
+      expect(MossInvoice.new(payment_date: Date.new(2026, 7, 1)).value_date).to be_nil
+    end
+
+    # A booking has no date of its own; it is dated by its payment.
+    it "dates every booking of the payment" do
+      tx = MossReimbursement.new(booking_date: Date.new(2026, 6, 15))
+      expect(MossBooking.new(moss_transaction: tx).value_date).to eq(Date.new(2026, 6, 15))
+      expect(MossBooking.new.value_date).to be_nil
+    end
+  end
+
   # Every URL is derived from a stored uuid -- except a top-up's, which Moss
   # addresses by an internal id no export carries. All uuids below are invented.
   describe "#moss_record_url / #moss_export_url" do

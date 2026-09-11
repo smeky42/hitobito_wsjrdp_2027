@@ -12,8 +12,8 @@ require "spec_helper"
 # The Moss WALLET filter schema (Fin::MossWalletFilterSchema) compiled against
 # the relation it is bound to, MossBooking joined to its transaction. The grain
 # is what separates it from Fin::MossTransactionsFilterSchema: a row here is a
-# SPLIT, so `kind` and `value_date` reach through the join while `amount` is the
-# booking's own column. The generic engine is covered standalone in
+# SPLIT, so `kind` and `booking_date` reach through the join while `amount` is
+# the booking's own column. The generic engine is covered standalone in
 # spec/domain/wsjrdp/filtering_engine_spec.rb.
 #
 # One booking per kind, all invented; their dates, amounts and texts differ so
@@ -25,7 +25,7 @@ describe Fin::MossWalletFilterSchema do
   def create_booking(type, amount:, date:, transaction_text:, booking_text:, **attrs)
     uuid = SecureRandom.uuid
     transaction = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
-      signed_total_base_amount: amount, currency: "EUR", payment_date: date,
+      signed_total_base_amount: amount, currency: "EUR", booking_date: date,
       transaction_posting_text: transaction_text, **attrs)
     expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
@@ -99,14 +99,16 @@ describe Fin::MossWalletFilterSchema do
   end
 
   describe "the other attributes" do
-    # The booking has no date of its own; Valuta is the transaction's
-    # payment_date, the column the table sorts by as well.
-    it "filters on Valuta through the join" do
-      expect(kinds([[["value_date", "gte", "2026-07-01"]]])).to eq(%w[MossInvoice MossTopUp])
-      expect(kinds([[["value_date", "lt", "2026-06-01"]]])).to eq(%w[MossCardTransaction])
-      expect(kinds([[["value_date", "between", "2026-05-04", "2026-07-31"]]]))
+    # The booking has no date of its own; Buchungsdatum is the transaction's
+    # booking_date, the column the table shows and sorts by as well.
+    it "filters on Buchungsdatum through the join" do
+      expect(kinds([[["booking_date", "gte", "2026-07-01"]]])).to eq(%w[MossInvoice MossTopUp])
+      expect(kinds([[["booking_date", "lt", "2026-06-01"]]])).to eq(%w[MossCardTransaction])
+      expect(kinds([[["booking_date", "between", "2026-05-04", "2026-07-31"]]]))
         .to eq(%w[MossReimbursement MossInvoice])
-      expect(kinds([[["value_date", "in_year", "2027"]]])).to eq(%w[MossTopUp])
+      expect(kinds([[["booking_date", "in_year", "2027"]]])).to eq(%w[MossTopUp])
+      expect(apply([[["booking_date", "in_year", "2027"]]]).to_sql)
+        .to include('"moss_transactions"."booking_date"')
     end
 
     # Betrag is the SPLIT's signed EUR share -- what the row shows and what the
@@ -145,9 +147,13 @@ describe Fin::MossWalletFilterSchema do
   describe "the catalog and the wire form" do
     it "offers the four attributes with their short keys" do
       expect(schema.catalog[:attributes].pluck(:key))
-        .to eq(%i[kind value_date amount amount_abs text])
-      expect(schema.attributes.values.map(&:short_key)).to eq(%i[k vd amt amta q])
+        .to eq(%i[kind booking_date amount amount_abs text])
+      expect(schema.attributes.values.map(&:short_key)).to eq(%i[k bd amt amta q])
       expect(schema.find(:kind).operators.map(&:key)).to eq(%i[in not_in])
+      # The same column, the same words and the same operators as the Moss
+      # section's Buchungsdatum.
+      expect(schema.find(:booking_date).operators.map(&:key))
+        .to eq(Fin::MossTransactionsFilterSchema::NULLABLE_DATE_OPERATORS)
     end
 
     # Betrag is ONE picker entry with a sign toggle, the signed member first

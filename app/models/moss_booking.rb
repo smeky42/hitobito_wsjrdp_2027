@@ -213,7 +213,9 @@ class MossBooking < ActiveRecord::Base
 
   def subject_input_field_options = {input_field_type: "Person"}
 
-  def value_date = moss_transaction&.payment_date
+  # A booking has no date of its own; it is dated by its payment
+  # (MossTransaction#value_date: the day the movement was booked in the wallet).
+  def value_date = moss_transaction&.value_date
 
   def link_name(length: 80)
     pre = "[#{id}] "

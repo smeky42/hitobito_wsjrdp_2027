@@ -205,7 +205,16 @@ class MossTransaction < ActiveRecord::Base
     length ? truncate(text, length: length, omission: "…") : text
   end
 
-  def value_date = payment_date
+  # THE date of a transaction wherever one is shown, sorted or aggregated: the
+  # day the movement was booked in the Moss wallet. booking_date is the one date
+  # every kind carries -- the reimbursement and invoice exports have no payout
+  # day at all, and a card's payment_date precedes its booking day by a few
+  # days. The lists therefore ORDER BY moss_transactions.booking_date and the
+  # overview takes its per-kind maximum over that column.
+  #
+  # This is not what DATEV books on -- each kind names its own
+  # #datev_date_anchor -- and a filter on `payment_date` means that raw column.
+  def value_date = booking_date
 
   def link_name(length: 80)
     pre = "[#{id}] "

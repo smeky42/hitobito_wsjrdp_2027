@@ -137,7 +137,7 @@ module Fin::OverviewHelper
     figures = fin_overview_figures
     [fin_figure(fin_figure_label(:moss_transactions_bookings),
       fin_figure_pair(figures.moss_transactions_count, figures.moss_bookings_count)),
-      fin_figure(fin_figure_label(:moss_last_payment_date), fin_figure_date(figures.moss_last_payment_date)),
+      fin_figure(fin_figure_label(:moss_last_booking_date), fin_figure_date(figures.moss_last_booking_date)),
       fin_open_figure(fin_figure_label(:moss_clearing_unlinked), figures.moss_clearing_unlinked_count)]
   end
 

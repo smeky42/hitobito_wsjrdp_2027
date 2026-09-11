@@ -306,8 +306,9 @@ describe Fin::MossExpenseRowsHelper do
     end
   end
 
-  # Datum, Art, the person columns, the dates, the status, the invoice number,
-  # the Original-Währung and DATEV: the cell is rendered and shows nothing.
+  # Buchungsdatum, Art, the person columns, the other dates, the status, the
+  # invoice number, the Original-Währung and DATEV: the cell is rendered and
+  # shows nothing.
   describe "the columns a sub-row does not fill" do
     let(:filled_keys) do
       %w[signed_total_base_amount description account_numbers cost_centers bookings_count]

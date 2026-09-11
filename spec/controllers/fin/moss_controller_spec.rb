@@ -35,7 +35,8 @@ describe Fin::MossController do
   def create_transaction(type, amount:, bookings: 1, **attrs)
     uuid = SecureRandom.uuid
     tx = MossTransaction.create!(type: type, moss_transaction_uuid: uuid, signed_total_base_amount: amount,
-      currency: "EUR", payment_date: Date.new(2026, 3, 6), **attrs)
+      currency: "EUR", payment_date: Date.new(2026, 3, 2), booking_date: Date.new(2026, 3, 6),
+      **attrs)
     expense = MossExpense.create!(moss_transaction: tx, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
     bookings.times do |i|
@@ -62,6 +63,32 @@ describe Fin::MossController do
       "0 Kartenzahlung Σ 0,00 € Ø 0,00 €")
     expect(response.body.squish).to include('<span class="text-success">+</span>500,00 €')
     expect(response.body.squish).to include('<span class="text-muted">-</span>150,00 €')
+  end
+
+  # The Datenstand table: one date per kind, the newest transaction of it --
+  # dated by the day the movement was booked in the wallet. A kind without a
+  # single transaction has no date at all.
+  it "dates a kind by the booking date of its newest transaction" do
+    create_transaction("MossInvoice", amount: -100)
+    # The kinds whose export carries no payout day are dated like every other.
+    create_transaction("MossReimbursement", amount: -60, payment_date: nil,
+      booking_date: Date.new(2026, 4, 10))
+    # A card payment paid days BEFORE it was booked: its payout day is not what
+    # dates the kind.
+    create_transaction("MossCardTransaction", amount: -20,
+      payment_date: Date.new(2026, 4, 28), booking_date: Date.new(2026, 5, 2))
+
+    get :index
+    expect(response).to be_successful
+    freshness = Nokogiri::HTML(response.body)
+      .at_xpath("//h2[normalize-space()='Datenstand']/following-sibling::table[1]")
+    expect(freshness.css("thead th").map { |th| th.text.squish })
+      .to eq(["Art", "Letztes Buchungsdatum", "Export-Datei"])
+    dates = freshness.css("tbody tr").to_h { |tr| tr.css("td").map { |td| td.text.squish }.first(2) }
+    expect(dates[I18n.t("fin.moss.kinds.MossInvoice")]).to eq("06.03.2026")
+    expect(dates[I18n.t("fin.moss.kinds.MossReimbursement")]).to eq("10.04.2026")
+    expect(dates[I18n.t("fin.moss.kinds.MossCardTransaction")]).to eq("02.05.2026")
+    expect(dates[I18n.t("fin.moss.kinds.MossTopUp")]).to eq("—")
   end
 
   # The Struktur block: the levels a kind adds appear under it, the shares are

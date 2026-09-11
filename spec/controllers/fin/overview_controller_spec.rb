@@ -256,7 +256,7 @@ describe Fin::OverviewController do
       # Two levels of the same import, in one row -- both empty here, so the
       # Stand of the Moss card is an em dash.
       expect(figures("moss")).to include(["Transaktionen · Buchungen", "0 · 0", false],
-        ["Letzte Transaktion", "—", false])
+        ["Letzte Buchung", "—", false])
     end
 
     # The Beiträge card carries the contribution bookings and nothing else; the
