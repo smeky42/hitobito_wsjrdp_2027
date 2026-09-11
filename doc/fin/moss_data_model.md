@@ -405,8 +405,8 @@ and cost-center fields the table does not carry — see 5.1.2).
 | — | `transaction_state` | Transaction State | Transaktionsstatus | Transaction State / Transaktionsstatus | State of the movement. |
 | `transactionType` | `transaction_type` | Transaction Type | Transaktionstyp | — | Type of the movement. |
 | — | `record_type` *(commented out)* | Record Type | Datensatz-Typ | — | Record type; the table column is commented out in the migration. |
-| `valueDate` ≈ | `payment_date` | Payment Date | Zahlungsdatum | Payment Date / Zahlungsdatum | Payment date. E.g. `2026-08-23`. Model: `value_date = payment_date`. |
-| `bookingDate` | `booking_date` | Booking Date | Buchungsdatum | Booking Date / Buchungsdatum | Booking date. |
+| `valueDate` ≈ | `payment_date` | Payment Date | Zahlungsdatum | Payment Date / Zahlungsdatum | Payment date. E.g. `2026-08-23`. Empty where the export profile carries no payout day of its own (reimbursements, invoices); on a card payment it precedes the booking day by one to six days. The Moss transactions list offers it as the optional Zahlungsdatum column. |
+| `bookingDate` | `booking_date` | Booking Date | Buchungsdatum | Booking Date / Buchungsdatum | Booking date — the day the movement was booked in the Moss wallet, and THE date the views show, sort and aggregate by. Model: `value_date = booking_date`. |
 | — | `first_export_date` | First Export Date | Erstes Exportdatum | First Export Date / Erster Export Datum | First export of this row. |
 | — | — | Month end date | Ende des Monats | — | End of month; unused. |
 | — | `period` *(commented out)* | Period | Zeitraum | — | Period; column commented out. |

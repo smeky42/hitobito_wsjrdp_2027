@@ -114,13 +114,13 @@
     %thead
       %tr
         %th Art
-        %th Letztes Zahlungsdatum
+        %th Letztes Buchungsdatum
         %th Export-Datei
     %tbody
       - ov.kinds.each do |k|
         %tr
           %td= moss_kind_label(k.kind)
-          %td= fin_date_or_dash(k.last_payment_date)
+          %td= fin_date_or_dash(k.last_booking_date)
           %td.font-monospace.small= k.source_file || "—"
   %p.text-muted.small
     = "Zuletzt importiert: #{fin_date_time_or_dash(ov.last_import_at)}"

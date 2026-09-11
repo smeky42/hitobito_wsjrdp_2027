@@ -96,7 +96,7 @@ describe Fin::OverviewFigures do
     uuid = SecureRandom.uuid
     transaction = MossTransaction.create!(type: "MossTopUp", moss_transaction_uuid: uuid,
       fin_account: wallet, signed_total_base_amount: 500, currency: "EUR",
-      payment_date: Date.new(2026, 3, 6))
+      payment_date: Date.new(2026, 3, 4), booking_date: Date.new(2026, 3, 6))
     expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
       type: "MossTopUpExpense", expense_number: 1, signed_expense_base_amount: 500)
     MossBooking.create!(moss_transaction: transaction, moss_expense: expense,
@@ -125,13 +125,13 @@ describe Fin::OverviewFigures do
     overview = Fin::MossOverview.new
     expect(figures.moss_transactions_count).to eq overview.total_count
     expect(figures.moss_bookings_count).to eq overview.bookings_count
-    expect(figures.moss_last_payment_date).to eq overview.last_payment_date
+    expect(figures.moss_last_booking_date).to eq overview.last_booking_date
     expect(figures.moss_clearing_unlinked_count).to eq overview.clearing_unlinked_count
     expect(figures.moss_expense_unlinked_count).to eq overview.expense_unlinked_count
 
     expect(figures.moss_transactions_count).to eq total(MossTransaction, 1)
     expect(figures.moss_bookings_count).to eq total(MossBooking, 1)
-    expect(figures.moss_last_payment_date).to eq Date.new(2026, 3, 6)
+    expect(figures.moss_last_booking_date).to eq Date.new(2026, 3, 6)
     expect(figures.moss_clearing_unlinked_count).to eq 1
   end
 
@@ -165,7 +165,7 @@ describe Fin::OverviewFigures do
     expect(described_class.public_instance_methods(false).sort).to eq(%i[
       accounts_count camt_transactions_count camt_last_value_date
       accounting_entries_count accounting_entries_unlinked_count
-      moss moss_transactions_count moss_bookings_count moss_last_payment_date
+      moss moss_transactions_count moss_bookings_count moss_last_booking_date
       moss_clearing_unlinked_count moss_expense_unlinked_count
       datev_bookings_count datev_batches_count datev_last_booking_date
       cost_centers_count personal_accounts_count

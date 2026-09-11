@@ -23,8 +23,14 @@ module Fin::MossTransactionsColumns
     # layout the one width-less column absorbs the leftover space, whereas a
     # table whose columns are all fixed spreads it over every column -- which
     # made Art and Betrag grow with the window although their content does not.
-    c.column key: "payment_date", abbr: "pdt", label: "Datum", width: "6rem",
-      sort: "moss_transactions.payment_date", default: true
+    #
+    # Buchungsdatum is THE date of a transaction (MossTransaction#value_date):
+    # the day the movement was booked in the Moss wallet, the one date every
+    # kind carries. The raw payment day is the optional "Zahlungsdatum" column
+    # below -- two kinds have none at all, and a card's is a few days before the
+    # row's own date.
+    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", width: "7rem",
+      sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true
     c.column key: "signed_total_base_amount", abbr: "amt", label: "Betrag", numeric: true,
@@ -59,8 +65,11 @@ module Fin::MossTransactionsColumns
     # shared/wsjrdp/_expandable_table first. The column picker lists the same
     # label and therefore reads "Bu." as well.)
     c.column key: "bookings_count", abbr: "nb", label: "Bu.", numeric: true, width: "3rem"
-    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", width: "7rem",
-      sort: "moss_transactions.booking_date"
+    # The raw payout day, empty on every reimbursement and invoice (their export
+    # profiles carry none) -- the cell writes the em dash there, so the column
+    # says "no payment date" instead of looking unrendered.
+    c.column key: "payment_date", abbr: "pdt", label: "Zahlungsdatum", width: "7rem",
+      sort: "moss_transactions.payment_date"
     c.column key: "approval_date", abbr: "adt", label: "Freigegeben am", width: "7rem",
       sort: "moss_transactions.approval_date"
     c.column key: "moss_transaction_state", abbr: "st", label: "Status (Moss)", width: "8rem",

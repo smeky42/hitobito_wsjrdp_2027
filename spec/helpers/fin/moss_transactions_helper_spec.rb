@@ -13,6 +13,7 @@ require "spec_helper"
 # booking detail header) and the html_safe TAB LABELS the Moss sheet declares by
 # symbol. Icon and colour class come from Fin::MossKinds, every WORD from the
 # locale -- so this spec reads the locale rather than repeating German text.
+# Plus the date cells of the listing, whose dates are invented.
 describe Fin::MossTransactionsHelper do
   def chip(type) = Nokogiri::HTML.fragment(helper.moss_kind_chip(type)).at_css("span.moss-kind")
 
@@ -22,6 +23,35 @@ describe Fin::MossTransactionsHelper do
      "MossReimbursement" => :moss_reimbursements_tab_label,
      "MossInvoice" => :moss_invoices_tab_label,
      "MossTopUp" => :moss_top_ups_tab_label}
+  end
+
+  # The three date columns of the listing, each showing its own raw column --
+  # and the one of them that writes its own em dash.
+  describe "the date cells" do
+    def cell(tx, key) = helper.moss_transaction_cell(tx, key)
+
+    it "shows every date column's own column" do
+      tx = MossCardTransaction.new(payment_date: Date.new(2026, 5, 3),
+        booking_date: Date.new(2026, 5, 6), approval_date: Date.new(2026, 5, 4))
+      expect(cell(tx, "booking_date")).to eq("06.05.2026")
+      expect(cell(tx, "payment_date")).to eq("03.05.2026")
+      expect(cell(tx, "approval_date")).to eq("04.05.2026")
+    end
+
+    # Two of the four kinds carry no payout day at all, so Zahlungsdatum says
+    # that instead of rendering a blank cell.
+    it "writes the em dash where the row has no payment date" do
+      tx = MossReimbursement.new(booking_date: Date.new(2026, 6, 15))
+      expect(cell(tx, "payment_date")).to eq("—")
+      expect(cell(tx, "booking_date")).to eq("15.06.2026")
+    end
+
+    # The widget renders the blank cell from the nil.
+    it "stays empty where the other date columns are empty" do
+      tx = MossInvoice.new
+      expect(cell(tx, "booking_date")).to be_nil
+      expect(cell(tx, "approval_date")).to be_nil
+    end
   end
 
   Fin::MossKinds::STYLE.each_key do |kind|

@@ -44,13 +44,14 @@ module Fin::MossWalletFilterSchema
       type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
       column: ->(_t) { TRANSACTIONS[:type] },
       options: Fin::MossTransactionsFilterSchema::KIND_OPTIONS
-    # Valuta: the booking has no date of its own (MossBooking#value_date
-    # delegates), so this is the transaction's payment_date -- the column the
-    # table sorts by as well.
-    s.attribute key: :value_date, short_key: :vd, label: "Valuta",
+    # Buchungsdatum: the booking has no date of its own (MossBooking#value_date
+    # delegates), so this reaches through the join to the transaction's column
+    # -- the one the statement shows and sorts by. Same key, same words and the
+    # same nullable operators as the Moss section's "Buchungsdatum".
+    s.attribute key: :booking_date, short_key: :bd, label: "Buchungsdatum",
       type: Wsjrdp::Filtering::Types::DATE,
-      operators: Fin::MossTransactionsFilterSchema::DATE_OPERATORS,
-      column: ->(_t) { TRANSACTIONS[:payment_date] }
+      operators: Fin::MossTransactionsFilterSchema::NULLABLE_DATE_OPERATORS,
+      column: ->(_t) { TRANSACTIONS[:booking_date] }
     # Betrag: the SPLIT's signed EUR share (not the payment total) -- what the
     # row shows and what the wallet balance is the sum of. ONE picker entry
     # with a sign toggle, like the Moss section's two amounts: a payment out of

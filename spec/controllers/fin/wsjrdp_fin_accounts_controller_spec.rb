@@ -32,19 +32,20 @@ describe Fin::WsjrdpFinAccountsController do
   end
 
   # One transaction of `type` on the wallet, with its (shell) expense and
-  # exactly one booking -- the row the statement shows.
+  # exactly one booking -- the row the statement shows. `date` is the day the
+  # movement was booked in the wallet, which is what the statement is dated by.
   def create_booking(type, amount:, date:, text:, **attrs)
     uuid = SecureRandom.uuid
     transaction = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
       fin_account: wallet, signed_total_base_amount: amount, currency: "EUR",
-      payment_date: date, **attrs)
+      booking_date: date, **attrs)
     expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
     MossBooking.create!(moss_transaction: transaction, moss_expense: expense,
       sub_row_number: 1, signed_base_amount: amount, booking_posting_text: text)
   end
 
-  # One booking per kind, ordered by Valuta so the default sort (desc) is
+  # One booking per kind, ordered by Buchungsdatum so the default sort (desc) is
   # top-up, invoice, reimbursement, card. The invoice is the foreign-currency
   # row, the top-up the one with money coming IN.
   let!(:card) do
@@ -189,7 +190,7 @@ describe Fin::WsjrdpFinAccountsController do
     end
 
     it "points the In-Moss link at the booking's own transaction in Moss" do
-      # Rows in Valuta order: the top-up first, then the three kinds that have a
+      # Rows in Buchungsdatum order: the top-up first, then the three kinds with a
       # record page in Moss.
       urls = [invoice, reimbursement, card].map { |b| b.moss_transaction.moss_record_url }
       expect(urls).to all(start_with("https://getmoss.com/app/"))
@@ -224,6 +225,30 @@ describe Fin::WsjrdpFinAccountsController do
     it "keeps the account's own form below the statement" do
       expect(response.body).to include("Moss-Wallet")
       expect(doc.at_css("form input[name='wsjrdp_fin_account[short_name]']")).to be_present
+    end
+  end
+
+  # A card payment whose payout day falls days before the day it was booked:
+  # the statement places and shows it by the booking day, in the cell and in the
+  # sort alike -- the raw payout day is not a column of the wallet at all.
+  describe "GET show of a payment booked after its payout day" do
+    let!(:booked_later) do
+      create_booking("MossCardTransaction", amount: -40, date: Date.new(2026, 6, 15),
+        text: "Anteil zwei", payment_date: Date.new(2026, 6, 9),
+        merchant_name: "Musterkiosk", transaction_posting_text: "Materialkosten Vortreffen")
+    end
+
+    before { get :show, params: {id: wallet.id} }
+
+    # The Buchungsdatum cells of the rows, top to bottom.
+    def rendered_dates = doc.css("tr.exp-row td[data-colkey='booking_date']").map { |td| td.text.strip }
+
+    it "dates the row by its booking date, in the cell and in the sort" do
+      expect(response).to be_successful
+      expect(response.body).to include("5 Buchungen")
+      expect(rendered_dates)
+        .to eq(%w[20.01.2027 15.07.2026 15.06.2026 01.06.2026 03.05.2026])
+      expect(response.body).not_to include("09.06.2026")
     end
   end
 
@@ -279,14 +304,14 @@ describe Fin::WsjrdpFinAccountsController do
     # A second OR condition asks a wider question: the slot is not the group's,
     # so no button reads it, none touches it, and the chip stays to show it.
     it "ignores a kind condition that shares its slot with another one" do
-      get :show, params: {id: wallet.id, f: "!(!(!(k,in,'MossCardTransaction'),!(vd,ge,'2026-05-01')))"}
+      get :show, params: {id: wallet.id, f: "!(!(!(k,in,'MossCardTransaction'),!(bd,ge,'2026-05-01')))"}
       expect(response).to be_successful
       expect(response.body).to include("4 Buchungen")
       expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false false])
       expect(chip_texts).to eq(["Art ist #{I18n.t("fin.moss.kinds.MossCardTransaction")} " \
-                                "oder Valuta ab 01.05.2026"])
+                                "oder Buchungsdatum ab 01.05.2026"])
       expect(toggle_by_word[kind_word("MossCardTransaction")])
-        .to eq("!(!(!(k,in,'MossCardTransaction'),!(vd,ge,'2026-05-01')),!(!(k,in,'MossCardTransaction')))")
+        .to eq("!(!(!(k,in,'MossCardTransaction'),!(bd,ge,'2026-05-01')),!(!(k,in,'MossCardTransaction')))")
     end
   end
 
@@ -355,10 +380,10 @@ describe Fin::WsjrdpFinAccountsController do
       expect(toggle["data-pane-target"]).to eq(pane["id"])
     end
 
-    it "chips a Valuta filter, and an amount filter, in the builder's words" do
-      get :show, params: {id: wallet.id, f: "!(!(!(vd,ge,'2026-07-01')))"}
+    it "chips a Buchungsdatum filter, and an amount filter, in the builder's words" do
+      get :show, params: {id: wallet.id, f: "!(!(!(bd,ge,'2026-07-01')))"}
       expect(rendered_kinds.size).to eq(2)
-      expect(chip_texts).to eq(["Valuta ab 01.07.2026"])
+      expect(chip_texts).to eq(["Buchungsdatum ab 01.07.2026"])
 
       get :show, params: {id: wallet.id, f: "!(!(!(amt,ge,100)))"}
       expect(rendered_kinds).to eq([Fin::MossKinds.css_class("MossTopUp")])
@@ -375,8 +400,8 @@ describe Fin::WsjrdpFinAccountsController do
       expect(doc.css(".flt-applied")).to be_empty
 
       get :show, params: {id: wallet.id,
-                          f: "!(!(!(k,in,'MossInvoice')),!(!(vd,ge,'2026-01-01')))"}
-      expect(chip_texts).to eq(["Valuta ab 01.01.2026"])
+                          f: "!(!(!(k,in,'MossInvoice')),!(!(bd,ge,'2026-01-01')))"}
+      expect(chip_texts).to eq(["Buchungsdatum ab 01.01.2026"])
     end
 
     # The badge counts the APPLIED conditions of the user filter -- the kinds'
@@ -385,11 +410,11 @@ describe Fin::WsjrdpFinAccountsController do
       get :show, params: {id: wallet.id}
       expect(condition_badge).to be_nil
 
-      get :show, params: {id: wallet.id, f: "!(!(!(vd,ge,'2026-01-01')))"}
+      get :show, params: {id: wallet.id, f: "!(!(!(bd,ge,'2026-01-01')))"}
       expect(condition_badge).to eq("1")
 
       get :show, params: {id: wallet.id,
-                          f: "!(!(!(k,in,'MossInvoice')),!(!(vd,ge,'2026-01-01')))"}
+                          f: "!(!(!(k,in,'MossInvoice')),!(!(bd,ge,'2026-01-01')))"}
       expect(condition_badge).to eq("2")
       expect(chip_texts.size).to eq(1)
     end

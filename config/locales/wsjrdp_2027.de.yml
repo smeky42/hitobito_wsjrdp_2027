@@ -791,7 +791,7 @@ de:
         accounting_entries: "Beitragsbuchungen"
         accounting_entries_unlinked: "ohne DATEV-Buchung"
         moss_transactions_bookings: "Transaktionen · Buchungen"
-        moss_last_payment_date: "Letzte Transaktion"
+        moss_last_booking_date: "Letzte Buchung"
         moss_clearing_unlinked: "DATEV-Ausgleich offen"
         datev_bookings_in_batches: "Buchungen in Stapeln"
         datev_last_booking_date: "Letzter Beleg"

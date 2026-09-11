@@ -40,7 +40,7 @@ module Fin::MossWalletHelper
 
   def moss_wallet_cell(booking, key)
     case key
-    when "value_date" then fin_date(booking.value_date)
+    when "booking_date" then fin_date(booking.moss_transaction.booking_date)
     when "kind" then moss_kind_chip(booking.moss_transaction.type)
     when "signed_base_amount" then moss_wallet_amount_cell(booking)
     when "description" then render("fin/wsjrdp_fin_accounts/wallet_description", booking: booking)

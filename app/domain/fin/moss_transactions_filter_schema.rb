@@ -206,7 +206,7 @@ module Fin::MossTransactionsFilterSchema
       type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
       column: :currency_original, options: CURRENCY_OPTIONS
     s.attribute key: :payment_date, short_key: :pd, label: "Zahlungsdatum", group: "Beträge & Daten",
-      type: Wsjrdp::Filtering::Types::DATE, operators: DATE_OPERATORS, column: :payment_date
+      type: Wsjrdp::Filtering::Types::DATE, operators: NULLABLE_DATE_OPERATORS, column: :payment_date
     s.attribute key: :booking_date, short_key: :bd, label: "Buchungsdatum", group: "Beträge & Daten",
       type: Wsjrdp::Filtering::Types::DATE, operators: NULLABLE_DATE_OPERATORS, column: :booking_date
     s.attribute key: :approval_date, short_key: :ad, label: "Freigegeben am", group: "Beträge & Daten",

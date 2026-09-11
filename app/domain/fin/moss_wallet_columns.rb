@@ -14,9 +14,9 @@
 # The rows there are MossBookings (L3, the grain DATEV books at), not
 # transactions -- which is why this is a module of its own next to
 # Fin::MossTransactionsColumns: the two tables show different rows of the same
-# data, so they sort on different tables (`value_date` is the TRANSACTION's
-# payment_date reached through the join, `signed_base_amount` the BOOKING's own
-# share) and a shared description would have to carry both.
+# data, so they sort on different tables (`booking_date` is the TRANSACTION's
+# column reached through the join, `signed_base_amount` the BOOKING's own share)
+# and a shared description would have to carry both.
 #
 # Four columns, all visible by default: a wallet statement is read line by line,
 # so there is nothing to hide -- the picker exists to REORDER them and to switch
@@ -25,8 +25,11 @@
 # never reordered.
 module Fin::MossWalletColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "mwcol") do |c|
-    c.column key: "value_date", abbr: "vdt", label: "Valuta", width: "6rem",
-      sort: "moss_transactions.payment_date", default: true
+    # Buchungsdatum is the day the payment was booked in the wallet -- the
+    # booking has no date of its own, so cell and ORDER BY alike read the
+    # transaction's column (MossBooking#value_date is the same day).
+    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", width: "7rem",
+      sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true
     c.column key: "signed_base_amount", abbr: "amt", label: "Betrag", numeric: true,

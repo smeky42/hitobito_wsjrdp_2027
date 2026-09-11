@@ -16,9 +16,11 @@ class Fin::MossOverview
 
   # Per kind: how many transactions, expenses (L2) and bookings (L3) it has,
   # how many of its transactions were paid in another currency, plus the sum
-  # and the data freshness.
+  # and the data freshness. `last_booking_date` is the newest transaction date
+  # of the kind (MossTransaction#value_date: the day the movement was booked in
+  # the Moss wallet).
   KindStats = Struct.new(:kind, :count, :expenses_count, :bookings_count, :foreign_currency_count,
-    :sum, :last_payment_date, :source_file, keyword_init: true) do
+    :sum, :last_booking_date, :source_file, keyword_init: true) do
     # The average transaction amount, signed like the sum (0 without transactions).
     def average = count.positive? ? sum / count : 0
   end
@@ -31,12 +33,12 @@ class Fin::MossOverview
       bookings = MossBooking.joins(:moss_transaction).group("moss_transactions.type").count
       foreign = foreign_currency_transactions.group(:type).count
       sums = MossTransaction.group(:type).sum(:signed_total_base_amount)
-      dates = MossTransaction.group(:type).maximum(:payment_date)
+      dates = MossTransaction.group(:type).maximum(:booking_date)
       files = MossTransaction.group(:type).maximum(:source_file)
       KINDS.map do |kind|
         KindStats.new(kind: kind, count: counts[kind] || 0, expenses_count: expenses[kind] || 0,
           bookings_count: bookings[kind] || 0, foreign_currency_count: foreign[kind] || 0,
-          sum: sums[kind] || 0, last_payment_date: dates[kind], source_file: files[kind])
+          sum: sums[kind] || 0, last_booking_date: dates[kind], source_file: files[kind])
       end
     end
   end
@@ -81,7 +83,7 @@ class Fin::MossOverview
     @contribution_linked_count ||= AccountingEntry.where.not(moss_booking_id: nil).count
   end
 
-  def last_payment_date = kinds.filter_map(&:last_payment_date).max
+  def last_booking_date = kinds.filter_map(&:last_booking_date).max
 
   # When the Moss tables were last written (import or manual edit).
   def last_import_at

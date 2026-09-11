@@ -24,8 +24,9 @@ describe Fin::MossTransactionsController do
   def create_transaction(type, amount:, **attrs)
     uuid = SecureRandom.uuid
     tx = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
-      signed_total_base_amount: amount, currency: "EUR",
-      payment_date: Date.new(2026, 5, 3), transaction_posting_text: "Verpflegung Vortreffen", **attrs)
+      signed_total_base_amount: amount, currency: "EUR", payment_date: Date.new(2026, 5, 3),
+      booking_date: Date.new(2026, 5, 6),
+      transaction_posting_text: "Verpflegung Vortreffen", **attrs)
     expense = MossExpense.create!(moss_transaction: tx, moss_expense_uuid: uuid,
       type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
     MossBooking.create!(moss_transaction: tx, moss_expense: expense,
@@ -71,8 +72,8 @@ describe Fin::MossTransactionsController do
       expect(response.body).to include("2 Transaktionen")
     end
 
-    # Both transactions share a payment_date, so the policy default
-    # (payment_date desc) leaves them in id order -- the amount sort is what
+    # Both transactions share a booking_date, so the policy default
+    # (booking_date desc) leaves them in id order -- the amount sort is what
     # visibly reorders them.
     it "sorts by the ?s= column and direction" do
       get :index
@@ -84,6 +85,63 @@ describe Fin::MossTransactionsController do
 
       get :index, params: {s: "amt"}
       expect(first_row).to eq :card
+    end
+
+    # The list is dated by the day the movement was booked in the wallet: the
+    # Buchungsdatum column and its sort read that column and nothing else. The
+    # reimbursement below is one of the kinds whose export carries no payout day
+    # at all.
+    describe "the date columns" do
+      let!(:reimbursement) do
+        create_transaction("MossReimbursement", amount: -60, payment_date: nil,
+          booking_date: Date.new(2026, 6, 15), transaction_name: "Fahrtkosten Vortreffen")
+      end
+
+      # The cells of one date column, top to bottom.
+      def rendered_dates(key = "booking_date")
+        Nokogiri::HTML(response.body).css("tr.exp-row td[data-colkey='#{key}']")
+          .map { |td| td.text.strip }
+      end
+
+      it "shows the booking date in Buchungsdatum and sorts by it" do
+        get :index
+        expect(response).to be_successful
+        expect(response.body).to include("3 Transaktionen")
+        expect(rendered_dates).to eq(["15.06.2026", "06.05.2026", "06.05.2026"])
+
+        get :index, params: {s: "bdt"}
+        expect(response).to be_successful
+        expect(rendered_dates).to eq(["06.05.2026", "06.05.2026", "15.06.2026"])
+      end
+
+      # Zahlungsdatum is the raw column and off by default; switched on it shows
+      # the payout day the export carried, and the em dash where it carried none.
+      it "offers the raw payment date as a column of its own" do
+        get :index
+        expect(rendered_dates("payment_date")).to be_empty
+
+        get :index, params: {c: "bdt,pdt,amt,dsc"}
+        expect(response).to be_successful
+        expect(rendered_dates("payment_date")).to eq(["—", "03.05.2026", "03.05.2026"])
+      end
+
+      # The Zahlungsdatum of the filter is that same raw column: the row has
+      # none, so a date condition on it does not match.
+      it "is not matched by a Zahlungsdatum filter" do
+        get :index, params: {f: "!(!(!(pd,ge,'2026-01-01')))"}
+        expect(response).to be_successful
+        expect(response.body).to include("2 Transaktionen")
+        expect(response.body).not_to include("Fahrtkosten Vortreffen")
+      end
+
+      # Which is why the attribute offers "vorhanden" / "leer" beside the
+      # comparisons -- the same operators as the Buchungsdatum attribute.
+      it "offers the nullable operators on the Zahlungsdatum attribute" do
+        schema = Fin::MossTransactionsFilterSchema.bound
+        operators = schema.find(:payment_date).operators.map(&:key)
+        expect(operators).to eq(Fin::MossTransactionsFilterSchema::NULLABLE_DATE_OPERATORS)
+        expect(operators).to eq(schema.find(:booking_date).operators.map(&:key))
+      end
     end
 
     # Every row's detail is rendered (collapsed) with the page, so the merchant
@@ -373,7 +431,7 @@ describe Fin::MossTransactionsController do
     def create_grouped(type, *entries, **attrs)
       uuid = SecureRandom.uuid
       tx = MossTransaction.create!(type: type, moss_transaction_uuid: uuid, currency: "EUR",
-        payment_date: Date.new(2026, 5, 3),
+        payment_date: Date.new(2026, 5, 3), booking_date: Date.new(2026, 5, 6),
         signed_total_base_amount: entries.sum { |entry| entry.fetch(:amount) }, **attrs)
       entries.each_with_index { |entry, index| grouped_expense(tx, index + 1, **entry) }
       tx.reload
@@ -407,7 +465,7 @@ describe Fin::MossTransactionsController do
 
     # The general tab's default columns plus Buchungen, which only the
     # Erstattungen tab shows by itself (KIND_COLUMNS).
-    let(:group_columns) { {c: "pdt,amt,dsc,acc,cc,nb"} }
+    let(:group_columns) { {c: "bdt,amt,dsc,acc,cc,nb"} }
 
     it "puts one expense row per Ausgabe between the head row and the detail row" do
       get :index
@@ -415,9 +473,9 @@ describe Fin::MossTransactionsController do
       expect(row_kinds(reimbursement)).to eq(%i[head expense expense detail])
       expect(group(reimbursement).css("tr.exp-sub-row.moss-expense-row").size).to eq(2)
       expect(group(reimbursement).element_children.last["class"]).to eq("exp-detail-row")
-      # Datum and Art stay empty on an expense row -- the head row above says
-      # both for the whole group.
-      expect(cell_texts(sub_rows(reimbursement), "payment_date")).to eq(["", ""])
+      # Buchungsdatum and Art stay empty on an expense row -- the head row
+      # above says both for the whole group.
+      expect(cell_texts(sub_rows(reimbursement), "booking_date")).to eq(["", ""])
       expect(cell_texts(sub_rows(reimbursement), "kind")).to eq(["", ""])
     end
 
@@ -517,9 +575,9 @@ describe Fin::MossTransactionsController do
 
     it "hides a column in the whole group, head row and expense rows alike" do
       # The default columns without Sachkonten, plus Buchungen.
-      get :index, params: {c: "pdt,amt,dsc,cc,nb"}
+      get :index, params: {c: "bdt,amt,dsc,cc,nb"}
       expect(response).to be_successful
-      visible = %w[payment_date signed_total_base_amount description cost_centers bookings_count]
+      visible = %w[booking_date signed_total_base_amount description cost_centers bookings_count]
       expect(doc.css("thead th.exp-col").pluck("data-colkey")).to eq(visible)
       expect(group(reimbursement).at_css("tr.exp-row").css("td").pluck("data-colkey")).to eq(visible)
       expect(sub_rows(reimbursement).map { |row| row.css("td").pluck("data-colkey") })
@@ -556,7 +614,7 @@ describe Fin::MossTransactionsController do
 
       rows = sub_rows(reimbursement)
       expect(rows.first.css("td").pluck("data-colkey")).to eq(
-        %w[payment_date signed_total_base_amount description recipient_name bookings_count
+        %w[booking_date signed_total_base_amount description recipient_name bookings_count
           cost_centers account_numbers]
       )
       expect(cell_texts(rows, "bookings_count")).to eq(%w[1 1])
@@ -565,7 +623,7 @@ describe Fin::MossTransactionsController do
       # rendered and shows nothing; the head row above says it for the group.
       expect(cell_texts(rows, "recipient_name")).to eq(["", ""])
       head = group(reimbursement).at_css("tr.exp-row")
-      expect(cell(head, "payment_date").text.squish).to eq("03.05.2026")
+      expect(cell(head, "booking_date").text.squish).to eq("06.05.2026")
       expect(cell(head, "recipient_name").text.squish).to eq("Musterperson")
     end
   end

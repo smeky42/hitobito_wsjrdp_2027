@@ -27,7 +27,12 @@ module Fin::MossTransactionsHelper
 
   def moss_transaction_cell(tx, key)
     case key
-    when "payment_date", "booking_date", "approval_date"
+    # Zahlungsdatum is the one date cell that writes the em dash itself: two of
+    # the four kinds carry no payout day at all, so a blank cell would read as a
+    # rendering fault rather than as "there is none".
+    when "payment_date"
+      fin_date_or_dash(tx.payment_date)
+    when "booking_date", "approval_date"
       fin_date(tx.public_send(key))
     when "kind"
       moss_kind_chip(tx.type)

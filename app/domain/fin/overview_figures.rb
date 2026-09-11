@@ -60,7 +60,7 @@ class Fin::OverviewFigures
 
   def moss_bookings_count = moss.bookings_count
 
-  def moss_last_payment_date = moss.last_payment_date
+  def moss_last_booking_date = moss.last_booking_date
 
   # Transactions without their clearing booking (Sammelkreditor -> Moss-Konto).
   def moss_clearing_unlinked_count = moss.clearing_unlinked_count
