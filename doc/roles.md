@@ -1,8 +1,9 @@
 # Roles and permissions
 
 This document covers the hitobito roles defined in this wagon,
-hitobito's permission system (permissions → abilities), and the
-wagon's `:log` convention.
+hitobito's permission system (permissions → abilities), the wagon's own
+permissions and its three finance tiers, the admin-only role assignment, and
+the wagon's `:log` convention.
 
 Unlinked paths (e.g. `app/models/role/types.rb`) are in the hitobito
 core, checked out as the sibling directory `../hitobito` in the dev
@@ -32,12 +33,21 @@ labels live in
 
 **`Group::Root` (CMT):**
 
-| Role | Label (de) | Permissions |
-|---|---|---|
-| `Group::Root::Admin` | Admin | `layer_and_below_full`, `admin`, `finance` |
-| `Group::Root::Leader` | Leader | `layer_and_below_full` |
-| `Group::Root::Finance` | Finance | `layer_and_below_full`, `finance` |
-| `Group::Root::Member` | CMT | — |
+| Role | Label (de) | Permissions | Assignment |
+|---|---|---|---|
+| `Group::Root::Admin` | Admin | `layer_and_below_full`, `admin`, `finance` | admins only |
+| `Group::Root::Leader` | Leader | `layer_and_below_full` | — |
+| `Group::Root::FinanceRead` | Finance Read | `finance_read` | admins only |
+| `Group::Root::Finance` | Finance | `layer_and_below_full`, `finance_read`, `finance` | admins only |
+| `Group::Root::FinanceAdmin` | Finance Admin | `layer_and_below_full`, `finance_read`, `finance`, `finance_admin` | admins only |
+| `Group::Root::Member` | CMT | — | — |
+
+The three finance roles map onto the three finance tiers (see
+[Finance tiers](#finance-tiers-finance_read--finance--finance_admin) below).
+`FinanceRead` deliberately carries **no** `layer_*` permission: it grants the
+finance view and nothing else, in particular no access to the contingent's
+people. "Assignment: admins only" is `Role.admin_only_assignment`, see
+[Admin-only roles](#admin-only-roles-roleadmin_only_assignment).
 
 **`Group::Unit` (Unit):**
 
@@ -57,9 +67,14 @@ labels live in
 
 **`Group::Extern` (Extern):**
 
-| Role | Label (de) | Permissions |
-|---|---|---|
-| `Group::Extern::Member` | Extern | — |
+| Role | Label (de) | Permissions | Assignment |
+|---|---|---|---|
+| `Group::Extern::Member` | Extern | — | — |
+| `Group::Extern::FinanceAuditor` | Kassenprüfer*in (extern) | `finance_read` | admins only |
+
+`FinanceAuditor` is the read tier for EXTERNAL auditors. Like
+`Group::Root::FinanceRead` it holds no `layer_*` permission, so it
+grants no access to any person's data.
 
 Key point: `layer_and_below_full` is always **relative to the layer
 the role sits in**. A `Group::Root::Leader` holds it on the root layer
@@ -126,6 +141,42 @@ counterpart. `layer_*` permissions act on the layer of the group holding the
 role; `group_*` permissions on the group itself (`*_and_below` variants
 include subgroups).
 
+Beware of one stale entry: the core locale still describes a `qualify`
+permission that no longer exists in `types.rb`. Do not build on it.
+
+#### Permissions added by this wagon
+
+The core keeps `Permissions` mutable on purpose (`Style/MutableConstant` is
+disabled there with the comment *"Keep mutable to enable extension"*), so a
+wagon may add its own. We add two, both registered in
+[`lib/hitobito_wsjrdp_2027/wagon.rb`](../lib/hitobito_wsjrdp_2027/wagon.rb):
+
+| Permission | Meaning |
+|---|---|
+| `finance_read` | see the finance data (read tier) |
+| `finance_admin` | administer the finance data (admin tier) |
+
+Three things have to line up for a new permission, all done in that same
+`to_prepare` block:
+
+1. **`Role::Permissions`** — `AbilityDsl::Recorder` raises `Unknown
+   permission` for anything not listed, and the ability concerns register
+   their rules on `include`, so the registration must run BEFORE them.
+2. **`AbilityDsl::UserContext::GROUP_PERMISSIONS` / `LAYER_PERMISSIONS`** —
+   `init_permission_groups` / `init_permission_layers` build their lookup
+   only for the permissions listed there. Without the entry,
+   `permission_layer_ids(:finance_read)` silently returns `nil`.
+3. **i18n** — `activerecord.attributes.role.class.permission.description.*`,
+   otherwise the role administration shows a missing translation.
+
+`Role::WRITING_PERMISSIONS` additionally lists `finance_admin` (not
+`finance_read`). The core only defines that constant and does not read it
+(yet); the entry keeps the semantics right should it start to.
+
+Registration lives in `to_prepare`, not in an initializer: `Role` is
+autoloaded, and a development reload resets the constant — hence also the
+idempotence guards.
+
 ### Abilities (CanCanCan + AbilityDsl)
 
 What a permission concretely *allows* is defined in the core ability
@@ -167,7 +218,7 @@ with the same key (permission, subject, action). This lets the wagon
   [`group_ability.rb`](../app/abilities/wsjrdp_2027/group_ability.rb),
 - add new rules: the `:log` grant on `Event` in
   [`event_ability.rb`](../app/abilities/wsjrdp_2027/event_ability.rb),
-  the `fin_admin` grants in
+  the finance-tier grants in
   [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb).
 
 All wagon ability files live under
@@ -197,17 +248,57 @@ configured for `Event` in the ability store, and its shared examples
 list per role (used in
 [`spec/abilities/event_ability_spec.rb`](../spec/abilities/event_ability_spec.rb)).
 
+## Finance tiers (`finance_read` / `finance` / `finance_admin`)
+
+Finance access comes in three tiers. The actions are granted per finance
+model in
+[`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb), the
+constraints live in
+[`finance_access.rb`](../app/abilities/wsjrdp_2027/finance_access.rb)
+(`Wsjrdp2027::FinanceAccess`); specs:
+[`spec/abilities/finance_ability_spec.rb`](../spec/abilities/finance_ability_spec.rb).
+
+| Tier | Permission | Constraint | Actions | Roles |
+|---|---|---|---|---|
+| read | `finance_read` | `if_finance_read` | `show` | `Root::FinanceRead`, `Extern::FinanceAuditor` |
+| write | `finance` | `if_finance_write` | + `log`, `create`, `update` | `Root::Finance`, `Root::Admin` |
+| admin | `finance_admin` | `if_finance_admin` | + `fin_admin`, `manage` | `Root::FinanceAdmin` |
+
+Five properties are easy to get wrong and are therefore spelled out:
+
+* **The tiers are cumulative, and the action lists repeat
+  deliberately.** The ability store is keyed by `(permission, subject,
+  action)`, so a role only matches the rules of the permissions it
+  actually holds. A role with `:finance` but without `:finance_read`
+  would not grant `:show`.
+* **`:manage` is CanCan's wildcard.** It covers every action on the subject,
+  `:destroy` included, so the admin tier has full access; the other actions
+  in that list only spell the intent out. The predecessor granted `:manage`
+  to `:finance`, so the split *tightened* access rather than widening it.
+* **`:log` is NOT part of the read tier.** In this wagon `:log` is the
+  generic "privileged/internal view" gate (see below), so a read-only auditor
+  must not get it. It also guards the person-level fee pages (`fin/fees`,
+  `fin/person_fees`), which therefore stay closed to the read tier.
+* **The constraints are not bound to the root layer.** The finance
+  roles need to work when hold inside a nested group. For protection
+  against self-assignment, the finance roles are all
+  `admin_only_assignment`.
+
 ## Admin-only roles (`Role.admin_only_assignment`)
 
 Some role types grant powerful permissions and must only be assigned by CMT
-admins: `Group::Root::Admin` and `Group::Root::Finance` mark themselves with
-`self.admin_only_assignment = true` (a wagon `class_attribute` on `Role`,
-added by `Wsjrdp2027::Role`). The rules, enforced by *general* constraints in
+admins. They mark themselves with `self.admin_only_assignment = true` (a
+wagon `class_attribute` on `Role`, added by `Wsjrdp2027::Role`); currently
+`Group::Root::Admin`, `::Finance`, `::FinanceRead`, `::FinanceAdmin` and
+`Group::Extern::FinanceAuditor` — i.e. **every** role granting a finance
+tier. The rules, enforced by *general* constraints in
 `Wsjrdp2027::RoleAbility` (specs: `spec/abilities/role_ability_spec.rb`):
 
 * Only people with the `:admin` permission (`user_context.admin`) may
   **create** or **update** such a role — this also covers the roles
   controller's type-change path, which authorizes `:create` on the new role.
+  There is no "own role" exemption here, so **self-assignment is impossible**:
+  a Leader or Finance person cannot grant themselves a finance tier.
 * Only admins may **destroy**/**terminate** such a role of ANOTHER person;
   one's own role is not restricted by the wagon rule (destroying one's own
   permission-GIVING role stays blocked by the core's
@@ -261,9 +352,12 @@ subject"**. Examples:
 - navigation: the Contingent main menu item only shows for `can?(:log,
   Group.root)`
   ([`app/helpers/wsjrdp_2027/navigation_helper.rb`](../app/helpers/wsjrdp_2027/navigation_helper.rb))
-- finance models: `permission(:finance).may(:fin_admin, …, :log,
-  …).if_finance_on_root` in
-  [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb)
+- finance models: `:log` is part of the WRITE tier in
+  [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb) —
+  the read tier does not get it (see
+  [Finance tiers](#finance-tiers-finance_read--finance--finance_admin))
+- person-level fee pages: `fin/fees` and `fin/person_fees` authorize `:log`
+  (not `:show`), so the read tier sees no person's fee data
 
 Who may `:log` what (core grants plus wagon overrides):
 
@@ -271,7 +365,7 @@ Who may `:log` what (core grants plus wagon overrides):
 |---|---|---|
 | `Person` | `layer_full` / `layer_and_below_full` in the person's layer; wagon revokes `:any` (herself) and `group_full` | CMT Admin/Leader/Finance (everywhere), Unit Manager (own unit), IST Manager (IST layer) — **not** Unit Leader |
 | `Group` | as core, but wagon revokes `group_full` | `can?(:log, Group.root)` ⇒ only CMT roles with `layer_and_below_full` |
-| finance models (`AccountingEntry`, …) | `finance` on the root layer | Root::Admin, Root::Finance |
+| finance models (`AccountingEntry`, …) | the finance WRITE tier (`finance` / `finance_admin`, any layer) | Root::Admin, Root::Finance, Root::FinanceAdmin — **not** the read tier (FinanceRead, FinanceAuditor) |
 | `Event` | `layer_and_below_full` on the root layer (the grant below) | CMT Admin/Leader/Finance |
 
 The root superuser (`can :manage, :all`, see core `ability.rb`) may

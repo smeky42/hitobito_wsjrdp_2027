@@ -21,8 +21,9 @@ class Fin::WsjrdpFinPersonFeesController < ApplicationController
 
   private
 
+  # Personal data, require :log, not just :show
   def authorize_action
-    authorize!(:fin_admin, WsjrdpFinAccount)
+    authorize!(:log, WsjrdpFinAccount)
   end
 
   def confirmed_people_sepa_status_not_ok

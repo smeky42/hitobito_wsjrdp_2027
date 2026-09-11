@@ -68,7 +68,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
     store_key: -> { "#{controller_path}##{action_name}:#{params[:id]}" }
 
   def index
-    authorize!(:fin_admin, WsjrdpFinAccount)
+    authorize!(:show, WsjrdpFinAccount)
     @wsjrdp_fin_accounts = WsjrdpFinAccount.all
   end
 

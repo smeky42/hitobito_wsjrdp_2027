@@ -93,7 +93,7 @@ class Fin::PersonalAccountsController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, WsjrdpPersonalAccount)
+    authorize!(:show, WsjrdpPersonalAccount)
   end
 
   # THE filtered relation -- the only way from the state to the rows

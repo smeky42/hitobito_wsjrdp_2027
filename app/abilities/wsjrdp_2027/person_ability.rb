@@ -4,7 +4,7 @@ module Wsjrdp2027::PersonAbility
   extend ActiveSupport::Concern
 
   included do
-    include Wsjrdp2027::FinanceOnRoot
+    include Wsjrdp2027::FinanceAccess
 
     on(Person) do
       # Replaced original permission:
@@ -45,7 +45,7 @@ module Wsjrdp2027::PersonAbility
       # permission(:group_full).may(:update_email).if_permissions_in_all_capable_groups
       # permission(:group_full).may(:create).all # restrictions are on Roles
 
-      permission(:finance).may(:fin_admin).if_finance_on_root
+      permission(:finance).may(:fin_admin).if_finance_write
       permission(:admin).may(:fin_admin).all
 
       permission(:admin).may(:update_wsjrdp_email, :update_moss_email).all

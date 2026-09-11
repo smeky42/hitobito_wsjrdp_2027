@@ -28,6 +28,10 @@ de:
         one: CMT
       group/root/finance:
         one: Finance
+      group/root/finance_read:
+        one: Finance Read
+      group/root/finance_admin:
+        one: Finance Admin
 
       group/ist/leader:
         one: IST Manager
@@ -45,6 +49,8 @@ de:
 
       group/extern/member:
         one: Extern
+      group/extern/finance_auditor:
+        one: Kassenprüfer*in
 
 
       ### FINANZEN
@@ -498,6 +504,15 @@ de:
         updated_at: Geändert
         deleted_at: Gelöscht
         status: Status
+
+      # Beschreibungen der eigenen Berechtigungen (siehe lib/hitobito_wsjrdp_2027/wagon.rb);
+      # die Berechtigungen des Cores beschreibt der Core selbst.
+      role:
+        class:
+          permission:
+            description:
+              finance_read: Lesen der Finanzdaten des Kontingents (Buchhaltung, Beiträge, Abstimmung) ohne Änderungsmöglichkeit.
+              finance_admin: Administrieren der Finanzdaten des Kontingents, inklusive Löschen und administrativer Werkzeuge.
 
     buttons:
       show_contract: Anmeldung einsehen

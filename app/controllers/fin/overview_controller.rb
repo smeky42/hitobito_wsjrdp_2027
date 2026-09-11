@@ -19,6 +19,6 @@ class Fin::OverviewController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, WsjrdpFinAccount)
+    authorize!(:show, WsjrdpFinAccount)
   end
 end

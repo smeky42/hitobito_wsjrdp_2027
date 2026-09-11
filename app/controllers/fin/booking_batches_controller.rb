@@ -71,7 +71,7 @@ class Fin::BookingBatchesController < Fin::FinController
   private
 
   def authorize_action
-    authorize!(:fin_admin, DatevBookingBatch)
+    authorize!(:show, DatevBookingBatch)
   end
 
   def detail_format_context

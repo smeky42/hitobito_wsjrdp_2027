@@ -22,7 +22,8 @@ module Wsjrdp2027::NavigationHelper
     label: :finance,
     url: :fin_path,
     icon_name: "money-bill",
-    if: ->(_) { can?(:fin_admin, WsjrdpFinAccount) },
+    # Read tier and up (:show), so a finance auditor reaches the section at all
+    if: ->(_) { can?(:show, WsjrdpFinAccount) },
     # Every finance page lives under /fin, so one fragment covers them all.
     active_for: %w[fin],
     inactive_for: %w[fin/ae fin/pn /people]
