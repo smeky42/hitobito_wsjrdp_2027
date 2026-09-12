@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_10_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -959,10 +959,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_10_100000) do
     t.index ["base_amount"], name: "index_moss_bookings_base_amount"
     t.index ["contribution_subject_type", "contribution_subject_id"], name: "index_moss_bookings_contribution_subject"
     t.index ["expense_datev_booking_id"], name: "index_moss_bookings_expense_datev"
-    t.index ["moss_expense_id", "sub_row_number"], name: "index_moss_bookings_expense_sub_row", unique: true
     t.index ["moss_expense_id"], name: "index_moss_bookings_expense"
     t.index ["moss_transaction_id"], name: "index_moss_bookings_transaction"
     t.check_constraint "account_kind IS NULL OR (account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_bookings_account_kind"
+    t.unique_constraint ["moss_expense_id", "sub_row_number"], deferrable: :deferred, name: "unq_moss_bookings_expense_sub_row"
   end
 
   create_table "moss_expenses", comment: "L2: one row per expense of a reimbursement (N); one SHELL row for a card payment, invoice or top-up", force: :cascade do |t|

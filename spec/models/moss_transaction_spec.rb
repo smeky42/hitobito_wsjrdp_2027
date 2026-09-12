@@ -180,4 +180,75 @@ describe MossTransaction do
         .to raise_error(ActiveRecord::RecordNotUnique)
     end
   end
+
+  # L3 is keyed on (moss_expense_id, sub_row_number). The key is a unique
+  # CONSTRAINT rather than a plain unique index, and it is DEFERRABLE INITIALLY
+  # DEFERRED: Postgres checks it at COMMIT, so an import that renumbers the
+  # splits of an expense may leave the numbering ambiguous between its
+  # statements and only has to end on a unique assignment. All uuids below are
+  # invented.
+  describe "MossBooking (moss_expense_id, sub_row_number)" do
+    let(:connection) { ActiveRecord::Base.connection }
+
+    let(:constraint_name) { "unq_moss_bookings_expense_sub_row" }
+
+    let(:key) do
+      connection.unique_constraints("moss_bookings")
+        .find { |constraint| constraint.name == constraint_name }
+    end
+
+    # One expense whose two splits are numbered 1 and 2.
+    let(:expense) do
+      tx = MossTopUp.create!(moss_transaction_uuid: "ffffffff-1111-2222-3333-444444444444",
+        signed_total_base_amount: 500, currency: "EUR", payment_date: Date.new(2026, 5, 3))
+      MossTopUpExpense.create!(moss_transaction: tx, moss_expense_uuid: tx.reload.moss_object_uuid,
+        signed_expense_base_amount: 500).tap do |shell|
+          [1, 2].each do |number|
+            MossBooking.create!(moss_transaction: tx, moss_expense: shell,
+              signed_base_amount: 250, sub_row_number: number)
+          end
+        end
+    end
+
+    # In creation order -- the association reads in sub-row order, which is the
+    # very thing the reorder changes.
+    def splits = MossBooking.where(moss_expense: expense).order(:id)
+
+    it "is a deferrable, initially deferred unique constraint" do
+      expect(key).to be_present
+      expect(key.column).to eq(["moss_expense_id", "sub_row_number"])
+      expect(key.deferrable).to eq(:deferred)
+    end
+
+    it "has replaced the plain unique index" do
+      expect(connection.index_exists?(:moss_bookings, [:moss_expense_id, :sub_row_number],
+        name: "index_moss_bookings_expense_sub_row")).to be(false)
+    end
+
+    it "exchanges two sub-row numbers over two statements" do
+      expect(splits.pluck(:sub_row_number)).to eq([1, 2])
+      first, second = splits.to_a
+      MossBooking.where(id: first.id).update_all(sub_row_number: 2)
+      expect(splits.pluck(:sub_row_number)).to eq([2, 2])
+      MossBooking.where(id: second.id).update_all(sub_row_number: 1)
+      expect(splits.pluck(:sub_row_number)).to eq([2, 1])
+    end
+
+    # An example runs inside a transaction that RSpec rolls back, so the check
+    # a deferred constraint runs at COMMIT never happens here. SET CONSTRAINTS
+    # ... IMMEDIATE makes Postgres evaluate the pending rows on the spot, which
+    # is that very check; issuing it inside a savepoint keeps the example's own
+    # transaction usable after the error. The splits are read before the
+    # savepoint opens, so its rollback undoes only the renumbering.
+    it "still rejects two splits under the same number" do
+      expect(splits.pluck(:sub_row_number)).to eq([1, 2])
+      expect do
+        MossBooking.transaction(requires_new: true) do
+          splits.update_all(sub_row_number: 1)
+          connection.execute("SET CONSTRAINTS #{constraint_name} IMMEDIATE")
+        end
+      end.to raise_error(ActiveRecord::RecordNotUnique)
+      expect(splits.pluck(:sub_row_number)).to eq([1, 2])
+    end
+  end
 end
