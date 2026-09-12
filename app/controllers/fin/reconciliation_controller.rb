@@ -14,6 +14,16 @@ class Fin::ReconciliationController < Fin::FinController
   include Wsjrdp::TableStateful
 
   before_action :authorize_action
+  # The connect actions WRITE the booking <-> Beitragsbuchung links, so they
+  # need the write tier on top of the section's :show gate -- otherwise the read
+  # tier (:finance_read, e.g. an external auditor), which legitimately reaches
+  # every page here, could connect through a hand-made request. The filter PRG
+  # (#apply_participant_fees) writes no domain data and stays on :show.
+  before_action :authorize_connect, only: %i[connect_participant_fees connect_single
+    connect_participant_entries connect_single_entry]
+  # Wiping every link is the most destructive action of the section: admin tier,
+  # on top of the development-only guard in the action itself.
+  before_action :authorize_reset_links, only: :reset_links
 
   helper_method :bookings, :entries, :matched_entries_count,
     :total_entries_count,
@@ -21,7 +31,8 @@ class Fin::ReconciliationController < Fin::FinController
     :unmatched_entries_by_month,
     :excluded_entries_count, :unmatched_entries_count, :unmatched_entries_sum,
     :entry_match_proposals, :entry_match_alternatives,
-    :proposal_atom_stats, :proposal_atom
+    :proposal_atom_stats, :proposal_atom,
+    :may_connect?, :may_reset_links?
 
   # The TN-Beiträge listing is pinned by three LOCKED conditions (shown as
   # read-only slots in the filter, enforced via the pinned scope): no linked
@@ -194,6 +205,21 @@ class Fin::ReconciliationController < Fin::FinController
   def authorize_action
     authorize!(:show, DatevBooking)
   end
+
+  def authorize_connect
+    authorize!(:update, DatevBooking)
+  end
+
+  def authorize_reset_links
+    authorize!(:fin_admin, DatevBooking)
+  end
+
+  # The same two gates for the view: whoever may not connect gets no checkboxes,
+  # no bulk-connect form and no "Verbinden" buttons -- the proposals themselves
+  # stay visible, they are a reading aid.
+  def may_connect? = can?(:update, DatevBooking)
+
+  def may_reset_links? = Rails.env.development? && can?(:fin_admin, DatevBooking)
 
   # The resolved state of the entries table (the bookings one is
   # #booking_table_state).

@@ -15,7 +15,7 @@
     = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
-    = form_buttons(f, cancel_url: cancel_url)
+    = form_buttons_if_editable(f, cancel_url: cancel_url)
 
     .mt-3
     - transaction = @moss_booking.moss_transaction
@@ -88,16 +88,18 @@
       = form_like_labeled("Beitragsbuchungen") do
         - if accounting_entries.empty?
           %span.muted keine
+        -# Both halves are links only for whoever may see the entry's person --
+        -# see Fin::LinkedEntryHelper for the rule.
         - accounting_entries.each do |ae|
           %div
-            %span= link_to(ae.link_name, url_for(ae))
+            %span= fin_entry_link(ae)
             %span.muted= " • "
             %span.fw-light.muted Person:
-            %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
+            %span= fin_subject_link(ae.subject)
 
       -# %div.border-top.py-2
       -# = input_or_render_attrs(f, :status)
       -# %div.border-top.py-2
       -# = input_or_render_attrs(f, :created_at, :updated_at)
 
-    = form_buttons(f, cancel_url: cancel_url)
+    = form_buttons_if_editable(f, cancel_url: cancel_url)

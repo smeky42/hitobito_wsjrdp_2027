@@ -266,6 +266,8 @@ de:
         bank_transaction_code: Geschäftsvorfall
         bank_transaction_code_dk: Geschäftsvorfall nach DK
         return_reason: Rückgabe-Grund
+        return_status: Retoure-Status
+        return_status_display: Retoure-Status
         cdtr_name: Kreditor Name
         cdtr_iban: Kreditor IBAN
         cdtr_bic: Kreditor BIC

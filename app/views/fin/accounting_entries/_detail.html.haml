@@ -16,8 +16,17 @@
 -#             Debtor + creditor, the SEPA direct-debit block and the
 -#             created/updated timestamps are ALWAYS shown when present.
 - e = entry
+-# A Beitragsbuchung is one person's fee data (amount, mandate and end-to-end
+-# reference, debtor and creditor IBAN), so this detail follows the same gate as
+-# its own page: whoever may not :show the entry -- the read tier, see
+-# doc/roles.md "Finance tiers" -- gets nothing. Every host is expected to leave
+-# the block out in the first place; this is the backstop for a new one.
+- return unless can?(:show, e)
 - hide = Array(local_assigns.fetch(:hide, []))
-- person_val = e.subject.is_a?(Person) ? link_to(e.subject.to_s, url_for(e.subject)) : e.subject_type
+-# assoc_link links only where the viewer may open the person, and the entry's
+-# own page is closed to the read tier (:finance_read has no :show on
+-# AccountingEntry) -- neither renders a link that could only answer 403.
+- person_val = e.subject.is_a?(Person) ? assoc_link(e.subject) : e.subject_type
 - source = e.direct_debit_pre_notification_id ? "SEPA-Einzug" : (e.camt_transaction_id ? "Kontoauszug" : (e.moss_booking_id ? "Moss" : nil))
 .bk-item-detail.bk-item-detail-plain
   -# Grid: Buchungsdatum / Valuta / Beschreibung (2 cols) first, then amount/meta.
@@ -32,7 +41,7 @@
 
   -# Verknüpfungen: the Beitragsbuchung itself, its bank transaction and its
   -# pre-notification.
-  - links = [["Beitragsbuchung", link_to("##{e.id}", accounting_entry_path(e))]]
+  - links = [["Beitragsbuchung", link_to_if(can?(:show, e), "##{e.id}", accounting_entry_path(e))]]
   - links << ["Bank-Transaktion", e.camt_transaction_id && link_to("##{e.camt_transaction_id}", wsjrdp_camt_transaction_path(e.camt_transaction_id))]
   - links << ["Pre-Notification", e.direct_debit_pre_notification_id && link_to("##{e.direct_debit_pre_notification_id}", wsjrdp_direct_debit_pre_notification_path(e.direct_debit_pre_notification_id))]
   - links << ["Moss-Buchung", link_to("##{e.moss_booking_id}", moss_booking_path(e.moss_booking_id))] if e.moss_booking_id

@@ -19,7 +19,11 @@ module Sheet
     # Übersicht is an exact-match tab (no_alt) so it does not also light up on
     # the section's other pages.
     tab "fin.tabs.overview", :fees_path, no_alt: true
-    tab "fin.tabs.person_fees", :fin_person_fees_path
+    # Person-level fee data (:log, see Fin::WsjrdpFinPersonFeesController).
+    # Hiding the tab drops it from the tab bar AND from the area's card on /fin
+    # (Fin::OverviewHelper#fin_areas keeps only the tabs whose renderer shows).
+    tab "fin.tabs.person_fees", :fin_person_fees_path,
+      if: ->(view, *) { view.can?(:log, WsjrdpFinAccount) }
     tab "fin.tabs.plans", :wsjrdp_payment_plans_path
 
     def left_nav?

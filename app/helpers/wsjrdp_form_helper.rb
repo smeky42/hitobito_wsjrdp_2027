@@ -115,6 +115,20 @@ module WsjrdpFormHelper
       end
     end
 
+    # The Save/Cancel row of a finance form -- rendered only where something is
+    # actually editable. `permitted_attrs` is the same list
+    # input_or_render_attrs asks before it turns a field into an input, so this
+    # keeps the two halves of a form in step: a page that shows nothing but
+    # read-only values gets no Speichern button either. It is empty for whoever
+    # lacks the write tier (:finance_read, e.g. an external auditor), and a
+    # Speichern that can only answer 403 invites "Speichern geht nicht" reports.
+    # The controllers enforce the same boundary with authorize!.
+    def form_buttons_if_editable(form, cancel_url: nil)
+      return "".html_safe if permitted_attrs.blank?
+
+      form_buttons(form, cancel_url: cancel_url)
+    end
+
     def render_attrs_list(&block)
       content = capture(&block)
       content_tag(:dl, content, class: "dl-horizontal m-0 p-2 border-top")

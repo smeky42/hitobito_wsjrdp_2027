@@ -139,6 +139,8 @@ class Fin::MossBookingsController < Fin::FinController
   end
 
   def permitted_attrs
+    return [] unless can?(:update, moss_booking)
+
     [
       :comment,
       :contribution_subject, :contribution_subject_id, :contribution_subject_type,

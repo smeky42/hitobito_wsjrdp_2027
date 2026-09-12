@@ -14,6 +14,11 @@
 -#
 -#  Locals: booking (DatevBooking), ctx (Fin::AttrFormatContext)
 - form_url = can?(:fin_admin, DatevBooking) && booking.persisted? ? booking_path(booking) : nil
+-# Connecting and unlinking the Beitragsbuchung is the write tier's (the field
+-# edits above are the admin tier's, hence the two different gates);
+-# Fin::BookingsController authorizes exactly these. Without it -- the read tier,
+-# e.g. an external auditor -- the section stays as a reading view.
+- may_link = can?(:update, DatevBooking)
 - editable = {editable: true}
 - cc_options = fin_cost_center_select_options
 - ub_options = [["automatisch", ""], ["ja", "true"], ["nein", "false"]]
@@ -56,14 +61,15 @@
         = wsjrdp_row_line do
           = assoc_link_with_newtab(entry, "##{entry.id}")
           = match_rating_chip(booking_link_rating(booking), compact: false)
-          = button_to booking_path(booking), method: :patch,
-            params: {datev_booking: {accounting_entry_id: ""}},
-            form: {class: "bk-unlink-form d-inline", data: {turbo: false}},
-            class: "btn btn-sm btn-outline-danger py-0", title: "Verknüpfung mit der Beitragsbuchung trennen",
-            "aria-label": "Verknüpfung mit der Beitragsbuchung trennen" do
-            = icon(:unlink)
+          - if may_link
+            = button_to booking_path(booking), method: :patch,
+              params: {datev_booking: {accounting_entry_id: ""}},
+              form: {class: "bk-unlink-form d-inline", data: {turbo: false}},
+              class: "btn btn-sm btn-outline-danger py-0", title: "Verknüpfung mit der Beitragsbuchung trennen",
+              "aria-label": "Verknüpfung mit der Beitragsbuchung trennen" do
+              = icon(:unlink)
         = wsjrdp_row_help(booking_link_provenance(booking))
-      - else
+      - elsif may_link
         - aid = "bk-ae-#{booking.id}"
         = wsjrdp_row_form(booking_path(booking), css: "bk-connect-entry-form", method: :patch) do
           %input.form-control.form-control-sm.wsjrdp-lr-entity{type: "text", id: "#{aid}-q",
@@ -73,6 +79,8 @@
               no_results_message: "Keine unverknüpfte Beitragsbuchung mit diesem Betrag"}}
           %input{type: "hidden", name: "datev_booking[accounting_entry_id]", id: aid}
           %button.btn.btn-sm.btn-outline-success{type: "submit"} Verbinden
+      - else
+        %span.text-muted nicht verknüpft
     :javascript
       (function () {
         if (window.__bkConnectEntryConfirm) return;

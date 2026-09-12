@@ -13,11 +13,13 @@
     = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
-    = button_toolbar(f, toolbar_class: nil) do
-      = submit_button(f, ti(:"button.save"))
-      - if can_fin_admin?
-        = action_button(t("global.link.delete"), "#{url_for(accounting_entry)}?fin_admin=1", :"trash-alt", data: {method: :delete, confirm: I18n.t("global.confirm_delete")}, in_button_group: true)
-      = cancel_link(cancel_url)
+    -# No editable field, no buttons
+    - if permitted_attrs.present?
+      = button_toolbar(f, toolbar_class: nil) do
+        = submit_button(f, ti(:"button.save"))
+        - if can_fin_admin?
+          = action_button(t("global.link.delete"), "#{url_for(accounting_entry)}?fin_admin=1", :"trash-alt", data: {method: :delete, confirm: I18n.t("global.confirm_delete")}, in_button_group: true)
+        = cancel_link(cancel_url)
 
     .mt-3
     = field_set_tag do
@@ -56,4 +58,4 @@
       = form_like_labeled_attr(f.object, :created_at)
       = form_like_labeled_attr(f.object, :updated_at)
 
-    = form_buttons(f, cancel_url: cancel_url)
+    = form_buttons_if_editable(f, cancel_url: cancel_url)

@@ -76,9 +76,21 @@
     = match_rating_legend
     · Der Betrag muss immer exakt stimmen – einschließlich Vorzeichen.
 
-  = render "fin/reconciliation/connect_controls",
-    form_url: connect_reconciliation_participant_fees_path(list_carry), form_id: "bk-connect-form",
-    noun: "DATEV-Buchungen", stats: proposal_atom_stats(match_proposals)
+  -# Everything that CONNECTS is the write tier's (the controller authorizes
+  -# :update for exactly those actions): the bulk-connect form, the row
+  -# checkboxes it collects and the per-candidate "Verbinden" buttons. The read
+  -# tier (:finance_read, e.g. an external auditor) keeps the whole page as a
+  -# reading view -- counts, histogram, proposals and their rating included.
+  - may_connect = may_connect?
+  -# A Beitragsbuchung's own page is closed to the read tier (:finance_read has
+  -# no :show on AccountingEntry, doc/roles.md -> "Finance tiers"), so this page
+  -# offers no link into it -- neither the entries table's "Detailseite" nor the
+  -# new-tab icon of a candidate.
+  - may_see_entries = can?(:show, AccountingEntry)
+  - if may_connect
+    = render "fin/reconciliation/connect_controls",
+      form_url: connect_reconciliation_participant_fees_path(list_carry), form_id: "bk-connect-form",
+      noun: "DATEV-Buchungen", stats: proposal_atom_stats(match_proposals)
 
   - bk_proposal_cell = ->(booking) do
     - match = match_proposals[booking.id]
@@ -112,14 +124,16 @@
                   = icon(alt_style[:icon])
                   %span.fw-semibold= "#{alt.score} %"
                 %span.small= "##{entry.id} #{alt.person_name}"
-                = link_to accounting_entry_path(entry), target: "_blank", rel: "noopener",
-                  class: "small", title: "Beitragsbuchung ##{entry.id} in neuem Tab öffnen" do
-                  = icon(:"external-link-alt")
+                - if may_see_entries
+                  = link_to accounting_entry_path(entry), target: "_blank", rel: "noopener",
+                    class: "small", title: "Beitragsbuchung ##{entry.id} in neuem Tab öffnen" do
+                    = icon(:"external-link-alt")
                 %span.small.text-muted= alt.basis
-                = button_to "Verbinden",
-                  connect_single_reconciliation_participant_fees_path(list_carry.merge(booking_id: booking.id, entry_id: entry.id)),
-                  method: :post, class: "btn btn-sm btn-outline-success py-0",
-                  form: {class: "booking-scroll-form", data: {turbo_confirm: confirm}}
+                - if may_connect
+                  = button_to "Verbinden",
+                    connect_single_reconciliation_participant_fees_path(list_carry.merge(booking_id: booking.id, entry_id: entry.id)),
+                    method: :post, class: "btn btn-sm btn-outline-success py-0",
+                    form: {class: "booking-scroll-form", data: {turbo_confirm: confirm}}
               - if entry.description.present?
                 .small.text-muted.text-break{style: "margin-left: 1.7rem"}= entry.description
 
@@ -127,99 +141,110 @@
     apply_url: apply_reconciliation_participant_fees_path,
     condensed_locked: true,
     extra_columns: [bk_proposal_column],
-    selection: {name: "booking_ids[]", id_field: ->(b) { b.id }, form: "bk-connect-form",
+    selection: (may_connect ? {name: "booking_ids[]", id_field: ->(b) { b.id }, form: "bk-connect-form",
       all_param: "select_all", total_count: match_proposals.size, remember_key: "bk",
       enabled: ->(b) { match_proposals.key?(b.id) },
-      row_data: ->(b) { m = match_proposals[b.id]; {atom: proposal_atom(m), amount: m&.entry&.amount_cents} }},
+      row_data: ->(b) { m = match_proposals[b.id]; {atom: proposal_atom(m), amount: m&.entry&.amount_cents} }} : nil),
     detail_top: bk_detail_candidates
 
-  %h2.h4.mt-5 Nicht zugeordnete Beitragsbuchungen
-  %p.text-muted.small
-    Beitragsbuchungen (Betrag ≠ 0) ohne verknüpfte DATEV-Buchung. Die Spalte
-    „DATEV-Buchung (Vorschlag)" zeigt – mit demselben Farbschema – den besten
-    Treffer in der Gegenrichtung; verbinden wie oben.
+  -# The whole "Nicht zugeordnete Beitragsbuchungen" section is a
+  -# Beitragsbuchungen view -- rows, inline detail and all -- and those are
+  -# closed to the read tier (:finance_read has no :show on AccountingEntry,
+  -# doc/roles.md -> "Finance tiers"). The counts, the histogram and the DATEV
+  -# side above stay: they are the aggregate view an auditor comes for.
+  - if may_see_entries
+    %h2.h4.mt-5 Nicht zugeordnete Beitragsbuchungen
+    %p.text-muted.small
+      Beitragsbuchungen (Betrag ≠ 0) ohne verknüpfte DATEV-Buchung. Die Spalte
+      „DATEV-Buchung (Vorschlag)" zeigt – mit demselben Farbschema – den besten
+      Treffer in der Gegenrichtung; verbinden wie oben.
 
-  = render "fin/reconciliation/connect_controls",
-    form_url: connect_entries_reconciliation_participant_fees_path(list_carry), form_id: "ae-connect-form",
-    noun: "Beitragsbuchungen", stats: proposal_atom_stats(entry_match_proposals)
+    - if may_connect
+      = render "fin/reconciliation/connect_controls",
+        form_url: connect_entries_reconciliation_participant_fees_path(list_carry), form_id: "ae-connect-form",
+        noun: "Beitragsbuchungen", stats: proposal_atom_stats(entry_match_proposals)
 
-  - ae_source = ->(e) do
-    - if e.direct_debit_pre_notification_id
-      - "SEPA-Einzug"
-    - elsif e.camt_transaction_id
-      - "Kontoauszug"
-    - elsif e.moss_booking_id
-      - "Moss"
-    - else
-      - "—"
-  - ae_person = ->(e) do
-    - if e.subject.is_a?(Person)
-      - link_to(e.subject.to_s, url_for(e.subject))
-    - else
-      - e.subject_type
-  -# The entries table's columns are described once, in
-  -# Fin::AccountingEntriesColumns (labels, widths, wire tokens, sort
-  -# expressions); this page only adds the cells.
-  - ae_cells = {"date" => ->(e) { (e.value_date || e.booking_date)&.strftime("%d.%m.%Y") },
-    "amount" => ->(e) { "#{cents_to_eur_display_or_nil(e.amount_cents)} €" },
-    "description" => ->(e) { truncate(e.description.to_s, length: 100) },
-    "person" => ae_person,
-    "source" => ae_source}
-  - ae_columns = Fin::AccountingEntriesColumns::COLUMNS.map { |col| col.to_table_column(cell: ae_cells.fetch(col.key)) }
-  - ae_detail = ->(e) { render "fin/accounting_entries/detail", entry: e, hide: [:excluded_flag] }
+    - ae_source = ->(e) do
+      - if e.direct_debit_pre_notification_id
+        - "SEPA-Einzug"
+      - elsif e.camt_transaction_id
+        - "Kontoauszug"
+      - elsif e.moss_booking_id
+        - "Moss"
+      - else
+        - "—"
+    -# assoc_link links only where the viewer may open the person (hitobito's own
+    -# rule), so a read-tier auditor gets the plain name instead of a 403 link.
+    - ae_person = ->(e) do
+      - if e.subject.is_a?(Person)
+        - assoc_link(e.subject)
+      - else
+        - e.subject_type
+    -# The entries table's columns are described once, in
+    -# Fin::AccountingEntriesColumns (labels, widths, wire tokens, sort
+    -# expressions); this page only adds the cells.
+    - ae_cells = {"date" => ->(e) { (e.value_date || e.booking_date)&.strftime("%d.%m.%Y") },
+      "amount" => ->(e) { "#{cents_to_eur_display_or_nil(e.amount_cents)} €" },
+      "description" => ->(e) { truncate(e.description.to_s, length: 100) },
+      "person" => ae_person,
+      "source" => ae_source}
+    - ae_columns = Fin::AccountingEntriesColumns::COLUMNS.map { |col| col.to_table_column(cell: ae_cells.fetch(col.key)) }
+    - ae_detail = ->(e) { render "fin/accounting_entries/detail", entry: e, hide: [:excluded_flag] }
 
-  - ae_proposal_cell = ->(entry) do
-    - match = entry_match_proposals[entry.id]
-    - alts = entry_match_alternatives[entry.id]
-    - next "".html_safe unless match || (alts && alts.size > 1)
-    - capture do
-      - if match
-        = match_rating_chip(match, target_label: "##{match.booking.id}")
-      - if alts && alts.size > 1
-        %span.badge.rounded-pill.text-bg-light.border.ms-1{title: "#{alts.size} mögliche DATEV-Buchungen – Auswahl in der Detailansicht"}
-          = "#{alts.size} Kandidaten"
-  - ae_proposal_column = {key: "proposal", label: "DATEV-Buchung (Vorschlag)", cell: ae_proposal_cell}
+    - ae_proposal_cell = ->(entry) do
+      - match = entry_match_proposals[entry.id]
+      - alts = entry_match_alternatives[entry.id]
+      - next "".html_safe unless match || (alts && alts.size > 1)
+      - capture do
+        - if match
+          = match_rating_chip(match, target_label: "##{match.booking.id}")
+        - if alts && alts.size > 1
+          %span.badge.rounded-pill.text-bg-light.border.ms-1{title: "#{alts.size} mögliche DATEV-Buchungen – Auswahl in der Detailansicht"}
+            = "#{alts.size} Kandidaten"
+    - ae_proposal_column = {key: "proposal", label: "DATEV-Buchung (Vorschlag)", cell: ae_proposal_cell}
 
-  - ae_detail_candidates = ->(entry) do
-    - capture do
-      - candidates = ([entry_match_proposals[entry.id]].compact + (entry_match_alternatives[entry.id] || [])).uniq { |m| m.booking.id }
-      - if candidates.present?
-        %div
-          .fw-semibold.small.mb-1 Mögliche DATEV-Buchungen (beste zuerst)
-          - candidates.each do |alt|
-            - booking = alt.booking
-            - confirm = ["Beitragsbuchung ##{entry.id} mit Buchung ##{booking.id} verbinden?", "",
-                "Beitragsbuchung: #{(entry.value_date || entry.booking_date)&.strftime("%d.%m.%Y")} · #{cents_to_eur_display_or_nil(entry.amount_cents)} € · #{entry.description.to_s.truncate(70)}",
-                "DATEV-Buchung: #{booking.booking_date&.strftime("%d.%m.%Y")} · #{booking_base_amount_with_sh(booking)} · #{booking.posting_text.to_s.truncate(70)}"].join("\n")
-            .mb-2
-              .d-flex.flex-wrap.align-items-center.gap-2
-                - alt_style = match_tier_style(alt)
-                %span{title: alt.details, style: "color: #{alt_style[:colour]}"}
-                  = icon(alt_style[:icon])
-                  %span.fw-semibold= "#{alt.score} %"
-                %span.small= "##{booking.id} #{booking.posting_text.to_s.truncate(50)}"
-                = link_to booking_path(booking), target: "_blank", rel: "noopener",
-                  class: "small", title: "Buchung ##{booking.id} in neuem Tab öffnen" do
-                  = icon(:"external-link-alt")
-                %span.small.text-muted= alt.basis
-                = button_to "Verbinden",
-                  connect_single_entry_reconciliation_participant_fees_path(list_carry.merge(entry_id: entry.id, booking_id: booking.id)),
-                  method: :post, class: "btn btn-sm btn-outline-success py-0",
-                  form: {class: "booking-scroll-form", data: {turbo_confirm: confirm}}
+    - ae_detail_candidates = ->(entry) do
+      - capture do
+        - candidates = ([entry_match_proposals[entry.id]].compact + (entry_match_alternatives[entry.id] || [])).uniq { |m| m.booking.id }
+        - if candidates.present?
+          %div
+            .fw-semibold.small.mb-1 Mögliche DATEV-Buchungen (beste zuerst)
+            - candidates.each do |alt|
+              - booking = alt.booking
+              - confirm = ["Beitragsbuchung ##{entry.id} mit Buchung ##{booking.id} verbinden?", "",
+                  "Beitragsbuchung: #{(entry.value_date || entry.booking_date)&.strftime("%d.%m.%Y")} · #{cents_to_eur_display_or_nil(entry.amount_cents)} € · #{entry.description.to_s.truncate(70)}",
+                  "DATEV-Buchung: #{booking.booking_date&.strftime("%d.%m.%Y")} · #{booking_base_amount_with_sh(booking)} · #{booking.posting_text.to_s.truncate(70)}"].join("\n")
+              .mb-2
+                .d-flex.flex-wrap.align-items-center.gap-2
+                  - alt_style = match_tier_style(alt)
+                  %span{title: alt.details, style: "color: #{alt_style[:colour]}"}
+                    = icon(alt_style[:icon])
+                    %span.fw-semibold= "#{alt.score} %"
+                  %span.small= "##{booking.id} #{booking.posting_text.to_s.truncate(50)}"
+                  = link_to booking_path(booking), target: "_blank", rel: "noopener",
+                    class: "small", title: "Buchung ##{booking.id} in neuem Tab öffnen" do
+                    = icon(:"external-link-alt")
+                  %span.small.text-muted= alt.basis
+                  - if may_connect
+                    = button_to "Verbinden",
+                      connect_single_entry_reconciliation_participant_fees_path(list_carry.merge(entry_id: entry.id, booking_id: booking.id)),
+                      method: :post, class: "btn btn-sm btn-outline-success py-0",
+                      form: {class: "booking-scroll-form", data: {turbo_confirm: confirm}}
 
-  = wsjrdp_expandable_table do |t|
-    - t.rows   entries
-    - t.columns ae_columns, menu: true, extra: [ae_proposal_column]
-    - t.row_key { |e| e.id }
-    - t.detail_page { |e| accounting_entry_path(e) }
-    - t.detail  { |e| ae_detail.call(e) }
-    - t.detail_top { |entry| ae_detail_candidates.call(entry) }
-    - t.paging  per_options: [25, 50, 100, 200, 500]
-    - t.summary "#{number_with_delimiter(unmatched_entries_count, delimiter: ".")} Beitragsbuchungen · Summe: #{cents_to_eur_display_or_nil(unmatched_entries_sum)} €"
-    - t.selection({name: "entry_ids[]", id_field: ->(e) { e.id }, form: "ae-connect-form",
-        all_param: "select_all", total_count: entry_match_proposals.size, remember_key: "ae",
-        enabled: ->(e) { entry_match_proposals.key?(e.id) },
-        row_data: ->(e) { {atom: proposal_atom(entry_match_proposals[e.id]), amount: e.amount_cents} }})
+    = wsjrdp_expandable_table do |t|
+      - t.rows   entries
+      - t.columns ae_columns, menu: true, extra: [ae_proposal_column]
+      - t.row_key { |e| e.id }
+      - t.detail_page { |e| accounting_entry_path(e) }
+      - t.detail  { |e| ae_detail.call(e) }
+      - t.detail_top { |entry| ae_detail_candidates.call(entry) }
+      - t.paging  per_options: [25, 50, 100, 200, 500]
+      - t.summary "#{number_with_delimiter(unmatched_entries_count, delimiter: ".")} Beitragsbuchungen · Summe: #{cents_to_eur_display_or_nil(unmatched_entries_sum)} €"
+      - if may_connect
+        - t.selection({name: "entry_ids[]", id_field: ->(e) { e.id }, form: "ae-connect-form",
+            all_param: "select_all", total_count: entry_match_proposals.size, remember_key: "ae",
+            enabled: ->(e) { entry_match_proposals.key?(e.id) },
+            row_data: ->(e) { {atom: proposal_atom(entry_match_proposals[e.id]), amount: e.amount_cents} }})
 
   -# The vertical scroll position across the reload that every connect / assign
   -# form triggers (PRG) is kept by the shared keeper in
@@ -229,10 +254,12 @@
   -# DEVELOPMENT ONLY, at the very bottom of the page: replay the whole
   -# reconciliation from scratch. Styled as a destructive action (hitobito
   -# convention: btn-danger + trash icon + confirm); the route and the action
-  -# exist only in development. The link resets EVERYTHING: the DB links (server
-  -# side), every query param (the action redirects to the bare page) and the
-  -# remembered row selections of both tables (the JS below).
-  - if Rails.env.development?
+  -# exist only in development, and the action is the admin tier's (may_reset_links?
+  -# is both gates, the same pair Fin::ReconciliationController authorizes). The
+  -# link resets EVERYTHING: the DB links (server side), every query param (the
+  -# action redirects to the bare page) and the remembered row selections of both
+  -# tables (the JS below).
+  - if may_reset_links?
     %hr.mt-5
     .border.border-danger.rounded.p-2.mb-3.d-flex.flex-wrap.align-items-center.gap-2.rec-devtools
       %span.badge.text-bg-danger Entwicklung
