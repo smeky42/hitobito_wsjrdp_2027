@@ -21,7 +21,8 @@ class Fin::WsjrdpFinPersonFeesController < ApplicationController
 
   private
 
-  # Personal data, require :log, not just :show
+  # Person-level fee data: :log, not just :show. So :finanace_audit
+  # passes here, plain :finance_read does not.
   def authorize_action
     authorize!(:log, WsjrdpFinAccount)
   end

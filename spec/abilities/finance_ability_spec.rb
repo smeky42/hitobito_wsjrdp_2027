@@ -1,23 +1,27 @@
 require "spec_helper"
 
-# The three finance tiers (doc/roles.md), as applied by
-# Wsjrdp2027::VariousAbility / Wsjrdp2027::PersonAbility through the
-# constraints in Wsjrdp2027::FinanceAccess:
+# The finance tiers, as applied by Wsjrdp2027::VariousAbility /
+# Wsjrdp2027::PersonAbility through the constraints in
+# Wsjrdp2027::FinanceAccess:
 #
-#   :finance_read  -> :show, AccountingEntry excepted (Group::Root::FinanceRead,
-#                                                     Group::Extern::FinanceAuditor)
-#   :finance       -> + :log, :create, :update       (Group::Root::Finance, ::Admin)
-#   :finance_admin -> + :fin_admin, :manage, :destroy (Group::Root::FinanceAdmin)
+#   :finance_read  -> :show, AccountingEntry excepted (Group::Root::FinanceReader)
+#   :finance_audit -> + :log, AccountingEntry included (Group::Extern::FinanceAuditor)
+#   :finance       -> + :create, :update             (Group::Root::Finance, ::Admin,
+#                                                     Group::Extern::FinanceAccountant)
+#   :finance_manage -> + :fin_admin, :manage, :destroy (Group::Root::FinanceManager)
 #
-# Three properties matter beyond the plain tier mapping and are covered below:
+# Four properties matter beyond the plain tier mapping and are covered below:
 #   * the tiers are NOT bound to the root layer, so a Finance role in a nested
 #     Group::Root ("CMT Warteliste") and an auditor on the Extern layer work;
-#   * :log stays out of the read tier -- it is this wagon's "privileged view"
-#     gate, and it also guards the person-level fee pages (fin/fees,
-#     fin/person_fees);
-#   * AccountingEntry stays out of the read tier entirely -- a Beitragsbuchung
+#   * :log stays out of the READ tier -- it is this wagon's "privileged view"
+#     gate, and on the finance models it is what guards the person-level fee
+#     list (fin/person_fees);
+#   * AccountingEntry stays out of the READ tier entirely -- a Beitragsbuchung
 #     is one person's fee data, so /fin/ae/:id is person-level in everything
-#     but its route.
+#     but its route;
+#   * the AUDIT tier is read-only just the same, but it does get :log and the
+#     Beitragsbuchungen -- that is what an external Kassenprüfer*in needs --
+#     and still nothing at all on Person.
 describe "finance abilities" do
   let(:fin_models) do
     [
@@ -73,6 +77,38 @@ describe "finance abilities" do
     end
   end
 
+  # Read-only like the read tier, but with :log on the finance models -- which
+  # is what opens fin/person_fees and the fee blocks -- and with the
+  # Beitragsbuchungen. Still nothing on Person.
+  shared_examples "an audit tier" do
+    it "may show every finance model, AccountingEntry included" do
+      fin_models.each do |model|
+        is_expected.to be_able_to(:show, model)
+        is_expected.to be_able_to(:show, model.new)
+      end
+    end
+
+    it "may log the finance models, so it reaches the person-level fee list" do
+      is_expected.to be_able_to(:log, WsjrdpFinAccount)
+      is_expected.to be_able_to(:log, DatevBooking)
+      is_expected.to be_able_to(:log, AccountingEntry.new)
+    end
+
+    it "is read-only all the same" do
+      is_expected.not_to be_able_to(:create, AccountingEntry.new)
+      is_expected.not_to be_able_to(:update, AccountingEntry.new)
+      is_expected.not_to be_able_to(:update, DatevBooking.new)
+      is_expected.not_to be_able_to(:fin_admin, WsjrdpFinAccount)
+      is_expected.not_to be_able_to(:destroy, AccountingEntry.new)
+    end
+
+    it "gets nothing on people" do
+      is_expected.not_to be_able_to(:show, people(:yp_a_1))
+      is_expected.not_to be_able_to(:log, people(:yp_a_1))
+      is_expected.not_to be_able_to(:fin_admin, people(:yp_a_1))
+    end
+  end
+
   shared_examples "a write tier" do
     it "may show, log, create and update" do
       is_expected.to be_able_to(:show, DatevBooking)
@@ -92,18 +128,31 @@ describe "finance abilities" do
     end
   end
 
-  context "with Group::Root::FinanceRead role (read tier)" do
-    let(:person) { Fabricate(Group::Root::FinanceRead.name.to_sym, group: groups(:root)).person }
+  context "with Group::Root::FinanceReader role (read tier)" do
+    let(:person) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
 
     it_behaves_like "a read tier"
   end
 
-  context "with Group::Extern::FinanceAuditor role (read tier, EXTERN layer)" do
+  context "with Group::Extern::FinanceAuditor role (audit tier, EXTERN layer)" do
     let(:person) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
 
-    # The decisive one: the tier is not root-bound, so an auditor sitting on the
-    # Extern layer is not locked out.
-    it_behaves_like "a read tier"
+    # The decisive one: the tiers are not root-bound, so an auditor sitting on
+    # the Extern layer is not locked out.
+    it_behaves_like "an audit tier"
+  end
+
+  context "with Group::Extern::FinanceAccountant role (write tier, EXTERN layer)" do
+    let(:person) { Fabricate(Group::Extern::FinanceAccountant.name.to_sym, group: extern).person }
+
+    it_behaves_like "a write tier"
+
+    # It carries :finance_audit as well, so the Beitragsbuchungen are open to
+    # it -- which the write tier's own :show would grant anyway.
+    it "sees the Beitragsbuchungen" do
+      is_expected.to be_able_to(:show, AccountingEntry)
+      is_expected.to be_able_to(:show, AccountingEntry.new)
+    end
   end
 
   context "with Group::Root::Finance role (write tier)" do
@@ -130,8 +179,8 @@ describe "finance abilities" do
     end
   end
 
-  context "with Group::Root::FinanceAdmin role (admin tier)" do
-    let(:person) { Fabricate(Group::Root::FinanceAdmin.name.to_sym, group: groups(:root)).person }
+  context "with Group::Root::FinanceManager role (admin tier)" do
+    let(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
 
     it "may fin_admin every finance model (class and instance)" do
       fin_models.each do |model|

@@ -29,7 +29,7 @@ class Group::Root < ::Group
   # Read-only finance access for CMT members. Deliberately without any
   # layer_* permission, so the role grants no access to the
   # contingent's people on its own.
-  class FinanceRead < ::Role
+  class FinanceReader < ::Role
     self.permissions = [:finance_read]
     self.admin_only_assignment = true
   end
@@ -41,10 +41,10 @@ class Group::Root < ::Group
   end
 
   # Finance administration
-  class FinanceAdmin < ::Role
-    self.permissions = [:layer_and_below_full, :finance_read, :finance, :finance_admin]
+  class FinanceManager < ::Role
+    self.permissions = [:layer_and_below_full, :finance_read, :finance, :finance_manage]
     self.admin_only_assignment = true
   end
 
-  roles Admin, Leader, Member, FinanceRead, Finance, FinanceAdmin
+  roles Admin, Leader, Member, FinanceReader, Finance, FinanceManager
 end

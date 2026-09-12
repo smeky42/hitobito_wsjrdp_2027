@@ -14,13 +14,23 @@ class Group::Extern < ::Group
     self.permissions = []
   end
 
-  # Read-only finance access for auditors: the finance data and
-  # nothing else. No layer_* permission, so the role grants no access
-  # to any person's data.
+  # Read-only finance access for external auditors. :finance_audit adds
+  # the person-level finance VIEWS on top of :finance_read -- the
+  # Beitragsbuchungen and fin/person_fees -- and nothing else: no
+  # layer_* permission, so the role still grants no access to a
+  # person's own page or data.
   class FinanceAuditor < ::Role
-    self.permissions = [:finance_read]
+    self.permissions = %i[finance_read finance_audit]
     self.admin_only_assignment = true
   end
 
-  roles Member, FinanceAuditor
+  # An external accountant: everything the auditor sees, plus the write
+  # tier for the bookkeeping work itself. Like the auditor it holds no
+  # layer_* permission.
+  class FinanceAccountant < ::Role
+    self.permissions = %i[finance_read finance_audit finance]
+    self.admin_only_assignment = true
+  end
+
+  roles Member, FinanceAuditor, FinanceAccountant
 end
