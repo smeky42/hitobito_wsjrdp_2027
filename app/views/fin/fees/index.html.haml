@@ -14,9 +14,13 @@
   %h1= t("fin.nav.fees")
   %p.text-muted= t("fin.areas.fees.purpose")
   %ul.list-unstyled
-    %li
-      = link_to t("fin.tabs.person_fees"), fin_person_fees_path
-      = wsjrdp_newtab_link(fin_person_fees_path)
+    -# Person-level fee data: :log, the same gate the list itself applies. The
+    -# read tier (:finance_read, e.g. an external auditor) is left with the
+    -# Ratenpläne, which carry no personal data.
+    - if can?(:log, WsjrdpFinAccount)
+      %li
+        = link_to t("fin.tabs.person_fees"), fin_person_fees_path
+        = wsjrdp_newtab_link(fin_person_fees_path)
     %li
       = link_to t("fin.tabs.plans"), wsjrdp_payment_plans_path
       = wsjrdp_newtab_link(wsjrdp_payment_plans_path)

@@ -4,17 +4,20 @@ require "spec_helper"
 # Wsjrdp2027::VariousAbility / Wsjrdp2027::PersonAbility through the
 # constraints in Wsjrdp2027::FinanceAccess:
 #
-#   :finance_read  -> :show                          (Group::Root::FinanceRead,
+#   :finance_read  -> :show, AccountingEntry excepted (Group::Root::FinanceRead,
 #                                                     Group::Extern::FinanceAuditor)
 #   :finance       -> + :log, :create, :update       (Group::Root::Finance, ::Admin)
 #   :finance_admin -> + :fin_admin, :manage, :destroy (Group::Root::FinanceAdmin)
 #
-# Two properties matter beyond the plain tier mapping and are covered below:
+# Three properties matter beyond the plain tier mapping and are covered below:
 #   * the tiers are NOT bound to the root layer, so a Finance role in a nested
 #     Group::Root ("CMT Warteliste") and an auditor on the Extern layer work;
 #   * :log stays out of the read tier -- it is this wagon's "privileged view"
 #     gate, and it also guards the person-level fee pages (fin/fees,
-#     fin/person_fees).
+#     fin/person_fees);
+#   * AccountingEntry stays out of the read tier entirely -- a Beitragsbuchung
+#     is one person's fee data, so /fin/ae/:id is person-level in everything
+#     but its route.
 describe "finance abilities" do
   let(:fin_models) do
     [
@@ -41,11 +44,19 @@ describe "finance abilities" do
   subject(:ability) { Ability.new(person.reload) }
 
   shared_examples "a read tier" do
-    it "may show every finance model, so it reaches the finance section" do
-      fin_models.each do |model|
+    it "may show every finance model but AccountingEntry, so it reaches the section" do
+      (fin_models - [AccountingEntry]).each do |model|
         is_expected.to be_able_to(:show, model)
         is_expected.to be_able_to(:show, model.new)
       end
+    end
+
+    # The Beitragsbuchung pages (/fin/ae/:id, the index, the new forms) are
+    # person-level and stay closed -- Fin::AccountingEntriesController
+    # authorizes exactly this.
+    it "may NOT show a Beitragsbuchung" do
+      is_expected.not_to be_able_to(:show, AccountingEntry)
+      is_expected.not_to be_able_to(:show, AccountingEntry.new)
     end
 
     it "may not log, create, update, fin_admin or destroy" do

@@ -197,6 +197,8 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   end
 
   def permitted_attrs
+    return [] unless can?(:update, fin_account)
+
     [:short_name, :description]
   end
 

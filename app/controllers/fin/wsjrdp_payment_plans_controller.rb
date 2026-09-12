@@ -77,6 +77,8 @@ class Fin::WsjrdpPaymentPlansController < ApplicationController
   end
 
   def permitted_attrs
+    return [] unless can?(:update, wsjrdp_payment_plan)
+
     [
       :comment,
       :status,

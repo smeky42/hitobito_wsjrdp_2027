@@ -22,6 +22,12 @@
     color: #00a030;
   }
 
+-# Creating a Beitragsbuchung from a transaction and linking it to a person are
+-# the write tier's (SubjectLinking and #create_accounting_entry authorize
+-# :update). The read tier (:finance_read, e.g. an external auditor) reaches this
+-# statement legitimately and keeps it as a reading view -- without the action
+-# buttons below.
+- may_edit_tx = can?(:update, WsjrdpCamtTransaction)
 #main.row
   %p
     %a{ href: return_url} Zurück
@@ -80,21 +86,24 @@
             - if tx.comment.present?
               %div
                 %div.fw-light.fst-italic= auto_link_escaped_multiline(tx.comment)
+            -# Both halves are links only for whoever may see the entry's person
+            -# -- see Fin::LinkedEntryHelper for the rule.
             - tx.accounting_entries.each do |ae|
               %div
                 %span.fw-light.muted Person:
-                %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
+                %span= fin_subject_link(ae.subject)
                 %span.ae-linked
-                  = " • Verknüpfte Buchung: #{link_to(ae.link_name, url_for(ae))}"
+                  = " • Verknüpfte Buchung: #{fin_entry_link(ae)}"
             - if (subject = tx.subject_without_accounting_entry).present?
               %div
                 %span.fw-light.muted Person:
-                %span= link_to(subject.short_full_name_with_nickname, url_for(subject))
-              %div
-                = action_button("Erzeuge Buchung", "#{url_for(tx)}/create_accounting_entry",
-                                :plus, method: :post, remote: false,
-                                data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
-            - if tx.accounting_entries.blank?
+                %span= fin_subject_link(subject)
+              - if may_edit_tx
+                %div
+                  = action_button("Erzeuge Buchung", "#{url_for(tx)}/create_accounting_entry",
+                                  :plus, method: :post, remote: false,
+                                  data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
+            - if may_edit_tx && tx.accounting_entries.blank?
               %div
                 - accounting_entries = tx.accounting_entries_for_subject_with_matching_amount
                 - if accounting_entries.size == 1
@@ -102,7 +111,7 @@
                   = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(tx)}/link_accounting_entry/#{entry.id}",
                                   :plus, method: :post, remote: false,
                                   data: { confirm: "Transaktion #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
-            - if tx.respond_to?(:subject_candidates) && (subject_candidates = tx.subject_candidates).present?
+            - if may_edit_tx && tx.respond_to?(:subject_candidates) && (subject_candidates = tx.subject_candidates).present?
               - subject_candidates.each do |subject|
                 %div
                   = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(tx, subject),

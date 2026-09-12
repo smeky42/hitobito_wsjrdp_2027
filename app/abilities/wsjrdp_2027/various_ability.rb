@@ -44,9 +44,19 @@ module Wsjrdp2027::VariousAbility
       WsjrdpPersonalAccount
     ]
 
+    # AccountingEntry is the ONE finance model the read tier does not
+    # get. This way we can hide some personal data.  So /fin/ae/:id is
+    # a person-level page in everything but its route. It therefore
+    # stays closed to :finance_read, the same line the fee pages
+    # (fin/fees, fin/person_fees) draw with :log. The read tier still
+    # sees WHERE an entry is referenced (a booking's or a statement's
+    # link), by its bare id.
+    read_tier_models = finance_models - [AccountingEntry]
+
     finance_models.each do |model|
+      reads_this_model = read_tier_models.include?(model)
       on(model) do
-        permission(:finance_read).may(*read_actions).if_finance_read
+        permission(:finance_read).may(*read_actions).if_finance_read if reads_this_model
         permission(:finance).may(*write_actions).if_finance_write
         permission(:finance_admin).may(*admin_actions).if_finance_admin
       end

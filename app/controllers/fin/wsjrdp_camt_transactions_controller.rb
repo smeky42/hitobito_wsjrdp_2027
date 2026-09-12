@@ -153,6 +153,8 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   end
 
   def permitted_attrs
+    return [] unless can?(:update, camt_transaction)
+
     [
       :comment,
       :subject, :subject_id, :subject_type,

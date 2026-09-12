@@ -99,6 +99,8 @@ class Fin::AccountingEntriesController < Fin::FinController
   end
 
   def permitted_attrs
+    return [] unless can?(:update, AccountingEntry)
+
     if can?(:fin_admin, AccountingEntry)
       if action_name == "new_sepa_status"
         [

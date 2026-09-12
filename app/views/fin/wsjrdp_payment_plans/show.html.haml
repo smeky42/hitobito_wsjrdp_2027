@@ -10,7 +10,7 @@
     = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
-    = form_buttons(f, cancel_url: cancel_url)
+    = form_buttons_if_editable(f, cancel_url: cancel_url)
 
     .mt-3
       = field_set_tag do
@@ -21,4 +21,4 @@
           = input_or_render_attrs(f, :comment)
           = input_or_render_attrs(f, :status)
 
-    = form_buttons(f, cancel_url: cancel_url)
+    = form_buttons_if_editable(f, cancel_url: cancel_url)

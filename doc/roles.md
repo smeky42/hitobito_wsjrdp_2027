@@ -260,29 +260,43 @@ constraints live in
 
 | Tier | Permission | Constraint | Actions | Roles |
 |---|---|---|---|---|
-| read | `finance_read` | `if_finance_read` | `show` | `Root::FinanceRead`, `Extern::FinanceAuditor` |
+| read | `finance_read` | `if_finance_read` | `show` — **except on `AccountingEntry`** | `Root::FinanceRead`, `Extern::FinanceAuditor` |
 | write | `finance` | `if_finance_write` | + `log`, `create`, `update` | `Root::Finance`, `Root::Admin` |
 | admin | `finance_admin` | `if_finance_admin` | + `fin_admin`, `manage` | `Root::FinanceAdmin` |
 
-Five properties are easy to get wrong and are therefore spelled out:
+Some properties are important and are therefore spelled out:
 
-* **The tiers are cumulative, and the action lists repeat
-  deliberately.** The ability store is keyed by `(permission, subject,
-  action)`, so a role only matches the rules of the permissions it
-  actually holds. A role with `:finance` but without `:finance_read`
-  would not grant `:show`.
-* **`:manage` is CanCan's wildcard.** It covers every action on the subject,
-  `:destroy` included, so the admin tier has full access; the other actions
-  in that list only spell the intent out. The predecessor granted `:manage`
-  to `:finance`, so the split *tightened* access rather than widening it.
+* **`AccountingEntry` is not in the read tier at all.**  All the
+  financial aspects are exposed through other models, so nothing is
+  hidden from a finance view perspective. Showing `AccountingEntry`
+  could expose additional non-financial personal data.
+* **The tiers are cumulative, and the action lists repeat.** The
+  ability store is keyed by `(permission, subject, action)`, so a role
+  only matches the rules of the permissions it actually holds. A role
+  with `:finance` but without `:finance_read` would not grant `:show`.
+* **`:manage` is CanCanCan's wildcard.** It covers every action on the
+  subject, `:destroy` included, so the admin tier has full access; the
+  other actions in that list only spell the intent out. The
+  predecessor granted `:manage` to `:finance`, so the split
+  *tightened* access rather than widening it.
 * **`:log` is NOT part of the read tier.** In this wagon `:log` is the
-  generic "privileged/internal view" gate (see below), so a read-only auditor
-  must not get it. It also guards the person-level fee pages (`fin/fees`,
-  `fin/person_fees`), which therefore stay closed to the read tier.
+  generic "privileged/internal view" gate, so a read-only auditor must
+  not get it. It also guards the person-level fee list
+  (`fin/person_fees`), which therefore stays closed to the read tier.
+  The Beiträge section around it is reduced rather than hidden: its
+  overview (`fin/fees`) holds no data and opens at `:show`, and the link
+  and the tab to the person list are left out without `:log`
+  (`Sheet::Fin::Fees`), so the read tier is left with the Ratenpläne.
 * **The constraints are not bound to the root layer.** The finance
   roles need to work when hold inside a nested group. For protection
   against self-assignment, the finance roles are all
   `admin_only_assignment`.
+* **The section gate is `:show`, so every writing action authorizes on
+  its own.** The `before_action :authorize_action` of the `Fin::`
+  controllers only asks for `:show`.  Anything that writes must
+  therefore carry its own `authorize!`. The views ask the same
+  question before they render a control — `can?(:update, …)`, and
+  `#permitted_attrs` answers `[]` without the write tier
 
 ## Admin-only roles (`Role.admin_only_assignment`)
 
@@ -356,8 +370,9 @@ subject"**. Examples:
   [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb) —
   the read tier does not get it (see
   [Finance tiers](#finance-tiers-finance_read--finance--finance_admin))
-- person-level fee pages: `fin/fees` and `fin/person_fees` authorize `:log`
-  (not `:show`), so the read tier sees no person's fee data
+- person-level fee list: `fin/person_fees` authorizes `:log` (not `:show`), so
+  the read tier sees no person's fee data; the section's overview `fin/fees`
+  carries no data and stays at `:show`
 
 Who may `:log` what (core grants plus wagon overrides):
 

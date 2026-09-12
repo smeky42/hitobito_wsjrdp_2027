@@ -19,8 +19,12 @@ class Fin::FeesController < Fin::FinController
 
   private
 
-  # Personal data, require :log, not just :show
+  # The page itself holds NO data -- it names the area and links its two lists
+  # -- so it opens at :show, like every other section overview. The personal
+  # data sits in the lists, and Fin::WsjrdpFinPersonFeesController keeps its own
+  # :log gate; the link and the tab to it are hidden without :log (see the view
+  # and Sheet::Fin::Fees), so the read tier is left with the Ratenpläne.
   def authorize_action
-    authorize!(:log, WsjrdpFinAccount)
+    authorize!(:show, WsjrdpFinAccount)
   end
 end

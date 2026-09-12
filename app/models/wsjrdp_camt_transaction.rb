@@ -74,6 +74,14 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
     self.return_debit_status = value
   end
 
+  # The status' German label -- the read-only counterpart of the select on the
+  # detail page, same convention as AccountingEntry#new_sepa_status_display:
+  # input_or_render_attrs picks a <attr>_display up by itself for anyone who
+  # may not edit the field.
+  def return_status_display
+    Settings.return_debit_status[return_status]
+  end
+
   def description_for_subject_candidates
     description
   end

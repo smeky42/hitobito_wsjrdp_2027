@@ -27,6 +27,9 @@ class Fin::BookingsController < Fin::FinController
   include Wsjrdp::TableStateful
 
   before_action :authorize_action
+  # Note: #query_entries only feeds autocomplete in editing mode, so
+  # it also requires writing authorization.
+  before_action :authorize_write, only: %i[query_entries update]
 
   helper_method :bookings
 
@@ -134,6 +137,9 @@ class Fin::BookingsController < Fin::FinController
       :secondary_cost_center_number, :is_unit_budget, :sub_cost_center_number)
     editable_keys = attrs.keys & %w[secondary_cost_center_number is_unit_budget sub_cost_center_number]
     if editable_keys.any?
+      # The field edits are the admin tier's -- the same gate the detail view
+      # asks before it builds the form at all (fin/bookings/_detail).
+      authorize!(:fin_admin, booking)
       update_fields(booking, attrs.slice(*editable_keys))
     elsif attrs.key?(:accounting_entry_id)
       update_entry_link(booking, attrs[:accounting_entry_id])
@@ -242,5 +248,9 @@ class Fin::BookingsController < Fin::FinController
 
   def authorize_action
     authorize!(:show, DatevBooking)
+  end
+
+  def authorize_write
+    authorize!(:update, DatevBooking)
   end
 end

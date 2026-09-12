@@ -19,6 +19,11 @@
 -#       stay in the row rather than moving into a detail.
 -#
 -#  Locals: booking (a MossBooking).
+-#  Those buttons are the write tier's (SubjectLinking and
+-#  #create_accounting_entry authorize :update). The read tier (:finance_read,
+-#  e.g. an external auditor) reaches the wallet legitimately and keeps the row
+-#  as a reading view -- texts, comments and existing links, no actions.
+- may_edit_booking = can?(:update, MossBooking)
 %div= moss_wallet_headline(booking)
 = moss_wallet_text_lines(booking)
 - booking.parent_comments.each do |level, text|
@@ -27,21 +32,24 @@
 - if booking.comment.present?
   %div
     %div.fw-light.fst-italic= auto_link_escaped_multiline(booking.comment)
+-# Both halves are links only for whoever may see the entry's person -- see
+-# Fin::LinkedEntryHelper for the rule.
 - booking.accounting_entries.each do |ae|
   %div
     %span.fw-light.muted Person:
-    %span= link_to(ae.subject.short_full_name_with_nickname, url_for(ae.subject))
+    %span= fin_subject_link(ae.subject)
     %span.ae-linked
-      = " • Verknüpfte Buchung: #{link_to(ae.link_name, url_for(ae))}"
+      = " • Verknüpfte Buchung: #{fin_entry_link(ae)}"
 - if (subject = booking.subject_without_accounting_entry).present?
   %div
     %span.fw-light.muted Person:
-    %span= link_to(subject.short_full_name_with_nickname, url_for(subject))
-  %div
-    = action_button("Erzeuge Buchung", "#{url_for(booking)}/create_accounting_entry",
-                    :plus, method: :post, remote: false,
-                    data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
-- if booking.accounting_entries.blank?
+    %span= fin_subject_link(subject)
+  - if may_edit_booking
+    %div
+      = action_button("Erzeuge Buchung", "#{url_for(booking)}/create_accounting_entry",
+                      :plus, method: :post, remote: false,
+                      data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
+- if may_edit_booking && booking.accounting_entries.blank?
   %div
     - accounting_entries = booking.accounting_entries_for_subject_with_matching_amount
     - if accounting_entries.size == 1
@@ -49,7 +57,7 @@
       = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(booking)}/link_accounting_entry/#{entry.id}",
                       :plus, method: :post, remote: false,
                       data: { confirm: "Transaktion #{booking.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
-- if (subject_candidates = booking.subject_candidates).present?
+- if may_edit_booking && (subject_candidates = booking.subject_candidates).present?
   - subject_candidates.each do |subject|
     %div
       = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(booking, subject),
