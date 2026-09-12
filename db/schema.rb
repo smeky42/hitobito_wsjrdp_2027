@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_12_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_12_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -986,9 +986,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_130000) do
     t.text "comment", default: "", null: false, comment: "App-side free text"
     t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
     t.index ["moss_expense_uuid"], name: "index_moss_expenses_expense_uuid", unique: true
-    t.index ["moss_transaction_id", "expense_number"], name: "index_moss_expenses_transaction_expense_number", unique: true
     t.index ["moss_transaction_id"], name: "index_moss_expenses_transaction"
     t.index ["type"], name: "index_moss_expenses_type"
+    t.unique_constraint ["moss_transaction_id", "expense_number"], deferrable: :deferred, name: "unq_moss_expenses_transaction_expense_number"
   end
 
   create_table "moss_transactions", comment: "L1: one row per Moss transaction (card payment, invoice, reimbursement, top-up)", force: :cascade do |t|
