@@ -28,10 +28,10 @@ module HitobitoWsjrdp2027
       # be defined before admin_only_assignment exists.
       Role.include Wsjrdp2027::Role
 
-      # Own permissions, extending the core's Role::Permissions (the core keeps
-      # that constant mutable precisely to allow this). Our finance access is
-      # three-tiered: :finance_read (see), the core's :finance (edit) and
-      # :finance_admin (manage).
+      # Own permissions, extending the core's Role::Permissions (the
+      # core keeps that constant mutable precisely to allow this). Our
+      # finance access adds :finance_read, :finance_audit and
+      # :finance_manage to the core's :finance.
       #
       # This MUST run before the ability concerns further down: AbilityDsl's
       # recorder rejects any permission missing from Role::Permissions
@@ -39,21 +39,21 @@ module HitobitoWsjrdp2027
       # `include`. It belongs in to_prepare rather than an initializer because
       # Role is autoloaded (and is reloaded in development, which resets the
       # constant) -- hence also the idempotence guard.
-      %i[finance_read finance_admin].each do |permission|
+      %i[finance_read finance_audit finance_manage].each do |permission|
         Role::Permissions << permission unless Role::Permissions.include?(permission)
       end
       # Marks the tier as write-granting. The core only defines this constant
       # and does not read it (yet); the entry keeps the semantics right should
       # it start to.
-      unless Role::WRITING_PERMISSIONS.include?(:finance_admin)
-        Role::WRITING_PERMISSIONS << :finance_admin
+      unless Role::WRITING_PERMISSIONS.include?(:finance_manage)
+        Role::WRITING_PERMISSIONS << :finance_manage
       end
       # AbilityDsl::UserContext only builds its group/layer lookup for the
       # permissions listed here (init_permission_groups / init_permission_layers),
       # and both constants are explicitly meant to be extended. Without this,
       # permission_layer_ids(:finance_read) would simply return nil and every
       # constraint built on it would fail. Both are layer-scoped, like :finance.
-      %i[finance_read finance_admin].each do |permission|
+      %i[finance_read finance_audit finance_manage].each do |permission|
         unless AbilityDsl::UserContext::GROUP_PERMISSIONS.include?(permission)
           AbilityDsl::UserContext::GROUP_PERMISSIONS << permission
         end

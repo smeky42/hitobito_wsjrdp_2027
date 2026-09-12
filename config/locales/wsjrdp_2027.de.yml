@@ -28,10 +28,10 @@ de:
         one: CMT
       group/root/finance:
         one: Finance
-      group/root/finance_read:
-        one: Finance Read
-      group/root/finance_admin:
-        one: Finance Admin
+      group/root/finance_reader:
+        one: Finance Reader
+      group/root/finance_manager:
+        one: Finance Manager
 
       group/ist/leader:
         one: IST Manager
@@ -51,6 +51,8 @@ de:
         one: Extern
       group/extern/finance_auditor:
         one: Kassenprüfer*in
+      group/extern/finance_accountant:
+        one: Buchhalter*in
 
 
       ### FINANZEN
@@ -514,7 +516,8 @@ de:
           permission:
             description:
               finance_read: Lesen der Finanzdaten des Kontingents (Buchhaltung, Beiträge, Abstimmung) ohne Änderungsmöglichkeit.
-              finance_admin: Administrieren der Finanzdaten des Kontingents, inklusive Löschen und administrativer Werkzeuge.
+              finance_audit: Zusätzlich Lesen der personenbezogenen Finanzdaten (Beitragsbuchungen, Personen mit besonderer Finanz-Situation) – weiterhin ohne Änderungsmöglichkeit und ohne Zugriff auf die Personen selbst.
+              finance_manage: Administrieren der Finanzdaten des Kontingents, inklusive Löschen und administrativer Werkzeuge.
 
     buttons:
       show_contract: Anmeldung einsehen

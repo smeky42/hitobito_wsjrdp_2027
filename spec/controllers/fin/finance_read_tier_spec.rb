@@ -9,11 +9,19 @@
 
 require "spec_helper"
 
-# The finance READ tier on the two Buchhaltung/Abstimmung controllers
-# (doc/roles.md -> "Finance tiers"). Both sections are gated on :show, which is
-# what lets a Group::Extern::FinanceAuditor -- an external auditor holding
-# nothing but :finance_read -- reach every page here. What it must NOT do is
-# write, and the two halves of that boundary are asserted together:
+# The two READ-ONLY finance tiers (doc/roles.md -> "Finance tiers") on the
+# /fin pages. The sections are gated on :show, which is what lets both of them
+# reach the pages at all:
+#
+#   reader   Group::Root::FinanceReader     -- :finance_read
+#   auditor  Group::Extern::FinanceAuditor -- :finance_read + :finance_audit
+#
+# Neither may write, and that is asserted for the auditor throughout (whatever
+# the auditor may not do, the stricter reader may not either). Where the two
+# differ -- the Beitragsbuchungen and the person-level fee list, which the
+# audit tier sees and the read tier does not -- both are asserted side by side.
+#
+# The two halves of the write boundary are asserted together:
 #
 #   * the controller refuses the writing actions (:update for connecting and
 #     unlinking, :fin_admin for the field edits and the dev-only reset),
@@ -25,8 +33,9 @@ require "spec_helper"
 describe "finance read tier (Buchhaltung / Abstimmung)" do
   let(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
   let(:auditor) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
+  let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
   let(:accountant) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-  let(:fin_admin) { Fabricate(Group::Root::FinanceAdmin.name.to_sym, group: groups(:root)).person }
+  let(:fin_admin) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
 
   let!(:batch) do
     DatevBookingBatch.create!(consultant_number: "1", client_number: "2",
@@ -147,18 +156,6 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(response.body).not_to include("Alle Verknüpfungen zurücksetzen")
       end
 
-      # The second table is a Beitragsbuchungen view, and those are closed to
-      # the read tier -- the counts, the histogram and the DATEV side stay.
-      it "leaves out the Beitragsbuchungen section entirely" do
-        get :participant_fees
-
-        expect(response).to be_successful
-        expect(response.body).to include("Nicht zugeordnete Buchungen")
-        expect(response.body).not_to include("Nicht zugeordnete Beitragsbuchungen")
-        expect(response.body).not_to include(entry.description)
-        expect(response.body).not_to include("/fin/ae/#{entry.id}")
-      end
-
       %i[connect_participant_fees connect_participant_entries].each do |action|
         it "refuses #{action}" do
           expect { post action }.to raise_error(CanCan::AccessDenied)
@@ -207,6 +204,33 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       # to here -- see the auditor's example above).
       it "does not hold the :fin_admin the reset_links gate asks for either" do
         expect(Ability.new(accountant.reload)).not_to be_able_to(:fin_admin, DatevBooking)
+      end
+    end
+
+    # The "Nicht zugeordnete Beitragsbuchungen" table is a Beitragsbuchungen
+    # view, so it follows :show on AccountingEntry -- which is exactly where
+    # the two read-only tiers part. The counts, the histogram and the DATEV
+    # side above are there for both.
+    context "the Beitragsbuchungen section" do
+      it "is left out for the plain read tier" do
+        sign_in(reader)
+        get :participant_fees
+
+        expect(response).to be_successful
+        expect(response.body).to include("Nicht zugeordnete Buchungen")
+        expect(response.body).not_to include("Nicht zugeordnete Beitragsbuchungen")
+        expect(response.body).not_to include(entry.description)
+        expect(response.body).not_to include("/fin/ae/#{entry.id}")
+      end
+
+      it "is shown to the audit tier" do
+        sign_in(auditor)
+        get :participant_fees
+
+        expect(response).to be_successful
+        expect(response.body).to include("Nicht zugeordnete Beitragsbuchungen")
+        expect(response.body).to include(entry.description)
+        expect(response.body).to include("/fin/ae/#{entry.id}")
       end
     end
   end
@@ -352,11 +376,12 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       end
     end
 
-    # The Beitragsbuchung's own page is the ONE finance page the read tier does
-    # not reach at all: a Beitragsbuchung is one person's fee data, so
-    # :finance_read has no :show on AccountingEntry and #authorize_action closes
-    # every action here. Its toolbar is built by hand rather than through
-    # form_buttons, so the write tier's Speichern is asserted separately.
+    # The Beitragsbuchung's own page is where the two read-only tiers part: a
+    # Beitragsbuchung is one person's fee data, so :finance_read has no :show on
+    # AccountingEntry and #authorize_action closes every action here, while
+    # :finance_audit -- what an external Kassenprüfer*in holds -- passes. Its
+    # toolbar is built by hand rather than through form_buttons, so the write
+    # tier's Speichern is asserted separately.
     describe ::Fin::AccountingEntriesController, type: :controller do
       render_views
 
@@ -369,18 +394,33 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(response.body).to include("accounting_entry[comment]")
       end
 
-      it "does not let the read tier see a Beitragsbuchung at all" do
-        sign_in(auditor)
+      it "does not let the plain read tier see a Beitragsbuchung at all" do
+        sign_in(reader)
 
         expect { get :show, params: {id: entry.id} }.to raise_error(CanCan::AccessDenied)
+        expect { get :index }.to raise_error(CanCan::AccessDenied)
       end
 
-      it "closes the index and the new forms for the read tier too" do
+      it "lets the audit tier read one -- without a link to its person" do
         sign_in(auditor)
+        get :show, params: {id: entry.id}
 
-        expect { get :index }.to raise_error(CanCan::AccessDenied)
-        expect { get :new }.to raise_error(CanCan::AccessDenied)
-        expect { get :new_sepa_status }.to raise_error(CanCan::AccessDenied)
+        expect(response).to be_successful
+        expect(response.body).to include("Teilnahmebeitrag")
+        # Read-only all the same, and no way into the person's own page.
+        expect(save_buttons).to be_empty
+        expect(response.body).not_to include("accounting_entry[comment]")
+        expect(Nokogiri::HTML(response.body).css("#main a").pluck("href"))
+          .not_to include("/people/#{entry.subject_id}")
+      end
+
+      it "closes the new forms for both read-only tiers (:create)" do
+        [reader, auditor].each do |person|
+          sign_in(person)
+
+          expect { get :new }.to raise_error(CanCan::AccessDenied)
+          expect { get :new_sepa_status }.to raise_error(CanCan::AccessDenied)
+        end
       end
     end
   end
@@ -396,13 +436,21 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
 
       def link_hrefs = Nokogiri::HTML(response.body).css("#main a").pluck("href")
 
-      it "shows the read tier the Ratenpläne and no person-fee link" do
-        sign_in(auditor)
+      it "shows the plain read tier the Ratenpläne and no person-fee link" do
+        sign_in(reader)
         get :index
 
         expect(response).to be_successful
         expect(link_hrefs).to include("/fin/payment_plans")
         expect(link_hrefs).not_to include("/fin/person_fees")
+      end
+
+      it "shows the audit tier both lists" do
+        sign_in(auditor)
+        get :index
+
+        expect(response).to be_successful
+        expect(link_hrefs).to include("/fin/payment_plans").and include("/fin/person_fees")
       end
 
       it "shows the write tier both lists" do
@@ -415,10 +463,23 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
     end
 
     describe ::Fin::WsjrdpFinPersonFeesController, type: :controller do
-      it "stays closed to the read tier" do
-        sign_in(auditor)
+      render_views
+
+      it "stays closed to the plain read tier" do
+        sign_in(reader)
 
         expect { get :index }.to raise_error(CanCan::AccessDenied)
+      end
+
+      # What :finance_audit exists for -- and the names on it stay plain text,
+      # because the tier holds nothing on Person.
+      it "is open to the audit tier, with unlinked names" do
+        sign_in(auditor)
+        get :index
+
+        expect(response).to be_successful
+        expect(Nokogiri::HTML(response.body).css("#main a").pluck("href"))
+          .not_to include(person_path(people(:yp_a_1)))
       end
     end
 
@@ -437,7 +498,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       render_views
 
       it "drops the person-fee quick link from the Beiträge card" do
-        sign_in(auditor)
+        sign_in(reader)
         get :index
 
         expect(response).to be_successful

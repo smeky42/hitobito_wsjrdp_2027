@@ -1,8 +1,8 @@
 require "spec_helper"
 
 # Assignment of "admin-only" roles (every role marked via
-# Role.admin_only_assignment: Group::Root::Admin, ::Finance, ::FinanceRead,
-# ::FinanceAdmin and Group::Extern::FinanceAuditor): only CMT admins may
+# Role.admin_only_assignment: Group::Root::Admin, ::Finance, ::FinanceReader,
+# ::FinanceManager and Group::Extern::FinanceAuditor): only CMT admins may
 # create or update them, and only admins may take them away from ANOTHER
 # person (removing one's own role is not restricted by the wagon rule;
 # removing one's own permission-GIVING role stays blocked by the core rule
@@ -18,8 +18,8 @@ describe RoleAbility do
   # out by a non-admin, to anybody INCLUDING themselves.
   def finance_roles(for_person)
     [
-      Group::Root::FinanceRead.new(group: root, person: for_person),
-      Group::Root::FinanceAdmin.new(group: root, person: for_person),
+      Group::Root::FinanceReader.new(group: root, person: for_person),
+      Group::Root::FinanceManager.new(group: root, person: for_person),
       Group::Extern::FinanceAuditor.new(group: extern, person: for_person)
     ]
   end
