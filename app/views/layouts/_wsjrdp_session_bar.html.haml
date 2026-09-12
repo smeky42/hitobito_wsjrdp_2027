@@ -1,0 +1,201 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The session UI: the two session bars and the admin tab (doc/roles.md ->
+-#  "The finance cap"). Rendered from layouts/_file_download; the core's own
+-#  impersonation bar is silenced by the wagon's layouts/_user_impersonation.
+-#
+-#  The bars: one line each for the two pieces of session state that change
+-#  what a person may do -- a red one while impersonating (the core's colour
+-#  for it) and a yellow one for the finance cap. The yellow bar IS the
+-#  selection: a segmented control of the tiers up to the roles' own, the tier
+-#  in force pressed; choosing the roles' tier clears the cap. When it shows is
+-#  the session's finance_tier_bar mode (always / hidden / ondemand, see
+-#  Wsjrdp2027::Concerns::SessionSettings).
+-#
+-#  Each bar carries ONE action at its end, in the core's own form -- the
+-#  times-circle icon followed by its text: "Imitation beenden" sends the
+-#  core's DELETE; "Begrenzung aufheben" clears the cap and puts the bar back
+-#  on demand, so it goes away with the cap. Both run in the background and
+-#  then reload the page with the session parameters stripped, so nobody is
+-#  sent elsewhere (a page reached through ?max_finance_permission=... would
+-#  otherwise set the cap right back). Buttons rather than links: Turbo
+-#  captures link clicks before any other handler and would follow the href.
+-#
+-#  Each bar is exactly the 30 px the core reserves per .info-bar, so they
+-#  stack edge to edge, and both give way on a phone in this order: first the
+-#  note about the roles' tier, then the action's text (the icon stays,
+-#  labelled for screen readers), and only then does the message itself
+-#  shrink to an ellipsis. The segments never give way.
+-#
+-#  The admin tab: a small tab hanging from the top edge of the page, above
+-#  the name and the sign-out link (the page's top padding leaves room there),
+-#  opening a Bootstrap dropdown. Only for whoever is actually logged in --
+-#  the origin user while impersonating -- with :admin, and only when asked
+-#  for through the session's compact_admin_tab mode (WsjrdpAdminTabHelper).
+-#  The menu: the finance tier in force, changeable like the bar's segments;
+-#  "Finanzrecht-Balken einblenden" / "ausblenden" (finance_tier_bar always /
+-#  hidden, the one that applies enabled); and the person search of the core's
+-#  typeahead (data-provide=entity on people/query) for whoever actually
+-#  logged in and may impersonate -- a selection asks for confirmation and
+-#  then posts to Wsjrdp::ImpersonationController, a real form submit, since
+-#  the sign-in changes the CSRF token. While impersonating, the search
+-#  switches to the chosen person and "Imitation beenden" joins it. On a
+-#  phone the tab gets a strip of its own above the header instead of
+-#  overlapping it: there is no room above the menu toggle and the search
+-#  field.
+- tiers = finance_tiers
+- impersonating = origin_user.present?
+- admin_tab = compact_admin_tab?
+-# The core positions header.logo absolutely (top: 1rem), so the 30 px each
+-# .info-bar reserves in the FLOW push the page down but not the logo -- it
+-# would end up under the bars. Push it down by their height. The admin tab
+-# adds nothing here (height: 0 on desktop), and on a phone the core hides the
+-# logo anyway. Covered by spec/controllers/session_settings_spec.rb.
+- bar_count = [impersonating, finance_tier_bar?].count { |shown| shown }
+- if impersonating || finance_tier_bar? || admin_tab
+  :css
+    .wsjrdp-session-bar.info-bar .alert { box-sizing: border-box; height: 30px; padding: 0 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12.25px; line-height: 28px; border-radius: 0; white-space: nowrap; }
+    header.logo { margin-top: #{bar_count * 30}px; }
+    .wsjrdp-session-bar .wsjrdp-bar-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .wsjrdp-session-bar .wsjrdp-bar-note, .wsjrdp-session-bar .wsjrdp-seg, .wsjrdp-session-bar .wsjrdp-bar-action { flex: none; }
+    .wsjrdp-session-bar .wsjrdp-seg { display: inline-flex; height: 24px; border: 1px solid var(--bs-alert-color); border-radius: 4px; overflow: hidden; }
+    .wsjrdp-session-bar .wsjrdp-seg button { appearance: none; background: transparent; border: 0; border-right: 1px solid var(--bs-alert-color); color: inherit; font: inherit; line-height: 22px; padding: 0 10px; cursor: pointer; }
+    .wsjrdp-session-bar .wsjrdp-seg button:last-child { border-right: 0; }
+    .wsjrdp-session-bar .wsjrdp-seg button.on { background: var(--bs-alert-color); color: var(--bs-alert-bg); font-weight: 600; }
+    .wsjrdp-session-bar .wsjrdp-bar-action { color: #000; margin-left: 22px; padding: 0; border: 0; background: transparent; font: inherit; line-height: inherit; cursor: pointer; }
+    .wsjrdp-session-bar .wsjrdp-bar-action:hover .wsjrdp-bar-action-label { text-decoration: underline; }
+    .wsjrdp-admin-tab { position: relative; z-index: 3; height: 0; }
+    .wsjrdp-admin-tab-toggle { position: absolute; top: 0; right: calc(1rem + 20px); height: 18px; line-height: 18px; padding: 0 10px; font-size: 11px; border: 0; border-radius: 0 0 6px 6px; background: var(--bs-primary, #21697c); color: #fff; cursor: pointer; white-space: nowrap; }
+    .wsjrdp-admin-tab-toggle i { margin-right: 4px; }
+    .wsjrdp-admin-tab .dropdown-menu { min-width: 17rem; font-size: 0.875rem; }
+    .wsjrdp-admin-tab .dropdown-header { color: rgba(255, 255, 255, 0.75); }
+    .wsjrdp-admin-tab .dropdown-divider { border-top-color: rgba(255, 255, 255, 0.35); }
+    .wsjrdp-admin-tab .dropdown-item.disabled { opacity: 0.55; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-mark { display: inline-block; width: 1.25rem; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-picker { padding: 0.25rem 1rem 0.5rem; }
+    .wsjrdp-admin-tab .autoComplete_wrapper { display: block; position: relative; }
+    .wsjrdp-admin-tab .autoComplete_wrapper ul { color: #212529; width: 100%; }
+    @media (max-width: 767.98px) { .wsjrdp-session-bar .wsjrdp-bar-note { display: none; } .wsjrdp-admin-tab { height: auto; display: flex; justify-content: flex-end; padding-right: 5px; background: #fff; } .wsjrdp-admin-tab-toggle { position: static; } }
+    @media (max-width: 575.98px) { .wsjrdp-session-bar .wsjrdp-bar-action { margin-left: 4px; } .wsjrdp-session-bar .wsjrdp-bar-action-label { display: none; } }
+  - if impersonating
+    .wsjrdp-session-bar.info-bar
+      .alert.alert-danger
+        %span.wsjrdp-bar-text= t('layouts.user_impersonation.info', user: current_user)
+        %button.wsjrdp-bar-action{type: "button", title: t('layouts.user_impersonation.end'), "aria-label": t('layouts.user_impersonation.end'), data: {wsjrdp_session_action: "delete", url: sign_out_path}}
+          = icon('times-circle')
+          %span.wsjrdp-bar-action-label= t('layouts.user_impersonation.end')
+  - if finance_tier_bar?
+    .wsjrdp-session-bar.info-bar
+      .alert.alert-warning
+        - if tiers.nil?
+          %span.wsjrdp-bar-text= t('.none')
+        - else
+          %span.wsjrdp-bar-text= t('.label')
+          %span.wsjrdp-seg{role: "group", "aria-label": t('.choose')}
+            - selectable_finance_tiers.each do |tier|
+              - value = (tier == tiers[:by_roles]) ? "" : tier
+              %button{type: "button", class: ("on" if tier == tiers[:effective]), "aria-pressed": (tier == tiers[:effective]).to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: value)}}= finance_tier_label(tier)
+          %span.wsjrdp-bar-text.wsjrdp-bar-note= t('.by_roles', tier: finance_tier_label(tiers[:by_roles]))
+        %button.wsjrdp-bar-action{type: "button", title: t('.lift'), "aria-label": t('.lift'), data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: "", finance_tier_bar: "ondemand")}}
+          = icon('times-circle')
+          %span.wsjrdp-bar-action-label= t('.lift')
+  - if admin_tab
+    .wsjrdp-admin-tab.dropdown
+      %button#wsjrdp-admin-tab-toggle.wsjrdp-admin-tab-toggle{type: "button", "aria-expanded": "false", data: {bs_toggle: "dropdown", bs_auto_close: "outside"}}
+        = icon('cog')
+        = t('.admin_tab')
+      %ul.dropdown-menu.dropdown-menu-end{"aria-labelledby": "wsjrdp-admin-tab-toggle"}
+        - unless tiers.nil?
+          %li
+            %h6.dropdown-header= t('.tier_heading')
+          - selectable_finance_tiers.each do |tier|
+            - by_roles = (tier == tiers[:by_roles])
+            - in_force = (tier == tiers[:effective])
+            %li
+              %button.dropdown-item.wsjrdp-admin-tab-tier{type: "button", "aria-current": in_force.to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: (by_roles ? "" : tier))}}
+                %span.wsjrdp-admin-tab-mark= icon('check') if in_force
+                = finance_tier_label(tier)
+                = t('.tier_by_roles') if by_roles
+        - bar_shown = finance_tier_bar?
+        %li
+          %button.dropdown-item.wsjrdp-admin-tab-bar-show{type: "button", class: ("disabled" if bar_shown), disabled: bar_shown, data: {wsjrdp_session_action: "post", url: session_settings_path(finance_tier_bar: "always")}}
+            %span.wsjrdp-admin-tab-mark
+            = t('.show_bar')
+        %li
+          %button.dropdown-item.wsjrdp-admin-tab-bar-hide{type: "button", class: ("disabled" unless bar_shown), disabled: !bar_shown, data: {wsjrdp_session_action: "post", url: session_settings_path(finance_tier_bar: "hidden")}}
+            %span.wsjrdp-admin-tab-mark
+            = t('.hide_bar')
+        - may_impersonate = admin_tab_may_impersonate?
+        - if may_impersonate || impersonating
+          %li
+            %hr.dropdown-divider
+          %li
+            %h6.dropdown-header= t('.impersonate_heading')
+        - if may_impersonate
+          %li.wsjrdp-admin-tab-picker
+            %input#wsjrdp-admin-tab-person.form-control.form-control-sm{type: "text", placeholder: t('.impersonate_placeholder'), "aria-label": t('.impersonate_heading'), data: {provide: "entity", url: query_people_path(limit_by_permission: "impersonate_user"), no_results_message: t('.impersonate_no_results'), wsjrdp_impersonate_url: wsjrdp_impersonate_path, confirm: t('.impersonate_confirm', person: "%{person}")}}
+        - if impersonating
+          %li
+            %button.dropdown-item.wsjrdp-admin-tab-end{type: "button", data: {wsjrdp_session_action: "delete", url: sign_out_path}}
+              %span.wsjrdp-admin-tab-mark= icon('times-circle')
+              = t('layouts.user_impersonation.end')
+  :javascript
+    (function () {
+      if (window.__wsjrdpSessionBar) return;
+      window.__wsjrdpSessionBar = true;
+      function csrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.content : '';
+      }
+      document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-wsjrdp-session-action]');
+        if (!el) return;
+        e.preventDefault();
+        el.disabled = true;
+        fetch(el.dataset.url, {
+          method: el.dataset.wsjrdpSessionAction.toUpperCase(),
+          headers: {'X-CSRF-Token': csrfToken(), 'Accept': 'text/html'},
+          credentials: 'same-origin',
+          redirect: 'manual'
+        }).then(function () {
+          var url = new URL(window.location.href);
+          ['max_finance_permission', 'finance_tier_bar', 'compact_admin_tab'].forEach(function (key) { url.searchParams.delete(key); });
+          window.location.replace(url.toString());
+        });
+      });
+      // The admin tab's person search: the core's typeahead announces a pick
+      // with a "selection" event on its input. Confirm, then submit a real
+      // form -- the sign-in behind it changes the CSRF token, so the answer
+      // must be a full page load.
+      document.addEventListener('selection', function (e) {
+        var input = e.target;
+        if (!input || !input.dataset || !input.dataset.wsjrdpImpersonateUrl) return;
+        var person = e.detail && e.detail.selection && e.detail.selection.value;
+        if (!person || !person.id) return;
+        var label = document.createElement('textarea');
+        label.innerHTML = String(person.label || '').replace(/<[^>]*>/g, '');
+        if (!window.confirm(input.dataset.confirm.replace('%{person}', label.value))) {
+          // The typeahead writes the label into the input right after this
+          // handler; empty it once that is done.
+          setTimeout(function () { input.value = ''; }, 0);
+          return;
+        }
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = input.dataset.wsjrdpImpersonateUrl;
+        [['authenticity_token', csrfToken()], ['person_id', person.id]].forEach(function (pair) {
+          var field = document.createElement('input');
+          field.type = 'hidden';
+          field.name = pair[0];
+          field.value = pair[1];
+          form.appendChild(field);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      }, true);
+    })();

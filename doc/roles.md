@@ -2,8 +2,8 @@
 
 This document covers the hitobito roles defined in this wagon,
 hitobito's permission system (permissions → abilities), the wagon's own
-permissions and its three finance tiers, the admin-only role assignment, and
-the wagon's `:log` convention.
+permissions and finance tiers, the admin-only role assignment, and the
+wagon's `:log` convention.
 
 Unlinked paths (e.g. `app/models/role/types.rb`) are in the hitobito
 core, checked out as the sibling directory `../hitobito` in the dev
@@ -22,7 +22,7 @@ organizational structure is always defined by the wagon, ours in
 | [`ist.rb`](../app/models/group/ist.rb) | `Group::Ist` | IST | yes | Ist |
 | [`extern.rb`](../app/models/group/extern.rb) | `Group::Extern` | Extern | yes | — |
 
-All four types are layers (`self.layer = true`), so each forms its own
+All of them are layers (`self.layer = true`), so each forms its own
 permission domain. Roles are nested classes inside their group type
 and carry their `permissions` as a class attribute. The German UI
 labels live in
@@ -35,18 +35,17 @@ labels live in
 
 | Role | Label (de) | Permissions | Assignment |
 |---|---|---|---|
-| `Group::Root::Admin` | Admin | `layer_and_below_full`, `admin`, `finance` | admins only |
+| `Group::Root::Admin` | Admin | `layer_and_below_full`, `admin`, `impersonation`, `finance_read`, `finance_audit`, `finance` | admins only |
 | `Group::Root::Leader` | Leader | `layer_and_below_full` | — |
 | `Group::Root::FinanceReader` | Finance Read | `finance_read` | admins only |
-| `Group::Root::Finance` | Finance | `layer_and_below_full`, `finance_read`, `finance` | admins only |
-| `Group::Root::FinanceManager` | Finance Admin | `layer_and_below_full`, `finance_read`, `finance`, `finance_manage` | admins only |
+| `Group::Root::Finance` | Finance | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance` | admins only |
+| `Group::Root::FinanceManager` | Finance Admin | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance`, `finance_manage` | admins only |
 | `Group::Root::Member` | CMT | — | — |
 
-The three finance roles map onto the three finance tiers (see
-[Finance tiers](#finance-tiers-finance_read--finance_audit--finance--finance_manage) below).
-`FinanceReader` deliberately carries **no** `layer_*` permission: it grants the
-finance view and nothing else, in particular no access to the contingent's
-people. "Assignment: admins only" is `Role.admin_only_assignment`, see
+Each finance role sits on one [finance tier](#finance-tiers).
+`FinanceReader` carries no `layer_*` permission: it grants the finance view
+and nothing else, in particular no access to the contingent's people.
+"Assignment: admins only" is `Role.admin_only_assignment`, see
 [Admin-only roles](#admin-only-roles-roleadmin_only_assignment).
 
 **`Group::Unit` (Unit):**
@@ -73,14 +72,13 @@ people. "Assignment: admins only" is `Role.admin_only_assignment`, see
 | `Group::Extern::FinanceAuditor` | Kassenprüfer*in | `finance_read`, `finance_audit` | admins only |
 | `Group::Extern::FinanceAccountant` | Buchhalter*in (extern) | `finance_read`, `finance_audit`, `finance` | admins only |
 
-`FinanceAuditor` is the AUDIT tier for EXTERNAL auditors,
-`FinanceAccountant` the write tier for external bookkeeping work. Like
-`Group::Root::FinanceReader` neither holds a `layer_*` permission, so
-neither grants access to a person's own page or data — `finance_audit`
-opens the person-level finance VIEWS (Beitragsbuchungen,
-`fin/person_fees`), not the people.
+`FinanceAuditor` is the audit tier for external auditors, `FinanceAccountant`
+the write tier for external bookkeeping. Neither holds a `layer_*`
+permission, so neither reaches a person's page: `finance_audit` opens the
+person-level finance views (Beitragsbuchungen, `fin/person_fees`), not the
+people.
 
-Key point: `layer_and_below_full` is always **relative to the layer
+`layer_and_below_full` is always **relative to the layer
 the role sits in**. A `Group::Root::Leader` holds it on the root layer
 (and thus everything below), a `Group::Unit::Manager` only on their
 unit layer, a `Group::Ist::Leader` only on the IST layer.
@@ -152,31 +150,30 @@ permission that no longer exists in `types.rb`. Do not build on it.
 
 The core keeps `Permissions` mutable on purpose (`Style/MutableConstant` is
 disabled there with the comment *"Keep mutable to enable extension"*), so a
-wagon may add its own. We add two, both registered in
+wagon may add its own. Ours are registered in
 [`lib/hitobito_wsjrdp_2027/wagon.rb`](../lib/hitobito_wsjrdp_2027/wagon.rb):
 
 | Permission | Meaning |
 |---|---|
 | `finance_read` | see the finance data (read tier) |
-| `finance_audit` | additionally see the person-level finance data — read-only (audit tier) |
-| `finance_manage` | administer the finance data (admin tier) |
+| `finance_audit` | also see the person-level finance data, still read-only (audit tier) |
+| `finance_manage` | administer the finance data (manage tier) |
 
-Three things have to line up for a new permission, all done in that same
-`to_prepare` block:
+A new permission needs, in that same `to_prepare` block:
 
 1. **`Role::Permissions`** — `AbilityDsl::Recorder` raises `Unknown
    permission` for anything not listed, and the ability concerns register
-   their rules on `include`, so the registration must run BEFORE them.
+   their rules on `include`, so the registration must run before them.
 2. **`AbilityDsl::UserContext::GROUP_PERMISSIONS` / `LAYER_PERMISSIONS`** —
    `init_permission_groups` / `init_permission_layers` build their lookup
    only for the permissions listed there. Without the entry,
    `permission_layer_ids(:finance_read)` silently returns `nil`.
 3. **i18n** — `activerecord.attributes.role.class.permission.description.*`,
    otherwise the role administration shows a missing translation.
-
-`Role::WRITING_PERMISSIONS` additionally lists `finance_manage` (not
-`finance_read`). The core only defines that constant and does not read it
-(yet); the entry keeps the semantics right should it start to.
+4. **`Role::WRITING_PERMISSIONS`**, if the permission grants writes
+   (`finance_manage` is listed, `finance_read` is not). The core only defines
+   that constant and does not read it yet; the entry keeps the semantics
+   right should it start to.
 
 Registration lives in `to_prepare`, not in an initializer: `Role` is
 autoloaded, and a development reload resets the constant — hence also the
@@ -253,80 +250,181 @@ configured for `Event` in the ability store, and its shared examples
 list per role (used in
 [`spec/abilities/event_ability_spec.rb`](../spec/abilities/event_ability_spec.rb)).
 
-## Finance tiers (`finance_read` / `finance_audit` / `finance` / `finance_manage`)
+## Finance tiers
 
-Finance access comes in tiers. The actions are granted per finance
-model in
+A *tier* is a level of finance access. Tiers are ordered, and each one
+includes what the tiers below it allow: whoever may edit may also read.
+Every tier has a permission of its own, and a role on a tier carries that
+permission together with the permissions of the tiers below it, so the
+ladder is visible in the role definition. A role's tier is the highest
+finance permission it carries.
+
+The order lives in one place, `Wsjrdp2027::FinanceAccess::FINANCE_TIERS`
+([`finance_access.rb`](../app/abilities/wsjrdp_2027/finance_access.rb)),
+next to the constraints. The actions are granted per finance model in
 [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb),
-the constraints live in
-[`finance_access.rb`](../app/abilities/wsjrdp_2027/finance_access.rb)
-(`Wsjrdp2027::FinanceAccess`); specs:
-[`spec/abilities/finance_ability_spec.rb`](../spec/abilities/finance_ability_spec.rb).
+and [`spec/abilities/finance_ability_spec.rb`](../spec/abilities/finance_ability_spec.rb)
+covers it.
 
-| Tier | Permission | Constraint | Actions | Roles |
+| Tier | Permissions | Constraint | Actions | Roles |
 |---|---|---|---|---|
-| read | `finance_read` | `if_finance_read` | `show` — **except on `AccountingEntry`** | `Root::FinanceReader` |
-| audit | `finance_audit` | `if_finance_audit` | + `log`, and `show` on `AccountingEntry` — still read-only | `Extern::FinanceAuditor` |
-| write | `finance` | `if_finance_write` | + `create`, `update` | `Root::Finance`, `Root::Admin`, `Extern::FinanceAccountant` |
-| admin | `finance_manage` | `if_finance_admin` | + `fin_admin`, `manage` | `Root::FinanceManager` |
+| read | `finance_read` | `if_finance_read` | `show`, except on `AccountingEntry` | `Root::FinanceReader` |
+| audit | `finance_read`, `finance_audit` | `if_finance_audit` | read's, plus `log` and `show` on `AccountingEntry` | `Extern::FinanceAuditor` |
+| write | `finance_read`, `finance_audit`, `finance` | `if_finance_write` | audit's, plus `create`, `update` | `Root::Finance`, `Root::Admin`, `Extern::FinanceAccountant` |
+| manage | `finance_read`, `finance_audit`, `finance`, `finance_manage` | `if_finance_manage` | write's, plus `fin_admin`, `manage` | `Root::FinanceManager` |
 
-Some names in that last row differ on purpose, so do not "fix" one of
-them into the others: the **tier** is called admin (hence its
-constraint `if_finance_admin`), its **permission** is
-`finance_manage`, the ability **action** it guards is `fin_admin`, and
-the **role** granting it is `Root::FinanceManager`.
+`finance` is the core's own permission, reused as the write tier. The
+ability action of the manage tier is still called `fin_admin`; the name
+predates the tiers.
 
-Some properties are important and are therefore spelled out:
+`AccountingEntry` is not in the read tier. All the financial aspects are
+exposed through other models, so nothing is hidden from a finance view
+perspective; showing `AccountingEntry` could expose additional
+non-financial personal data. The audit tier does get it, reading the
+Beitragsbuchungen is what it is for.
 
-* **`AccountingEntry` is not in the READ tier at all.**  All the
-  financial aspects are exposed through other models, so nothing is
-  hidden from a finance view perspective. Showing `AccountingEntry`
-  could expose additional non-financial personal data. The AUDIT tier
-  does get it — reading the Beitragsbuchungen is what it exists for.
-* **The tiers are cumulative, and the action lists repeat.** The
-  ability store is keyed by `(permission, subject, action)`, so a role
-  only matches the rules of the permissions it actually holds. A role
-  with `:finance` but without `:finance_read` would not grant `:show`.
-* **`:manage` is CanCanCan's wildcard.** It covers every action on the
-  subject, `:destroy` included, so the admin tier has full access; the
-  other actions in that list only spell the intent out. The
-  predecessor granted `:manage` to `:finance`, so the split
-  *tightened* access rather than widening it.
-* **`:log` is what separates the READ tier from the AUDIT tier.** In
-  this wagon `:log` is the generic "privileged/internal view" gate, and
-  on the finance models it is what the person-level views ask for — the
-  fee list (`fin/person_fees`) and the fee blocks of a Beitragsbuchung.
-  `:finance_read` does not get it, `:finance_audit` does, and both are
-  read-only. The Beiträge section around the list is reduced rather
-  than hidden for whoever lacks `:log`: its overview (`fin/fees`) holds
-  no data and opens at `:show`, and the link and the tab to the person
-  list are left out (`Sheet::Fin::Fees`), so the plain read tier is
-  left with the Ratenpläne.
-* **The audit tier is still read-only and still gets nothing on
-  people.** `:finance_audit` adds views, never actions: no `create`, no
-  `update`, and no permission whatsoever on `Person` — so a person page
-  stays closed and every person link degrades to plain text
-  (`assoc_link` / `Fin::LinkedEntryHelper`).
-* **The constraints are not bound to the root layer.** The finance
-  roles need to work when hold inside a nested group. For protection
-  against self-assignment, the finance roles are all
-  `admin_only_assignment`.
-* **The section gate is `:show`, so every writing action authorizes on
-  its own.** The `before_action :authorize_action` of the `Fin::`
-  controllers only asks for `:show`.  Anything that writes must
-  therefore carry its own `authorize!`. The views ask the same
-  question before they render a control — `can?(:update, …)`, and
-  `#permitted_attrs` answers `[]` without the write tier
+The action lists repeat on purpose. The ability store is keyed by
+`(permission, subject, action)`, so a role only matches the rules of the
+permissions it actually holds; a role with `finance` but without
+`finance_read` would not get `show` otherwise.
+
+`manage` is CanCanCan's wildcard. It covers every action on the subject,
+`destroy` included, so the manage tier has full access and the other actions
+in that row only spell out the intent. The predecessor granted `manage` to
+`finance`, so the split tightened access rather than widening it.
+
+`log` separates the read tier from the audit tier. In this wagon `log` is
+the gate for a privileged view (see [below](#the-log-convention-in-hitobito_wsjrdp_2027)),
+and on the finance models it is what the person-level views ask for: the fee
+list `fin/person_fees` and the fee blocks of a Beitragsbuchung.
+`finance_read` does not get it, `finance_audit` does, and both stay
+read-only. For whoever lacks `log` the Beiträge section is reduced rather
+than hidden: its overview `fin/fees` holds no data and opens at `show`, the
+link and the tab to the person list are left out (`Sheet::Fin::Fees`), and
+what remains are the Ratenpläne.
+
+The audit tier gets nothing on people. `finance_audit` adds views, never
+actions: no `create`, no `update`, and no permission on `Person`. A person
+page stays closed and every person link degrades to plain text
+(`assoc_link`, `Fin::LinkedEntryHelper`).
+
+The constraints are not bound to the root layer, so the finance roles work
+inside a nested group too. Self-assignment is prevented elsewhere: every
+finance role is `admin_only_assignment`.
+
+The section gate is `show`, so every writing action authorizes on its own.
+The `before_action :authorize_action` of the `Fin::` controllers asks for
+`show` only; anything that writes carries its own `authorize!`. The views
+ask the same question before they render a control: `can?(:update, …)`, and
+`#permitted_attrs` answers `[]` without the write tier.
+
+## The finance cap
+
+A person may choose to exercise less than their roles grant. The session can
+carry a ceiling on the finance tier; every tier above it is taken out of the
+person's permission set before the `Ability` is built. A `FinanceManager`
+capped at `finance_read` sees the finance pages as a `FinanceReader` does,
+to check what a lower tier gets or to work without the write and manage
+controls when they are not needed.
+
+| | |
+|---|---|
+| set | `?max_finance_permission=<tier permission>` on any page, stored in the session |
+| lift | `?max_finance_permission=` (or any unknown value) |
+| values | a tier's own permission, see the table above |
+| stale value | dropped on read and treated as no cap |
+
+The cap only subtracts: it can never grant a tier the roles do not hold, and
+a `FinanceReader` capped at `finance_manage` stays a reader. That is what
+makes a client-chosen value safe to honour. It touches nothing but the
+finance tiers, and it is scoped to the one `Ability` it was passed to
+(`Ability.new(person, max_finance_permission: …)` from
+`ApplicationController#current_ability`); an ability built anywhere else, in
+a job, in `TableDisplay`, for another person's rights, is never capped.
+`spec/abilities/finance_cap_spec.rb` and
+`spec/controllers/session_settings_spec.rb` cover this.
+
+`Ability#define_instance_side` only defines rules for the permissions in
+`UserContext#all_permissions`, and every finance constraint reads that same
+set, so removing a tier there removes its rules everywhere without any
+ability class knowing about the cap (`Wsjrdp2027::FinanceCap`, `::Ability`,
+`::UserContext`, `Wsjrdp2027::Concerns::SessionSettings`). The
+group/layer lookups follow. The core builds its `UserContext` with the user
+alone, so the cap reaches it through a thread-local that lives as long as
+the `Ability` constructor.
+
+Limits: the root superuser bypasses the whole DSL (`can :manage, :all`), so
+a cap has no effect on root; and database scopes that read roles directly
+(`accessible_by`, `visible_from_above`) are not narrowed, so a list may
+still show rows whose page the cap then refuses.
+
+Every page carries the *session bars* for the two pieces of session state
+that change what a person may do (`layouts/_wsjrdp_session_bar`, texts under
+`layouts.wsjrdp_session_bar` and the core's `layouts.user_impersonation`,
+tier names under `wsjrdp.finance_tiers`): a red one while impersonating,
+with an x at its right edge that ends the impersonation, and a yellow one
+that *is* the tier selection — "Finanzrecht:" followed by a segmented control of
+the tiers up to the roles' own, the tier in force pressed, and a note naming
+the roles' tier; choosing the roles' tier clears the cap. Each bar ends in
+one action in the core's own form, the times-circle icon and its text:
+"Imitation beenden", and "Begrenzung aufheben", which clears the cap and
+puts the bar back on demand. When the yellow bar shows is the session's
+`finance_tier_bar` mode, set through `?finance_tier_bar=…` and stored like
+the cap: `always`, `hidden` (the cap still applies), or `ondemand` — the
+default — while the cap lowers the tier or a cap is set at all. Each bar is
+exactly the 30 px the core reserves per `.info-bar`, so they stack edge to
+edge, and both give way on a phone in order: first the note about the
+roles' tier, then the action's text (the icon stays), and only then does the
+message shrink to an ellipsis; the segments never give way. Every action
+runs in the background (`POST /session_settings`, the core's `DELETE
+…/impersonate`) and then reloads the page without the two session
+parameters, so nobody is sent elsewhere and a `?max_finance_permission=…`
+in the URL does not set the cap right back.
+
+The core layout has no extension point next to its own bars, so the wagon
+overrides `layouts/_file_download` — rendered for every logged-in user — and
+renders the core's version unchanged through `render_core_partial` before
+adding the bar; its `layouts/_user_impersonation` is empty, which silences
+the core's own bar. A cap that changes nothing (at or above the roles' tier)
+shows no bar unless the flag is on.
+
+Admins get a control centre for all of this: the *admin tab*, a small tab
+hanging from the top edge of the page above the name and the sign-out link
+(on a phone it gets a strip of its own above the header instead), which
+opens a menu. It is only ever rendered when the person who actually logged
+in — the origin user while impersonating — holds the `admin` permission or
+is root, and only when asked for: the session's `compact_admin_tab` mode,
+set through `?compact_admin_tab=…` and stored like the others, is `always`,
+or `ondemand`, which shows the tab while one of the two bars is missing — no
+impersonation runs, or the yellow bar is hidden — since with both bars up
+they carry everything the menu offers; no value, the default, and any
+unknown one mean no tab (`WsjrdpAdminTabHelper`). The menu holds the finance
+tier in force, changeable to any tier up to the roles' own just like the
+bar's segments; "Finanzrecht-Balken einblenden" and "… ausblenden", which
+set `finance_tier_bar` to `always` and to `hidden` (the one that applies is
+enabled; a hidden bar leaves the cap in force); and, when the person who
+actually logged in may
+`impersonate_user` (`Group::Root::Admin` holds `impersonation`), a person
+search — the core's typeahead on `people/query`, limited to people that
+person may impersonate — that asks for confirmation and then submits a form
+to `POST /wsjrdp/impersonate` (a form rather than a background request,
+because the sign-in behind it changes the CSRF token). The target,
+`Wsjrdp::ImpersonationController`, does the core's own bookkeeping
+(`Person::ImpersonationController`: the `origin_user` session key, the
+PaperTrail `impersonate` / `impersonation_done` events, the notification
+mail) but acts for the origin user: out of a running impersonation it
+switches — ends the current one, starts the next — where the core refuses,
+and it authorizes on the origin user's ability, not the impersonated
+person's. While impersonating, "Imitation beenden" joins the search.
 
 ## Admin-only roles (`Role.admin_only_assignment`)
 
 Some role types grant powerful permissions and must only be assigned by CMT
 admins. They mark themselves with `self.admin_only_assignment = true` (a
-wagon `class_attribute` on `Role`, added by `Wsjrdp2027::Role`); currently
-`Group::Root::Admin`, `::Finance`, `::FinanceReader`, `::FinanceManager`,
-`Group::Extern::FinanceAuditor` and `::FinanceAccountant` — i.e. **every**
-role granting a finance tier. The rules, enforced by *general* constraints in
-`Wsjrdp2027::RoleAbility` (specs: `spec/abilities/role_ability_spec.rb`):
+wagon `class_attribute` on `Role`, added by `Wsjrdp2027::Role`):
+`Group::Root::Admin` and every role that grants a finance tier. The rules,
+enforced by *general* constraints in `Wsjrdp2027::RoleAbility` (specs:
+`spec/abilities/role_ability_spec.rb`):
 
 * Only people with the `:admin` permission (`user_context.admin`) may
   **create** or **update** such a role — this also covers the roles
@@ -348,7 +446,7 @@ role granting a finance tier. The rules, enforced by *general* constraints in
   does this — e.g. the event role dropdown only rejects `restricted?` —
   but person roles are covered.)
 
-**CAUTION when adding general constraints in a wagon:** the ability DSL
+When adding a general constraint in a wagon, mind that the ability DSL
 stores exactly ONE general constraint per `(subject, action)`
 (`AbilityDsl::Store#add` is last-wins), so a wagon `general(:action)` silently
 REPLACES the core's general for that action. Re-include the core condition in
@@ -356,7 +454,7 @@ your constraint method — see `admin_only_role_creation_guard`
 (`group_not_deleted_or_archived`) and `admin_only_role_destruction_guard`
 (`not_permission_giving`) in `Wsjrdp2027::RoleAbility`.
 
-**Dev note:** ability changes only take effect after an app RESTART:
+Ability changes take effect only after an app restart:
 `AbilityDsl::Store` loads the whole rule configuration once per process and
 caches it (`@configs ||= load`), so the dev reloader does not pick up edited
 ability classes. Restart the rails container before verifying manually
@@ -386,10 +484,9 @@ subject"**. Examples:
 - navigation: the Contingent main menu item only shows for `can?(:log,
   Group.root)`
   ([`app/helpers/wsjrdp_2027/navigation_helper.rb`](../app/helpers/wsjrdp_2027/navigation_helper.rb))
-- finance models: `:log` is part of the WRITE tier in
-  [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb) —
-  the read tier does not get it (see
-  [Finance tiers](#finance-tiers-finance_read--finance_audit--finance--finance_manage))
+- finance models: `:log` starts at the audit tier in
+  [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb);
+  the read tier does not get it (see [Finance tiers](#finance-tiers))
 - person-level fee list: `fin/person_fees` authorizes `:log` (not `:show`), so
   the read tier sees no person's fee data; the section's overview `fin/fees`
   carries no data and stays at `:show`
@@ -400,7 +497,7 @@ Who may `:log` what (core grants plus wagon overrides):
 |---|---|---|
 | `Person` | `layer_full` / `layer_and_below_full` in the person's layer; wagon revokes `:any` (herself) and `group_full` | CMT Admin/Leader/Finance (everywhere), Unit Manager (own unit), IST Manager (IST layer) — **not** Unit Leader |
 | `Group` | as core, but wagon revokes `group_full` | `can?(:log, Group.root)` ⇒ only CMT roles with `layer_and_below_full` |
-| finance models (`AccountingEntry`, …) | the AUDIT tier and up (`finance_audit` / `finance` / `finance_manage`, any layer) | Root::Admin, Root::Finance, Root::FinanceManager, Extern::FinanceAuditor, Extern::FinanceAccountant — **not** the plain read tier (FinanceReader) |
+| finance models (`AccountingEntry`, …) | the audit tier and up, on any layer | every finance role except `FinanceReader` |
 | `Event` | `layer_and_below_full` on the root layer (the grant below) | CMT Admin/Leader/Finance |
 
 The root superuser (`can :manage, :all`, see core `ability.rb`) may

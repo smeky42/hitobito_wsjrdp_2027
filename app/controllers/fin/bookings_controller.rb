@@ -137,7 +137,7 @@ class Fin::BookingsController < Fin::FinController
       :secondary_cost_center_number, :is_unit_budget, :sub_cost_center_number)
     editable_keys = attrs.keys & %w[secondary_cost_center_number is_unit_budget sub_cost_center_number]
     if editable_keys.any?
-      # The field edits are the admin tier's -- the same gate the detail view
+      # The field edits are the manage tier's -- the same gate the detail view
       # asks before it builds the form at all (fin/bookings/_detail).
       authorize!(:fin_admin, booking)
       update_fields(booking, attrs.slice(*editable_keys))

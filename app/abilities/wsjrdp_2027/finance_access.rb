@@ -33,10 +33,9 @@ module Wsjrdp2027::FinanceAccess
     finance_tiers.any? { |tier| WRITING_TIERS.include?(tier) }
   end
 
-  # Named after the TIER, not after its permission: the tier is the admin
-  # one, its permission is :finance_manage and the ability action it guards
-  # is :fin_admin.
-  def if_finance_admin
+  # The ability action this tier guards is still called :fin_admin -- the
+  # name predates the split into tiers.
+  def if_finance_manage
     finance_tiers.include?(:finance_manage)
   end
 

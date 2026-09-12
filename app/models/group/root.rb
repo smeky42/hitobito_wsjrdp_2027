@@ -12,7 +12,7 @@ class Group::Root < ::Group
   ### ROLES
   # Developers and Administrators
   class Admin < ::Role
-    self.permissions = %i[layer_and_below_full admin finance_read finance]
+    self.permissions = %i[layer_and_below_full admin impersonation finance_read finance_audit finance]
     self.admin_only_assignment = true
   end
 
@@ -36,13 +36,13 @@ class Group::Root < ::Group
 
   # Finance (includes Leader permissions)
   class Finance < ::Role
-    self.permissions = [:layer_and_below_full, :finance_read, :finance]
+    self.permissions = [:layer_and_below_full, :finance_read, :finance_audit, :finance]
     self.admin_only_assignment = true
   end
 
   # Finance administration
   class FinanceManager < ::Role
-    self.permissions = [:layer_and_below_full, :finance_read, :finance, :finance_manage]
+    self.permissions = [:layer_and_below_full, :finance_read, :finance_audit, :finance, :finance_manage]
     self.admin_only_assignment = true
   end
 

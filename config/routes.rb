@@ -7,6 +7,12 @@ Rails.application.routes.draw do
     get "statistics", to: "statistics#index"
   end
 
+  # The session UI's background target (doc/roles.md -> "The finance cap").
+  post "session_settings", to: "session_settings#update", as: :session_settings
+  # The admin tab's person search: impersonate, or switch out of a running
+  # impersonation (Wsjrdp::ImpersonationController).
+  post "wsjrdp/impersonate", to: "wsjrdp/impersonation#create", as: :wsjrdp_impersonate
+
   language_scope do
     resources :groups do
       resources :people, except: [:new, :create] do
