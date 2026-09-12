@@ -17,10 +17,19 @@ if Rails.env.development?
   #     login_bypass:
   #       current_user_person_id: 42
   #
-  # Without the file (or the key) the default is person 1. NOTE: resolve the
-  # path via the engine root, NOT via __dir__ -- __dir__ canonicalizes the
-  # path and therefore follows the config/initializers symlink back into
-  # dev-only-overrides/.
+  # Without the file (or the key) the default is person 1.
+  #
+  # After changing the id: restart AND sign out once ("Abmelden"). The
+  # configured person is only the fallback for "nobody signed in" (see
+  # current_person below) -- a person the browser holds in its warden session
+  # keeps winning, and remember_for below keeps that session alive for good.
+  # Such a session is easy to pick up without noticing: ending an
+  # impersonation signs the ORIGIN person in for real, and the origin was the
+  # previously simulated person.
+  #
+  # NOTE: resolve the path via the engine root, NOT via __dir__ -- __dir__
+  # canonicalizes the path and therefore follows the config/initializers
+  # symlink back into dev-only-overrides/.
   settings_path =
     HitobitoWsjrdp2027::Wagon.root.join("config", "dev_only_settings.local.yml")
   dev_only_settings =
@@ -37,6 +46,8 @@ if Rails.env.development?
     # nobody is signed in. The warden session stays authoritative so
     # sign_in-based features (impersonation!) keep working: "Imitieren" signs
     # the target person in, and we must NOT override that with the fixed person.
+    # The flip side: whoever is signed in shadows the configured person until
+    # you sign out (see the note at the settings file above).
     ApplicationController.class_eval do
       def authenticate? = false            # skip the authenticate_person! before_action
 
