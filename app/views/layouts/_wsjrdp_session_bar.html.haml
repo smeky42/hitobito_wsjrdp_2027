@@ -1,0 +1,278 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The session UI: the two session bars and the admin tab. Rendered from
+-#  layouts/_file_download; the core's own impersonation bar is silenced by the
+-#  wagon's layouts/_user_impersonation.
+-#
+-#  The bars: one line each for the two pieces of session state that change
+-#  what a person may do -- one while impersonating and one for the finance cap.
+-#
+-#  Each bar carries actions. These actions run in the background and
+-#  then reload the page with the session parameters stripped, so nobody is
+-#  sent elsewhere,
+-#
+-#  Each bar is vertically sized to the height the core reserves per .info-bar,
+-#  so they stack edge to edge, and both are pinned to the window's own
+-#  width. Vertical stacking is untouched.
+-#
+-#  The admin tab: a small tab hanging from the top edge of the page,
+-#  opening a dropdown. Only shown when whoever is actually logged in
+-#  (the origin user while impersonating) has :admin permission, and
+-#  only when asked for through the session's admin_tab mode.
+- tiers = finance_tiers
+- impersonating = origin_user.present?
+- show_admin_tab = admin_tab?
+-# The core positions header.logo absolutely (top: 1rem), so the 30 px each
+-# .info-bar reserves in the FLOW push the page down but not the logo -- it
+-# would end up under the bars. Push it down by their height. The admin tab
+-# adds nothing here (height: 0 on desktop), and on a phone the core hides the
+-# logo anyway. Covered by spec/controllers/session_settings_spec.rb.
+- bar_count = [impersonating, finance_tier_bar?].count { |shown| shown }
+- if impersonating || finance_tier_bar? || show_admin_tab
+  :css
+    .wsjrdp-session-bar.info-bar .alert { box-sizing: border-box; position: fixed; left: 0; width: var(--wsjrdp-bar-width, 100%); height: 30px; padding: 0 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12.25px; line-height: 28px; border-radius: 0; white-space: nowrap; }
+    header.logo { margin-top: #{bar_count * 30}px; }
+    .wsjrdp-session-bar .wsjrdp-bar-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .wsjrdp-session-bar .wsjrdp-bar-note, .wsjrdp-session-bar .wsjrdp-seg, .wsjrdp-session-bar .wsjrdp-bar-action { flex: none; }
+    .wsjrdp-session-bar .wsjrdp-seg { display: inline-flex; height: 24px; border: 1px solid var(--bs-alert-color); border-radius: 4px; overflow: hidden; }
+    .wsjrdp-session-bar .wsjrdp-seg button { appearance: none; background: transparent; border: 0; border-right: 1px solid var(--bs-alert-color); color: inherit; font: inherit; line-height: 22px; padding: 0 10px; cursor: pointer; }
+    .wsjrdp-session-bar .wsjrdp-seg button:last-child { border-right: 0; }
+    .wsjrdp-session-bar .wsjrdp-seg button.on { background: var(--bs-alert-color); color: var(--bs-alert-bg); font-weight: 600; }
+    .wsjrdp-session-bar .wsjrdp-bar-action { color: #000; margin-left: 22px; padding: 0; border: 0; background: transparent; font: inherit; line-height: inherit; cursor: pointer; }
+    .wsjrdp-session-bar .wsjrdp-bar-action:hover .wsjrdp-bar-action-label { text-decoration: underline; }
+    .wsjrdp-admin-tab { position: relative; z-index: 3; height: 0; }
+    .wsjrdp-admin-tab-toggle { position: absolute; top: 0; right: calc(1rem + 20px); height: 18px; line-height: 18px; padding: 0 10px; font-size: 11px; border: 0; border-radius: 0 0 6px 6px; background: var(--bs-primary, #21697c); color: #fff; cursor: pointer; white-space: nowrap; }
+    .wsjrdp-admin-tab-toggle i { margin-right: 4px; }
+    .wsjrdp-admin-tab .dropdown-menu { width: 17rem; min-width: 0; max-width: 100%; font-size: 0.875rem; }
+    .wsjrdp-admin-tab .dropdown-header { color: rgba(255, 255, 255, 0.75); }
+    .wsjrdp-admin-tab .dropdown-divider { border-top-color: rgba(255, 255, 255, 0.35); }
+    .wsjrdp-admin-tab .dropdown-item.disabled { opacity: 0.55; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-mark { display: inline-block; width: 1.25rem; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-picker { padding: 0.25rem 1rem 0.5rem; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm { margin: 9px -1rem -0.5rem; padding: 12px 1rem; background: #fff3cd; color: #664d03; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm[hidden] { display: none; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-title { display: flex; align-items: center; gap: 7px; font-weight: 600; margin-bottom: 6px; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-text { display: block; font-size: 0.8125rem; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; margin-bottom: 6px; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-person { display: block; font-size: 0.875rem; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-notice { display: flex; gap: 6px; font-size: 0.8125rem; line-height: 1.4; white-space: normal; margin-bottom: 10px; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-notice i { margin-top: 0.15em; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-actions { display: flex; gap: 8px; justify-content: space-between; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-go { background: #b02a37; border-color: #b02a37; color: #fff; font-weight: 600; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-go[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-cancel { background: transparent; border-color: #b8922a; color: #664d03; }
+    .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-cancel:hover, .wsjrdp-admin-tab .wsjrdp-admin-tab-confirm-cancel:focus { background: #664d03; border-color: #664d03; color: #fff3cd; }
+    .wsjrdp-admin-tab .autoComplete_wrapper { display: block; position: relative; }
+    .wsjrdp-admin-tab .autoComplete_wrapper ul { color: #212529; width: 100%; }
+    @media (max-width: 767.98px) { .wsjrdp-session-bar .wsjrdp-bar-note { display: none; } .wsjrdp-admin-tab { height: auto; display: flex; justify-content: flex-end; padding-right: 5px; background: #fff; } .wsjrdp-admin-tab-toggle { position: static; } }
+    @media (max-width: 575.98px) { .wsjrdp-session-bar .wsjrdp-bar-action { margin-left: 4px; } .wsjrdp-session-bar .wsjrdp-bar-action-label { display: none; } }
+  - if impersonating
+    .wsjrdp-session-bar.info-bar
+      .alert.alert-danger
+        %span.wsjrdp-bar-text= t('layouts.user_impersonation.info', user: current_user)
+        %button.wsjrdp-bar-action{type: "button", title: t('layouts.user_impersonation.end'), "aria-label": t('layouts.user_impersonation.end'), data: {wsjrdp_session_action: "delete", url: sign_out_path}}
+          = icon('times-circle')
+          %span.wsjrdp-bar-action-label= t('layouts.user_impersonation.end')
+  - if finance_tier_bar?
+    .wsjrdp-session-bar.info-bar
+      .alert.alert-warning
+        - if tiers.nil?
+          %span.wsjrdp-bar-text= t('.none')
+        - else
+          %span.wsjrdp-bar-text= t('.label')
+          %span.wsjrdp-seg{role: "group", "aria-label": t('.choose')}
+            - selectable_finance_tiers.each do |tier|
+              - value = (tier == tiers[:by_roles]) ? "" : tier
+              %button{type: "button", class: ("on" if tier == tiers[:effective]), "aria-pressed": (tier == tiers[:effective]).to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: value)}}= finance_tier_label(tier)
+          %span.wsjrdp-bar-text.wsjrdp-bar-note= t('.by_roles', tier: finance_tier_label(tiers[:by_roles]))
+        %button.wsjrdp-bar-action{type: "button", title: t('.lift'), "aria-label": t('.lift'), data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: "", finance_tier_bar: "ondemand")}}
+          = icon('times-circle')
+          %span.wsjrdp-bar-action-label= t('.lift')
+  - if show_admin_tab
+    .wsjrdp-admin-tab.dropdown
+      %button#wsjrdp-admin-tab-toggle.wsjrdp-admin-tab-toggle{type: "button", "aria-expanded": "false", data: {bs_toggle: "dropdown", bs_auto_close: "outside"}}
+        = icon('cog')
+        = t('.admin_tab')
+      %ul.dropdown-menu.dropdown-menu-end{"aria-labelledby": "wsjrdp-admin-tab-toggle"}
+        - unless tiers.nil?
+          %li
+            %h6.dropdown-header= t('.tier_heading')
+          - selectable_finance_tiers.each do |tier|
+            - by_roles = (tier == tiers[:by_roles])
+            - in_force = (tier == tiers[:effective])
+            %li
+              %button.dropdown-item.wsjrdp-admin-tab-tier{type: "button", "aria-current": in_force.to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: (by_roles ? "" : tier))}}
+                %span.wsjrdp-admin-tab-mark= icon('check') if in_force
+                = finance_tier_label(tier)
+                = t('.tier_by_roles') if by_roles
+        - bar_shown = finance_tier_bar?
+        %li
+          %button.dropdown-item.wsjrdp-admin-tab-bar-show{type: "button", class: ("disabled" if bar_shown), disabled: bar_shown, data: {wsjrdp_session_action: "post", url: session_settings_path(finance_tier_bar: "always")}}
+            %span.wsjrdp-admin-tab-mark
+            = t('.show_bar')
+        %li
+          %button.dropdown-item.wsjrdp-admin-tab-bar-hide{type: "button", class: ("disabled" unless bar_shown), disabled: !bar_shown, data: {wsjrdp_session_action: "post", url: session_settings_path(finance_tier_bar: "hidden")}}
+            %span.wsjrdp-admin-tab-mark
+            = t('.hide_bar')
+        - may_impersonate = admin_tab_may_impersonate?
+        - if may_impersonate || impersonating
+          %li
+            %hr.dropdown-divider
+          %li
+            %h6.dropdown-header= t('.impersonate_heading')
+        - if may_impersonate
+          %li.wsjrdp-admin-tab-picker
+            %input#wsjrdp-admin-tab-person.form-control.form-control-sm{type: "text", placeholder: t('.impersonate_placeholder'), "aria-label": t('.impersonate_heading'), data: {provide: "entity", url: query_people_path(limit_by_permission: "impersonate_user"), no_results_message: t('.impersonate_no_results'), wsjrdp_impersonate_url: wsjrdp_impersonate_path}}
+            .wsjrdp-admin-tab-confirm{hidden: true, role: "group", "aria-label": t('.impersonate_title')}
+              .wsjrdp-admin-tab-confirm-title
+                = icon('exclamation-triangle')
+                = t('.impersonate_title')
+              %span.wsjrdp-admin-tab-confirm-text
+                = t('.impersonate_lead')
+                %strong.wsjrdp-admin-tab-confirm-person
+              -# Person::ImpersonationController mails the impersonated person
+              -# (if they have a login and an address), unless the setting is off.
+              - if Settings.impersonate.notify
+                %span.wsjrdp-admin-tab-confirm-notice
+                  = icon('envelope')
+                  = t('.impersonate_notice')
+              .wsjrdp-admin-tab-confirm-actions
+                %button.btn.btn-sm.wsjrdp-admin-tab-confirm-go{type: "button", disabled: impersonate_delay_ms.positive?, data: {wsjrdp_impersonate: "go", label: t('.impersonate_start'), countdown_ms: impersonate_delay_ms}}= t('.impersonate_start')
+                %button.btn.btn-sm.wsjrdp-admin-tab-confirm-cancel{type: "button", data: {wsjrdp_impersonate: "cancel"}}= t('global.button.cancel')
+        - if impersonating
+          %li
+            %button.dropdown-item.wsjrdp-admin-tab-end{type: "button", data: {wsjrdp_session_action: "delete", url: sign_out_path}}
+              %span.wsjrdp-admin-tab-mark= icon('times-circle')
+              = t('layouts.user_impersonation.end')
+  :javascript
+    (function () {
+      if (window.__wsjrdpSessionBar) return;
+      window.__wsjrdpSessionBar = true;
+      function csrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.content : '';
+      }
+      // The window's own width, not the initial containing block's: see above.
+      function sizeBars() {
+        document.documentElement.style.setProperty('--wsjrdp-bar-width',
+          document.documentElement.clientWidth + 'px');
+      }
+      sizeBars();
+      window.addEventListener('resize', sizeBars);
+      window.addEventListener('orientationchange', sizeBars);
+      function plainText(html) {
+        var box = document.createElement('textarea');
+        box.innerHTML = String(html || '').replace(/<[^>]*>/g, '');
+        return box.value;
+      }
+      document.addEventListener('click', function (e) {
+        var ask = e.target.closest('[data-wsjrdp-impersonate]');
+        if (ask) {
+          e.preventDefault();
+          var box = ask.closest('.wsjrdp-admin-tab-confirm');
+          var field = document.getElementById('wsjrdp-admin-tab-person');
+          if (ask.dataset.wsjrdpImpersonate === 'cancel') {
+            closeConfirmation(box);
+            field.value = '';
+            field.focus();
+            return;
+          }
+          ask.disabled = true;
+          impersonate(field.dataset.wsjrdpImpersonateUrl, box.dataset.personId);
+          return;
+        }
+        var el = e.target.closest('[data-wsjrdp-session-action]');
+        if (!el) return;
+        e.preventDefault();
+        el.disabled = true;
+        fetch(el.dataset.url, {
+          method: el.dataset.wsjrdpSessionAction.toUpperCase(),
+          headers: {'X-CSRF-Token': csrfToken(), 'Accept': 'text/html'},
+          credentials: 'same-origin',
+          redirect: 'manual'
+        }).then(function () {
+          var url = new URL(window.location.href);
+          ['max_finance_permission', 'finance_tier_bar', 'admin_tab'].forEach(function (key) { url.searchParams.delete(key); });
+          window.location.replace(url.toString());
+        });
+      });
+      // The admin tab's person search: the core's typeahead announces a pick
+      // with a "selection" event on its input. Ask in the menu itself -- a
+      // native dialog is not shown reliably in an embedded or phone-sized
+      // view -- and let the button do the rest.
+      document.addEventListener('selection', function (e) {
+        var input = e.target;
+        if (!input || !input.dataset || !input.dataset.wsjrdpImpersonateUrl) return;
+        var person = e.detail && e.detail.selection && e.detail.selection.value;
+        if (!person || !person.id) return;
+        var box = input.parentNode.parentNode.querySelector('.wsjrdp-admin-tab-confirm');
+        if (!box) return;
+        box.querySelector('.wsjrdp-admin-tab-confirm-person').textContent = plainText(person.label);
+        box.dataset.personId = person.id;
+        box.hidden = false;
+        armConfirmation(box);
+      }, true);
+      // Seconds with one decimal, in the page's own language, rounded up so
+      // it never reads 0,0 while the button is still locked.
+      function remainingLabel(milliseconds) {
+        return (Math.ceil(milliseconds / 100) / 10)
+          .toLocaleString(document.documentElement.lang || 'de',
+            {minimumFractionDigits: 1, maximumFractionDigits: 1});
+      }
+      // The suggestion list sits exactly where the confirmation then appears,
+      // so a second click meant for the list would land on the button. It
+      // stays disabled for a moment, counting down in tenths (refreshed every
+      // 300 ms), and only then turns red. The deadline is fixed up front, so
+      // a busy page cannot stretch the wait. A wait of 0 skips all of it: no
+      // timer starts and the button is ready at once.
+      function armConfirmation(box) {
+        var go = box.querySelector('[data-wsjrdp-impersonate="go"]');
+        var label = go.dataset.label;
+        var wait = parseInt(go.dataset.countdownMs, 10);
+        if (isNaN(wait) || wait < 0) wait = 3000;
+        clearInterval(box.wsjrdpTimer);
+        if (wait === 0) {
+          go.disabled = false;
+          go.textContent = label;
+          return;
+        }
+        var deadline = Date.now() + wait;
+        go.disabled = true;
+        go.textContent = label + ' (' + remainingLabel(wait) + ')';
+        box.wsjrdpTimer = setInterval(function () {
+          var left = deadline - Date.now();
+          if (left > 0) {
+            go.textContent = label + ' (' + remainingLabel(left) + ')';
+            return;
+          }
+          clearInterval(box.wsjrdpTimer);
+          go.disabled = false;
+          go.textContent = label;
+        }, 300);
+      }
+      function closeConfirmation(box) {
+        clearInterval(box.wsjrdpTimer);
+        box.hidden = true;
+      }
+      // A real form submit: the sign-in behind it changes the CSRF token, so
+      // the answer must be a full page load.
+      function impersonate(url, personId) {
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = url;
+        [['authenticity_token', csrfToken()], ['person_id', personId],
+          ['return_to', window.location.pathname + window.location.search]].forEach(function (pair) {
+          var field = document.createElement('input');
+          field.type = 'hidden';
+          field.name = pair[0];
+          field.value = pair[1];
+          form.appendChild(field);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      }
+    })();

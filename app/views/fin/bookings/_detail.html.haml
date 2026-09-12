@@ -15,7 +15,7 @@
 -#  Locals: booking (DatevBooking), ctx (Fin::AttrFormatContext)
 - form_url = can?(:fin_admin, DatevBooking) && booking.persisted? ? booking_path(booking) : nil
 -# Connecting and unlinking the Beitragsbuchung is the write tier's (the field
--# edits above are the admin tier's, hence the two different gates);
+-# edits above are the manage tier's, hence the two different gates);
 -# Fin::BookingsController authorizes exactly these. Without it -- the read tier,
 -# e.g. an external auditor -- the section stays as a reading view.
 - may_link = can?(:update, DatevBooking)

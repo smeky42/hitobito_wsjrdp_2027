@@ -179,7 +179,7 @@ describe "finance abilities" do
     end
   end
 
-  context "with Group::Root::FinanceManager role (admin tier)" do
+  context "with Group::Root::FinanceManager role (manage tier)" do
     let(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
 
     it "may fin_admin every finance model (class and instance)" do
@@ -197,7 +197,7 @@ describe "finance abilities" do
       is_expected.to be_able_to(:fin_admin, people(:yp_a_1))
     end
 
-    # :manage is CanCan's wildcard, so the admin tier reaches every action --
+    # :manage is CanCan's wildcard, so the manage tier reaches every action --
     # :destroy included -- on all finance models.
     it "may destroy finance records" do
       is_expected.to be_able_to(:destroy, AccountingEntry.new)

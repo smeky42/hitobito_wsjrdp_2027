@@ -43,3 +43,4 @@ else
   echo "SKIP  config/initializers/local_dev_only_file_watcher_macos.rb (not macOS)"
 fi
 make_link dev-only-overrides/local_db_dump_shim.rake lib/tasks/local_db_dump_shim.rake
+make_link dev-only-overrides/local_dev_only_impersonate_delay.rb config/initializers/local_dev_only_impersonate_delay.rb

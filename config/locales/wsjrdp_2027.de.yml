@@ -759,6 +759,37 @@ de:
       main_other_registration_info_text: "Informiere dich auf worldscoutjamboree.de über die Möglichkeiten teilzunehmen."
       main_other_registration_info_link: "https://www.worldscoutjamboree.de/howto-anmeldung/"
 
+    # The session bar (doc/roles.md -> "The finance cap"); the impersonation
+    # texts are the core's (layouts.user_impersonation). Tier names: wsjrdp.finance_tiers.
+    wsjrdp_session_bar:
+      label: "Finanzrecht:"
+      choose: "Finanzrecht wählen"
+      by_roles: "(nach Rolle: %{tier})"
+      none: "Kein Finanzrecht"
+      lift: "Begrenzung aufheben"
+      # The admin tab and its menu
+      admin_tab: "Admin"
+      tier_heading: "Finanzrecht"
+      tier_by_roles: "(nach Rolle)"
+      show_bar: "Finanzrecht-Balken einblenden"
+      hide_bar: "Finanzrecht-Balken ausblenden"
+      impersonate_heading: "Imitieren"
+      impersonate_placeholder: "Person suchen …"
+      impersonate_no_results: "Keine Person gefunden"
+      impersonate_title: "Identität übernehmen"
+      impersonate_lead: "Danach bedienst du Hitobito als"
+      impersonate_notice: "Die Person wird per E-Mail benachrichtigt."
+      impersonate_start: "Imitieren"
+
+  wsjrdp:
+    # The finance tiers by their permission
+    finance_tiers:
+      finance_none: "None"
+      finance_read: "Read"
+      finance_audit: "Audit"
+      finance: "Write"
+      finance_manage: "Manage"
+
   table_displays:
     person:
       rdp_association: rdp Verband

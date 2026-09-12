@@ -81,7 +81,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(forms(".bk-connect-entry-form")).to be_empty
         expect(forms(".bk-unlink-form")).to be_empty
         expect(response.body).to include("nicht verknüpft")
-        # ... and the field edits, which are the admin tier's anyway.
+        # ... and the field edits, which are the manage tier's anyway.
         expect(response.body).not_to include("datev_booking[secondary_cost_center_number]")
       end
 
@@ -117,7 +117,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(entry.reload.datev_booking_id).to eq(booking.id)
       end
 
-      # The field edits stay the admin tier's -- the same gate the detail view
+      # The field edits stay the manage tier's -- the same gate the detail view
       # asks before it builds the form (fin/bookings/_detail).
       it "may not edit the booking fields" do
         expect do
@@ -199,7 +199,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(entry.reload.datev_booking_id).to eq(booking.id)
       end
 
-      # Wiping every link is the admin tier's, on top of the development-only
+      # Wiping every link is the manage tier's, on top of the development-only
       # guard in the action itself (which is also why there is no route to POST
       # to here -- see the auditor's example above).
       it "does not hold the :fin_admin the reset_links gate asks for either" do

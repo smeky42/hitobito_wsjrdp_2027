@@ -93,6 +93,12 @@ module HitobitoWsjrdp2027
       StandardFormBuilder.prepend Wsjrdp2027::StandardFormBuilder
 
       # Abilities
+      # The finance cap (Wsjrdp2027::FinanceCap): the session parameter on the
+      # controller, the constructor argument on Ability, the subtraction in the
+      # UserContext.
+      ApplicationController.prepend Wsjrdp2027::Concerns::SessionSettings
+      Ability.prepend Wsjrdp2027::Ability
+      AbilityDsl::UserContext.prepend Wsjrdp2027::UserContext
       EventAbility.include Wsjrdp2027::EventAbility
       GroupAbility.include Wsjrdp2027::GroupAbility
       PersonAbility.include Wsjrdp2027::PersonAbility

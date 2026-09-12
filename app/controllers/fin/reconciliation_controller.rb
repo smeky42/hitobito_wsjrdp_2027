@@ -21,7 +21,7 @@ class Fin::ReconciliationController < Fin::FinController
   # (#apply_participant_fees) writes no domain data and stays on :show.
   before_action :authorize_connect, only: %i[connect_participant_fees connect_single
     connect_participant_entries connect_single_entry]
-  # Wiping every link is the most destructive action of the section: admin tier,
+  # Wiping every link is the most destructive action of the section: manage tier,
   # on top of the development-only guard in the action itself.
   before_action :authorize_reset_links, only: :reset_links
 

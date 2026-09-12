@@ -18,6 +18,11 @@
 # admin_only_assignment, so only CMT admins can hand them out in the
 # first place.
 module Wsjrdp2027::FinanceAccess
+  # The real permissions, ascending. Nobody ever holds the not-listed
+  # :finance_none. It is the symbol for holding none of the real
+  # permissions, so that "no finance rights at all" can be named,
+  # compared and chosen as a cap like any other tier
+  # (Wsjrdp2027::FinanceCap).
   FINANCE_TIERS = %i[finance_read finance_audit finance finance_manage].freeze
   WRITING_TIERS = %i[finance finance_manage].freeze
 
@@ -33,10 +38,9 @@ module Wsjrdp2027::FinanceAccess
     finance_tiers.any? { |tier| WRITING_TIERS.include?(tier) }
   end
 
-  # Named after the TIER, not after its permission: the tier is the admin
-  # one, its permission is :finance_manage and the ability action it guards
-  # is :fin_admin.
-  def if_finance_admin
+  # The ability action this tier guards is still called :fin_admin -- the
+  # name predates the split into tiers.
+  def if_finance_manage
     finance_tiers.include?(:finance_manage)
   end
 
