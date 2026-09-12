@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_12_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -334,6 +334,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.index ["beleginfo"], name: "index_datev_bookings_on_beleginfo", opclass: :jsonb_path_ops, using: :gin
     t.index ["booking_date"], name: "index_datev_bookings_on_booking_date"
     t.index ["buchungs_guid"], name: "index_datev_bookings_on_buchungs_guid", unique: true
+    t.index ["cost_center_number", "sub_cost_center_number"], name: "index_datev_bookings_on_cost_center_and_sub_cost_center"
     t.index ["cost_center_number"], name: "index_datev_bookings_on_cost_center_number"
     t.index ["datev_booking_batch_id"], name: "index_datev_bookings_on_datev_booking_batch_id"
     t.index ["offsetting_account_number"], name: "index_datev_bookings_on_offsetting_account_number"
@@ -1743,6 +1744,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.string "visibility", default: "auto", null: false
     t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
   end
@@ -1853,6 +1855,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.string "banking_url"
     t.string "bookkeeping_account_number", comment: "Number of the (DATEV) bookkeeping account this bank account/wallet maps to"
     t.string "bookkeeping_account_type", default: "WsjrdpLedgerAccount", comment: "Polymorphic type for bookkeeping_account_number (default WsjrdpLedgerAccount)"
+    t.string "visibility", default: "auto", null: false
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
     t.index ["bookkeeping_account_type", "bookkeeping_account_number"], name: "index_wsjrdp_fin_accounts_on_bookkeeping_account"
   end
@@ -1867,7 +1870,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.text "aliases", default: [], null: false, comment: "Hitobito-specific alternative names", array: true
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
-    t.string "visibility", default: "auto", null: false, comment: "Hitobito-specific, can be auto, visible (always visible) or hidden (never visible)"
+    t.string "visibility", default: "auto", null: false
     t.string "account_kind", default: "UNKNOWN", null: false, comment: "short code: BANK/TRANSIT/CLEARING/LIABILITY/INCOME/EXPENSE/EQUITY/UNKNOWN"
     t.string "datev_purpose", comment: "DATEV Kontenzweck"
     t.integer "datev_function_type", comment: "DATEV Hauptfunktionstyp (HFTyp), 0 = no Hauptfunktion"
@@ -1880,7 +1883,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.index ["number"], name: "index_wsjrdp_ledger_accounts_on_number", unique: true
     t.check_constraint "number::text !~ '^[1-9]\\d{5}$'::text", name: "chk_ledger_account_number_not_personal_account"
-    t.check_constraint "visibility::text = ANY (ARRAY['auto'::character varying::text, 'visible'::character varying::text, 'hidden'::character varying::text])", name: "chk_ledger_account_visibility"
   end
 
   create_table "wsjrdp_notes", id: :serial, force: :cascade do |t|
@@ -1936,7 +1938,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.text "aliases", default: [], null: false, comment: "Hitobito-specific alternative names", array: true
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
-    t.string "visibility", default: "auto", null: false, comment: "Hitobito-specific, can be auto, visible (always visible) or hidden (never visible)"
+    t.string "visibility", default: "auto", null: false
     t.string "account_kind", default: "CREDITOR", null: false, comment: "CREDITOR (Kreditor/Lieferant) or DEBITOR (Debitor/Kunde). "
     t.bigint "represented_person_id", comment: "Optional n:1 (<-> people): set when this Debitor/Kreditor represents a real person with a Hitobito account. Hitobito-specific; no import writes it."
     t.string "iban"
@@ -1987,8 +1989,33 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_100000) do
     t.text "description", default: "", null: false
     t.text "comment", default: "", null: false
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.string "visibility", default: "auto", null: false
     t.index ["manager_person_id"], name: "index_wsjrdp_spheres_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_spheres_on_number", unique: true
+  end
+
+  create_table "wsjrdp_sub_cost_centers", comment: "Hitobito-owned sub cost centers below a wsjrdp_cost_centers entry, linked by its number", force: :cascade do |t|
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.string "cost_center_number", null: false, comment: "The cost center this sub cost center belongs to (wsjrdp_cost_centers.number)"
+    t.string "number", null: false, comment: "Sub cost center number, unique within its cost center"
+    t.string "name"
+    t.string "short_name"
+    t.text "aliases", default: [], null: false, comment: "Hitobito-specific alternative names", array: true
+    t.boolean "delete_without_finance_permission", default: true, null: false
+    t.string "visibility", default: "auto", null: false
+    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Signed budget 2025 (expenses negative); NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Signed budget 2026 (expenses negative); NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Signed budget 2027 (expenses negative); NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "explicit_total_budget", precision: 20, scale: 3, comment: "Explicitly set total budget for the whole period; NULL = not set"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
+    t.text "description", default: "", null: false
+    t.text "comment", default: "", null: false
+    t.text "user_comment", default: "", null: false, comment: "Comment visible for users"
+    t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
+    t.index ["cost_center_number", "number"], name: "index_wsjrdp_sub_cost_centers_on_cost_center_and_number", unique: true
   end
 
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"

@@ -57,6 +57,9 @@ of truth (parts may be proposal-only or already superseded):
   is exported and imported into Hitobito: entities (DE/EN), extraction paths
   (API / CSV-Builder+SFTP / ad-hoc / DATEV), and the per-entity field reference
   (the unified `moss_transactions` / `moss_expenses` / `moss_bookings` tables), incl. how DATEV bookings link back to Moss.
+- [`doc/fin/sub_cost_centers.md`](doc/fin/sub_cost_centers.md) — the
+  Hitobito-owned `wsjrdp_sub_cost_centers` table and its `WsjrdpSubCostCenter`
+  model, linked to a cost center by number and outliving it.
 
 See [`README.md`](README.md) for the dev-environment setup.
 

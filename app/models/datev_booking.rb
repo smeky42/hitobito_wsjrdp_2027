@@ -66,6 +66,62 @@ class DatevBooking < ActiveRecord::Base
   belongs_to :offsetting_account, polymorphic: true, optional: true,
     foreign_key: :offsetting_account_number, primary_key: :number
 
+  # The sub cost center this booking is assigned to (Hitobito-owned, not from
+  # DATEV). A sub cost center number is unique WITHIN its cost center only, so
+  # the link needs BOTH numbers: `sub_cost_center_number` names the row and the
+  # booking's own `cost_center_number` says under which cost center to read it.
+  # The instance-dependent scope supplies that second half.
+  #
+  # There is deliberately no foreign key on the pair. `cost_center_number` is
+  # DATEV's KOST field and the importer rewrites it on every import; a composite
+  # FK would make that import fail for every booking carrying a sub cost center.
+  # A pair that stopped resolving is therefore a legal state: the association
+  # reads as nil, the raw number stays, and the booking still saves. Only the
+  # validation below guards it, and only while the assignment itself changes.
+  #
+  # The price of the instance-dependent scope: the association preloads, but can
+  # never be eager-loaded or joined ("The association scope ... is instance
+  # dependent"). Use `preload`/`includes`; a join is written out in SQL:
+  #   LEFT JOIN wsjrdp_sub_cost_centers scc
+  #          ON scc.cost_center_number = datev_bookings.cost_center_number
+  #         AND scc.number = datev_bookings.sub_cost_center_number
+  #
+  # `inverse_of: false` on both sides: the counterpart carries an
+  # instance-dependent scope of its own, so Rails must not wire the two records
+  # to each other behind the scopes' backs.
+  belongs_to :sub_cost_center,
+    ->(booking) { where(cost_center_number: booking.cost_center_number) },
+    class_name: "WsjrdpSubCostCenter", foreign_key: :sub_cost_center_number,
+    primary_key: :number, optional: true, inverse_of: false
+
+  # Every booking with its sub cost center's names as REAL columns:
+  #
+  #   sub_cost_center_name        the sub cost center's `name`
+  #   sub_cost_center_short_name  its `display_short_name`
+  #
+  # Both are NULL where the stored pair names no row. Computed in ONE derived
+  # table aliased back to `datev_bookings`, over the same LEFT JOIN on both
+  # numbers the associations describe, so the rows stay DatevBooking objects and
+  # carry every original column PLUS these two.
+  #
+  # This is the one-query alternative to `preload(:sub_cost_center)` for a list
+  # that only shows the sub cost center's name: the association's scope is
+  # instance dependent and can therefore never be joined or eager-loaded, only
+  # preloaded -- and that costs one query per distinct cost center in the list.
+  # Unlike the association, these columns can also be sorted and filtered on.
+  scope :with_sub_cost_center, -> {
+    from(Arel.sql(<<~SQL.squish))
+      (SELECT b.*,
+              scc.name AS sub_cost_center_name,
+              scc.display_short_name AS sub_cost_center_short_name
+         FROM datev_bookings b
+         LEFT JOIN wsjrdp_sub_cost_centers scc
+                ON scc.cost_center_number = b.cost_center_number
+               AND scc.number = b.sub_cost_center_number)
+      AS datev_bookings
+    SQL
+  }
+
   # General ledger legs
   #
   # Each booking touches account (Konto) and offsetting_account

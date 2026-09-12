@@ -64,4 +64,50 @@ describe Fin::BookingsHelper do
       expect(helper.booking_link_rating(booking.reload)).to be_nil
     end
   end
+
+  # The Unter-Kostenstelle select of the booking detail. A sub cost center
+  # number is unique within its cost center only, so the choice is restricted to
+  # the booking's own cost center.
+  describe "#fin_sub_cost_center_select_options" do
+    let!(:cost_center) { WsjrdpCostCenter.create!(number: "8100", name: "Kostenstelle A") }
+    let!(:other_cost_center) { WsjrdpCostCenter.create!(number: "8200", name: "Kostenstelle B") }
+    let!(:sub) do
+      WsjrdpSubCostCenter.create!(cost_center: cost_center, number: "10",
+        name: "Teil A", short_name: "A")
+    end
+
+    before do
+      WsjrdpSubCostCenter.create!(cost_center: other_cost_center, number: "20", name: "Teil B")
+      booking.update!(cost_center_number: "8100")
+    end
+
+    it "offers only the sub cost centers of the booking's own cost center" do
+      expect(helper.fin_sub_cost_center_select_options(booking))
+        .to eq([["nicht gesetzt", ""], ["10 A", "10"]])
+    end
+
+    it "offers nothing but the blank entry for a booking without a cost center" do
+      booking.update!(cost_center_number: nil)
+
+      expect(helper.fin_sub_cost_center_select_options(booking))
+        .to eq([["nicht gesetzt", ""]])
+    end
+
+    # A DATEV import moved the booking to another cost center: the stored pair
+    # no longer resolves, and the form must not drop the value silently.
+    it "appends a current value that does not resolve" do
+      booking.update!(sub_cost_center_number: "10")
+      booking.update_columns(cost_center_number: "8200") # rubocop:disable Rails/SkipsModelValidations
+
+      expect(helper.fin_sub_cost_center_select_options(booking.reload))
+        .to eq([["nicht gesetzt", ""], ["20 Teil B", "20"], ["10", "10"]])
+    end
+
+    it "does not duplicate a current value that resolves" do
+      booking.update!(sub_cost_center_number: sub.number)
+
+      expect(helper.fin_sub_cost_center_select_options(booking))
+        .to eq([["nicht gesetzt", ""], ["10 A", "10"]])
+    end
+  end
 end
