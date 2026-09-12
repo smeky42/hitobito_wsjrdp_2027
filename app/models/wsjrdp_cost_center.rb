@@ -20,6 +20,18 @@ class WsjrdpCostCenter < ActiveRecord::Base
 
   validates :number, presence: true, uniqueness: true
 
+  # The sub cost centers below this cost center, linked by its number (there is
+  # no FK).
+  # rubocop:disable Rails/HasManyOrHasOneDependent -- deliberately no
+  # :dependent option: deleting a cost center leaves its sub cost centers
+  # alone. They keep their `cost_center_number`, so nothing is destroyed behind
+  # the user's back and the link heals if the cost center returns (cost centers
+  # are master data synced from DATEV and Moss).
+  has_many :sub_cost_centers, -> { order(:number) },
+    class_name: "WsjrdpSubCostCenter", primary_key: :number,
+    foreign_key: :cost_center_number, inverse_of: :cost_center
+  # rubocop:enable Rails/HasManyOrHasOneDependent
+
   # moss_status is NULL for cost centers unknown to Moss
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
   scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }

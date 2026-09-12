@@ -176,6 +176,7 @@ class Fin::BookingsController < Fin::FinController
   def update_fields(booking, attrs)
     coerce_nullable_boolean!(attrs, :is_unit_budget)
     blank_to_nil!(attrs, :secondary_cost_center_number)
+    blank_to_nil!(attrs, :sub_cost_center_number)
     if booking.update(attrs)
       redirect_after_update booking,
         notice: "Buchung ##{booking.id} aktualisiert."

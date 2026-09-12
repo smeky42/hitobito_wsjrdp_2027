@@ -396,8 +396,33 @@ module Fin::BookingsHelper
     end
   end
 
+  # The sub cost center, read within the booking's own cost center. A pair that
+  # does not resolve -- a DATEV import moved the booking to another cost center
+  # -- keeps its raw number and is marked, rather than shown as unset.
   def fin_format_datev_booking_sub_cost_center_number(booking)
-    booking.sub_cost_center_number
+    number = booking.sub_cost_center_number
+    return nil if number.blank?
+
+    sub = booking.sub_cost_center
+    return sub.to_s if sub
+
+    safe_join([number, content_tag(:span, "(unbekannt)", class: "text-danger")], " ")
+  end
+
+  # The sub cost centers assignable to this booking: those of its OWN cost
+  # center, since a sub cost center number is unique within its cost center
+  # only. Like fin_cost_center_select_options appends the booked-but-unknown
+  # numbers, the booking's current value is appended when it does not resolve,
+  # so a stale pair is offered back instead of being dropped by the form.
+  def fin_sub_cost_center_select_options(booking)
+    opts = [["nicht gesetzt", ""]]
+    if booking.cost_center_number.present?
+      WsjrdpSubCostCenter.where(cost_center_number: booking.cost_center_number)
+        .order(:number).each { |sub| opts << [sub.to_s, sub.number] }
+    end
+    current = booking.sub_cost_center_number
+    opts << [current, current] if current.present? && opts.none? { |(_, value)| value == current }
+    opts
   end
 
   def fin_cost_center_select_options

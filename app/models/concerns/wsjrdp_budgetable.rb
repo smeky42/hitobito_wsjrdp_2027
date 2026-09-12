@@ -7,9 +7,10 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# Budget columns shared by WsjrdpCostCenter and WsjrdpSphere: one signed
-# decimal per year (budget_2025..budget_2028, expenses negative -- the sign
-# convention of datev_bookings.amount), an optional explicitly set
+# Budget columns shared by WsjrdpCostCenter, WsjrdpSubCostCenter and
+# WsjrdpSphere: one signed decimal per year (budget_2025..budget_2028, expenses
+# negative -- the sign convention of datev_bookings.amount), an optional
+# explicitly set
 # `explicit_total_budget`, and the database-generated `effective_total_budget`
 # (the yearly sum or the explicit total, whichever has the larger absolute
 # value; read-only, see the AddWsjrdpCostCenters migration).

@@ -63,6 +63,9 @@ de:
       wsjrdp_cost_center:
         one: Kostenstelle
         other: Kostenstellen
+      wsjrdp_sub_cost_center:
+        one: Unterkostenstelle
+        other: Unterkostenstellen
 
     alert:
       only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
@@ -433,6 +436,27 @@ de:
         effective_total_budget: Gesamtbudget
         description: Beschreibung
         comment: Kommentar
+
+      # de.activerecord.attributes.wsjrdp_sub_cost_center (Unterkostenstelle)
+      wsjrdp_sub_cost_center:
+        number: Nummer
+        name: Bezeichnung
+        short_name: Kurz-Bezeichnung
+        aliases: Aliasse
+        # the belongs_to :cost_center, linked by its number
+        cost_center: Kostenstelle
+        cost_center_number: Kostenstelle (Nummer)
+        visibility: Sichtbarkeit
+        delete_without_finance_permission: Löschen ohne Finanzberechtigung
+        budget_2025: Budget 2025
+        budget_2026: Budget 2026
+        budget_2027: Budget 2027
+        budget_2028: Budget 2028
+        explicit_total_budget: Gesamtbudget (explizit)
+        effective_total_budget: Gesamtbudget
+        description: Beschreibung
+        comment: Kommentar
+        user_comment: Kommentar für Nutzer
 
       # de.activerecord.attributes.wsjrdp_ledger_account (Sachkonto)
       wsjrdp_ledger_account:

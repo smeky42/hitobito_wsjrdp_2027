@@ -21,6 +21,9 @@
 - may_link = can?(:update, DatevBooking)
 - editable = {editable: true}
 - cc_options = fin_cost_center_select_options
+-# Only the sub cost centers of THIS booking's cost center -- a sub cost center
+-# number is unique within its cost center only.
+- scc_options = fin_sub_cost_center_select_options(booking)
 - ub_options = [["automatisch", ""], ["ja", "true"], ["nein", "false"]]
 = fin_detail(booking, ctx, form_url: form_url) do |d|
   - d.header back: bookings_path, back_label: "Zurück zur Liste",
@@ -34,7 +37,7 @@
       :is_unit_budget, :sub_cost_center_number, :sphere_number,
       secondary_cost_center_number: {blank: :unset, input: :select, options: cc_options, **editable},
       is_unit_budget: {input: :select, options: ub_options, **editable},
-      sub_cost_center_number: {blank: :unset, input: :text, **editable},
+      sub_cost_center_number: {blank: :unset, input: :select, options: scc_options, **editable},
       sphere_number: {blank: :unset},
       cost_center_number: {blank: :unset}
   - d.attrs :document_field_1, :document_field_2, :buchungs_guid,

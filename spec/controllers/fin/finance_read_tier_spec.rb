@@ -131,10 +131,26 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
     context "as a finance admin" do
       before { sign_in(fin_admin) }
 
+      # The sub cost center of a booking is the pair (cost_center_number,
+      # sub_cost_center_number); the row it names lives under the booking's own
+      # cost center (doc/fin/sub_cost_centers.md).
       it "may edit the booking fields" do
+        WsjrdpSubCostCenter.create!(cost_center_number: "9500", number: "X1", name: "Teil X")
+
         patch :update, params: {id: booking.id,
                                 datev_booking: {sub_cost_center_number: "X1"}}
         expect(booking.reload.sub_cost_center_number).to eq("X1")
+      end
+
+      # "nicht gesetzt" of the select posts the empty string; the column holds
+      # NULL for a booking without a sub cost center, never "".
+      it "clears the sub cost center to NULL" do
+        WsjrdpSubCostCenter.create!(cost_center_number: "9500", number: "X1", name: "Teil X")
+        booking.update_column(:sub_cost_center_number, "X1")
+
+        patch :update, params: {id: booking.id,
+                                datev_booking: {sub_cost_center_number: ""}}
+        expect(booking.reload.sub_cost_center_number).to be_nil
       end
     end
   end
