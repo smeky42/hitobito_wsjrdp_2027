@@ -44,7 +44,10 @@ module WsjrdpJsonbHelper
           value = ActiveModel::Type::Boolean.new.cast(value) if cast == :boolean
           value = value&.strip if strip
           if delete_on_blank && value.blank?
-            send(store_attribute)&.delete(accessor_key)
+            # Delete the STORE key, not the accessor name: with prefix/suffix the
+            # two differ, and the value was written under `key`. jsonb hashes use
+            # string keys, so normalise with to_s.
+            send(store_attribute)&.delete(key.to_s)
           else
             if created_at_key.present? || updated_at_key.present?
               old_value = read_store_attribute(store_attribute, key)
@@ -65,6 +68,26 @@ module WsjrdpJsonbHelper
             !!read_store_attribute(store_attribute, key)
           end
         end
+      end
+    end
+
+    # Declares `column` (a jsonb column) as a Hash-like field whose per-key writes
+    # persist immediately; see Wsjrdp::JsonbBackedHash. `record.column` returns the
+    # facade, `record.column = {..}` replaces the whole column. Declare this BEFORE
+    # any jsonb_accessor on the same column, so those accessors route through the
+    # facade too (ActiveRecord::Store reads/writes via the public reader).
+    def jsonb_backed_hash(column)
+      column = column.to_sym
+      ivar = :"@_jsonb_backed_hash_#{column}"
+      define_method(column) do
+        facade = instance_variable_get(ivar)
+        # Rebind after a dup/clone (the ivar would point at the original record).
+        facade = instance_variable_set(ivar, Wsjrdp::JsonbBackedHash.new(self, column)) unless
+          facade&.record.equal?(self)
+        facade
+      end
+      define_method(:"#{column}=") do |value|
+        public_send(column).replace(value)
       end
     end
   end
