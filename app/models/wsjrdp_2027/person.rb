@@ -31,6 +31,7 @@ module Wsjrdp2027::Person
   # internal attrs are not paper trailed
   WSJRDP_INTERNAL_ATTRS = [
     :additional_info,  # note: Also in WSJRDP_PUBLIC_ATTRS
+    :wsjrdp_user_preferences,  # internal only, NOT public
     :cluster_code,  # note: Also in WSJRDP_PUBLIC_ATTRS
     :moss_email_created_at,
     :moss_email_updated_at,
@@ -98,12 +99,11 @@ module Wsjrdp2027::Person
     base.class_eval do
       include WsjrdpJsonbHelper
       include WsjrdpNumberHelper
+      include WsjrdpSchemaValidationHelper
 
-      # We need to remove the existing validator with just two genders first
-      _validators[:gender].reject! { |v| v.is_a? ActiveModel::Validations::InclusionValidator }
-      # ...and the callback for the validator
-      cb = _validate_callbacks.find { |c| c.filter.is_a? ActiveModel::Validations::InclusionValidator and c.filter.attributes.include? :gender }
-      _validate_callbacks.delete(cb)
+      # Remove the core's inclusion validator (just two genders) so we can
+      # re-declare it with three below.
+      remove_schema_validations :gender, only: :inclusion
 
       # Then add the attr with validator and the setter again
       i18n_enum :gender, GENDERS
@@ -203,6 +203,19 @@ module Wsjrdp2027::Person
 
       jsonb_accessor :additional_info, :planned_total_fee_reduction_comment, strip: true
       attribute :planned_total_fee_reduction_comment, :text
+
+      # Per-key writes to wsjrdp_user_preferences persist immediately (see
+      # Wsjrdp::JsonbBackedHash). Declared before the jsonb_accessor so the
+      # accessor routes through the same facade (ActiveRecord::Store reads/writes
+      # via the public reader) and is immediate too.
+      jsonb_backed_hash :wsjrdp_user_preferences
+      jsonb_accessor :wsjrdp_user_preferences, :admin_tab, prefix: :wsjrdp_preference
+      attribute :wsjrdp_preference_admin_tab, :string
+
+      # The column is NOT NULL, so validates_by_schema (core person.rb) auto-adds
+      # a presence validator -- but its {} default is blank?, which would make
+      # every Person invalid and break all creation. Drop it.
+      remove_schema_validations :wsjrdp_user_preferences, only: :presence
 
       def short_full_name
         first_names = first_name ? first_name.split : []

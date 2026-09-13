@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_12_140000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1365,6 +1365,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_140000) do
     t.decimal "wsjrdp_raw_installments_eur", precision: 20, scale: 3, array: true
     t.string "wsjrdp_installments_issue"
     t.text "wsjrdp_installments_comment"
+    t.jsonb "wsjrdp_user_preferences", default: {}, null: false, comment: "Per-user preferences"
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true

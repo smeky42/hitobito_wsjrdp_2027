@@ -7,10 +7,10 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# Prepended to ApplicationController: the wagon's session settings -- the
-# finance cap (Wsjrdp2027::FinanceCap) and the two flags that say what the
-# session UI (layouts/_wsjrdp_session_bar) shows -- set through query
-# parameters and kept in the session.
+# Prepended to ApplicationController: the wagon's session settings --
+# the finance cap (Wsjrdp2027::FinanceCap) and the two flags that say
+# what the session UI (layouts/_wsjrdp_session_bar) shows -- set
+# through query parameters and kept in the session.
 #
 #   ?max_finance_permission=finance_read   caps this session at the read tier
 #   ?max_finance_permission=               (or any unknown value) lifts the cap
@@ -27,24 +27,32 @@
 #                                          truthy spelling (1, true, on, yes)
 #                                          counts as always, a falsy one
 #                                          (0, false, off, no) as hidden.
+#                                          Unlike the other two it is also kept
+#                                          per login user in
+#                                          person.wsjrdp_user_preferences,
+#                                          so it survives the login.
 #
-# All three live in the session -- server-side, gone with the login --
-# and are validated on every read: a stale or unknown value is dropped
-# and counts as no cap / as ondemand / as no tab. The cap is applied
+# The cap and the bar live only in the session -- server-side, gone
+# with the login. admin_tab additionally mirrors the login user's
+# persisted preference: a fresh session is seeded from it, and a
+# change writes the normalised value back (see #store_admin_tab). All
+# are validated on every read: a stale or unknown value is dropped and
+# counts as no cap / as ondemand / as no tab. The cap is applied
 # wherever the current ability is built, so a capped person sees the
 # same reduced rights on /fin and on a person's finance tab.
 #
-# Ordering: the parameters are stored in a prepend_before_action, i.e. before
-# anything in the chain can have built #current_ability; the memo is reset
-# anyway, so a cap set on this very request already applies to it.
+# Ordering: the parameters are stored in a prepend_before_action,
+# i.e. before anything in the chain can have built #current_ability;
+# the memo is reset anyway, so a cap set on this very request already
+# applies to it.
 module Wsjrdp2027::Concerns::SessionSettings
   extend ActiveSupport::Concern
 
   SESSION_KEY = :max_finance_permission
-  BAR_KEY = :finance_tier_bar
-  BAR_MODES = %w[always hidden ondemand].freeze
-  TAB_KEY = :admin_tab
-  TAB_MODES = %w[always ondemand hidden].freeze
+  FINANCE_TIER_BAR_KEY = :finance_tier_bar
+  FINANCE_TIER_BAR_MODES = %w[always hidden ondemand].freeze
+  ADMIN_TAB_KEY = :admin_tab
+  ADMIN_TAB_MODES = %w[always ondemand hidden].freeze
   # Spellings of "yes" and "no" that a hand-typed URL is likely to carry.
   TAB_ALWAYS = %w[1 true on yes].freeze
   TAB_HIDDEN = %w[0 false off no].freeze
@@ -62,9 +70,10 @@ module Wsjrdp2027::Concerns::SessionSettings
     end
   end
 
-  # The cap of this session as a tier symbol, nil for none. Validated on the
-  # way out: an unknown value -- an older deploy's, a hand-edited one -- is
-  # removed and treated as if it had never been set.
+  # The cap of this session as a tier symbol, nil for none. Validated
+  # on the way out: an unknown value -- an older deploy's, a
+  # hand-edited one -- is removed and treated as if it had never been
+  # set.
   def max_finance_permission
     value = session[SESSION_KEY]
     return nil if value.nil?
@@ -77,15 +86,16 @@ module Wsjrdp2027::Concerns::SessionSettings
   # The session bar's mode as a symbol; :ondemand unless set to something
   # valid, a stale value removed on the way.
   def finance_tier_bar
-    valid_session_mode(BAR_KEY, BAR_MODES) || :ondemand
+    valid_session_mode(FINANCE_TIER_BAR_KEY, FINANCE_TIER_BAR_MODES) || :ondemand
   end
 
-  # The admin tab's mode as a symbol: :always, :ondemand, or :hidden, which
-  # is also what an unset or stale value means (and a stale one is removed on
-  # the way). The session only ever holds one of the three words, the truthy
-  # and falsy spellings are resolved on the way in.
+  # The admin tab's mode as a symbol: :always, :ondemand, or :hidden,
+  # which is also what an unset or stale value means (and a stale one
+  # is removed on the way). The session only ever holds one of the
+  # three words, the truthy and falsy spellings are resolved on the
+  # way in.
   def admin_tab
-    valid_session_mode(TAB_KEY, TAB_MODES) || :hidden
+    valid_session_mode(ADMIN_TAB_KEY, ADMIN_TAB_MODES) || :hidden
   end
 
   private
@@ -98,19 +108,26 @@ module Wsjrdp2027::Concerns::SessionSettings
     nil
   end
 
-  def store_session_settings
-    if params.key?(SESSION_KEY)
-      store_session_param(SESSION_KEY) { |value| value if Wsjrdp2027::FinanceCap.valid?(value) }
-      @current_ability = nil
-    end
-    store_session_param(BAR_KEY) { |value| value if BAR_MODES.include?(value) } if params.key?(BAR_KEY)
-    store_session_param(TAB_KEY) { |value| tab_mode(value) } if params.key?(TAB_KEY)
+  def valid_finance_cap_value(value)
+    return if value.nil?
+    value = value.to_s
+    Wsjrdp2027::FinanceCap.valid?(value) ? value : nil
   end
 
-  # What the block returns lands in the session, nil clears the key -- so an
-  # empty parameter is the way to unset it.
-  def store_session_param(key)
-    value = yield(params[key].to_s)
+  def valid_finance_tier_bar_value(value)
+    return if value.nil?
+    value = value.to_s
+    FINANCE_TIER_BAR_MODES.include?(value) ? value : nil
+  end
+
+  def valid_tab_mode_value(value)
+    value = value.to_s
+    return "always" if TAB_ALWAYS.include?(value.downcase)
+    return "hidden" if TAB_HIDDEN.include?(value.downcase)
+    value if ADMIN_TAB_MODES.include?(value)
+  end
+
+  def store_or_clear_session_param(key, value)
     if value.nil?
       session.delete(key)
     else
@@ -118,11 +135,50 @@ module Wsjrdp2027::Concerns::SessionSettings
     end
   end
 
-  # The three words as they are, plus the truthy and falsy spellings.
-  def tab_mode(value)
-    return "always" if TAB_ALWAYS.include?(value.downcase)
-    return "hidden" if TAB_HIDDEN.include?(value.downcase)
+  def store_session_settings
+    if params.key?(SESSION_KEY)
+      store_or_clear_session_param(SESSION_KEY, valid_finance_cap_value(params[SESSION_KEY]))
+      @current_ability = nil
+    end
+    if params.key?(FINANCE_TIER_BAR_KEY)
+      store_or_clear_session_param(FINANCE_TIER_BAR_KEY, valid_finance_tier_bar_value(params[FINANCE_TIER_BAR_KEY]))
+    end
+    store_admin_tab_session_setting
+  end
 
-    value if TAB_MODES.include?(value)
+  # admin_tab is mirrored between the session and the login user's
+  # persisted preference. `?admin_tab=` carries either a normalised
+  # value or an explicit blank (= reset); both are written to the
+  # session, and the persisted preference is updated only when the
+  # value actually changed vs. what the session held before (a blank
+  # clears both). An unknown, non-blank value is ignored. Without the
+  # parameter a fresh session (e.g. right after login) is seeded from
+  # the persisted preference. Nothing happens without a login user.
+  def store_admin_tab_session_setting
+    return unless login_person
+
+    if params.key?(ADMIN_TAB_KEY)
+      raw = params[ADMIN_TAB_KEY].to_s
+      mode = valid_tab_mode_value(raw)
+      if mode || raw.blank?  # ignore non-blank, invalid values
+        previous = session[ADMIN_TAB_KEY]
+        store_or_clear_session_param(ADMIN_TAB_KEY, mode)
+        login_person.wsjrdp_user_preferences[ADMIN_TAB_KEY] = mode if mode != previous
+      end
+    elsif !session.key?(ADMIN_TAB_KEY)
+      seed = valid_tab_mode_value(login_person.wsjrdp_user_preferences[ADMIN_TAB_KEY])
+      session[ADMIN_TAB_KEY] = seed unless seed.nil?
+    end
+  end
+
+  # The person who actually logged in, never a currently impersonated
+  # one (during impersonation current_person is the impersonated user
+  # and origin_user the real one). Memoised so origin_user's lookup
+  # runs once and the seed read and the persist write share the same
+  # object.
+  def login_person
+    return @login_person if defined?(@login_person)
+
+    @login_person = origin_user || current_person
   end
 end
