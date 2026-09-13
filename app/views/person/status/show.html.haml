@@ -29,11 +29,14 @@
     = labeled_attr(@person, :unit_code)
   = render_attrs_list do
     = labeled_attr(@person, :deregistration_issue)
+    = labeled_attr(@person, :deregistration_requested_date)
     = labeled_attr(@person, :deregistration_effective_date)
     = labeled_attr_with_help(@person, :deregistration_contractual_compensation_cents) do
       Entschädigung nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen (T&R).
       %br/
       (bis 31.05.2026: 50%, bis 31.12.2026: 75%, bis 31.03.2027: 90%, danach 100%)
+      %br/
+      = deregistration_compensation_date_hint(@person)
     = labeled_attr_with_help(@person, :deregistration_actual_compensation_cents) do
       Vorgeschlagene Entschädigung = Beitrag der trotz Abmeldung bezahlt werden muss.
       Das Finance Team kann im Tab Buchhaltung einen Betrag abweichend von der

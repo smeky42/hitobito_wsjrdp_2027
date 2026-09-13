@@ -173,6 +173,8 @@ module Wsjrdp2027::Person
 
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
       attribute :deregistration_issue, :string
+      jsonb_accessor :additional_info, :deregistration_requested_date
+      attribute :deregistration_requested_date, :date
       jsonb_accessor :additional_info, :deregistration_effective_date
       attribute :deregistration_effective_date, :date
       jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
@@ -695,8 +697,27 @@ module Wsjrdp2027::Person
         super(value&.to_fs(:iso8601))
       end
 
+      def deregistration_requested_date
+        super&.to_date
+      end
+
+      def deregistration_requested_date=(value)
+        value = value.to_date if value.respond_to?(:to_date)
+        super(value&.to_fs(:iso8601))
+      end
+
+      # Which day the bracket of section 7.2 T&R is read for: the day the
+      # withdrawal was asked for, once that is known. Until then the answer
+      # moves with the calendar, which is what `today` is -- the clock, not the
+      # event, so a stored request date outranks it.
+      def deregistration_compensation_date(today: nil)
+        deregistration_requested_date || today || Time.zone.today
+      end
+
       def deregistration_contractual_compensation_cents(today: nil)
-        compute_contractual_compensation_cents(total_fee_cents, today: today)
+        compute_contractual_compensation_cents(
+          total_fee_cents, today: deregistration_compensation_date(today: today)
+        )
       end
 
       def deregistration_refund_cents(today: nil)

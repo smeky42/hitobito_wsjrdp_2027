@@ -114,6 +114,18 @@ module Wsjrdp2027::PeopleHelper
     format_cents_de(person.deregistration_contractual_compensation_cents, zero_cents: "")
   end
 
+  # Which day the bracket was read for, said out loud: without a request date
+  # the share follows the calendar, so the amount above changes from one day to
+  # the next and the page has to say why.
+  def deregistration_compensation_date_hint(person)
+    date = l(person.deregistration_compensation_date)
+    if person.deregistration_requested_date.present?
+      "Berechnet zum #{date} (Abmeldung angefragt am)."
+    else
+      "Berechnet zum #{date} (heute)"
+    end
+  end
+
   def format_person_deregistration_actual_compensation_cents(person)
     cents = person.deregistration_actual_compensation_cents
     if cents.present?
