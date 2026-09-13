@@ -10,15 +10,14 @@
 
   - permitted_attrs_set = Set.new(permitted_attrs)
   = standard_form(accounting_entry, {url: url_for(accounting_entry), method: :put}) do |f|
-    = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
     -# No editable field, no buttons
     - if permitted_attrs.present?
       = button_toolbar(f, toolbar_class: nil) do
         = submit_button(f, ti(:"button.save"))
-        - if can_fin_admin?
-          = action_button(t("global.link.delete"), "#{url_for(accounting_entry)}?fin_admin=1", :"trash-alt", data: {method: :delete, confirm: I18n.t("global.confirm_delete")}, in_button_group: true)
+        - if can?(:destroy, accounting_entry)
+          = action_button(t("global.link.delete"), url_for(accounting_entry), :"trash-alt", class: "btn-danger mr-4 mt-2", data: {method: :delete, confirm: I18n.t("global.confirm_delete")})
         = cancel_link(cancel_url)
 
     .mt-3
@@ -39,14 +38,16 @@
       = input_or_render_attrs(f, :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten')
       %div.border-top.py-2
       = input_or_render_attrs(f, :value_date, :debit_sequence_type, :endtoend_id)
-      - if permitted_attrs.include?(:excluded_from_fee_reconciliation)
+      - if permitted_attr?(:excluded_from_fee_reconciliation)
         = f.labeled_boolean_field :excluded_from_fee_reconciliation,
           caption: 'Diese Buchung nimmt nicht an der Abstimmung der TN-Beiträge teil'
+      - elsif can?(:log, accounting_entry) || can?(:update, accounting_entry)
+        = input_or_render_attrs(f, :excluded_from_fee_reconciliation)
       %div.border-top.py-2
       = input_or_render_attrs(f, :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
       = input_or_render_attrs(f, :mandate_id, :mandate_date)
       %div.border-top.py-2
-      - if can_fin_admin?
+      - if can?(:admin_finance, accounting_entry)
         %div.row.mb-2.mt-0
           %div.offset-md-3.offset-xl-2
             %div.btn-group

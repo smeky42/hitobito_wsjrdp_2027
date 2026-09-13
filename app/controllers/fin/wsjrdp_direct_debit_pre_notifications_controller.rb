@@ -12,8 +12,6 @@ class Fin::WsjrdpDirectDebitPreNotificationsController < Fin::FinController
 
   before_action :authorize_action
 
-  helper_method :can_fin?
-  helper_method :can_fin_admin?
   helper_method :pre_notification
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
@@ -54,14 +52,6 @@ class Fin::WsjrdpDirectDebitPreNotificationsController < Fin::FinController
 
   def authorize_action
     authorize!(:log, person)
-  end
-
-  def can_fin?
-    can?(:log, pre_notification) && !param_is_false(cookies, :can_fin)
-  end
-
-  def can_fin_admin?
-    can?(:fin_admin, pre_notification) && param_is_true(cookies, :fin_admin)
   end
 
   private

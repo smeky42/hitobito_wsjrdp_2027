@@ -19,7 +19,7 @@ Core-Datei: `app/hitobito/app/helpers/navigation_helper.rb` mit `NavigationHelpe
   (`WSJRDP_MAIN_GROUPS`, `WSJRDP_MAIN_FIN`, `WSJRDP_MAIN_CONTINGENT`) an
   definierten Positionen (`MAIN.insert(...)`).
 - Jeder Eintrag ist ein Hash: `label:` (i18n), `url:` (Pfad-Helper-Symbol),
-  `icon_name:`, `if:` (Sichtbarkeit, z. B. `->(_) { can?(:fin_admin, WsjrdpFinAccount) }`),
+  `icon_name:`, `if:` (Sichtbarkeit, z. B. `->(_) { can?(:show, WsjrdpFinAccount) }`),
   `active_for:` / `inactive_for:` (siehe §3, gleiche Matching-Logik).
 
 Der **Finanzen**-Haupteintrag `WSJRDP_MAIN_FIN` zeigt auf `fin_path`
@@ -175,7 +175,8 @@ tab :moss_card_transactions_tab_label, :moss_card_transactions_path  # eine von 
    ```
 2. **Controller** je Tab (`app/controllers/fin/…`), abgeleitet von
    `Fin::FinController`, mit `before_action :authorize_action` und
-   `authorize!(:fin_admin, WsjrdpFinAccount)`.
+   `authorize!(:show, <Modell des Bereichs>)` -- die Moss-Controller fragen
+   `MossTransaction`, die Buchhaltung `DatevBooking`.
 3. **Bereichs-Sheet** `Sheet::Fin::Moss` (`app/helpers/sheet/fin/moss.rb`):
    `tab …`-Zeilen, `left_nav?` → true, `render_left_nav` → `"fin/left_nav"`,
    `title`. Dieses Sheet bedient zugleich den Übersichts-Controller

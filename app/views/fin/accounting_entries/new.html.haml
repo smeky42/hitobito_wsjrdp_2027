@@ -11,7 +11,6 @@
     %div.new-accounting-entry
       = standard_form(entry, {url: accounting_entries_path, method: :post }) do |f|
         .mt-3
-        = hidden_field_tag("fin_admin", can_fin_admin?)
         = hidden_field_tag("return_url", return_url)
         = f.error_messages
         = hidden_field_tag 'target_turbo_frame', target_turbo_frame

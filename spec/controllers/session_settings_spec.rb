@@ -36,8 +36,9 @@ describe Fin::BookingsController, type: :controller do
 
   before { sign_in(manager) }
 
-  # The field-edit form only exists for :fin_admin -- the visible tell of the
-  # top tier on this page.
+  # The field-edit form starts at the write tier, so it tells that tier from
+  # the read one. Nothing on this page belongs to the manage tier alone any
+  # more, so the tier itself is asked of the ability.
   def field_form? = response.body.include?("datev_booking[secondary_cost_center_number]")
 
   it "stores a valid parameter in the session and applies it right away" do
@@ -54,8 +55,8 @@ describe Fin::BookingsController, type: :controller do
     get :show, params: {id: booking.id}
 
     expect(controller.current_ability).to be_able_to(:update, DatevBooking)
-    expect(controller.current_ability).not_to be_able_to(:fin_admin, DatevBooking)
-    expect(field_form?).to be(false)
+    expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
+    expect(field_form?).to be(true)
   end
 
   it "drops the pick on an unknown or empty value, so the default tier applies" do
@@ -64,7 +65,8 @@ describe Fin::BookingsController, type: :controller do
 
     expect(session[:max_finance_permission]).to be_nil
     expect(controller.current_ability).to be_able_to(:update, DatevBooking)
-    expect(field_form?).to be(false) # the default is the write tier, not manage
+    expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
+    expect(field_form?).to be(true) # the default is the write tier, not manage
   end
 
   it "drops a stale session value and behaves as if none were set" do
@@ -86,19 +88,19 @@ describe Fin::BookingsController, type: :controller do
 
       expect(session[:max_finance_permission]).to be_nil
       expect(controller.current_ability).to be_able_to(:update, DatevBooking)
-      expect(controller.current_ability).not_to be_able_to(:fin_admin, DatevBooking)
-      expect(field_form?).to be(false)
+      expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
+      expect(field_form?).to be(true)
     end
 
     it "hands it back on a pick, and takes it away again on a reset" do
       get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
 
-      expect(controller.current_ability).to be_able_to(:fin_admin, DatevBooking)
+      expect(controller.current_ability).to be_able_to(:admin_finance, DatevBooking)
       expect(field_form?).to be(true)
 
       get :show, params: {id: booking.id, max_finance_permission: ""}
 
-      expect(controller.current_ability).not_to be_able_to(:fin_admin, DatevBooking)
+      expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
     end
 
     # Nothing is stored, so nothing has to be kept in step: the tier follows
@@ -215,7 +217,7 @@ describe Fin::BookingsController, type: :controller do
       elevated = doc.at_css(".wsjrdp-session-bar .alert-danger")
       expect(elevated).to be_present
       expect(action(elevated).third).to eq(I18n.t("layouts.wsjrdp_session_bar.reset_raised"))
-      expect(controller.current_ability).to be_able_to(:fin_admin, DatevBooking)
+      expect(controller.current_ability).to be_able_to(:admin_finance, DatevBooking)
     end
 
     # An elevated tier is never in force invisibly.
@@ -356,7 +358,7 @@ describe Fin::BookingsController, type: :controller do
       expect(bar_switches).to eq([["/session_settings?finance_tier_bar=always", false],
         ["/session_settings?finance_tier_bar=hidden", true]])
       expect(picker["data-provide"]).to eq("entity")
-      expect(picker["data-url"]).to eq("/people/query?limit_by_permission=impersonate_user")
+      expect(picker["data-url"]).to eq("/wsjrdp/impersonate/people")
       expect(picker["data-wsjrdp-impersonate-url"]).to eq("/wsjrdp/impersonate")
       # The confirmation sits in the menu, hidden until a person is picked: a
       # warning panel naming the person, and a button that starts out disabled

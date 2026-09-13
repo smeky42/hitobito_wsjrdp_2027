@@ -90,6 +90,21 @@ module WsjrdpFormHelper
       form_like_labeled(key, val)
     end
 
+    # Is this attribute editable on this page? A jsonb key can be permitted in
+    # two spellings: flat under the name its accessor listens on, and nested
+    # under its column (additional_info: [:excluded_from_fee_reconciliation]).
+    # Both mean the same thing here, so a view does not have to know which one
+    # the controller chose.
+    def permitted_attr?(attr)
+      permitted_attrs.any? do |permitted|
+        if permitted.is_a?(Hash)
+          permitted.any? { |_column, keys| Array(keys).include?(attr) }
+        else
+          permitted == attr
+        end
+      end
+    end
+
     def input_or_render_attrs(form, *attrs, display_link: true, show_previous_as_help_inline: false, **opts)
       obj = form.object
       return if attrs.blank?

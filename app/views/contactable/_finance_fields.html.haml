@@ -58,7 +58,7 @@
       .col
         .d-flex.flex-row.mb-2
           = f.input_field :sepa_bic, input_html: { id: 'person_sepa_bic' }
-    - if can?(:fin_admin, @person)
+    - if can?(:update_finance, @person)
       .row
         %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
           = t('activerecord.attributes.person.sepa_mandate_id')

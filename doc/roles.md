@@ -272,11 +272,12 @@ covers it.
 | read | `finance_read` | `if_finance_read` | `show`, except on `AccountingEntry` | `Root::FinanceReader` |
 | audit | `finance_read`, `finance_audit` | `if_finance_audit` | read's, plus `log` and `show` on `AccountingEntry` | `Extern::FinanceAuditor` |
 | write | `finance_read`, `finance_audit`, `finance` | `if_finance_write` | audit's, plus `create`, `update` | `Root::Finance`, `Root::Admin`, `Extern::FinanceAccountant` |
-| manage | `finance_read`, `finance_audit`, `finance`, `finance_manage` | `if_finance_manage` | write's, plus `fin_admin`, `manage` | `Root::FinanceManager`, once picked for the session |
+| manage | `finance_read`, `finance_audit`, `finance`, `finance_manage` | `if_finance_manage` | write's, plus `admin_finance`, `manage` | `Root::FinanceManager`, once picked for the session |
 
 `finance` is the core's own permission, reused as the write tier. The
-ability action of the manage tier is still called `fin_admin`; the name
-predates the tiers.
+ability actions are named after what they do, on the finance models as on a
+person: `update_finance` from the write tier up, `admin_finance` and
+`destroy_finance` at the manage tier.
 
 `AccountingEntry` is not in the read tier. All the financial aspects are
 exposed through other models, so nothing is hidden from a finance view
@@ -367,6 +368,25 @@ Limits: the root superuser bypasses the whole DSL (`can :manage, :all`), so
 a cap has no effect on root; and database scopes that read roles directly
 (`accessible_by`, `visible_from_above`) are not narrowed, so a list may
 still show rows whose page the cap then refuses.
+
+### Impersonating from the admin tab
+
+The tab's person search reaches two wagon endpoints, and both act for the
+person who actually **logged in** — `origin_user` first, the current person
+only when no impersonation runs. `Wsjrdp::ImpersonationQueryController`
+(GET `/wsjrdp/impersonate/people`) looks people up, and
+`Wsjrdp::ImpersonationController` (POST `/wsjrdp/impersonate`) performs the
+switch, ending a running impersonation before starting the next one.
+
+That is the whole reason both exist. The core's `Person::QueryController`
+and `Person::ImpersonationController` ask `current_person`, which while
+impersonating is the impersonated person: they may neither query people nor
+impersonate anybody, and the core's own controller refuses a switch outright.
+The lookup inherits from the core controller and overrides nothing but
+`#current_ability` and `#limit_by_permission`, so the search columns, the
+three-character minimum, the result limit and the typeahead JSON stay the
+core's, and the endpoint answers one question only: whom may the actor
+impersonate.
 
 ## Admin-only roles (`Role.admin_only_assignment`)
 

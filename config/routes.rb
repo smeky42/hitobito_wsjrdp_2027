@@ -9,8 +9,12 @@ Rails.application.routes.draw do
 
   # The session UI's background target (doc/roles.md -> "The finance cap").
   post "session_settings", to: "session_settings#update", as: :session_settings
-  # The admin tab's person search: impersonate, or switch out of a running
-  # impersonation (Wsjrdp::ImpersonationController).
+  # The admin tab's person search: look somebody up
+  # (Wsjrdp::ImpersonationQueryController), then impersonate them, or switch
+  # out of a running impersonation (Wsjrdp::ImpersonationController). Both act
+  # for the person who actually logged in, not for the impersonated one.
+  get "wsjrdp/impersonate/people", to: "wsjrdp/impersonation_query#index",
+    as: :wsjrdp_impersonate_query
   post "wsjrdp/impersonate", to: "wsjrdp/impersonation#create", as: :wsjrdp_impersonate
 
   language_scope do

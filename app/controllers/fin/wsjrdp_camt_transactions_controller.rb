@@ -9,14 +9,11 @@
 
 class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   include WsjrdpFormHelper
-  include Fin::AccessHelper
   include SubjectLinking
 
   before_action :map_id_to_wsjrdp_camt_transaction_id
   before_action :authorize_action
-  before_action :check_fin_params_and_cookies
 
-  helper_method :can_fin_admin?
   helper_method :camt_transaction
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
@@ -125,10 +122,6 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
 
   def camt_transaction_return_url(entry = nil)
     params[:return_url].presence || camt_transaction_path(entry)
-  end
-
-  def can_fin_admin?
-    can?(:fin_admin, camt_transaction) && param_is_true(cookies, :fin_admin)
   end
 
   def matching_accounting_entries

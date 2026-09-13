@@ -10,7 +10,10 @@
 = field_set_tag do
   -# = f.labeled_collection_select(:new_sepa_status, Settings.sepa_status, :first, :last, {})
   -# %div.border-top.py-2
-  - if f.object.subject_id.present?
+  - if hide_subject?
+    = f.hidden_field :subject_id
+    = hidden_field_tag("hide_subject", 1)
+  - elsif f.object.subject_id.present?
     = f.hidden_field :subject_id
     = form_like_labeled_attr(f.object, :subject_id, display_link: false)
   - else

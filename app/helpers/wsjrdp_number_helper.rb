@@ -62,9 +62,15 @@ module WsjrdpNumberHelper
         cents = send(cents_attr)
         cents_to_eur_display_or_nil(cents)
       end
+      # A number input only accepts the HTML "number" format: a dot, no
+      # thousands separator. A comma is invalid there, and a browser that
+      # takes the spec literally (Chromium does) drops the value, leaving the
+      # field empty and the form unsavable. The German look is up to the
+      # browser: with lang="de-DE" Firefox displays the same value with a
+      # comma. The reader for display stays German (#{name}_display).
       define_method(:"#{name}_input_field_options") do
         cents = send(cents_attr)
-        value = cents_to_eur_display_or_nil(cents, delimiter: "")
+        value = cents_to_eur_display_or_nil(cents, separator: ".", delimiter: "")
         {value: value, type: "number", lang: "de-DE", step: 0.01, autocomplete: "off"}
       end
     end
@@ -83,9 +89,10 @@ module WsjrdpNumberHelper
         eur = send(eur_attr)
         eur_display_or_nil(eur)
       end
+      # Same as above: the value of a number input is dot-formatted.
       define_method(:"#{name}_input_field_options") do
         eur = send(eur_attr)
-        value = eur_display_or_nil(eur, delimiter: "")
+        value = eur_display_or_nil(eur, separator: ".", delimiter: "")
         {value: value, type: "number", lang: "de-DE", step: 0.01, autocomplete: "off"}
       end
     end

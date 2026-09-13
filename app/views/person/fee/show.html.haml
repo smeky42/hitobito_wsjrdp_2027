@@ -24,7 +24,7 @@
   }
 
 #main.row
-  - if can_fin?
+  - if can?(:update_finance, @person) && can?(:create, AccountingEntry)
     %div
       = action_button("Neue Buchung", @new_accounting_entry_path,
                       :plus, remote: false, data: {turbo_frame: extra_entry_turbo_frame})

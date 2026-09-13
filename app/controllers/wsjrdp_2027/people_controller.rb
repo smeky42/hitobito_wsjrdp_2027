@@ -56,7 +56,7 @@ module Wsjrdp2027::PeopleController
   def permitted_attrs
     attrs = super.dup
     attrs += WSJRDP_ALWAYS_PERMITTED_ATTRS
-    attrs += [:sepa_mandate_id] if can?(:fin_admin, entry)
+    attrs += [:sepa_mandate_id] if can?(:update_finance, entry)
     attrs += [:wsjrdp_email] if can?(:update_wsjrdp_email, entry)
     attrs += [:moss_email] if can?(:update_moss_email, entry)
     attrs

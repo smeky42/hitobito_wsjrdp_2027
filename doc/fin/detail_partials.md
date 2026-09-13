@@ -214,8 +214,10 @@ Three mechanisms are on the table:
   `can?(:show, record, :iban)`), expressible only outside hitobito's ability DSL;
 - an inline `if can?` around a group in the partial — hitobito's show-page idiom.
 
-`Fin::AccessHelper`'s `?can_fin=false` switch is the way to look at a page
-without finance rights once fields are gated.
+The session's finance cap is the way to look at a page without finance rights
+once fields are gated: `?max_finance_permission=finance_none` takes every
+finance tier away for the session, and the empty value gives them back
+(doc/roles.md -> "The finance cap").
 
 ---
 
