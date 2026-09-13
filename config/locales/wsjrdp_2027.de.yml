@@ -788,13 +788,16 @@ de:
     wsjrdp_session_bar:
       label: "Finanzrecht:"
       choose: "Finanzrecht wählen"
-      by_roles: "(nach Rolle: %{tier})"
+      by_default: "(Standard: %{tier})"
       none: "Kein Finanzrecht"
-      lift: "Begrenzung aufheben"
+      # The one action of the finance bar, named after what it undoes
+      reset_lowered: "Begrenzung aufheben"
+      reset_raised: "Erhöhung beenden"
+      reset_same: "Auswahl zurücksetzen"
       # The admin tab and its menu
       admin_tab: "Admin"
       tier_heading: "Finanzrecht"
-      tier_by_roles: "(nach Rolle)"
+      tier_default: "(Standard)"
       show_bar: "Finanzrecht-Balken einblenden"
       hide_bar: "Finanzrecht-Balken ausblenden"
       impersonate_heading: "Imitieren"

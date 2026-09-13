@@ -19,11 +19,13 @@
 # a tier that was taken out. Both are memoized like the core's, and the
 # uncapped case costs one array comparison.
 module Wsjrdp2027::UserContext
-  attr_reader :max_finance_permission
+  # The tier Wsjrdp2027::Ability resolved for this ability, nil when it was
+  # built outside a session and nothing was resolved at all.
+  attr_reader :finance_tier_in_force
 
   def initialize(user)
-    @max_finance_permission = Wsjrdp2027::FinanceCap.current
-    @capped_tiers = Wsjrdp2027::FinanceCap.removed_by(@max_finance_permission)
+    @finance_tier_in_force = Wsjrdp2027::FinanceCap.current
+    @capped_tiers = Wsjrdp2027::FinanceCap.removed_by(@finance_tier_in_force)
     super
   end
 
@@ -31,20 +33,24 @@ module Wsjrdp2027::UserContext
     @uncapped_all_permissions ||= super
     return @uncapped_all_permissions if @capped_tiers.empty?
 
+    # we only ever remove permissions!
     @capped_all_permissions ||= @uncapped_all_permissions - @capped_tiers
   end
 
-  # The finance tier in force, and the one the roles alone would grant --
-  # both as the tier's permission, :finance_none without any. They differ
-  # exactly when the cap changes something, which is what the session bar
-  # (layouts/_wsjrdp_session_bar) shows.
+  # The current (capped) finance tier.
   def finance_tier
     Wsjrdp2027::FinanceCap.highest(all_permissions)
   end
 
+  # The finacne tier ceiling, based on the users roles.
   def finance_tier_by_roles
     all_permissions
     Wsjrdp2027::FinanceCap.highest(@uncapped_all_permissions)
+  end
+
+  # The finance tier that applies without a pick.
+  def finance_tier_default
+    Wsjrdp2027::FinanceCap.default_for(finance_tier_by_roles)
   end
 
   def permission_group_ids(permission)

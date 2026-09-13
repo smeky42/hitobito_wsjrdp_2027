@@ -12,8 +12,9 @@
 # what the session UI (layouts/_wsjrdp_session_bar) shows -- set
 # through query parameters and kept in the session.
 #
-#   ?max_finance_permission=finance_read   caps this session at the read tier
-#   ?max_finance_permission=               (or any unknown value) lifts the cap
+#   ?max_finance_permission=finance_read   this session works at the read tier
+#   ?max_finance_permission=               (or any unknown value) drops the
+#                                          pick, so the default tier applies
 #   ?finance_tier_bar=always|hidden|ondemand
 #                                          when the yellow session bar shows:
 #                                          always; never; or -- the default --
@@ -70,14 +71,20 @@ module Wsjrdp2027::Concerns::SessionSettings
     end
   end
 
-  # The cap of this session as a tier symbol, nil for none. Validated
-  # on the way out: an unknown value -- an older deploy's, a
-  # hand-edited one -- is removed and treated as if it had never been
-  # set.
+  # The tier picked for this session as a symbol, nil without a pick.
+  # Validated on the way out, and a value that cannot be honoured is
+  # removed: an unknown one -- an older deploy's, a hand-edited one --
+  # and one above what the person's roles grant, which a role change
+  # can leave behind. Both then count as no pick, so the default tier
+  # applies and the bar goes quiet again.
   def max_finance_permission
     value = session[SESSION_KEY]
     return nil if value.nil?
-    return value.to_sym if Wsjrdp2027::FinanceCap.valid?(value)
+
+    if Wsjrdp2027::FinanceCap.valid?(value) &&
+        !Wsjrdp2027::FinanceCap.exceeds?(value, current_person)
+      return value.to_sym
+    end
 
     session.delete(SESSION_KEY)
     nil

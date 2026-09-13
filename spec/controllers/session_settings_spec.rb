@@ -58,12 +58,13 @@ describe Fin::BookingsController, type: :controller do
     expect(field_form?).to be(false)
   end
 
-  it "clears the cap on an unknown or empty value" do
+  it "drops the pick on an unknown or empty value, so the default tier applies" do
     session[:max_finance_permission] = "finance_read"
     get :show, params: {id: booking.id, max_finance_permission: ""}
 
     expect(session[:max_finance_permission]).to be_nil
-    expect(field_form?).to be(true)
+    expect(controller.current_ability).to be_able_to(:update, DatevBooking)
+    expect(field_form?).to be(false) # the default is the write tier, not manage
   end
 
   it "drops a stale session value and behaves as if none were set" do
@@ -72,7 +73,77 @@ describe Fin::BookingsController, type: :controller do
 
     expect(session[:max_finance_permission]).to be_nil
     expect(controller.max_finance_permission).to be_nil
-    expect(field_form?).to be(true)
+    expect(controller.current_ability).to be_able_to(:update, DatevBooking)
+  end
+
+  # The heart of it: a role grants the manage tier, the session decides
+  # whether it is exercised (doc/roles.md -> "The finance cap").
+  describe "the default tier" do
+    def session_bars = Nokogiri::HTML(response.body).css(".wsjrdp-session-bar")
+
+    it "leaves the manage tier out until it is picked" do
+      get :show, params: {id: booking.id}
+
+      expect(session[:max_finance_permission]).to be_nil
+      expect(controller.current_ability).to be_able_to(:update, DatevBooking)
+      expect(controller.current_ability).not_to be_able_to(:fin_admin, DatevBooking)
+      expect(field_form?).to be(false)
+    end
+
+    it "hands it back on a pick, and takes it away again on a reset" do
+      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
+
+      expect(controller.current_ability).to be_able_to(:fin_admin, DatevBooking)
+      expect(field_form?).to be(true)
+
+      get :show, params: {id: booking.id, max_finance_permission: ""}
+
+      expect(controller.current_ability).not_to be_able_to(:fin_admin, DatevBooking)
+    end
+
+    # Nothing is stored, so nothing has to be kept in step: the tier follows
+    # the roles on the very next request.
+    it "follows a role change without anybody writing to the session" do
+      get :show, params: {id: booking.id}
+
+      expect(controller.current_ability.user_context.finance_tier_by_roles).to eq(:finance_manage)
+      expect(controller.current_ability.user_context.finance_tier).to eq(:finance)
+
+      manager.roles.destroy_all
+      Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root), person: manager)
+      sign_in(Person.find(manager.id)) # a real request loads the person anew
+      get :show, params: {id: booking.id}
+
+      expect(controller.current_ability.user_context.finance_tier_by_roles).to eq(:finance_read)
+      expect(controller.current_ability.user_context.finance_tier).to eq(:finance_read)
+      expect(controller.current_ability).not_to be_able_to(:update, DatevBooking)
+      expect(session[:max_finance_permission]).to be_nil
+      # ondemand: nothing deviates, nothing was picked
+      expect(session_bars).to be_empty
+    end
+
+    # A pick that a role change left stranded above the ceiling is dropped,
+    # so the bar goes quiet again instead of pointing at nothing.
+    it "drops a pick the roles no longer cover" do
+      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
+      expect(session[:max_finance_permission]).to eq("finance_manage")
+
+      manager.roles.destroy_all
+      Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root), person: manager)
+      sign_in(Person.find(manager.id))
+      get :show, params: {id: booking.id}
+
+      expect(session[:max_finance_permission]).to be_nil
+      expect(controller.current_ability.user_context.finance_tier).to eq(:finance_read)
+      expect(session_bars).to be_empty
+    end
+
+    # The session is written by a query parameter and by nothing else.
+    it "never writes the key on its own" do
+      3.times { get :show, params: {id: booking.id} }
+
+      expect(session).not_to have_key(:max_finance_permission)
+    end
   end
 
   # The session bars (layouts/_wsjrdp_session_bar, doc/roles.md -> "The
@@ -115,7 +186,7 @@ describe Fin::BookingsController, type: :controller do
       expect(logo_offset).to be_nil
     end
 
-    it "offers every tier up to the roles' own, the one in force pressed, while the cap lowers the tier" do
+    it "offers every tier up to the roles' own, the one in force pressed, each carrying its own tier" do
       session[:max_finance_permission] = "finance_audit"
       get :show, params: {id: booking.id}
 
@@ -126,26 +197,45 @@ describe Fin::BookingsController, type: :controller do
         [tier(:finance_read), false, "/session_settings?max_finance_permission=finance_read"],
         [tier(:finance_audit), true, "/session_settings?max_finance_permission=finance_audit"],
         [tier(:finance), false, "/session_settings?max_finance_permission=finance"],
-        [tier(:finance_manage), false, "/session_settings?max_finance_permission="] # the roles' tier clears the cap
+        [tier(:finance_manage), false, "/session_settings?max_finance_permission=finance_manage"]
       ])
-      expect(warning.text).to include("(nach Rolle: #{tier(:finance_manage)})")
-      # "Begrenzung aufheben" clears the cap AND puts the bar back on demand.
+      # The note names the default, which is where the action leads back to.
+      expect(warning.text).to include("(Standard: #{tier(:finance)})")
       expect(action(warning)).to eq(["post", {"max_finance_permission" => "", "finance_tier_bar" => "ondemand"},
-        I18n.t("layouts.wsjrdp_session_bar.lift"), true])
+        I18n.t("layouts.wsjrdp_session_bar.reset_lowered"), true])
       expect(warning.css("a, [data-method], .wsjrdp-bar-close")).to be_empty
       expect(logo_offset).to eq(30)
     end
 
-    it "shows the bar on demand as soon as a cap is set, even one that changes nothing" do
-      reader = Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person
-      sign_in(reader)
-      session[:max_finance_permission] = "finance_manage"
-      get :show, params: {id: booking.id}
+    # Raising is not lowering: the bar turns red and says so.
+    it "shows an elevated tier in red, with its own action text" do
+      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
 
-      expect(segments).to eq([
-        [tier(:finance_none), false, "/session_settings?max_finance_permission=finance_none"],
-        [tier(:finance_read), true, "/session_settings?max_finance_permission="]
-      ])
+      expect(warning).to be_nil
+      elevated = doc.at_css(".wsjrdp-session-bar .alert-danger")
+      expect(elevated).to be_present
+      expect(action(elevated).third).to eq(I18n.t("layouts.wsjrdp_session_bar.reset_raised"))
+      expect(controller.current_ability).to be_able_to(:fin_admin, DatevBooking)
+    end
+
+    # An elevated tier is never in force invisibly.
+    it "shows the bar for an elevated tier even with finance_tier_bar=hidden" do
+      session[:finance_tier_bar] = "hidden"
+      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
+
+      expect(bars.size).to eq(1)
+      expect(doc.at_css(".wsjrdp-session-bar .alert-danger")).to be_present
+
+      get :show, params: {id: booking.id, max_finance_permission: "finance_read"}
+
+      expect(bars).to be_empty # a lowered tier obeys the mode again
+    end
+
+    it "shows the bar with a pick that changes nothing, and calls the action a reset" do
+      get :show, params: {id: booking.id, max_finance_permission: "finance"}
+
+      expect(segments.map(&:second)).to eq([false, false, false, true, false])
+      expect(action(warning).third).to eq(I18n.t("layouts.wsjrdp_session_bar.reset_same"))
     end
 
     it "keeps the bar with finance_tier_bar=always, and never shows it with hidden" do
@@ -154,7 +244,7 @@ describe Fin::BookingsController, type: :controller do
       expect(session[:finance_tier_bar]).to eq("always")
       expect(segments.map(&:first))
         .to eq(%i[finance_none finance_read finance_audit finance finance_manage].map { |p| tier(p) })
-      expect(segments.last[1]).to be(true)
+      expect(segments.map(&:second)).to eq([false, false, false, true, false]) # the default, not the ceiling
 
       session[:max_finance_permission] = "finance_read"
       get :show, params: {id: booking.id, finance_tier_bar: "hidden"}
@@ -257,8 +347,12 @@ describe Fin::BookingsController, type: :controller do
         [tier(:finance_none), false, "/session_settings?max_finance_permission=finance_none"],
         [tier(:finance_read), false, "/session_settings?max_finance_permission=finance_read"],
         [tier(:finance_audit), false, "/session_settings?max_finance_permission=finance_audit"],
-        ["#{tier(:finance)} (nach Rolle)", true, "/session_settings?max_finance_permission="]
+        ["#{tier(:finance)} (Standard)", true, "/session_settings?max_finance_permission=finance"]
       ])
+      # The way back to "no pick at all", reachable even with the bar hidden.
+      reset = tab.at_css("button.wsjrdp-admin-tab-reset")
+      expect(reset["data-url"]).to eq("/session_settings?max_finance_permission=")
+      expect(reset["disabled"]).to be_present # nothing picked yet
       expect(bar_switches).to eq([["/session_settings?finance_tier_bar=always", false],
         ["/session_settings?finance_tier_bar=hidden", true]])
       expect(picker["data-provide"]).to eq("entity")
@@ -327,8 +421,9 @@ describe Fin::BookingsController, type: :controller do
       expect(ending["data-wsjrdp-session-action"]).to eq("delete")
       expect(ending["data-url"]).to eq("/groups/#{manager.primary_group_id}/people/#{manager.id}/impersonate")
       expect(ending.text).to include(I18n.t("layouts.user_impersonation.end"))
-      expect(tiers.map(&:first).last).to eq("#{tier(:finance_manage)} (nach Rolle)") # the manager's, not the admin's
-      expect(tiers.map(&:first).first).to eq(tier(:finance_none))
+      # the manager's ceiling, not the admin's -- and the manager's default
+      expect(tiers.map(&:first)).to eq([tier(:finance_none), tier(:finance_read), tier(:finance_audit),
+        "#{tier(:finance)} (Standard)", tier(:finance_manage)])
     end
 
     it "is withheld from a non-admin impersonating, whoever they impersonate" do
