@@ -272,7 +272,7 @@ covers it.
 | read | `finance_read` | `if_finance_read` | `show`, except on `AccountingEntry` | `Root::FinanceReader` |
 | audit | `finance_read`, `finance_audit` | `if_finance_audit` | read's, plus `log` and `show` on `AccountingEntry` | `Extern::FinanceAuditor` |
 | write | `finance_read`, `finance_audit`, `finance` | `if_finance_write` | audit's, plus `create`, `update` | `Root::Finance`, `Root::Admin`, `Extern::FinanceAccountant` |
-| manage | `finance_read`, `finance_audit`, `finance`, `finance_manage` | `if_finance_manage` | write's, plus `fin_admin`, `manage` | `Root::FinanceManager` |
+| manage | `finance_read`, `finance_audit`, `finance`, `finance_manage` | `if_finance_manage` | write's, plus `fin_admin`, `manage` | `Root::FinanceManager`, once picked for the session |
 
 `finance` is the core's own permission, reused as the write tier. The
 ability action of the manage tier is still called `fin_admin`; the name
@@ -318,13 +318,32 @@ capped at `finance_read` sees the finance pages as a `FinanceReader` does,
 to check what a lower tier gets or to work without the write and manage
 controls when they are not needed.
 
-The lowest tier, `none`, is the pseudo permission `finance_none`. Nobody
+Two tiers are special. The lowest, `none`, is the pseudo permission
+`finance_none`. Nobody
 holds it — it is the name for holding none of the finance permissions, so
 that "no finance rights" can be named, compared and *chosen*. Capping at it
 takes every finance tier away, which is how somebody with finance rights
 looks at the section the way a person without them sees it, and it is what
 `UserContext#finance_tier` answers for everybody else rather than nothing at
 all.
+
+The highest, `manage`, is *elevated*: a role may grant it, but nobody
+exercises it unasked. Without a pick the **default tier** applies, the
+highest tier up to the ceiling that is not elevated, so a `FinanceManager`
+works at the write tier until they raise themselves for the session. Three
+tiers therefore describe a session, and only the pick is ever stored:
+
+| | |
+|---|---|
+| by roles | the ceiling, from the role permissions |
+| default | what applies unasked: `Wsjrdp2027::FinanceCap.default_for` |
+| effective | the pick, never above the ceiling; the default without one |
+
+Because the default is derived on every request and never written anywhere,
+a role change takes effect on the next request and needs nothing kept in
+step. The session holds a pick and nothing else: no code path writes that key
+on its own, and a pick the roles no longer cover is dropped on read, as an
+unknown one is.
 
 The cap only subtracts: it can never grant a tier the roles do not
 hold, and a `FinanceReader` capped at `finance_manage` stays a

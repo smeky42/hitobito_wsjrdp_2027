@@ -7,20 +7,29 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# Prepended to ::Ability: accepts the finance cap and hands it to the
-# UserContext the core builds inside its constructor (Wsjrdp2027::FinanceCap).
+# Prepended to ::Ability: resolves the session's finance tier and hands the
+# result to the UserContext the core builds inside its constructor
+# (Wsjrdp2027::FinanceCap).
 #
-#   Ability.new(person)                                   # as before
-#   Ability.new(person, max_finance_permission: :finance)  # capped
+#   Ability.new(person)                                    # untouched
+#   Ability.new(person, max_finance_permission: nil)       # the default tier
+#   Ability.new(person, max_finance_permission: :finance)  # that tier
+#
+# Resolving HERE, before the context exists, is what keeps the context simple:
+# the tier that ends up in the thread-local is the one in force, so the
+# context only has to subtract what lies above it. Without the keyword the
+# resolution is skipped entirely -- that is the line between a session and
+# everything else (jobs, API requests, abilities for other people).
 module Wsjrdp2027::Ability
-  def initialize(user, max_finance_permission: nil)
-    Wsjrdp2027::FinanceCap.with(max_finance_permission) { super(user) }
+  def initialize(user, max_finance_permission: Wsjrdp2027::FinanceCap::UNSET)
+    tier = Wsjrdp2027::FinanceCap.resolve(user, max_finance_permission)
+    Wsjrdp2027::FinanceCap.with(tier) { super(user) }
   end
 
-  # The core keys caches on this; a capped ability must not share them with
-  # the uncapped one of the same person.
+  # The core keys caches on this; an ability at another tier must not share
+  # them with one of the same person at a different tier.
   def identifier
-    cap = user_context&.max_finance_permission
-    cap ? "#{super}-fin-#{cap}" : super
+    tier = user_context&.finance_tier_in_force
+    tier ? "#{super}-fin-#{tier}" : super
   end
 end

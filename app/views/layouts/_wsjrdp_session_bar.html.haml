@@ -11,6 +11,9 @@
 -#
 -#  The bars: one line each for the two pieces of session state that change
 -#  what a person may do -- one while impersonating and one for the finance cap.
+-#  Every segment of the finance bar stores its own tier, the default one
+-#  included; only the action at the right edge clears the pick. A tier that
+-#  had to be asked for turns the bar red and shows it whatever the mode says.
 -#
 -#  Each bar carries actions. These actions run in the background and
 -#  then reload the page with the session parameters stripped, so nobody is
@@ -78,20 +81,20 @@
           = icon('times-circle')
           %span.wsjrdp-bar-action-label= t('layouts.user_impersonation.end')
   - if finance_tier_bar?
+    - reset_label = t(".reset_#{finance_tier_direction}")
     .wsjrdp-session-bar.info-bar
-      .alert.alert-warning
+      .alert{class: (finance_tier_elevated? ? "alert-danger" : "alert-warning")}
         - if tiers.nil?
           %span.wsjrdp-bar-text= t('.none')
         - else
           %span.wsjrdp-bar-text= t('.label')
           %span.wsjrdp-seg{role: "group", "aria-label": t('.choose')}
             - selectable_finance_tiers.each do |tier|
-              - value = (tier == tiers[:by_roles]) ? "" : tier
-              %button{type: "button", class: ("on" if tier == tiers[:effective]), "aria-pressed": (tier == tiers[:effective]).to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: value)}}= finance_tier_label(tier)
-          %span.wsjrdp-bar-text.wsjrdp-bar-note= t('.by_roles', tier: finance_tier_label(tiers[:by_roles]))
-        %button.wsjrdp-bar-action{type: "button", title: t('.lift'), "aria-label": t('.lift'), data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: "", finance_tier_bar: "ondemand")}}
+              %button{type: "button", class: ("on" if tier == tiers[:effective]), "aria-pressed": (tier == tiers[:effective]).to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: tier)}}= finance_tier_label(tier)
+          %span.wsjrdp-bar-text.wsjrdp-bar-note= t('.by_default', tier: finance_tier_label(tiers[:default]))
+        %button.wsjrdp-bar-action{type: "button", title: reset_label, "aria-label": reset_label, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: "", finance_tier_bar: "ondemand")}}
           = icon('times-circle')
-          %span.wsjrdp-bar-action-label= t('.lift')
+          %span.wsjrdp-bar-action-label= reset_label
   - if show_admin_tab
     .wsjrdp-admin-tab.dropdown
       %button#wsjrdp-admin-tab-toggle.wsjrdp-admin-tab-toggle{type: "button", "aria-expanded": "false", data: {bs_toggle: "dropdown", bs_auto_close: "outside"}}
@@ -102,13 +105,16 @@
           %li
             %h6.dropdown-header= t('.tier_heading')
           - selectable_finance_tiers.each do |tier|
-            - by_roles = (tier == tiers[:by_roles])
             - in_force = (tier == tiers[:effective])
             %li
-              %button.dropdown-item.wsjrdp-admin-tab-tier{type: "button", "aria-current": in_force.to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: (by_roles ? "" : tier))}}
+              %button.dropdown-item.wsjrdp-admin-tab-tier{type: "button", "aria-current": in_force.to_s, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: tier)}}
                 %span.wsjrdp-admin-tab-mark= icon('check') if in_force
                 = finance_tier_label(tier)
-                = t('.tier_by_roles') if by_roles
+                = t('.tier_default') if tier == tiers[:default]
+          %li
+            %button.dropdown-item.wsjrdp-admin-tab-reset{type: "button", class: ("disabled" if max_finance_permission.blank?), disabled: max_finance_permission.blank?, data: {wsjrdp_session_action: "post", url: session_settings_path(max_finance_permission: "")}}
+              %span.wsjrdp-admin-tab-mark
+              = t('.reset_same')
         - bar_shown = finance_tier_bar?
         %li
           %button.dropdown-item.wsjrdp-admin-tab-bar-show{type: "button", class: ("disabled" if bar_shown), disabled: bar_shown, data: {wsjrdp_session_action: "post", url: session_settings_path(finance_tier_bar: "always")}}

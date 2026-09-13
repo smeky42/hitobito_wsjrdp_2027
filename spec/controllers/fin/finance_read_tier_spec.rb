@@ -129,7 +129,13 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
     end
 
     context "as a finance admin" do
-      before { sign_in(fin_admin) }
+      # The manage tier has to be picked for the session; without a pick even
+      # a FinanceManager works at the write tier
+      # (doc/roles.md -> "The finance cap").
+      before do
+        sign_in(fin_admin)
+        session[:max_finance_permission] = "finance_manage"
+      end
 
       # The sub cost center of a booking is the pair (cost_center_number,
       # sub_cost_center_number); the row it names lives under the booking's own
