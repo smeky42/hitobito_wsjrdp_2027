@@ -181,6 +181,7 @@ de:
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
         tag_list: Tags
         deregistration_issue: Ticket Abmeldung
+        deregistration_requested_date: Abmeldung angefragt am
         deregistration_effective_date: Abmeldung zum
         deregistration_contractual_compensation_cents: 'Entschädigung nach T&R'
         deregistration_actual_compensation_cents: Entschädigung

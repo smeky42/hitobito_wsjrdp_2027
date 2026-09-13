@@ -53,6 +53,7 @@ class Person::DeregistrationController < ApplicationController
       :deregistration_actual_compensation_eur,
       :deregistration_effective_date,
       :deregistration_issue,
+      :deregistration_requested_date,
       :sepa_status,
       :status
     ]

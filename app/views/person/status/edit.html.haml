@@ -15,6 +15,7 @@
     = field_set_tag do
       - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
       = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
+      = f.labeled_date_field :deregistration_requested_date
       = f.labeled_date_field :deregistration_effective_date
     = field_set_tag do
       - if ((@person.active_total_fee_reduction || 0) != 0) || @person.active_total_fee_reduction_hint.present?

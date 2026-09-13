@@ -17,6 +17,7 @@
         = field_set_tag do
           - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
           = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
+          = f.labeled_date_field :deregistration_requested_date
           = f.labeled_date_field :deregistration_effective_date
           = input_or_render_attrs(f, :deregistration_actual_compensation_eur)
         = form_buttons(f, cancel_url: return_url)
@@ -25,6 +26,8 @@
           Entschädigung nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen (T&R).
           %br/
           (bis 31.05.2026: 50%, bis 31.12.2026: 75%, bis 31.03.2027: 90%, danach 100%)
+          %br/
+          = deregistration_compensation_date_hint(@person)
         - if @person.deregistration_refund_cents > 0
           = labeled(captionize(:deregistration_refund_cents, object_class(@person))) do
             %span.fw-semibold

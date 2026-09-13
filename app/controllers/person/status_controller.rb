@@ -27,6 +27,7 @@ class Person::StatusController < ApplicationController
     :planned_custom_installments_issue,
     :planned_custom_installments_comment,
     :deregistration_issue,
+    :deregistration_requested_date,
     :deregistration_effective_date,
     :debit_return_issue,
     :payment_role,

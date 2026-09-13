@@ -119,14 +119,18 @@ module ContractHelper
       end.html_safe
     end
 
+    # The compensation of section 7.2 T&R as a share of the fee. Each bracket is
+    # named by its LAST day and includes it -- up to 31.05.2026 half the fee, up
+    # to 31.12.2026 three quarters, up to 31.03.2027 nine tenths, after that all
+    # of it -- so the comparison is a plain greater-than.
     def compute_contractual_compensation_cents(cents, today: nil) # rubocop:disable Metrics/MethodLength
       today = Time.zone.today if today.nil?
       today_i = today.strftime("%Y%m%d").to_i
-      if today_i >= 20270331
+      if today_i > 20270331
         cents
-      elsif today_i >= 20263112
+      elsif today_i > 20261231
         (0.9 * cents).to_i
-      elsif today_i >= 20263105
+      elsif today_i > 20260531
         (0.75 * cents).to_i
       else
         (0.5 * cents).to_i
