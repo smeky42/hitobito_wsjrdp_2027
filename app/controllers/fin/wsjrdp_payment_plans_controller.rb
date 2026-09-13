@@ -9,13 +9,10 @@
 
 class Fin::WsjrdpPaymentPlansController < ApplicationController
   include WsjrdpFormHelper
-  include Fin::AccessHelper
   include ContractHelper
 
   before_action :map_id_to_wsjrdp_payment_plan_id
-  before_action :check_fin_params_and_cookies
 
-  helper_method :can_fin_admin?
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
 
@@ -62,10 +59,6 @@ class Fin::WsjrdpPaymentPlansController < ApplicationController
 
   def map_id_to_wsjrdp_payment_plan_id
     params[:wsjrdp_payment_plan_id] = params[:id] unless params.key?(:wsjrdp_payment_plan_id)
-  end
-
-  def can_fin_admin?
-    can?(:fin_admin, wsjrdp_payment_plan) && param_is_true(cookies, :fin_admin)
   end
 
   def wsjrdp_payment_plan

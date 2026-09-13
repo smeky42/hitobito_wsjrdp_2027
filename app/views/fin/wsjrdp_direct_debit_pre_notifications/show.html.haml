@@ -8,7 +8,6 @@
 #main.row
   - permitted_attrs_set = Set.new(permitted_attrs)
   = standard_form(pre_notification, {url: get_pre_notification_path, method: :put}) do |f|
-    = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
     = form_buttons_if_editable(f, cancel_url: cancel_url)

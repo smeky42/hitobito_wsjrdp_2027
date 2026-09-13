@@ -24,7 +24,7 @@
     %div.form-text= @person.total_fee_label(hint_sep: " ", space: " ")
 %div.my-3
   Finanzstatus:
-  - if can_fin?
+  - if can?(:update_finance, @person)
     = "#{format_attr(@person, :sepa_status)} (#{@person.sepa_status})"
   - else
     = format_attr(@person, :sepa_status)

@@ -29,7 +29,7 @@ describe "finance cap" do
 
     expect(untouched.user_context.all_permissions)
       .to match_array(%i[layer_and_below_full layer_and_below_read finance_read finance_audit finance finance_manage])
-    expect(untouched).to be_able_to(:fin_admin, DatevBooking)
+    expect(untouched).to be_able_to(:admin_finance, DatevBooking)
     expect(untouched.identifier).to eq("user-#{manager.id}")
     expect(untouched.user_context.finance_tier_in_force).to be_nil
   end
@@ -43,14 +43,14 @@ describe "finance cap" do
     expect(session_ability.user_context.finance_tier_default).to eq(:finance)
     expect(session_ability.user_context.finance_tier_by_roles).to eq(:finance_manage)
     expect(session_ability).to be_able_to(:update, DatevBooking)
-    expect(session_ability).not_to be_able_to(:fin_admin, DatevBooking)
+    expect(session_ability).not_to be_able_to(:admin_finance, DatevBooking)
   end
 
   it "hands the elevated tier back once it is picked" do
     raised = ability(manager, :finance_manage)
 
     expect(raised.user_context.finance_tier).to eq(:finance_manage)
-    expect(raised).to be_able_to(:fin_admin, DatevBooking)
+    expect(raised).to be_able_to(:admin_finance, DatevBooking)
   end
 
   # Everybody whose ceiling is not an elevated tier keeps what their roles
@@ -71,7 +71,7 @@ describe "finance cap" do
     expect(capped.user_context.all_permissions)
       .to match_array(%i[layer_and_below_full layer_and_below_read finance_read finance_audit finance])
     expect(capped).to be_able_to(:update, DatevBooking)
-    expect(capped).not_to be_able_to(:fin_admin, DatevBooking)
+    expect(capped).not_to be_able_to(:admin_finance, DatevBooking)
     # the layer permission is untouched: still :log on people below the root
     expect(capped).to be_able_to(:log, people(:yp_a_1))
   end
@@ -133,7 +133,7 @@ describe "finance cap" do
   it "does not leak into an ability built elsewhere" do
     ability(manager, :finance_read)
     expect(Wsjrdp2027::FinanceCap.current).to be_nil
-    expect(Ability.new(manager)).to be_able_to(:fin_admin, DatevBooking)
+    expect(Ability.new(manager)).to be_able_to(:admin_finance, DatevBooking)
   end
 
   describe Wsjrdp2027::FinanceCap do

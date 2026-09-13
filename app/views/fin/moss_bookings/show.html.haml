@@ -12,7 +12,6 @@
   -# The sheet renders its parent (the Moss tabs), so the page names itself.
   %h1.mb-3= "Moss Buchung ##{@moss_booking.id}"
   = standard_form(@moss_booking, {url: moss_booking_path, method: :put, data: {turbo: false}}) do |f|
-    = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
     = form_buttons_if_editable(f, cancel_url: cancel_url)

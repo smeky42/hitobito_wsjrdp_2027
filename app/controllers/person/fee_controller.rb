@@ -10,13 +10,10 @@
 class Person::FeeController < Fin::FinController
   include PersonInPrimaryGroup
   include ContractHelper
-  include Fin::AccessHelper
 
   before_action :authorize_action
 
   helper_method :get_entry_path
-  helper_method :can_fin?
-  helper_method :can_fin_admin?
   helper_method :get_installments_table_entries
   helper_method :permitted_attrs
   helper_method :extra_entry_turbo_frame
@@ -27,14 +24,18 @@ class Person::FeeController < Fin::FinController
 
     @journal_entries = journal_entries
     @new_accounting_entry = new_accounting_entry(params)
+    # This page already carries the person's name, so the form in its frame
+    # leaves it out (hide_subject).
     @new_accounting_entry_path = new_accounting_entry_path + "?" + URI.encode_www_form({
       "accounting_entry[subject_id]": @person.id,
+      hide_subject: 1,
       target_turbo_frame: extra_entry_turbo_frame
     })
     @new_sepa_status_path = new_sepa_status_path + "?" + URI.encode_www_form({
+      # The amount, the reconciliation flag and the choice of status are the
+      # form's own business (Fin::AccountingEntriesController#new_sepa_status).
       "accounting_entry[subject_id]": @person.id,
-      "accounting_entry[amount_cents]": 0,
-      "accounting_entry[new_sepa_status]": @person.sepa_status,
+      hide_subject: 1,
       target_turbo_frame: extra_entry_turbo_frame
     })
     @edit_deregistration_path = edit_person_deregistration_path(person) + "?" + URI.encode_www_form({
@@ -66,7 +67,11 @@ class Person::FeeController < Fin::FinController
       :cdtr_address,
       :mandate_id,
       :mandate_date,
-      :debit_sequence_type
+      :debit_sequence_type,
+      # Support :excluded_from_fee_reconciliation both flat and
+      # nested.
+      :excluded_from_fee_reconciliation,
+      additional_info: [:excluded_from_fee_reconciliation]
     ]
   end
 
@@ -100,14 +105,6 @@ class Person::FeeController < Fin::FinController
     else
       accounting_entry_path(entry)
     end
-  end
-
-  def can_fin?
-    can?(:log, person) && !param_is_false(cookies, :can_fin)
-  end
-
-  def can_fin_admin?
-    can?(:fin_admin, person) && param_is_true(cookies, :fin_admin)
   end
 
   def authorize_action

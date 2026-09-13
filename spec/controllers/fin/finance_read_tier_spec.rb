@@ -24,7 +24,8 @@ require "spec_helper"
 # The two halves of the write boundary are asserted together:
 #
 #   * the controller refuses the writing actions (:update for connecting and
-#     unlinking, :fin_admin for the field edits and the dev-only reset),
+#     unlinking and for the DATEV booking's field edits, :admin_finance for the
+#     dev-only reset and for the account form's own master data),
 #   * the view offers no control that would trigger one -- no checkboxes, no
 #     "Auswahl verbinden", no "Verbinden", no unlink button, no connect widget.
 #
@@ -81,7 +82,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(forms(".bk-connect-entry-form")).to be_empty
         expect(forms(".bk-unlink-form")).to be_empty
         expect(response.body).to include("nicht verknüpft")
-        # ... and the field edits, which are the manage tier's anyway.
+        # ... and the field edits, which start at the write tier.
         expect(response.body).not_to include("datev_booking[secondary_cost_center_number]")
       end
 
@@ -117,14 +118,17 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(entry.reload.datev_booking_id).to eq(booking.id)
       end
 
-      # The field edits stay the manage tier's -- the same gate the detail view
-      # asks before it builds the form (fin/bookings/_detail).
-      it "may not edit the booking fields" do
-        expect do
-          patch :update, params: {id: booking.id,
-                                  datev_booking: {sub_cost_center_number: "X1"}}
-        end.to raise_error(CanCan::AccessDenied)
-        expect(booking.reload.sub_cost_center_number).to be_nil
+      # The field edits are the write tier's -- the same gate the detail view
+      # asks before it builds the form (fin/bookings/_detail), so what the page
+      # offers and what the controller accepts are the one question.
+      it "may edit the booking fields" do
+        get :show, params: {id: booking.id}
+        expect(response.body).to include("datev_booking[secondary_cost_center_number]")
+
+        patch :update, params: {id: booking.id,
+                                datev_booking: {sub_cost_center_number: "X1"}}
+
+        expect(booking.reload.sub_cost_center_number).to eq("X1")
       end
     end
 
@@ -201,8 +205,8 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       # #reset_links has no route outside development, so it cannot be reached
       # from here at all. What IS assertable is the gate its before_action
       # applies -- and neither read nor write tier passes it.
-      it "does not hold the :fin_admin the reset_links gate asks for" do
-        expect(Ability.new(auditor.reload)).not_to be_able_to(:fin_admin, DatevBooking)
+      it "does not hold the :admin_finance the reset_links gate asks for" do
+        expect(Ability.new(auditor.reload)).not_to be_able_to(:admin_finance, DatevBooking)
       end
     end
 
@@ -224,8 +228,8 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       # Wiping every link is the manage tier's, on top of the development-only
       # guard in the action itself (which is also why there is no route to POST
       # to here -- see the auditor's example above).
-      it "does not hold the :fin_admin the reset_links gate asks for either" do
-        expect(Ability.new(accountant.reload)).not_to be_able_to(:fin_admin, DatevBooking)
+      it "does not hold the :admin_finance the reset_links gate asks for either" do
+        expect(Ability.new(accountant.reload)).not_to be_able_to(:admin_finance, DatevBooking)
       end
     end
 
@@ -341,6 +345,26 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(response).to be_successful
         expect(save_buttons).not_to be_empty
         expect(response.body).to include("wsjrdp_fin_account[short_name]")
+      end
+
+      # The form is editable from the write tier up, but the master data of the
+      # account -- what it is, which bank, which opening balance -- stays the
+      # manage tier's (Fin::WsjrdpFinAccountsController#permitted_attrs). The
+      # write tier keeps the label. A rejected field is DROPPED by #permit, not
+      # refused, so nothing but the stored value tells the two apart, and that
+      # is what this asserts.
+      it "lets the write tier rename the account and nothing else" do
+        sign_in(accountant)
+
+        patch :update, params: {id: bank.id, wsjrdp_fin_account: {
+          short_name: "Umbenannt", iban: "DE02120300000000202051",
+          account_identification: "GEAENDERT", status: "closed"
+        }}
+
+        bank.reload
+        expect(bank.short_name).to eq("Umbenannt")
+        expect(bank.iban).to be_nil
+        expect(bank.account_identification).to eq("TEST-BANK-1")
       end
 
       it "renders it read-only for the read tier -- no inputs, no Speichern" do

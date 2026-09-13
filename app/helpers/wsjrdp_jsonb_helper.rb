@@ -63,10 +63,19 @@ module WsjrdpJsonbHelper
             write_store_attribute(store_attribute, key, value)
           end
         end
+        # A boolean key answers true or false, never nil: an absent key is
+        # what "false" looks like in the store, and a reader that returned nil
+        # for it would render as an empty field instead of "nein". The cast
+        # also protects against a value some other path wrote as a string --
+        # "0" is false here, where a bare !! would call it true.
         if cast == :boolean
-          define_method(:"#{accessor_key}?") do
-            !!read_store_attribute(store_attribute, key)
+          read_as_boolean = lambda do |record|
+            !!ActiveModel::Type::Boolean.new.cast(
+              record.send(:read_store_attribute, store_attribute, key)
+            )
           end
+          define_method(:"#{accessor_key}") { read_as_boolean.call(self) }
+          define_method(:"#{accessor_key}?") { read_as_boolean.call(self) }
         end
       end
     end

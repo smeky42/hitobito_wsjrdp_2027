@@ -132,7 +132,7 @@
             %h6.dropdown-header= t('.impersonate_heading')
         - if may_impersonate
           %li.wsjrdp-admin-tab-picker
-            %input#wsjrdp-admin-tab-person.form-control.form-control-sm{type: "text", placeholder: t('.impersonate_placeholder'), "aria-label": t('.impersonate_heading'), data: {provide: "entity", url: query_people_path(limit_by_permission: "impersonate_user"), no_results_message: t('.impersonate_no_results'), wsjrdp_impersonate_url: wsjrdp_impersonate_path}}
+            %input#wsjrdp-admin-tab-person.form-control.form-control-sm{type: "text", placeholder: t('.impersonate_placeholder'), "aria-label": t('.impersonate_heading'), data: {provide: "entity", url: wsjrdp_impersonate_query_path, no_results_message: t('.impersonate_no_results'), wsjrdp_impersonate_url: wsjrdp_impersonate_path}}
             .wsjrdp-admin-tab-confirm{hidden: true, role: "group", "aria-label": t('.impersonate_title')}
               .wsjrdp-admin-tab-confirm-title
                 = icon('exclamation-triangle')

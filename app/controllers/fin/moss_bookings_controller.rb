@@ -9,13 +9,11 @@
 
 class Fin::MossBookingsController < Fin::FinController
   include WsjrdpFormHelper
-  include Fin::AccessHelper
   include SubjectLinking
 
   prepend_before_action :map_id_to_moss_booking_id
   before_action :authorize_action
 
-  helper_method :can_fin_admin?
   helper_method :moss_booking
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
@@ -112,10 +110,6 @@ class Fin::MossBookingsController < Fin::FinController
 
   def cancel_url
     return_url
-  end
-
-  def can_fin_admin?
-    can?(:fin_admin, moss_booking) && param_is_true(cookies, :fin_admin)
   end
 
   def matching_accounting_entries

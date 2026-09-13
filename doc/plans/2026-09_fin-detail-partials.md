@@ -307,9 +307,11 @@ changes; the candidates recorded for that decision:
   Hitobito DSL;
 - inline `if can?` around a group in the partial — Hitobito's show-page idiom.
 
-`Fin::AccessHelper`'s `?can_fin=false` switch is the existing way to look at a
-page without finance rights and will be the manual check once fields are
-gated.
+The session's finance cap is the way to look at a page without finance rights
+and is the manual check once fields are gated:
+`?max_finance_permission=finance_none` takes every finance tier away for the
+session, and the empty value gives them back (doc/roles.md -> "The finance
+cap").
 
 ### 3.6 The builder — `fin_detail(record, ctx) do |d| … end`
 

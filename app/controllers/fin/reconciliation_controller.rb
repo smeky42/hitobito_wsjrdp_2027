@@ -211,7 +211,7 @@ class Fin::ReconciliationController < Fin::FinController
   end
 
   def authorize_reset_links
-    authorize!(:fin_admin, DatevBooking)
+    authorize!(:admin_finance, DatevBooking)
   end
 
   # The same two gates for the view: whoever may not connect gets no checkboxes,
@@ -219,7 +219,7 @@ class Fin::ReconciliationController < Fin::FinController
   # stay visible, they are a reading aid.
   def may_connect? = can?(:update, DatevBooking)
 
-  def may_reset_links? = Rails.env.development? && can?(:fin_admin, DatevBooking)
+  def may_reset_links? = Rails.env.development? && can?(:admin_finance, DatevBooking)
 
   # The resolved state of the entries table (the bookings one is
   # #booking_table_state).

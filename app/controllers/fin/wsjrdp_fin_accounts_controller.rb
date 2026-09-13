@@ -20,7 +20,6 @@
 #     statement, the DATEV export and the booking detail page all speak.
 class Fin::WsjrdpFinAccountsController < Fin::FinController
   include WsjrdpFormHelper
-  include Fin::AccessHelper
   include WsjrdpNumberHelper
   include Wsjrdp::TableStateful
 
@@ -29,9 +28,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
   before_action :authorize_action
-  before_action :check_fin_params_and_cookies
 
-  helper_method :can_fin_admin?
   helper_method :fin_account, :ordered_transactions
   helper_method :moss_wallet?, :wallet_bookings
   helper_method :permitted_attrs
@@ -83,8 +80,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   end
 
   def update
-    authorize!(:edit, fin_account)
-    authorize!(:fin_admin, fin_account)
+    authorize!(:update, fin_account)
     @wsjrdp_fin_account ||= fin_account
     @wsjrdp_fin_account.attributes = permitted_params
     if @wsjrdp_fin_account.save
@@ -129,10 +125,6 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
       sort: Fin::MossWalletColumns.sort_expressions,
       preload: [:moss_transaction, :moss_expense, :contribution_subject, {accounting_entries: :subject}],
       tiebreaker: "moss_bookings.id DESC")
-  end
-
-  def can_fin_admin?
-    can?(:fin_admin, fin_account) && param_is_true(cookies, :fin_admin)
   end
 
   private
@@ -197,9 +189,24 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   end
 
   def permitted_attrs
-    return [] unless can?(:update, fin_account)
-
-    [:short_name, :description]
+    if can?(:admin_finance, fin_account)
+      [
+        :short_name, :description,
+        :account_identification,
+        :opening_balance_cents, :opening_balance_eur,
+        :opening_balance_currency, :opening_balance_date,
+        :iban,
+        :owner_name, :owner_address,
+        :servicer_name, :servicer_bic, :servicer_address,
+        :status,
+        :bookkeeping_account_number, :bookkeeping_account_type,
+        :visibility
+      ]
+    elsif can?(:update, fin_account)
+      [:short_name, :description]
+    else
+      []
+    end
   end
 
   def permitted_params

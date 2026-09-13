@@ -11,14 +11,22 @@
     %div.new-sepa-status
       = standard_form(entry, {url: new_sepa_status_path, method: :post }) do |f|
         .mt-3
-        = hidden_field_tag("fin_admin", can_fin_admin?)
         = hidden_field_tag("return_url", return_url)
         = f.error_messages
         = form_buttons(f, submit_label: "Finanzstatus ändern", cancel_url: cancel_url)
         = hidden_field_tag 'target_turbo_frame', target_turbo_frame
-        = f.hidden_field :subject_id
+        -# Opened from a person's fee page the subject comes along; opened bare
+        -# it is asked for here.
+        - if hide_subject?
+          = f.hidden_field :subject_id
+          = hidden_field_tag("hide_subject", 1)
+        - elsif f.object.subject_id.present?
+          = f.hidden_field :subject_id
+          = form_like_labeled_attr(f.object, :subject_id, display_link: false)
+        - else
+          = f.labeled_person_field :subject
         = f.hidden_field :description
         = f.hidden_field :amount_cents
-        = f.labeled_collection_select(:new_sepa_status, Settings.sepa_status, :first, :last, {})
+        = f.labeled_collection_select(:new_sepa_status, selectable_sepa_statuses, :first, :last, {})
         = f.labeled_input_field :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten'
         = form_buttons(f, submit_label: "Finanzstatus ändern", cancel_url: cancel_url)

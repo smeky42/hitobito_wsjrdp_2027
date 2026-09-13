@@ -8,7 +8,6 @@
 -#  The account's own master data, below whichever statement the page rendered.
 -#  Shared verbatim by the camt statement and the Moss wallet.
 = standard_form(fin_account, {url: fin_account_path, method: :put, data: {turbo: false}}) do |f|
-  = hidden_field_tag("fin_admin", can_fin_admin?)
   = hidden_field_tag("return_url", return_url)
   = f.error_messages
   = form_buttons_if_editable(f, cancel_url: cancel_url)

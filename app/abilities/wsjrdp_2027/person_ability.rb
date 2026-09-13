@@ -45,8 +45,9 @@ module Wsjrdp2027::PersonAbility
       # permission(:group_full).may(:update_email).if_permissions_in_all_capable_groups
       # permission(:group_full).may(:create).all # restrictions are on Roles
 
-      permission(:finance).may(:fin_admin).if_finance_write
-      permission(:admin).may(:fin_admin).all
+      permission(:finance).may(:update_finance).if_finance_write
+      permission(:finance_manage).may(:admin_finance, :update_finance, :destroy_finance).if_finance_manage
+      permission(:admin).may(:update_finance).all
 
       permission(:admin).may(:update_wsjrdp_email, :update_moss_email).all
       permission(:admin).may(:show_keycloak_username, :update_keycloak_username).all

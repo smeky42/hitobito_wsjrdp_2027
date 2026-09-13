@@ -48,8 +48,11 @@ class AccountingEntry < ActiveRecord::Base
   eur_attribute :amount_eur, cents_attr: :amount_cents
   eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
 
+  # The person this entry is about, the root user as the fallback. A NEW
+  # entry already carries subject_type "Person" (the column's default) while
+  # its subject is still empty, so the type alone is not enough to go by.
   def person
-    @person ||= ((subject_type == "Person") ? subject : Person.root)
+    @person ||= ((subject_type == "Person") ? subject : nil) || Person.root
   end
 
   def group
@@ -57,7 +60,9 @@ class AccountingEntry < ActiveRecord::Base
   end
 
   def to_s
-    d = value_date || created_at.to_date
+    # A new entry has neither date yet: Sheet::Base#initialize asks every
+    # entry for its title, the "Neue Buchung" form included.
+    d = value_date || created_at&.to_date
     "#{id} #{truncate(description, length: 60)} (#{amount_eur_display}) #{d}"
   end
 

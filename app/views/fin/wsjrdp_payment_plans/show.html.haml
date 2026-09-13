@@ -7,7 +7,6 @@
 
 #main.row
   = standard_form(@wsjrdp_payment_plan, {url: wsjrdp_payment_plan_path, method: :put, data: {turbo: false}}) do |f|
-    = hidden_field_tag("fin_admin", can_fin_admin?)
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
     = form_buttons_if_editable(f, cancel_url: cancel_url)
