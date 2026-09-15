@@ -51,12 +51,17 @@
 
     %h3 IST zu BMT umziehen
 
+    -# The people carrying either tag, the ones still to move and the ones
+    -# already moved. tag_search_path builds the same person list the tag chips
+    -# elsewhere lead to, and without a host -- so the link stays on whichever
+    -# instance the page is served from.
     %div
-      %span.chip.person-tag
-        %a{href: "https://anmeldung.worldscoutjamboree.de/groups/1/people?filters[role][kind]=active_today&filters[tag][names][]=zu-BMT-umziehen&range=deep", style: "text-decoration: underline; color: inherit;"}
-          zu-BMT-umziehen
-        %a{href: "https://anmeldung.worldscoutjamboree.de/groups/1/people?filters[role][kind]=active_today&filters[tag][names][]=zu-BMT-umziehen&range=deep", target: "_blank"}
-          ↗
+      - ["zu-BMT-umziehen", "von-IST-zu-BMT-umgezogen"].each do |tag_name|
+        %span.chip.person-tag
+          %a{href: tag_search_path(1, tag_name), style: "text-decoration: underline; color: inherit;"}
+            = tag_name
+          %a{href: tag_search_path(1, tag_name), target: "_blank"}
+            ↗
       %br
       %br
 
