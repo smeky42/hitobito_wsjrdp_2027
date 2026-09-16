@@ -1,0 +1,54 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Styles of the shared chips-combobox widget (its behaviour lives in
+-#  shared/wsjrdp/_chips_combobox_js): chips + search inside one field, the
+-#  option list below it. Emitted once per response; a page may render this
+-#  partial from several places (every filter builder asks for it, and so does
+-#  every page with a `select[data-chips-combobox]`).
+- return if @wsjrdp_chips_combobox_styles_emitted
+- @wsjrdp_chips_combobox_styles_emitted = true
+:css
+  .wcc-field { flex: 1 1 20rem; min-width: min(20rem, 100%); }
+  .wcc-box { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center;
+    border: 1px solid var(--bs-border-color); border-radius: .35rem;
+    background: var(--bs-body-bg); padding: .25rem .35rem; cursor: text; }
+  .wcc-box:focus-within { border-color: var(--bs-primary); box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
+  .wcc-chip { display: inline-flex; align-items: center; gap: .2rem; font-size: .8rem;
+    background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color);
+    border-radius: .3rem; padding: .05rem .15rem .05rem .4rem; max-width: 100%; }
+  .wcc-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+  /* hitobito's global stylesheet gives every input a fixed width -- undo it. */
+  .wcc-input { border: 0 !important; outline: none !important; box-shadow: none !important;
+    background: transparent; flex: 1 0 6rem; width: 6rem; min-height: 1.5rem;
+    font-size: .85rem; padding: 0 .1rem; margin: 0; }
+  .wcc-list { max-height: 240px; overflow: auto; border: 1px solid var(--bs-border-color);
+    border-radius: .35rem; margin-top: .25rem; background: var(--bs-body-bg); }
+  .wcc-row { display: flex; gap: .45rem; align-items: baseline; padding: .18rem .5rem;
+    font-size: .85rem; cursor: pointer; text-align: left; }
+  .wcc-row .wcc-tick { width: 1rem; flex: 0 0 auto; color: var(--bs-success); }
+  .wcc-row .wcc-text { flex: 1 1 auto; text-align: left; }
+  .wcc-row:hover { background: var(--bs-secondary-bg); }
+  .wcc-row.hl { background: var(--bs-primary); color: #fff; }
+  .wcc-row.hl .wcc-tick { color: #fff; }
+  .wcc-row.sel .wcc-text { font-weight: 600; }
+  /* The chip's remove button. This Bootstrap build has no --bs-secondary-color
+     token (a 5.3 addition), so a concrete gray fallback is given. */
+  .wcc-x { border: 0; background: transparent; line-height: 1; padding: 0 .3rem;
+    font-size: .7rem; color: var(--bs-secondary-color, #6c757d); cursor: pointer; }
+  .wcc-x:hover { color: var(--bs-danger); }
+  /* ANY-of semantics hint, shown while more than one value is selected. */
+  .wcc-many-hint { font-size: .75rem; color: var(--bs-primary-text-emphasis, #084298);
+    margin-top: .25rem; }
+  .wcc-key-hint { font-size: .75rem; color: var(--bs-secondary-color, #6c757d); margin-top: .2rem; }
+  /* A collapsible field shows its list (and the key hint) only while it has
+     focus, so a page full of fields stays readable. */
+  .wcc-field.wcc-collapsible:not(:focus-within) .wcc-list,
+  .wcc-field.wcc-collapsible:not(:focus-within) .wcc-key-hint { display: none; }
+  @media (max-width: 575.98px) {
+    .wcc-chip span { max-width: 11rem; }
+  }

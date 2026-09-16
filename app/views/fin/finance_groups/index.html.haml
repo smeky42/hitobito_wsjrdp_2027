@@ -1,0 +1,413 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Gruppen-Finanzzugriff (first tab of the Verwaltung area): a TWO-STAGE
+-#  editor of people.additional_info["finance_group_ids"]. Every add, level
+-#  change and removal is made LOCALLY -- each row carries its stored state in
+-#  data attributes, the script marks what is pending -- and the whole round
+-#  goes off as one PATCH carrying a JSON change list.
+-#
+-#  The add form takes several people and several groups at once, both through
+-#  the shared chips-combobox widget (shared/wsjrdp/_chips_combobox_js, which
+-#  the data attribute alone activates), plus one of the two levels; every
+-#  combination becomes a pending entry. The two filter selects stay
+-#  tom-select, and while something is pending the filters are locked, because
+-#  following one would reload the page and throw the round away.
+
+- title(t("fin.tabs.finance_groups"))
+
+= render "shared/wsjrdp/chips_combobox_styles"
+= render "shared/wsjrdp/chips_combobox_js"
+
+:css
+  /* [hidden] has to win over the display utilities on the pending box. */
+  #finance-groups [hidden] { display: none !important; }
+  #finance-groups .fg-struck .fg-person, #finance-groups .fg-struck .fg-group {
+    text-decoration: line-through; }
+  #finance-groups .fg-lockable[aria-disabled="true"] { pointer-events: none; opacity: .55; }
+
+#main
+  %h1= t("fin.tabs.finance_groups")
+  %p.text-muted= t("fin.finance_groups.lead")
+
+  #finance-groups{data: {level_labels: finance_group_level_labels.to_json,
+    text_summary: finance_group_pending_summary_template,
+    text_locked: t("fin.finance_groups.pending.filters_locked")}}
+
+    -# What the round has collected so far, and the two ways out of it. Hidden
+    -# while nothing is pending.
+    #finance-groups-pending.alert.alert-warning.py-2.px-3.mb-3.d-flex.flex-wrap.align-items-center.gap-2{hidden: true}
+      %i.fas.fa-exclamation-triangle{"aria-hidden": "true"}
+      %span.small#finance-groups-summary
+      = form_with url: fin_admin_apply_finance_groups_path, method: :patch,
+        id: "finance-groups-apply-form", class: "d-inline" do
+        = hidden_field_tag :changes, "", id: "finance-groups-changes"
+        %button.btn.btn-sm.btn-primary{type: "submit"}= t("fin.finance_groups.pending.apply")
+      %button#finance-groups-discard.btn.btn-sm.btn-outline-secondary{type: "button"}
+        = t("fin.finance_groups.pending.discard")
+
+    -# The family filter: links, not a form, so every entry keeps the other two
+    -# filters in its query string.
+    .mb-3
+      %label.form-label.small.mb-1= t("fin.finance_groups.filter_family")
+      %div
+        .btn-group.btn-group-sm#family-filter{role: "group"}
+          - families.each do |label, family|
+            = link_to label, fin_admin_finance_groups_path(family_filter_params(family)),
+              class: "btn btn-outline-secondary fg-lockable#{" active" if family == filter_family}"
+
+    -# Both remaining filters are plain GET params on this page; "alle" clears one.
+    = form_with url: fin_admin_finance_groups_path, method: :get, class: "mb-3" do
+      = hidden_field_tag :family, filter_family if filter_family
+      .d-flex.flex-wrap.align-items-end.gap-2
+        %div
+          %label.form-label.small.mb-1{for: "filter_group_id"}= t("fin.finance_groups.filter_group")
+          = select_tag :group_id,
+            options_for_select(configurable_groups.map { |group| [group.name, group.id.to_s] }, filter_group_id),
+            include_blank: t("fin.finance_groups.all_groups"), id: "filter_group_id",
+            class: "form-select form-select-sm tom-select",
+            data: {chosen_no_results: t("global.chosen_no_results")}
+        %div
+          %label.form-label.small.mb-1{for: "filter_person_id"}= t("fin.finance_groups.filter_person")
+          = select_tag :person_id,
+            options_for_select(filter_people.map { |person| [person.to_s, person.id.to_s] }, filter_person_id),
+            include_blank: t("fin.finance_groups.all_people"), id: "filter_person_id",
+            class: "form-select form-select-sm tom-select",
+            data: {chosen_no_results: t("global.chosen_no_results")}
+        %div
+          %button.btn.btn-sm.btn-outline-secondary.fg-lockable{type: "submit"}= t("fin.finance_groups.filter_apply")
+      %p.small.text-warning.mt-1#finance-groups-filter-lock{hidden: true}
+        = t("fin.finance_groups.pending.filters_locked")
+
+    %p.text-muted#finance-groups-empty{hidden: entries.any?}= t("fin.finance_groups.empty")
+
+    -# The table always stands, empty or not: pending entries are appended to
+    -# its body as rows of their own.
+    %table.table.table-sm.align-middle
+      %thead
+        %tr
+          %th= t("fin.finance_groups.columns.person")
+          %th= t("fin.finance_groups.columns.role")
+          %th= t("fin.finance_groups.columns.group")
+          %th= t("fin.finance_groups.columns.level")
+          %th
+      %tbody#finance-groups-rows
+        - entries.each do |entry|
+          - stored_level = entry.tokens.join(",")
+          %tr{data: {person_id: entry.person.id.to_s, group_id: entry.group_id,
+            level: stored_level, person_name: entry.person.to_s,
+            group_name: finance_group_name(entry)}}
+            %td.fg-person
+              - if can?(:show, entry.person)
+                = link_to entry.person.to_s, person_path(entry.person)
+              - else
+                = entry.person.to_s
+            %td.small.text-muted= finance_group_role_labels(entry.person)
+            %td.fg-group
+              = finance_group_name(entry)
+              -# What the person may do on the group WITHOUT this entry. Where
+              -# it already covers the entry, removing it changes nothing.
+              - by_role = finance_by_role(entry.person, entry.group)
+              - if by_role.any?
+                %span.badge.text-bg-light.ms-1
+                  = t("fin.finance_groups.by_role", level: finance_group_level_label(by_role) || by_role.join(","))
+            %td
+              .d-flex.align-items-center.gap-2
+                .btn-group.btn-group-sm.mb-0{role: "group"}
+                  - levels.each do |level|
+                    - active = (level == stored_level)
+                    %button.btn.btn-outline-primary.text-nowrap.fg-level{type: "button", data: {level: level},
+                      class: (active ? "active" : nil), "aria-pressed": active.to_s}
+                      = t("fin.finance_groups.levels.#{level}")
+                -# Tokens the page has no level for stay visible as raw text,
+                -# so nothing is silently rewritten.
+                - unless levels.include?(stored_level)
+                  %span.small.text-muted= stored_level
+                %span.small.text-muted.fg-change{hidden: true}
+                %span.badge.text-bg-warning.fg-removed{hidden: true}= t("fin.finance_groups.pending.removed")
+            %td
+              -# A flex line, like the level cell, so both cells centre their
+              -# buttons the same way.
+              .d-flex.justify-content-end.align-items-center.gap-2
+                %button.btn.btn-sm.btn-outline-danger.fg-remove{type: "button"}= t("fin.finance_groups.remove")
+                %button.btn.btn-sm.btn-outline-secondary.fg-undo{type: "button", hidden: true}
+                  = t("fin.finance_groups.pending.undo")
+
+    %h2.h5.mt-4= t("fin.finance_groups.add_title")
+    %p.text-muted.small= t("fin.finance_groups.add_lead")
+    .row.g-2
+      .col-md-6
+        %label.form-label.small.mb-1{for: "new_person_ids"}= t("fin.finance_groups.columns.person")
+        -# data-name carries the plain name: the chips show "Name (Rolle)", the
+        -# row the script builds shows the name alone.
+        - person_options = candidates.map { |person| [finance_group_candidate_label(person), person.id.to_s, {data: {name: person.to_s}}] }
+        = select_tag :person_ids, options_for_select(person_options),
+          multiple: true, id: "new_person_ids",
+          "aria-label": t("fin.finance_groups.columns.person"),
+          data: {chips_combobox: true}
+      .col-md-6
+        %label.form-label.small.mb-1{for: "new_group_ids"}= t("fin.finance_groups.columns.group")
+        = select_tag :group_ids,
+          options_for_select(configurable_groups.map { |group| [group.name, group.id.to_s] }),
+          multiple: true, id: "new_group_ids",
+          "aria-label": t("fin.finance_groups.columns.group"),
+          data: {chips_combobox: true}
+    -# Level and the button share one line, so nothing sits higher than its
+    -# neighbour. Two buttons instead of a menu; the first level is preselected.
+    .d-flex.align-items-center.gap-2.mt-2
+      %span.form-label.small.mb-0= t("fin.finance_groups.columns.level")
+      .btn-group.btn-group-sm.mb-0{role: "group"}
+        - levels.each_with_index do |level, index|
+          = radio_button_tag :level, level, index.zero?,
+            id: "new_level_#{index}", class: "btn-check", autocomplete: "off"
+          %label.btn.btn-outline-primary.btn-sm.text-nowrap{for: "new_level_#{index}"}
+            = t("fin.finance_groups.levels.#{level}")
+      %button#finance-groups-add.btn.btn-sm.btn-primary{type: "button"}= t("fin.finance_groups.add")
+
+    -# The blueprint of a pending row: person name, no roles, the two level
+    -# buttons and a "neu" marker. Its Entfernen simply drops the entry again.
+    %template#finance-group-row-template
+      %tr
+        %td.fg-person
+        %td.small.text-muted
+        %td.fg-group
+        %td
+          .d-flex.align-items-center.gap-2
+            .btn-group.btn-group-sm.mb-0{role: "group"}
+              - levels.each do |level|
+                %button.btn.btn-outline-primary.text-nowrap.fg-level{type: "button", data: {level: level},
+                  "aria-pressed": "false"}
+                  = t("fin.finance_groups.levels.#{level}")
+            %span.badge.text-bg-warning= t("fin.finance_groups.pending.new")
+        %td
+          .d-flex.justify-content-end.align-items-center.gap-2
+            %button.btn.btn-sm.btn-outline-danger.fg-remove{type: "button"}= t("fin.finance_groups.remove")
+
+  :javascript
+    (function () {
+      function init() {
+        var root = document.getElementById("finance-groups");
+        if (!root || root.dataset.init) return;
+        root.dataset.init = "1";
+
+        var levelLabels = JSON.parse(root.dataset.levelLabels);
+        var summaryTemplate = root.dataset.textSummary;
+        var lockedTitle = root.dataset.textLocked;
+        var tbody = root.querySelector("#finance-groups-rows");
+        var template = root.querySelector("#finance-group-row-template");
+        var box = root.querySelector("#finance-groups-pending");
+        var summary = root.querySelector("#finance-groups-summary");
+        var emptyHint = root.querySelector("#finance-groups-empty");
+        var lockHint = root.querySelector("#finance-groups-filter-lock");
+        var form = root.querySelector("#finance-groups-apply-form");
+        var changesField = root.querySelector("#finance-groups-changes");
+        var personSelect = root.querySelector("#new_person_ids");
+        var groupSelect = root.querySelector("#new_group_ids");
+        // "<person id>:<group id>" -> {personId, groupId, level, personName,
+        // groupName, stored}. stored is the level the store holds, null for an
+        // entry that is not in it yet; level is null for a removal.
+        var pending = {};
+
+        function key(personId, groupId) { return personId + ":" + groupId; }
+        function label(level) { return levelLabels[level] || level; }
+
+        function storedRows() {
+          return Array.prototype.filter.call(tbody.children, function (row) {
+            return !row.dataset.new;
+          });
+        }
+        function storedRow(personId, groupId) {
+          return storedRows().filter(function (row) {
+            return row.dataset.personId === personId && row.dataset.groupId === groupId;
+          })[0] || null;
+        }
+        function setPending(personId, groupId, level, personName, groupName, stored) {
+          pending[key(personId, groupId)] = {personId: personId, groupId: groupId, level: level,
+            personName: personName, groupName: groupName, stored: stored};
+        }
+
+        // Every selected person times every selected group. An entry that
+        // already carries the chosen level keeps it and loses any pending
+        // change of its own; the selections stay, so the next batch starts
+        // from here.
+        function addBatch() {
+          var level = root.querySelector("input[name=level]:checked");
+          if (!level) return;
+          selectedOptions(personSelect).forEach(function (person) {
+            selectedOptions(groupSelect).forEach(function (group) {
+              var row = storedRow(person.value, group.value);
+              if (row && row.dataset.level === level.value) {
+                delete pending[key(person.value, group.value)];
+              } else {
+                setPending(person.value, group.value, level.value,
+                  person.dataset.name || person.text, group.text,
+                  row ? row.dataset.level : null);
+              }
+            });
+          });
+          render();
+        }
+        function selectedOptions(select) {
+          return Array.prototype.filter.call(select.options, function (o) { return o.selected; });
+        }
+
+        // Back to the stored level cancels the pending change of a row.
+        function pickLevel(row, level) {
+          var k = key(row.dataset.personId, row.dataset.groupId);
+          if (row.dataset.new) {
+            if (pending[k]) pending[k].level = level;
+          } else if (level === row.dataset.level) {
+            delete pending[k];
+          } else {
+            setPending(row.dataset.personId, row.dataset.groupId, level,
+              row.dataset.personName, row.dataset.groupName, row.dataset.level);
+          }
+          render();
+        }
+        function dropRow(row) {
+          var k = key(row.dataset.personId, row.dataset.groupId);
+          if (row.dataset.new) {
+            delete pending[k];
+          } else {
+            setPending(row.dataset.personId, row.dataset.groupId, null,
+              row.dataset.personName, row.dataset.groupName, row.dataset.level);
+          }
+          render();
+        }
+        function undoRow(row) {
+          delete pending[key(row.dataset.personId, row.dataset.groupId)];
+          render();
+        }
+
+        function render() {
+          storedRows().forEach(renderStoredRow);
+          renderNewRows();
+          renderSummary();
+        }
+
+        function renderStoredRow(row) {
+          var entry = pending[key(row.dataset.personId, row.dataset.groupId)];
+          var removed = !!entry && entry.level === null;
+          var changed = !!entry && entry.level !== null;
+          markLevel(row, changed ? entry.level : row.dataset.level);
+          row.classList.toggle("fg-struck", removed);
+          row.querySelector(".fg-removed").hidden = !removed;
+          row.querySelector(".fg-remove").hidden = removed;
+          row.querySelector(".fg-undo").hidden = !removed;
+          var change = row.querySelector(".fg-change");
+          change.textContent = changed ? label(row.dataset.level) + " → " + label(entry.level) : "";
+          change.hidden = !changed;
+        }
+
+        function markLevel(row, level) {
+          row.querySelectorAll(".fg-level").forEach(function (button) {
+            var on = button.dataset.level === level;
+            button.classList.toggle("active", on);
+            button.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+        }
+
+        // The appended rows are rebuilt from scratch after every action, which
+        // keeps them in the order the entries were added.
+        function renderNewRows() {
+          tbody.querySelectorAll("tr[data-new]").forEach(function (row) { row.remove(); });
+          Object.keys(pending).forEach(function (k) {
+            if (pending[k].stored === null) tbody.appendChild(newRow(pending[k]));
+          });
+          emptyHint.hidden = tbody.children.length > 0;
+        }
+
+        function newRow(entry) {
+          var row = template.content.firstElementChild.cloneNode(true);
+          row.dataset.new = "1";
+          row.dataset.personId = entry.personId;
+          row.dataset.groupId = entry.groupId;
+          row.dataset.level = "";
+          row.dataset.personName = entry.personName;
+          row.dataset.groupName = entry.groupName;
+          row.querySelector(".fg-person").textContent = entry.personName;
+          row.querySelector(".fg-group").textContent = entry.groupName;
+          markLevel(row, entry.level);
+          return row;
+        }
+
+        function renderSummary() {
+          var counts = {added: 0, changed: 0, removed: 0};
+          Object.keys(pending).forEach(function (k) {
+            var entry = pending[k];
+            if (entry.stored === null) counts.added += 1;
+            else if (entry.level === null) counts.removed += 1;
+            else counts.changed += 1;
+          });
+          var any = counts.added + counts.changed + counts.removed > 0;
+          summary.textContent = summaryTemplate
+            .replace("%{added}", counts.added)
+            .replace("%{changed}", counts.changed)
+            .replace("%{removed}", counts.removed);
+          box.hidden = !any;
+          lockHint.hidden = !any;
+          root.querySelectorAll(".fg-lockable").forEach(function (node) { lock(node, any); });
+        }
+
+        // While something is pending every filter is locked: applying one
+        // reloads the page and would throw the round away. Same treatment the
+        // filter builder gives its presets.
+        function lock(node, locked) {
+          if (locked) {
+            if (node.hasAttribute("href")) {
+              node.dataset.href = node.getAttribute("href");
+              node.removeAttribute("href");
+            }
+            node.setAttribute("aria-disabled", "true");
+            node.setAttribute("tabindex", "-1");
+            node.title = lockedTitle;
+          } else {
+            if (node.dataset.href) {
+              node.setAttribute("href", node.dataset.href);
+              delete node.dataset.href;
+            }
+            node.removeAttribute("aria-disabled");
+            node.removeAttribute("tabindex");
+            node.removeAttribute("title");
+          }
+        }
+
+        root.addEventListener("click", function (event) {
+          var button = event.target.closest("button");
+          if (!button) return;
+          if (button.id === "finance-groups-add") return addBatch();
+          if (button.id === "finance-groups-discard") { pending = {}; return render(); }
+          var row = button.closest("tr");
+          if (!row || !tbody.contains(row)) return;
+          if (button.classList.contains("fg-level")) pickLevel(row, button.dataset.level);
+          else if (button.classList.contains("fg-remove")) dropRow(row);
+          else if (button.classList.contains("fg-undo")) undoRow(row);
+        });
+
+        form.addEventListener("submit", function () {
+          changesField.value = JSON.stringify(Object.keys(pending).map(function (k) {
+            return {person_id: pending[k].personId, group_id: pending[k].groupId,
+              level: pending[k].level};
+          }));
+        });
+
+        render();
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+      } else {
+        init();
+      }
+      document.addEventListener("turbo:load", init);
+      // A cached snapshot keeps data-init but loses the listeners; the marker
+      // has to go, and the restored page re-renders from an empty round.
+      document.addEventListener("turbo:before-cache", function () {
+        var root = document.getElementById("finance-groups");
+        if (root) delete root.dataset.init;
+      });
+    })();

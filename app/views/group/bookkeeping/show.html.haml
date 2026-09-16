@@ -1,0 +1,26 @@
+-#  Copyright (c) 2026, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+-#
+-#  The group's Buchhaltung tab. So far it names the cost centers of the group
+-#  (groups.additional_info["cost_center_numbers"], assigned on
+-#  /fin/admin/group_cost_centers); sums and bookings follow.
+
+- title(t("groups.finance.bookkeeping.title"))
+
+#main
+  %h2.h5= t("groups.finance.bookkeeping.cost_centers")
+  - cost_centers = @group.cost_centers
+  - if cost_centers.empty?
+    %p.text-muted= t("groups.finance.bookkeeping.no_cost_centers")
+  - else
+    .d-flex.flex-wrap.gap-1
+      - cost_centers.each do |cost_center|
+        %span.badge.text-bg-light.border
+          -# A unit leader reaches this page without any access to the Finanzen
+          -# section, so the chip is a link only where the target opens.
+          - if can?(:show, WsjrdpCostCenter)
+            = link_to cost_center.to_s, cost_center_path(cost_center.number)
+          - else
+            = cost_center.to_s

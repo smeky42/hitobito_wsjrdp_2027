@@ -66,6 +66,13 @@
 -# pane -- so the JS reaches it by id rather than by walking the DOM.
 - presets_id = et_filter_presets_id(state)
 
+-# The multiselect operand control is the shared chips-combobox widget; both
+-# partials guard themselves, so several builders on one page emit them once.
+-# They come FIRST, so window.WsjrdpChipsCombobox exists when this partial's
+-# own script initialises the builder at its end.
+= render "shared/wsjrdp/chips_combobox_styles"
+= render "shared/wsjrdp/chips_combobox_js"
+
 :css
   .flt-slot { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
     border: 1px solid var(--bs-border-color); border-radius: .5rem;
@@ -144,32 +151,6 @@
     color: var(--bs-body-color); margin: 0; align-self: center; text-align: left;
     white-space: nowrap; }
   .flt-case input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0; flex: 0 0 auto; }
-  .flt-many-hint { font-size: .75rem; color: var(--bs-primary-text-emphasis, #084298);
-    margin-top: .25rem; }
-  /* Chips-combobox (multiselect): chips + search inside one field, list below. */
-  .flt-msfield { flex: 1 1 20rem; min-width: min(20rem, 100%); }
-  .flt-msbox { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center;
-    border: 1px solid var(--bs-border-color); border-radius: .35rem;
-    background: var(--bs-body-bg); padding: .25rem .35rem; cursor: text; }
-  .flt-msbox:focus-within { border-color: var(--bs-primary); box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
-  .flt-mschip { display: inline-flex; align-items: center; gap: .2rem; font-size: .8rem;
-    background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color);
-    border-radius: .3rem; padding: .05rem .15rem .05rem .4rem; max-width: 100%; }
-  .flt-mschip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
-  /* hitobito's global stylesheet gives every input a fixed width -- undo it. */
-  .flt-ms-input { border: 0 !important; outline: none !important; box-shadow: none !important;
-    background: transparent; flex: 1 0 6rem; width: 6rem; min-height: 1.5rem;
-    font-size: .85rem; padding: 0 .1rem; margin: 0; }
-  .flt-ms-list { max-height: 240px; overflow: auto; border: 1px solid var(--bs-border-color);
-    border-radius: .35rem; margin-top: .25rem; background: var(--bs-body-bg); }
-  .flt-ms-row { display: flex; gap: .45rem; align-items: baseline; padding: .18rem .5rem;
-    font-size: .85rem; cursor: pointer; text-align: left; }
-  .flt-ms-row .flt-ms-tick { width: 1rem; flex: 0 0 auto; color: var(--bs-success); }
-  .flt-ms-row .flt-ms-text { flex: 1 1 auto; text-align: left; }
-  .flt-ms-row:hover { background: var(--bs-secondary-bg); }
-  .flt-ms-row.hl { background: var(--bs-primary); color: #fff; }
-  .flt-ms-row.hl .flt-ms-tick { color: #fff; }
-  .flt-ms-row.sel .flt-ms-text { font-weight: 600; }
   .flt-empty-hint { color: var(--bs-secondary-color, #6c757d); font-size: .85rem; }
   /* Unapplied edits: a warning chip next to the buttons, a badge on the pane
      pill (visible even when the pane is collapsed), a highlighted Anwenden and
@@ -223,9 +204,8 @@
   .flt-slot-preset { box-shadow: inset 3px 0 0 var(--bs-primary, #0d6efd); }
   @media (max-width: 575.98px) {
     .flt-editor-grid { flex-direction: column; align-items: stretch; }
-    .flt-editor-grid select, .flt-operands, .flt-operands input, .flt-msfield { width: 100%; }
+    .flt-editor-grid select, .flt-operands, .flt-operands input, .wcc-field { width: 100%; }
     .flt-operands { flex-direction: column; align-items: stretch; }
-    .flt-mschip span { max-width: 11rem; }
   }
 
 -# The pane has no pill of its own: its toggle is the "Filter" button at the
@@ -647,7 +627,7 @@
         var panel = slotsEl.querySelector(".flt-editor");
         if (!panel) return;
         var node = (target === "attr") ? panel.querySelector("select") :
-          (panel.querySelector(".flt-ms-input") || panel.querySelector(".flt-operands input") || panel.querySelector("select"));
+          (panel.querySelector(".wcc-input") || panel.querySelector(".flt-operands input") || panel.querySelector("select"));
         if (node) node.focus();
       }
 
@@ -980,7 +960,7 @@
             e.preventDefault();
             cancelEditor();
           } else if (e.key === "Enter" && e.target.tagName !== "SELECT" &&
-              !e.target.classList.contains("flt-ms-input")) {
+              !e.target.classList.contains("wcc-input")) {
             e.preventDefault();
             commitIfValid();
           }
@@ -1022,7 +1002,7 @@
 
         if (attr.control === "multiselect" || attr.control === "select") {
           buildChipsCombobox(zone, attr);
-          return "Tippen: suchen · ↑↓: markieren · ↵: auswählen, mit leerem Feld: übernehmen · ⌫: letzte entfernen · Esc: abbrechen";
+          return WsjrdpChipsCombobox.KEY_HINT;
         }
 
         var isNumber = attr.control === "number_range";
@@ -1060,124 +1040,19 @@
         return "↵: übernehmen · Esc: abbrechen";
       }
 
-      // TomSelect-style chips-combobox: selected values as removable chips in
-      // the field, a search input, and a keyboard-navigable option list.
+      // The shared chips-combobox widget (shared/wsjrdp/_chips_combobox_js):
+      // selected values as removable chips in the field, a search input, and a
+      // keyboard-navigable option list. editor.sel stays the model -- the
+      // widget mutates the very array it is handed.
       function buildChipsCombobox(zone, attr) {
-        var values = (attr.options && attr.options.values) || [];
         var op = opByKey(attr, editor.opKey);
-        var field = el("div", "flt-msfield");
-        var box = el("div", "flt-msbox");
-        var input = el("input", "flt-ms-input");
-        input.type = "text";
-        input.setAttribute("aria-label", attr.label + " suchen");
-        input.placeholder = "Suchen…";
-        var list = el("div", "flt-ms-list");
-        // ANY-of semantics hint, shown as soon as more than one value is picked.
-        var manyHint = el("div", "flt-many-hint");
-        var highlight = -1; // index into the currently visible rows
-
-        function selected(v) { return editor.sel.indexOf(v) >= 0; }
-        function syncManyHint() {
-          manyHint.textContent =
-            (editor.sel.length > 1 && op && op.many_hint) ? op.many_hint : "";
-        }
-        function toggle(v) {
-          var i = editor.sel.indexOf(v);
-          if (i >= 0) editor.sel.splice(i, 1);
-          else editor.sel.push(v);
-          syncChips();
-          syncList();
-          syncManyHint();
-          box.dispatchEvent(new Event("change", {bubbles: true}));
-        }
-        function syncChips() {
-          box.querySelectorAll(".flt-mschip").forEach(function (c) { c.remove(); });
-          editor.sel.forEach(function (v) {
-            var chip = el("span", "flt-mschip");
-            chip.appendChild(el("span", null, optionLabel(attr, v)));
-            var x = el("button", "flt-x");
-            x.type = "button";
-            x.title = "Entfernen";
-            x.appendChild(icon("times"));
-            x.addEventListener("click", function (e) {
-              e.stopPropagation();
-              toggle(v);
-              input.focus();
-            });
-            chip.appendChild(x);
-            box.insertBefore(chip, input);
-          });
-        }
-        function visibleRows() {
-          return Array.prototype.filter.call(list.children, function (r) { return r.style.display !== "none"; });
-        }
-        function syncList() {
-          var q = input.value.toLowerCase();
-          Array.prototype.forEach.call(list.children, function (row) {
-            row.style.display = row.dataset.text.indexOf(q) >= 0 ? "" : "none";
-            row.classList.toggle("sel", selected(row.dataset.value));
-            row.querySelector(".flt-ms-tick").textContent = selected(row.dataset.value) ? "✓" : "";
-          });
-          var rows = visibleRows();
-          if (highlight >= rows.length) highlight = rows.length - 1;
-          rows.forEach(function (row, i) { row.classList.toggle("hl", i === highlight); });
-        }
-        values.forEach(function (pair) {
-          var row = el("div", "flt-ms-row");
-          row.dataset.value = pair[0];
-          row.dataset.text = pair[1].toLowerCase();
-          row.appendChild(el("span", "flt-ms-tick", ""));
-          row.appendChild(el("span", "flt-ms-text", pair[1]));
-          row.addEventListener("mousedown", function (e) { e.preventDefault(); }); // keep input focus
-          row.addEventListener("click", function () {
-            // Same as picking the row with Enter: the typed search is consumed.
-            toggle(pair[0]);
-            input.value = "";
-            highlight = -1;
-            syncList();
-            input.focus();
-          });
-          list.appendChild(row);
+        WsjrdpChipsCombobox.create(zone, {
+          values: (attr.options && attr.options.values) || [],
+          selected: editor.sel,
+          ariaLabel: attr.label + " suchen",
+          manyHint: (op && op.many_hint) || null,
+          onCommit: commitIfValid
         });
-        input.addEventListener("input", function () {
-          highlight = input.value ? 0 : -1;
-          syncList();
-        });
-        input.addEventListener("keydown", function (e) {
-          var rows = visibleRows();
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            highlight = Math.min(highlight + 1, rows.length - 1);
-            syncList();
-            if (highlight >= 0) rows[highlight].scrollIntoView({block: "nearest"});
-          } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            highlight = Math.max(highlight - 1, -1);
-            syncList();
-          } else if (e.key === "Enter") {
-            e.preventDefault();
-            var current = visibleRows()[highlight];
-            if (current) {
-              toggle(current.dataset.value);
-              input.value = "";
-              highlight = -1;
-              syncList();
-            } else if (input.value === "") {
-              commitIfValid(); // empty field + Enter = done
-            }
-          } else if (e.key === "Backspace" && input.value === "" && editor.sel.length) {
-            toggle(editor.sel[editor.sel.length - 1]);
-          }
-        });
-        box.addEventListener("click", function () { input.focus(); });
-        box.appendChild(input);
-        field.appendChild(box);
-        field.appendChild(manyHint);
-        field.appendChild(list);
-        zone.appendChild(field);
-        syncChips();
-        syncList();
-        syncManyHint();
       }
 
       render();

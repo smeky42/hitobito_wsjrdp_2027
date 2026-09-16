@@ -18,13 +18,18 @@ module Wsjrdp2027::Sheet::Group
     "groups.tabs.statistics",
     "groups.tabs.logs",
     "groups.tabs.deleted",
-    "groups.tabs.map"
+    "groups.tabs.map",
+    "groups.tabs.finance"
   ]
 
   included do
     tab "groups.tabs.map",
       :group_map_path,
       if: :show_statistics
+
+    tab "groups.tabs.finance",
+      :group_finance_bookkeeping_path,
+      if: :show_finance
 
     tabs.select! { |t| shown_tabs.include? t.label_key }
     tabs.sort_by! { |t| shown_tabs.index t.label_key }

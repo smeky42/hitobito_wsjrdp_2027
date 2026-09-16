@@ -15,6 +15,16 @@ module Wsjrdp2027::Person
   # contingent ("Kündigung"). An absent value means a withdrawal.
   DEREGISTRATION_KINDS = %w[withdrawal termination].freeze
 
+  # The role types finance_group_ids is effective for: it counts only for
+  # holders of :layer_and_below_full, and these three are the roles that carry
+  # it outside a person's own layer (doc/roles.md -> "Finance on a group's
+  # page"). The Verwaltung page offers exactly these people for a new entry.
+  FINANCE_GROUP_CANDIDATE_ROLE_TYPES = %w[
+    Group::Root::Leader
+    Group::Unit::Manager
+    Group::Ist::Leader
+  ].freeze
+
   # Note: Do not include store_accessor attributes in FILTER_ATTRS
   WSJRDP_FILTER_ATTRS = [
     :status,
@@ -227,6 +237,11 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :planned_total_fee_reduction_comment, strip: true
       attribute :planned_total_fee_reduction_comment, :text
 
+      # additional_info["finance_group_ids"]: {"<group id>" => "show,update"} -- the
+      # finance actions a person may take on that group's page without a role in
+      # it (doc/roles.md -> "Finance on a group's page"). Set by scripts or SQL.
+      jsonb_accessor :additional_info, :finance_group_ids
+
       # Per-key writes to wsjrdp_user_preferences persist immediately (see
       # Wsjrdp::JsonbBackedHash). Declared before the jsonb_accessor so the
       # accessor routes through the same facade (ActiveRecord::Store reads/writes
@@ -239,6 +254,39 @@ module Wsjrdp2027::Person
       # a presence validator -- but its {} default is blank?, which would make
       # every Person invalid and break all creation. Drop it.
       remove_schema_validations :wsjrdp_user_preferences, only: :presence
+
+      # The tokens of one finance_group_ids entry, e.g. " show , update " ->
+      # ["show", "update"]. Shared with the person log, which renders a change
+      # of the field per group (Wsjrdp2027::PaperTrail::VersionDecorator).
+      def self.finance_group_tokens(value)
+        value.to_s.split(",").map(&:strip).compact_blank
+      end
+
+      # The tokens stored for the group in finance_group_ids: "show", "update".
+      def finance_group_actions(group)
+        Person.finance_group_tokens((finance_group_ids || {})[group.id.to_s])
+      end
+
+      # The people the Verwaltung page offers for a NEW finance-access entry:
+      # whoever holds an ACTIVE role of a type finance_group_ids works for.
+      # Role is default-scoped to the active roles, and joins(:roles) carries
+      # that scope into the ON clause, so the join says it.
+      #
+      # A join and not `where(id: Role…select(:person_id))`: Role carries a
+      # class attribute `id` (core TypeId), so a Role RELATION answers #id --
+      # and Rails' predicate builder then reads that nil instead of building
+      # the subquery, which silently matches nobody.
+      def self.finance_group_candidates
+        joins(:roles).where(roles: {type: FINANCE_GROUP_CANDIDATE_ROLE_TYPES})
+          .distinct.order(:last_name, :first_name)
+      end
+
+      # This person's roles of those types, active ones only (Role is
+      # default-scoped to them). What the Verwaltung page shows in its Rolle
+      # column; empty for somebody the field does not work for.
+      def finance_group_candidate_roles
+        roles.select { |role| FINANCE_GROUP_CANDIDATE_ROLE_TYPES.include?(role.type) }
+      end
 
       def short_full_name
         first_names = first_name ? first_name.split : []

@@ -80,6 +80,7 @@ de:
     attributes:
       group:
         is_wsjrdp: WSJRDP Gruppe
+        cost_center_numbers: Kostenstellen
         support_cmt_mail_addresses: E-Mail Adressen Support-CMT
         support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
       person:
@@ -191,6 +192,7 @@ de:
         deregistration_refund_receipt_text: Text im Beleg
         deregistration_open_cents: Ausstehender Beitrag
         debit_return_issue: Ticket Rücklastschrift
+        finance_group_ids: "Finanzzugriff auf Gruppen"
         wsjrdp_email: "Contingent E-Mail"
         wsjrdp_email_is_mailbox: "Mailbox für Contingent E-Mail"
         moss_email: "Moss E-Mail"
@@ -801,8 +803,16 @@ de:
         unit-codes:
           title: Unit-Code
           none: -kein Unit-Code-
+    finance:
+      tabs:
+        bookkeeping: Buchhaltung
+      bookkeeping:
+        title: Buchhaltung
+        cost_centers: Kostenstellen
+        no_cost_centers: Dieser Gruppe sind keine Kostenstellen zugeordnet.
     tabs:
       map: Karte
+      finance: Finanzen
 
   devise:
     mailer:
@@ -888,6 +898,7 @@ de:
       accounting: "Buchhaltung"
       reconciliation: "Abstimmung"
       controlling: "Controlling"
+      admin: "Verwaltung"
     # One sentence per area, shown on its card on the Finanzen entry page
     # (/fin): what the area is for. The keys are Fin::OverviewHelper::AREAS,
     # the words of the heading above stay in fin.nav.
@@ -921,6 +932,8 @@ de:
         purpose: "Beitragsbuchungen und DATEV-Buchungen einander zuordnen, Vorschläge prüfen, Verknüpfungen setzen."
       controlling:
         purpose: "Auswertungen und Kennzahlen."
+      admin:
+        purpose: "Finanzzugriff auf Gruppen und Kostenstellen der Gruppen."
     tabs:
       accounts: "Konten"
       person_fees: "Personen"
@@ -935,12 +948,80 @@ de:
       bookings: "Buchungen"
       participant_fees: "TN-Beiträge"
       transactions: "Transaktionen"
+      finance_groups: "Gruppen-Finanzzugriff"
+      group_cost_centers: "Gruppen-Kostenstellen"
       # The Moss kind tabs (Fin::MossTransactionsController::KIND_TABS): the
       # plural of fin.moss.kinds.
       card_transactions: "Kartenzahlungen"
       invoices: "Rechnungen"
       reimbursements: "Erstattungen"
       top_ups: "Einzahlungen"
+    # Verwaltung, erster Tab: der Gruppen-Finanzzugriff einzelner Personen
+    # (people.additional_info["finance_group_ids"]).
+    finance_groups:
+      lead: "Wer darf auf der Finanzen-Seite einer Gruppe etwas sehen und bearbeiten, ohne eine Rolle in dieser Gruppe zu haben."
+      empty: "Es gibt noch keine Einträge."
+      filter_family: "Bereich"
+      filter_group: "Gruppe"
+      filter_person: "Person"
+      filter_apply: "Filtern"
+      all_groups: "alle Gruppen"
+      all_people: "alle Personen"
+      # Der Bereichs-Filter über den konfigurierbaren Gruppen: alle, je eine
+      # Unit-Familie (Units, die „Buchstabe + Zahl" heißen), die übrigen Units
+      # und die IST-Gruppen.
+      families:
+        all: "Alle"
+        unit: "%{letter}-Units"
+        other_units: "Sonstige Units"
+        ist: "IST-Gruppen"
+      columns:
+        person: "Person"
+        role: "Rolle"
+        group: "Gruppe"
+        level: "Zugriff"
+      # Die beiden Stufen, die diese Seite vergibt; der Schlüssel ist die
+      # gespeicherte Token-Liste.
+      levels:
+        show: "Anzeigen"
+        "show,update": "Anzeigen + Bearbeiten"
+      by_role: "per Rolle: %{level}"
+      remove: "Entfernen"
+      add_title: "Zugriff hinzufügen"
+      add_lead: "Angeboten werden CMT Leader, Unit Manager und IST Manager – nur für sie wirkt das Feld. Mehrere Personen und mehrere Gruppen ergeben alle Kombinationen."
+      add: "Hinzufügen"
+      # Die Seite bearbeitet erst lokal: was offen ist, steht in der Box über
+      # der Tabelle und geht mit „Anwenden" als eine Änderungsliste ab.
+      pending:
+        summary: "%{added} neu, %{changed} geändert, %{removed} entfernt – noch nicht angewendet"
+        apply: "Anwenden"
+        discard: "Abbrechen"
+        new: "neu"
+        removed: "wird entfernt"
+        undo: "Rückgängig"
+        filters_locked: "Filter sind gesperrt, solange Änderungen nicht angewendet sind."
+      applied: "%{added} Zugriffe neu, %{changed} geändert, %{removed} entfernt."
+      unchanged: "Keine Änderungen."
+      rejected_format: "Die Änderungen ließen sich nicht lesen, es wurde nichts gespeichert."
+      rejected_level: "Diese Zugriffsstufe ist nicht zulässig, es wurde nichts gespeichert."
+      rejected_group: "Diese Gruppe ist nicht zulässig, es wurde nichts gespeichert."
+      rejected_person: "Diese Person ist nicht zulässig, es wurde nichts gespeichert."
+    # Verwaltung, zweiter Tab: die Kostenstellen einer Gruppe
+    # (groups.additional_info["cost_center_numbers"]).
+    group_cost_centers:
+      lead: "Welche Kostenstellen auf dem Buchhaltungs-Tab einer Gruppe stehen. Die Zuordnung ist immer ausdrücklich, aus dem Namen wird nichts abgeleitet."
+      columns:
+        group: "Gruppe"
+        kind: "Typ"
+        cost_centers: "Kostenstellen"
+      also: "auch: %{groups}"
+      unsaved: "Änderungen sind noch nicht gespeichert."
+      save: "Speichern"
+      unassigned: "%{count} Kostenstellen ohne Gruppe"
+      saved: "Kostenstellen von %{count} Gruppen gespeichert"
+      unchanged: "Keine Änderungen."
+      unknown_group: "Für diese Gruppe lassen sich keine Kostenstellen zuordnen, es wurde nichts gespeichert."
+      unknown_numbers: "Unbekannte Kostenstellen: %{numbers}. Es wurde nichts gespeichert."
     account_kind:
       BANK: "Bank"
       TRANSIT: "Geldtransit"
@@ -1018,6 +1099,16 @@ de:
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
     wsjrdp_add_tag: 'Tag <i>%{tag_name}</i> hinzugefügt'
     wsjrdp_remove_tag: 'Tag <i>%{tag_name}</i> entfernt'
+    finance_group_ids:
+      attr: "Finanzzugriff auf Gruppe <i>%{group}</i>"
+      tokens:
+        show: Anzeigen
+        update: Bearbeiten
+    # Eine Zeile je Kostenstelle, die zu einer Gruppe dazukommt oder wegfällt
+    # (groups.additional_info["cost_center_numbers"]).
+    cost_center_numbers:
+      added: 'Gruppen-Kostenstelle <i>%{cost_center}</i> hinzugefügt'
+      removed: 'Gruppen-Kostenstelle <i>%{cost_center}</i> entfernt'
 
   navigation:
     finance: Finanzen

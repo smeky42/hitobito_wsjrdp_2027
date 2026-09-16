@@ -33,7 +33,7 @@ module Fin::OverviewHelper
   # account has.
   MOSS_WALLET_TYPE = "MossBalanceMovement"
 
-  # The six areas in the order of the left sub-navigation (fin/_left_nav):
+  # The areas in the order of the left sub-navigation (fin/_left_nav):
   # area sheet => the key its sentence lives under (fin.areas.<key>.purpose)
   # and its FontAwesome 5 free SOLID icon. Everything else an area needs -- its
   # title, its tabs and their paths -- comes from the sheet, so this is the only
@@ -44,7 +44,8 @@ module Fin::OverviewHelper
     Sheet::Fin::Moss => {key: :moss, icon: "wallet"},
     Sheet::Fin::Accounting => {key: :accounting, icon: "book"},
     Sheet::Fin::Reconciliation => {key: :reconciliation, icon: "check-double"},
-    Sheet::Fin::Controlling => {key: :controlling, icon: "chart-line"}
+    Sheet::Fin::Controlling => {key: :controlling, icon: "chart-line"},
+    Sheet::Fin::Admin => {key: :admin, icon: "sliders-h"}
   }.freeze
 
   # One card. `tabs` are [label, path] pairs, `figures` [label, value, warn?]
@@ -57,11 +58,18 @@ module Fin::OverviewHelper
 
   # [Area, …] -- one per area, in navigation order. The area link is its
   # overview tab, or the first tab when the area has no overview (Konten &
-  # Wallets); the quick links are every other tab the person may see
-  # (Sheet::Tab::Renderer#show? honours the tab's `if:` condition).
+  # Wallets, Verwaltung); the quick links are every other tab the person may
+  # see (Sheet::Tab::Renderer#show? honours the tab's `if:` condition).
+  #
+  # An area whose tabs are ALL hidden has no page this person may open, so it
+  # gets no card: that is how the Verwaltung area, every tab of which carries
+  # the :configure_finance gate, stays off /fin for everybody else -- the same
+  # single condition that hides its tab bar and its nav entry.
   def fin_areas
-    AREAS.map do |sheet, area|
+    AREAS.filter_map do |sheet, area|
       renderers = sheet.tabs.map { |tab| tab.renderer(self, []) }.select(&:show?)
+      next if renderers.empty?
+
       overview, others = renderers.partition { |renderer| renderer.label_key == OVERVIEW_TAB_KEY }
       Area.new(key: area[:key], icon: area[:icon], title: sheet.new(self).title,
         purpose: t("fin.areas.#{area[:key]}.purpose"),
