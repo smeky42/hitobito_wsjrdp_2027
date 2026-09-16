@@ -15,7 +15,9 @@ module Wsjrdp2027::NavigationHelper
     url: :groups_path,
     icon_name: "users",
     active_for: %w[groups /people fin/ae fin/pn],
-    inactive_for: %w[/invoices invoice_articles invoice_config payment_process invoice_lists?]
+    # fin/admin: the Verwaltung page /fin/admin/finance_groups carries the
+    # fragment "groups" in its path and belongs to the Finanzen section.
+    inactive_for: %w[/invoices invoice_articles invoice_config payment_process invoice_lists? fin/admin]
   }
 
   WSJRDP_MAIN_FIN = {

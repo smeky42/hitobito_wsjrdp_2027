@@ -150,6 +150,15 @@ describe Fin::CostCentersController do
       expect(response.body.squish).to include("3 Kostenstellen angezeigt · 3 Buchungen · Summe 80,00 €")
     end
 
+    # The filter builder brings the shared chips-combobox along: its multiselect
+    # operand control is that widget, and the partial guards itself.
+    it "carries the filter builder and the chips-combobox widget script once" do
+      get :index
+
+      expect(doc.css(".flt-root").size).to eq(1)
+      expect(response.body.scan("window.WsjrdpChipsCombobox = ").size).to eq(1)
+    end
+
     it "sorts by the aggregates, by the names and by the Moss status" do
       get :index, params: {s: "sum"}
       expect(rendered_numbers).to eq(%w[K300 K100 K200])

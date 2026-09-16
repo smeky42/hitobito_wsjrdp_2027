@@ -1,0 +1,255 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The shared chips-combobox widget (styles: shared/wsjrdp/_chips_combobox_styles,
+-#  which must be rendered too): selected values as removable chips inside one
+-#  field, a search input next to them and a keyboard-navigable option list
+-#  below. It is the multiselect control of the generic filter builder
+-#  (shared/wsjrdp/filtering/_builder, doc/wsjrdp/generic_filter_builder.md) and
+-#  the chips control of any `select[multiple][data-chips-combobox]` elsewhere.
+-#
+-#  window.WsjrdpChipsCombobox:
+-#    KEY_HINT              the keyboard hints as one line of text
+-#    create(host, opts)    build a field into `host`, return its api
+-#      opts.values         [[value, label], ...] -- all options, in list order
+-#      opts.selected       the selected values; used BY REFERENCE and mutated in
+-#                          place, so it can BE the caller's model (default [])
+-#      opts.placeholder    search placeholder (default "Suchen…")
+-#      opts.ariaLabel      aria-label of the search input
+-#      opts.manyHint       text under the box while more than one value is
+-#                          selected, or null
+-#      opts.keyHint        true -> a .wcc-key-hint line with KEY_HINT under the
+-#                          list (default false)
+-#      opts.collapsible    true -> list and key hint only while the field has
+-#                          focus (default false)
+-#      opts.onChange(selected)  after every toggle
+-#      opts.onCommit()     Enter with an empty search field
+-#      api                 {field, selected(), set(values), focus(), destroy()}
+-#    enhance(select)       turn a <select multiple> into a field: options and
+-#                          selection come from the select, which stays the form
+-#                          control (hidden) and receives every toggle as
+-#                          option.selected + a bubbling "change"
+-#
+-#  Every `select[data-chips-combobox]` is enhanced on its own, on load and after
+-#  every Turbo visit. Emitted once per response; the window guard makes a second
+-#  copy on the page harmless.
+- return if @wsjrdp_chips_combobox_js_emitted
+- @wsjrdp_chips_combobox_js_emitted = true
+:javascript
+  (function () {
+    if (window.WsjrdpChipsCombobox) return;
+
+    var KEY_HINT = "Tippen: suchen · ↑↓: markieren · ↵: auswählen, mit leerem Feld: übernehmen · ⌫: letzte entfernen · Esc: abbrechen";
+
+    function el(tag, cls, text) {
+      var node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+    // FontAwesome 5 icons, same set hitobito uses elsewhere (fas fa-*).
+    function icon(name) {
+      var i = el("i", "fas fa-" + name);
+      i.setAttribute("aria-hidden", "true");
+      return i;
+    }
+
+    function create(host, opts) {
+      opts = opts || {};
+      var values = opts.values || [];
+      // The selection is the CALLER's array: it is mutated in place, so a host
+      // that keeps it as its model never drifts apart from the field.
+      var sel = opts.selected || [];
+      var field = el("div", "wcc-field");
+      if (opts.collapsible) field.classList.add("wcc-collapsible");
+      var box = el("div", "wcc-box");
+      var input = el("input", "wcc-input");
+      input.type = "text";
+      if (opts.ariaLabel) input.setAttribute("aria-label", opts.ariaLabel);
+      input.placeholder = opts.placeholder || "Suchen…";
+      var list = el("div", "wcc-list");
+      // ANY-of semantics hint, shown as soon as more than one value is picked.
+      var manyHint = el("div", "wcc-many-hint");
+      var highlight = -1; // index into the currently visible rows
+
+      // A value's label from the options; one the options do not carry labels
+      // itself.
+      function label(v) {
+        for (var i = 0; i < values.length; i++) if (values[i][0] === String(v)) return values[i][1];
+        return String(v);
+      }
+      function selected(v) { return sel.indexOf(v) >= 0; }
+      function syncManyHint() {
+        manyHint.textContent = (sel.length > 1 && opts.manyHint) ? opts.manyHint : "";
+      }
+      function toggle(v) {
+        var i = sel.indexOf(v);
+        if (i >= 0) sel.splice(i, 1);
+        else sel.push(v);
+        syncChips();
+        syncList();
+        syncManyHint();
+        box.dispatchEvent(new Event("change", {bubbles: true}));
+        if (opts.onChange) opts.onChange(sel);
+      }
+      function syncChips() {
+        box.querySelectorAll(".wcc-chip").forEach(function (c) { c.remove(); });
+        sel.forEach(function (v) {
+          var chip = el("span", "wcc-chip");
+          chip.appendChild(el("span", null, label(v)));
+          var x = el("button", "wcc-x");
+          x.type = "button";
+          x.title = "Entfernen";
+          x.appendChild(icon("times"));
+          x.addEventListener("click", function (e) {
+            e.stopPropagation();
+            toggle(v);
+            input.focus();
+          });
+          chip.appendChild(x);
+          box.insertBefore(chip, input);
+        });
+      }
+      function visibleRows() {
+        return Array.prototype.filter.call(list.children, function (r) { return r.style.display !== "none"; });
+      }
+      function syncList() {
+        var q = input.value.toLowerCase();
+        Array.prototype.forEach.call(list.children, function (row) {
+          row.style.display = row.dataset.text.indexOf(q) >= 0 ? "" : "none";
+          row.classList.toggle("sel", selected(row.dataset.value));
+          row.querySelector(".wcc-tick").textContent = selected(row.dataset.value) ? "✓" : "";
+        });
+        var rows = visibleRows();
+        if (highlight >= rows.length) highlight = rows.length - 1;
+        rows.forEach(function (row, i) { row.classList.toggle("hl", i === highlight); });
+      }
+      values.forEach(function (pair) {
+        var row = el("div", "wcc-row");
+        row.dataset.value = pair[0];
+        row.dataset.text = String(pair[1]).toLowerCase();
+        row.appendChild(el("span", "wcc-tick", ""));
+        row.appendChild(el("span", "wcc-text", pair[1]));
+        row.addEventListener("mousedown", function (e) { e.preventDefault(); }); // keep input focus
+        row.addEventListener("click", function () {
+          // Same as picking the row with Enter: the typed search is consumed.
+          toggle(pair[0]);
+          input.value = "";
+          highlight = -1;
+          syncList();
+          input.focus();
+        });
+        list.appendChild(row);
+      });
+      input.addEventListener("input", function () {
+        highlight = input.value ? 0 : -1;
+        syncList();
+      });
+      input.addEventListener("keydown", function (e) {
+        var rows = visibleRows();
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          highlight = Math.min(highlight + 1, rows.length - 1);
+          syncList();
+          if (highlight >= 0) rows[highlight].scrollIntoView({block: "nearest"});
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          highlight = Math.max(highlight - 1, -1);
+          syncList();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          var current = visibleRows()[highlight];
+          if (current) {
+            toggle(current.dataset.value);
+            input.value = "";
+            highlight = -1;
+            syncList();
+          } else if (input.value === "" && opts.onCommit) {
+            opts.onCommit(); // empty field + Enter = done
+          }
+        } else if (e.key === "Backspace" && input.value === "" && sel.length) {
+          toggle(sel[sel.length - 1]);
+        }
+      });
+      box.addEventListener("click", function () { input.focus(); });
+      box.appendChild(input);
+      field.appendChild(box);
+      field.appendChild(manyHint);
+      field.appendChild(list);
+      if (opts.keyHint) field.appendChild(el("div", "wcc-key-hint", KEY_HINT));
+      host.appendChild(field);
+      syncChips();
+      syncList();
+      syncManyHint();
+
+      return {
+        field: field,
+        selected: function () { return sel.slice(); },
+        set: function (next) {
+          sel.length = 0;
+          (next || []).forEach(function (v) { sel.push(v); });
+          syncChips();
+          syncList();
+          syncManyHint();
+        },
+        focus: function () { input.focus(); },
+        destroy: function () { field.remove(); }
+      };
+    }
+
+    // The select stays the form control: it is only hidden, and every toggle
+    // writes its options and fires the "change" the page's own scripts listen
+    // for.
+    function enhance(select) {
+      if (!select || select.dataset.wccInit) return null;
+      select.dataset.wccInit = "1";
+      var options = Array.prototype.slice.call(select.options);
+      var api = create(select.parentNode, {
+        values: options.map(function (o) { return [o.value, o.text]; }),
+        selected: options.filter(function (o) { return o.selected; }).map(function (o) { return o.value; }),
+        ariaLabel: select.getAttribute("aria-label"),
+        keyHint: true,
+        collapsible: true,
+        onChange: function (chosen) {
+          options.forEach(function (o) { o.selected = chosen.indexOf(o.value) >= 0; });
+          select.dispatchEvent(new Event("change", {bubbles: true}));
+        }
+      });
+      select.parentNode.insertBefore(api.field, select.nextSibling);
+      select.hidden = true;
+      var removeField = api.destroy;
+      api.destroy = function () {
+        removeField();
+        select.hidden = false;
+        delete select.dataset.wccInit;
+        delete select.wsjrdpChipsCombobox;
+      };
+      select.wsjrdpChipsCombobox = api;
+      return api;
+    }
+
+    function enhanceAll() {
+      document.querySelectorAll("select[data-chips-combobox]").forEach(enhance);
+    }
+
+    window.WsjrdpChipsCombobox = {KEY_HINT: KEY_HINT, create: create, enhance: enhance};
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", enhanceAll);
+    } else {
+      enhanceAll();
+    }
+    document.addEventListener("turbo:load", enhanceAll);
+    document.addEventListener("turbo:render", enhanceAll);
+    // A cached snapshot must carry no widget DOM: the select is the form
+    // control again, and the restored page enhances afresh.
+    document.addEventListener("turbo:before-cache", function () {
+      document.querySelectorAll("select[data-chips-combobox]").forEach(function (select) {
+        if (select.wsjrdpChipsCombobox) select.wsjrdpChipsCombobox.destroy();
+      });
+    });
+  })();

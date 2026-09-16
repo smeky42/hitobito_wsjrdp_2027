@@ -719,6 +719,33 @@ for the signed member and `|x|` for the absolute one, the edited member pressed
 the operator when the new member accepts it, otherwise starts on that member's
 first offered one; the operands stay.
 
+**The chips-combobox** behind `multiselect` and `select` is not the builder's
+own control but the shared widget `shared/wsjrdp/_chips_combobox_styles` +
+`shared/wsjrdp/_chips_combobox_js` (class prefix `wcc-`): selected values as
+removable chips before the search input, the option list below it, `↑↓` to
+highlight, `↵` to toggle, `⌫` to remove the last chip. The builder renders both
+partials ahead of its own `:css` / `:javascript`; each one guards itself, so
+several builders on a page emit them once.
+
+- `WsjrdpChipsCombobox.create(host, opts)` builds a field into `host` and
+  returns `{field, selected(), set(values), focus(), destroy()}`. `opts.values`
+  are the `[value, label]` pairs, `opts.selected` is the selection array — used
+  **by reference** and mutated in place, which is how `editor.sel` stays the
+  builder's model — and `opts.manyHint`, `opts.keyHint`, `opts.collapsible`,
+  `opts.placeholder`, `opts.ariaLabel`, `opts.onChange(selected)` and
+  `opts.onCommit()` (`↵` on an empty search field) are the rest. The builder
+  passes the attribute's options, `editor.sel`, the operator's `many_hint` and
+  `commitIfValid`.
+- `WsjrdpChipsCombobox.KEY_HINT` is the keyboard-hint line, which the editor
+  shows for both controls.
+- `WsjrdpChipsCombobox.enhance(select)` is the other caller: every
+  `select[multiple][data-chips-combobox]` on a page is enhanced on load and
+  after every Turbo visit. Options and selection come from the `<select>`,
+  which stays the form control — hidden, and each toggle writes its
+  `option.selected` and fires a bubbling `change` on it. That is how the
+  Verwaltung page `/fin/admin/group_cost_centers` renders its per-group
+  cost-centre lists ([`doc/navigation.md`](../navigation.md) §8).
+
 ### 2.6 The component: state, rendering, data flow
 
 - **Single source of truth = the value JSON.** Everything else (which picker is

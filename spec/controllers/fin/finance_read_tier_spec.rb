@@ -554,4 +554,38 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       end
     end
   end
+
+  # The Verwaltung area configures the section itself. Both of its tabs carry
+  # the :configure_finance gate, which is what keeps the area off the /fin page
+  # and out of the left sub-navigation for everybody else -- the card would
+  # otherwise lead to two pages that answer 403.
+  describe "the Verwaltung section" do
+    describe ::Fin::OverviewController, type: :controller do
+      render_views
+
+      def page_text
+        Nokogiri::HTML(response.body).text
+      end
+
+      it "is not on the auditor's entry page or in their left nav" do
+        sign_in(auditor)
+        get :index
+
+        expect(response).to be_successful
+        expect(page_text).not_to include(I18n.t("fin.nav.admin"))
+        expect(Nokogiri::HTML(response.body).css("#main a").pluck("href"))
+          .not_to include("/fin/admin/finance_groups")
+      end
+
+      it "is there for a CMT admin" do
+        sign_in(Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person)
+        get :index
+
+        expect(response).to be_successful
+        expect(page_text).to include(I18n.t("fin.nav.admin"))
+        expect(Nokogiri::HTML(response.body).css("a").pluck("href"))
+          .to include("/fin/admin", "/fin/admin/finance_groups", "/fin/admin/group_cost_centers")
+      end
+    end
+  end
 end

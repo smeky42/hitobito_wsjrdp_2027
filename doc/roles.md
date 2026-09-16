@@ -221,7 +221,10 @@ with the same key (permission, subject, action). This lets the wagon
 - add new rules: the `:log` grant on `Event` in
   [`event_ability.rb`](../app/abilities/wsjrdp_2027/event_ability.rb),
   the finance-tier grants in
-  [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb).
+  [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb),
+  and `:show_finance` / `:update_finance` on `Group` in
+  [`group_ability.rb`](../app/abilities/wsjrdp_2027/group_ability.rb) (see
+  [Finance on a group's page](#finance-on-a-groups-page)).
 
 All wagon ability files live under
 [`app/abilities/wsjrdp_2027/`](../app/abilities/wsjrdp_2027/).
@@ -309,6 +312,90 @@ authorizes on its own.  The `before_action :authorize_action` of the
 its own `authorize!`. The views ask the same question before they
 render a control: `can?(:update, …)`, and `#permitted_attrs` answers
 `[]` without the write tier.
+
+### Finance on a group's page
+
+A group's page carries a "Finanzen" tab with its own sub-tabs. Two actions on
+`Group` are used to limit access: `:show_finance` is required to see and open
+the tab and its pages, `:update_finance` is the gate for anything that edits
+there beyond the regular finance tier restrictions. The rules are in
+[`group_ability.rb`](../app/abilities/wsjrdp_2027/group_ability.rb):
+
+| Permission | Constraint | Actions |
+|---|---|---|
+| `group_full` | `in_same_group` | `show_finance`, `update_finance` |
+| `layer_and_below_full` | `if_finance_group_show` | `show_finance` |
+| `layer_and_below_full` | `if_finance_group_update` | `update_finance` |
+| `finance_audit` | `if_finance_audit` | `show_finance` |
+| `finance` | `if_finance_write` | `show_finance`, `update_finance` |
+| `finance_manage` | `if_finance_manage` | `show_finance`, `update_finance` |
+
+`group_full` is group-bound: a `Group::Unit::Leader` works on their own unit.
+The two `layer_and_below_full` constraints hold when the permission sits in a
+layer of the group's hierarchy that is not a `Group::Root` — a
+`Group::Unit::Manager` on their unit, a `Group::Ist::Leader` on the IST layer
+including the IST groups nested in it — or when the group is listed with the
+matching token in the person's `finance_group_ids`. The root layer is taken out
+of the layer part, so a `Group::Root::Leader` reaches a group's finance pages
+only through that field, while `Root::Admin`, `Root::Finance` and
+`Root::FinanceManager` keep their access through their finance tier.
+
+`additional_info["finance_group_ids"]` on a person is a JSON object that maps a
+group id to the actions the person may take on that group's page:
+
+```json
+{"8": "show,update", "12": "show"}
+```
+
+The keys are group ids as strings, the value a comma-separated list of tokens;
+whitespace around a token is ignored. `show` grants `:show_finance`, `update`
+grants `:update_finance`, and an `update` without a `show` opens nothing,
+because every page is gated on `:show_finance`. The field is only effective for
+people who hold `layer_and_below_full` somewhere; for anybody else it has no
+effect. `Person#finance_group_actions(group)` reads the tokens for one group.
+
+The field is edited on **Finanzen → Verwaltung → Gruppen-Finanzzugriff**
+(`/fin/admin/finance_groups`), the only editor there is. That page is open to
+Admin and to the manage tier, gated on the class-side action
+`:configure_finance` on `Group` (`class_side(:configure_finance)
+.if_admin_or_finance_manage`), so a `FinanceManager` reaches it once they pick
+the manage tier for the session. It offers the groups that are units or IST
+groups and not waiting lists (`Group.finance_configurable`) and the people the
+field works for — an active `Group::Root::Leader`, `Group::Unit::Manager` or
+`Group::Ist::Leader` (`Person.finance_group_candidates`); an entry somebody
+else already carries is still listed and can be removed there. The page also
+marks an entry whose actions the person already holds through a role or a
+tier. It edits in two stages: every add, level change and removal is collected
+locally, the summary above the table counts them, and one "Anwenden" hands the
+whole round over as a single PATCH carrying the change list — either all of it
+passes and is written, one version per person whose entries really differ, or
+nothing is. See [`doc/navigation.md`](navigation.md) → §8.
+
+Changes of the field are versioned: a model save goes through the store key and
+lands in the person's `update` version like a column of its own, and the scripts
+write a version row of the same shape. The person log renders such a change per
+group — one line per group whose tokens differ, with `show` as "Anzeigen" and
+`update` as "Bearbeiten" — through
+[`Wsjrdp2027::PaperTrail::VersionDecorator`](../app/decorators/wsjrdp_2027/paper_trail/version_decorator.rb),
+covered by
+[`spec/controllers/person/log_finance_group_ids_spec.rb`](../spec/controllers/person/log_finance_group_ids_spec.rb).
+
+The finance tiers are not layer-bound, so they answer the same on every group.
+`finance_read` alone grants nothing here: the read tier sees no group's finance
+pages. The [finance cap](#the-finance-cap) applies.
+
+`additional_info["cost_center_numbers"]` on a GROUP is the other half of the
+group's finance data: an array of cost-center numbers, the cost centers the
+group's Buchhaltung tab names. Numbers are alphanumeric strings, never just
+digits. The list is assigned explicitly on **Finanzen → Verwaltung →
+Gruppen-Kostenstellen** (`/fin/admin/group_cost_centers`), behind the same
+`:configure_finance` gate and for the same set of groups; nothing derives it
+from a group's name or code. `Group#cost_centers` reads the records, and every
+number has to exist in `wsjrdp_cost_centers` before it is stored. Seeing the
+list needs no finance right at all — it is part of the group's own page. The
+group's log lists a change of the field per number, one line for every number
+added and one for every number gone.
+
 
 ## The finance cap
 

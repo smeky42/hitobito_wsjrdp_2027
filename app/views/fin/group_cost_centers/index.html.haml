@@ -1,0 +1,75 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Gruppen-Kostenstellen (second tab of the Verwaltung area): ONE form over
+-#  every configurable group. Per group a multi-select of all cost centers
+-#  (groups.additional_info["cost_center_numbers"]), rendered as removable chips
+-#  by the shared chips-combobox widget (shared/wsjrdp/_chips_combobox_js) --
+-#  data-chips-combobox is all it takes. One Speichern button saves the whole
+-#  page; the hints above and below the table appear as soon as a select
+-#  changes.
+
+- title(t("fin.tabs.group_cost_centers"))
+
+= render "shared/wsjrdp/chips_combobox_styles"
+= render "shared/wsjrdp/chips_combobox_js"
+
+#main
+  %h1= t("fin.tabs.group_cost_centers")
+  %p.text-muted= t("fin.group_cost_centers.lead")
+
+  = form_with url: fin_admin_group_cost_centers_path, method: :patch, id: "group-cost-centers-form" do
+    %p.text-warning.small.group-cost-centers-hint#group-cost-centers-hint-top{hidden: true}
+      = t("fin.group_cost_centers.unsaved")
+
+    %table.table.table-sm.align-middle
+      %thead
+        %tr
+          %th= t("fin.group_cost_centers.columns.group")
+          %th= t("fin.group_cost_centers.columns.kind")
+          %th= t("fin.group_cost_centers.columns.cost_centers")
+      %tbody
+        - groups.each do |group|
+          %tr
+            %td= group.name
+            %td.small.text-muted= group.class.model_name.human
+            %td
+              -# A cleared select posts nothing of its own; the hidden field is
+              -# what tells the server that the list is now empty.
+              = hidden_field_tag "cost_center_numbers[#{group.id}][]", "", id: nil
+              = select_tag "cost_center_numbers[#{group.id}][]",
+                options_for_select(cost_center_options, numbers_of(group)),
+                multiple: true, id: "cost_center_numbers_#{group.id}",
+                "aria-label": t("fin.group_cost_centers.columns.cost_centers"),
+                data: {chips_combobox: true}
+              -# A cost center more than one group claims: nothing forbids it,
+              -# it is only worth seeing. Rendered from the stored state.
+              - shared = shared_numbers_of(group)
+              - if shared.any?
+                .small.text-muted.mt-1
+                  - shared.each do |number, others|
+                    %div
+                      %span.me-1= number
+                      = t("fin.group_cost_centers.also", groups: others.map(&:name).join(", "))
+
+    %p.text-warning.small.group-cost-centers-hint#group-cost-centers-hint-bottom{hidden: true}
+      = t("fin.group_cost_centers.unsaved")
+    %button.btn.btn-primary{type: "submit"}= t("fin.group_cost_centers.save")
+
+  %p.text-muted.small.mt-3= t("fin.group_cost_centers.unassigned", count: unassigned_cost_center_count)
+
+  :javascript
+    (function () {
+      var form = document.getElementById('group-cost-centers-form');
+      if (!form) return;
+      // The widget fires change on the underlying select, and it bubbles.
+      form.addEventListener('change', function () {
+        document.querySelectorAll('.group-cost-centers-hint').forEach(function (hint) {
+          hint.removeAttribute('hidden');
+        });
+      });
+    })();

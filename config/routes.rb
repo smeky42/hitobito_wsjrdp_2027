@@ -65,6 +65,10 @@ Rails.application.routes.draw do
       end
 
       get "map" => "group/map#index"
+      # The Buchhaltung sub-tab of the group's Finanzen tab. The action is
+      # :show, not :index, so the leaf sheet keeps its sub-tabs
+      # (doc/navigation.md).
+      get "finance/bookkeeping" => "group/bookkeeping#show", as: :finance_bookkeeping
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
@@ -147,6 +151,26 @@ Rails.application.routes.draw do
       # "Controlling" section: still empty, one overview page at
       # /fin/controlling. See doc/navigation.md.
       get :controlling, path: "controlling", to: "controlling#index", as: "controlling"
+      # "Verwaltung" section at /fin/admin: the two configuration pages of the
+      # Finanzen section, both gated on :configure_finance on Group. The area
+      # has no page of its own -- /fin/admin renders its first tab.
+      get :admin, path: "admin", to: "finance_groups#index", as: "fin_admin"
+      scope "admin" do
+        # Per-group finance access (people.additional_info["finance_group_ids"]).
+        # The page is a two-stage editor over all rows, so the write is a
+        # COLLECTION route: one PATCH carries the whole change list.
+        get "finance_groups", to: "finance_groups#index", as: "fin_admin_finance_groups"
+        # Named explicitly: without an `as:` Rails would derive the helper from
+        # the path segment alone (finance_groups_path) and hide the area.
+        patch "finance_groups", to: "finance_groups#apply",
+          as: "fin_admin_apply_finance_groups"
+        # The cost centers of a group (groups.additional_info["cost_center_numbers"]).
+        # The page is ONE form carrying every group's list, so the write is a
+        # COLLECTION route; the form posts to fin_admin_group_cost_centers_path.
+        get "group_cost_centers", to: "group_cost_centers#index", as: "fin_admin_group_cost_centers"
+        patch "group_cost_centers", to: "group_cost_centers#update",
+          as: "fin_admin_save_group_cost_centers"
+      end
       # /fin is the finance overview page, linking to the sections.
       get :fin, path: "", to: "overview#index"
 

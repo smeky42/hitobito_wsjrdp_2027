@@ -7,6 +7,10 @@ GROUP_ACTIONS = [
   :show_details,
   # show_statistics: show statistics about the group and the map
   :show_statistics,
+  # show_finance: see the group's finance tab and pages
+  :show_finance,
+  # update_finance: edit on the group's finance pages
+  :update_finance,
 
   # index_people: list all people in the group
   :index_people,
