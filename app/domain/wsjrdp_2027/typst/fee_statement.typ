@@ -19,10 +19,10 @@
     body-size: 10pt,
     title-text: title_text,
     footer-text: context [
-        Kontoauszug (#statement_date) \
-        Seite #counter(page).get().first() / #counter(page).final().first()
+        Kontoauszug #statement_date | Seite #counter(page).get().first() / #counter(page).final().first()
     ],
     role-id-name: role_id_name,
+    contact-footer: true,
 )
 
 Datum: #statement_date \
@@ -44,8 +44,8 @@ Kontostand: #balance
     columns: (2.3cm, 1fr, 2.5cm),
     align: (right, left, right),
     stroke: (x, y) => (
-        top: 0.4pt + rgb("CCCCCC"),
-        bottom: 0.4pt + rgb("CCCCCC"),
+        top: thin-rule,
+        bottom: thin-rule,
         left: none,
         right: none,
     ),

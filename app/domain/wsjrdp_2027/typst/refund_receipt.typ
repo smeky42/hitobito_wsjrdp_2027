@@ -11,7 +11,6 @@
 #let kind = sys.inputs.at("kind", default: "withdrawal")
 #let generated_on = sys.inputs.at("generated_on", default: "")
 #let generated_by = sys.inputs.at("generated_by", default: "")
-#let role_id = sys.inputs.at("role_id", default: "")
 #let role_name = sys.inputs.at("role_name", default: "")
 #let person_name = sys.inputs.at("person_name", default: "")
 #let person_id = sys.inputs.at("person_id", default: "")
@@ -33,8 +32,8 @@
 #show: wsjrdp2027_letter.with(
     body-size: 10pt,
     title-text: title_text,
-    footer-text: [Rückzahlung],
-    role-id-name: role_id,
+    contact-footer: true,
+    classic-footer: false,
 )
 
 #let strong-value(body) = text(weight: "semibold")[#body]
@@ -74,7 +73,7 @@
 
 #table(
     columns: (30%, 70%),
-    stroke: 0.4pt + rgb("CCCCCC"),
+    stroke: thin-rule,
     align: (left + horizon, left + horizon),
 
     [Person], [#person_name],
@@ -100,4 +99,4 @@
     "Erstellt am " + generated_on
 }
 
-#text(fill: gray, size: 9pt)[#created_line]
+#text(fill: contact-grey, size: 9pt)[#created_line]

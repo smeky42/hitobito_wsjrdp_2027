@@ -165,7 +165,6 @@ module Wsjrdp2027
         generated_by: generated_by_name,
         show_explanation: show_explanation?,
         kind: kind,
-        role_id: role_id,
         role_name: role_name,
         person_name: person.full_name,
         person_id: person.id,

@@ -7,10 +7,13 @@ takes the other route, Prawn in
 [`app/domain/wsjrdp_2027/export/pdf/`](../app/domain/wsjrdp_2027/export/pdf/):
 it draws a form, not a letter.)
 
-The templates are shared with the `wsjrdp_scripts` repository, which
-compiles the same letter layout on the Python side. Keep
-`wsjrdp2027.typ` and `WSJ_Brief_blanko.pdf` identical to their copies
-there; a change belongs in both.
+The letter layout comes from the `wsjrdp_scripts` repository, which
+compiles the same letters on the Python side. `wsjrdp2027.typ` started
+as that copy and has since **diverged**: it carries options the scripts
+do not have (the window address field, the contact footer, a choosable
+background and top margin). All of them default to the old behaviour, so
+a document written for the scripts' copy still compiles here — but a
+change made here does not belong in the scripts unchanged.
 
 
 ## Where the files are
@@ -18,8 +21,9 @@ there; a change belongs in both.
 | Path | What it is |
 | --- | --- |
 | `app/domain/wsjrdp_2027/typst/` | the Typst project root: every template, plus what they include |
-| `app/domain/wsjrdp_2027/typst/wsjrdp2027.typ` | the shared letter template (`wsjrdp2027_letter`, `fill-in-box`, `person_id_line`, `signature_line(s)`) |
-| `app/domain/wsjrdp_2027/typst/WSJ_Brief_blanko.pdf` | the letterhead, set as the page background by `wsjrdp2027_letter` |
+| `app/domain/wsjrdp_2027/typst/wsjrdp2027.typ` | the letter template (`wsjrdp2027_letter`, `fill-in-box`, `person_id_line`, `signature_line(s)`) |
+| `app/domain/wsjrdp_2027/typst/wagon_helpers.typ` | the helpers only our own templates use (`plain_text`) |
+| `app/domain/wsjrdp_2027/typst/WSJ_Brief_Hintergrund.pdf` | the letterhead our documents use, set as the page background |
 | `app/assets/fonts/Montserrat-*.ttf` | the fonts the compile is given |
 | `app/domain/wsjrdp_2027/typst_document.rb` | the wrapper that compiles a template |
 
@@ -29,9 +33,30 @@ leaves the directory alone — it holds no `.rb` file and is therefore no
 namespace.
 
 The letterhead sits next to the templates because `wsjrdp2027.typ`
-pulls it in with a relative `image("WSJ_Brief_blanko.pdf")`. That whole
-directory is the Typst project root, so a template can `#import` its
-siblings and read nothing outside.
+pulls it in with a relative `image(background)`. That whole directory is
+the Typst project root, so a template can `#import` its siblings and
+read nothing outside.
+
+
+## What the letter takes
+
+`wsjrdp2027_letter` is applied with `#show: wsjrdp2027_letter.with(…)`.
+Beside `body-size`, `title-text`, `footer-text`, `footer-size` and
+`role-id-name` it takes:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `background` | `"WSJ_Brief_Hintergrund.pdf"` | the page background; the file lies next to the templates |
+| `margin-top` | `none` | where the body starts; unset it is 5.5cm, or 10cm with a window address |
+| `window-address` | `none` | `(lines: (…), return-line: …)` sets a DIN 5008 form B address field on page 1: 20mm from the left, 45mm from the top, 85 × 45mm. The first 5mm are the return address above a thin rule, then 2mm of air, then 38mm for the recipient. `return-line` takes an array of lines, a single string, or `""` for none; unset it is the rdp's own two lines. The band holds two lines of 6pt and nothing more — a line too wide for the 85mm is cut off rather than wrapped, so a long sender address is split by the caller |
+| `contact-footer` | `false` | sets the three-line contact block (grey, 8.5pt, two columns) at the bottom of every page, 1.6cm above the page edge. It is set in Typst, not drawn into the letterhead, so the e-mail address stays a link |
+| `classic-footer` | `true` | the `role-id-name` / `footer-text` line. With the contact block it moves up to 3.2cm above the page edge; `false` leaves it out altogether |
+
+The bottom margin follows: 4cm with both footers, 3cm with one, the
+page default with neither.
+
+The letterhead's own header ends about 44mm below the top edge, which is
+why the body starts at 5.5cm and the address field at 45mm.
 
 
 ## The wrapper
@@ -63,7 +88,12 @@ Wsjrdp2027::TypstDocument.compile_pdf("refund_receipt.typ", sys_inputs: {...})
 ## Fonts
 
 `compile_pdf` passes `app/assets/fonts` as the font path, so the output
-does not depend on what is installed on the machine that runs it.
+does not depend on what is installed on the machine that runs it. The
+directory holds the Montserrat faces the templates use: Regular, Italic,
+Light and LightItalic (the contact footer and the window's return address
+are set light), SemiBold and SemiBoldItalic (headings, emphasised values),
+Bold and BoldItalic. A weight without a face of its own would silently be
+rendered with the nearest one, so add the file before using a new weight.
 
 ## Adding a document
 
