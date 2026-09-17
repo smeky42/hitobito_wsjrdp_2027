@@ -44,6 +44,18 @@ class Person::FeeController < Fin::FinController
     render :show
   end
 
+  # The entries of the page as a PDF, for a person to file or hand on. Behind
+  # the same authorization as the page itself, so everybody who can read the
+  # page can print it -- the person included. What the statement leaves out
+  # (comments, entries that move no money) it decides itself.
+  def statement
+    @person ||= person
+    @group ||= group
+    statement = Wsjrdp2027::FeeStatement.new(person, entries: journal_entries)
+    send_data statement.to_pdf, type: "application/pdf", disposition: "inline",
+      filename: statement.file_name
+  end
+
   def permitted_attrs
     [
       :amount_eur,

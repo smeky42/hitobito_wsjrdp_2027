@@ -39,6 +39,52 @@ describe Person::FeeController do
     expect(assigns(:group)).to eq(Group.root)
   end
 
+  # The entries of the page as a PDF. It sits behind the page's own
+  # authorization, so everybody who may read the page may print it -- the
+  # person themselves included.
+  describe "the statement" do
+    let(:yp) { people(:yp_a_1) }
+
+    before { ensure_payment_plan(yp) }
+
+    it "offers it on the page, between the entries and the installments" do
+      sign_in(people(:admin))
+
+      get :show, params: {person_id: yp.id}
+
+      expect(response.body).to include(statement_person_fee_path(yp))
+      expect(response.body.index(statement_person_fee_path(yp)))
+        .to be < response.body.index("Ratenplan")
+    end
+
+    it "renders the pdf for an administrator" do
+      sign_in(people(:admin))
+
+      get :statement, params: {person_id: yp.id}
+
+      expect(response).to be_successful
+      expect(response.media_type).to eq("application/pdf")
+      expect(response.body).to start_with("%PDF")
+      expect(response.headers["Content-Disposition"]).to start_with("inline")
+      expect(response.headers["Content-Disposition"]).to include("Beitragszahlungen")
+    end
+
+    it "renders the pdf for the person themselves" do
+      sign_in(yp)
+
+      get :statement, params: {person_id: yp.id}
+
+      expect(response).to be_successful
+      expect(response.body).to start_with("%PDF")
+    end
+
+    it "refuses it to a leader of another unit" do
+      sign_in(people(:ul_b_1))
+
+      expect { get :statement, params: {person_id: yp.id} }.to raise_error(CanCan::AccessDenied)
+    end
+  end
+
   # The deregistration form moved to its own "Abmeldung" sub-tab; the sibling
   # frame button for the debit returns stayed behind. The button row needs the
   # finance write tier (:update_finance and :create on AccountingEntry), which

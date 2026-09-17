@@ -39,4 +39,7 @@
     = f.error_messages
     = render 'amount_paid_and_total_fee'
     = render 'journal_entries', entries: @journal_entries
+    -# The same entries to file or hand on, in a tab of their own.
+    = action_button("Beitragszahlungen als PDF", statement_person_fee_path(@person),
+                    :"file-pdf", target: "_blank")
     = render 'installments'

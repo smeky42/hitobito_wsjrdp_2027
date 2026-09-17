@@ -80,7 +80,12 @@ Rails.application.routes.draw do
     resources :people, only: [] do
       resource :finance, controller: "person/fee", only: [:show]
       resource :accounting, controller: "person/fee", only: [:show]
-      resource :fee, controller: "person/fee", only: [:show]
+      resource :fee, controller: "person/fee", only: [:show] do
+        # The page's entries on paper, compiled on the fly
+        member do
+          get :statement
+        end
+      end
       resource :spend, controller: "person/spend", only: [:show]
       get :moss_sso_login, path: "person/spend/moss_sso_login", to: "person/spend#moss_sso_login"
       resource :deregistration, controller: "person/deregistration", only: [:show, :edit, :update] do
