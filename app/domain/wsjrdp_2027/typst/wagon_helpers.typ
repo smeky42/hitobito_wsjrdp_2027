@@ -1,5 +1,6 @@
-// Helpers the wagon's own templates share. wsjrdp2027.typ is kept verbatim in
-// step with the scripts repository, so nothing of ours goes in there.
+// Helpers the wagon's own templates share. They live here rather than in
+// wsjrdp2027.typ, which carries the letter itself and has its own history with
+// the scripts repository.
 
 // Text somebody typed, placed as text and nothing else: it is never evaluated
 // as markup. A blank line starts a paragraph, a single newline is a line
