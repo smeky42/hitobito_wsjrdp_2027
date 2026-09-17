@@ -37,9 +37,6 @@ module Wsjrdp2027
     # afterwards: a space and a 36-character uuid.
     PURPOSE_MAX = 140 - 37
     TEMPLATE = "refund_receipt.typ"
-    # What a file name must not carry, on any of the systems these PDFs travel
-    # through -- everything else, umlauts included, stays as it is written.
-    FILE_NAME_FORBIDDEN = /[\/\\:*?"<>|\x00-\x1F]/
 
     attr_reader :person, :generated_by
 
@@ -191,12 +188,11 @@ module Wsjrdp2027
 
     def to_pdf = TypstDocument.compile_pdf(TEMPLATE, sys_inputs: to_sys_inputs)
 
-    # The name reads as the document is called, umlauts and all: send_data
-    # encodes it for the Content-Disposition itself (RFC 6266). Only what a
-    # file system would choke on gives way.
+    # The name reads as the document is called, umlauts and all.
     def file_name
-      name = "WSJ27 #{kind_word} #{role} #{person.id} #{person.short_full_name} Rückzahlung.pdf"
-      name.gsub(FILE_NAME_FORBIDDEN, "_").squish
+      TypstDocument.safe_file_name(
+        "WSJ27 #{kind_word} #{role} #{person.id} #{person.short_full_name} Rückzahlung.pdf"
+      )
     end
 
     private

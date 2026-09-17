@@ -33,6 +33,9 @@ module Wsjrdp2027
     # directory alone: it holds no .rb file.
     TEMPLATE_DIR = ["app", "domain", "wsjrdp_2027", "typst"].freeze
     FONT_DIR = ["app", "assets", "fonts"].freeze
+    # What a file name must not carry, on any of the systems these PDFs travel
+    # through -- everything else, umlauts included, stays as it is written.
+    FILE_NAME_FORBIDDEN = /[\/\\:*?"<>|\x00-\x1F]/
 
     class << self
       def compile_pdf(template, sys_inputs: {})
@@ -47,6 +50,11 @@ module Wsjrdp2027
 
         pdf
       end
+
+      # A name a document can be saved under: send_data encodes the rest for
+      # the Content-Disposition itself (RFC 6266), so only what a file system
+      # would choke on gives way.
+      def safe_file_name(name) = name.to_s.gsub(FILE_NAME_FORBIDDEN, "_").squish
 
       def typst_dir = HitobitoWsjrdp2027::Wagon.root.join(*TEMPLATE_DIR)
 

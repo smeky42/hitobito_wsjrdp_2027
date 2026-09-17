@@ -3,6 +3,7 @@
 // any data. See doc/typst_documents.md.
 
 #import "wsjrdp2027.typ": *
+#import "wagon_helpers.typ": *
 
 #let title_text = sys.inputs.at("title", default: "Überweisung einer Rückzahlung")
 #let greeting = sys.inputs.at("greeting", default: "")
@@ -35,21 +36,6 @@
     footer-text: [Rückzahlung],
     role-id-name: role_id,
 )
-
-// The greeting is text somebody typed, so it is never evaluated as markup: it
-// is taken apart by hand -- a blank line starts a paragraph, a single newline
-// is a line break -- and every piece is placed as a plain string.
-#let plain_text(source) = {
-    let blocks = source.split("\n\n").filter(block => block.trim() != "")
-    for (index, block) in blocks.enumerate() {
-        if index > 0 { parbreak() }
-        let lines = block.split("\n")
-        for (line_index, line) in lines.enumerate() {
-            if line_index > 0 { linebreak() }
-            line
-        }
-    }
-}
 
 #let strong-value(body) = text(weight: "semibold")[#body]
 // The booking text is what is copied into Moss, so it is the one value the
