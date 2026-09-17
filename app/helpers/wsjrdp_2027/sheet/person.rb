@@ -37,7 +37,8 @@ module Wsjrdp2027::Sheet::Person
         :accounting_group_person_path,
         :person_accounting_path_with_group,
         :person_finance_path_with_group,
-        :person_spend_path_with_group
+        :person_spend_path_with_group,
+        :person_deregistration_path_with_group
       ],
       if: :show
 

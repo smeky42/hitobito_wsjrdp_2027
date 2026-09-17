@@ -180,6 +180,7 @@ de:
         planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
         tag_list: Tags
+        deregistration_kind: Art
         deregistration_issue: Ticket Abmeldung
         deregistration_requested_date: Abmeldung angefragt am
         deregistration_effective_date: Abmeldung zum
@@ -187,6 +188,7 @@ de:
         deregistration_actual_compensation_cents: Entschädigung
         deregistration_actual_compensation_eur: Entschädigung
         deregistration_refund_cents: Rückzahlung
+        deregistration_refund_receipt_text: Text im Beleg
         deregistration_open_cents: Ausstehender Beitrag
         debit_return_issue: Ticket Rücklastschrift
         wsjrdp_email: "Contingent E-Mail"
@@ -720,10 +722,53 @@ de:
       other_long: Es ist außerdem auf Folgendes zu achten
     additional_info_fields:
        foto_permission_help: '<p>Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoeinwilligung</a>.</p><p>Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.</p>'
+    deregistration_kinds:
+      withdrawal: Abmeldung (durch die Person)
+      termination: Kündigung (durch das Kontingent)
+    refund_creditor:
+      title: Kreditor für Rückzahlung
+      moss_link: Kreditoren in Moss
+      name: Name
+      ledger_account: Standard-Sachkonto
+      cost_center: Standard Kostenstelle
+      sphere: Standard Sphäre
+      team: Standard-Team
+      bank_country: Land der Empfängerbank
+      iban: IBAN
+      bic: BIC
+      account_holder: Name des Kontoinhabers
+      payment_method: Standard-Zahlungsmethode
+      country: Land
+      address_warning:
+        label: Adresse
+        text: Adresse automatisch zerlegt – Ergebnis prüfen
+        split_without_comma: ohne Komma
+        extra_parts_after_zip: Zusatzteil
+        country_from_iban: Land aus IBAN
+        semicolon: Semikolon
+        incomplete: unvollständig
+      street_and_number: Straße und Hausnummer
+      zip_code: Postleitzahl
+      town: Ort
+    refund_receipt:
+      title: Moss-Beleg Rückzahlung
+      team_unit: Team/Unit
+      role_name: Rolle
+      amount_paid: Bisher bezahlt
+      booking_text: Buchungstext
+      purpose: Verwendungszweck
+      account_holder: Kontoinhaber
+      iban: IBAN
+      text_placeholder: Optionaler Text vor dem Erklärungsabsatz
+      show_explanation: Erklärungsabsatz im Beleg anzeigen
+      save_text: Text speichern
+      saved: Text im Beleg gespeichert
+      unchanged: Text im Beleg nicht verändert
     finance:
       tabs:
         fee: Beiträge
         spend: Ausgaben (Moss)
+        deregistration: Abmeldung
 
   groups:
     self_registration:

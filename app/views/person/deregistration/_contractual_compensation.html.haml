@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# What the T&R ask for, and which day the bracket was read for. Shared by the
+-# read-only page and the form, so the two cannot drift apart. The caller brings
+-# its own render_attrs_list.
+= labeled_attr_with_help(@person, :deregistration_contractual_compensation_cents) do
+  Entschädigung nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen (T&R).
+  %br/
+  (bis 31.05.2026: 50%, bis 31.12.2026: 75%, bis 31.03.2027: 90%, danach 100%)
+  %br/
+  = deregistration_compensation_date_hint(@person)

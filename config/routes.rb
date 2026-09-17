@@ -83,7 +83,15 @@ Rails.application.routes.draw do
       resource :fee, controller: "person/fee", only: [:show]
       resource :spend, controller: "person/spend", only: [:show]
       get :moss_sso_login, path: "person/spend/moss_sso_login", to: "person/spend#moss_sso_login"
-      resource :deregistration, controller: "person/deregistration", only: [:edit, :update]
+      resource :deregistration, controller: "person/deregistration", only: [:show, :edit, :update] do
+        # The receipt the finance team pays the refund from, rendered on the
+        # fly. Both are POSTs: each one first saves the text the receipt
+        # carries, the one hands the PDF back, the other returns to the page.
+        member do
+          post :refund_receipt
+          post :refund_receipt_text
+        end
+      end
       resource :debit_return, controller: "person/debit_return", only: [:edit, :update]
     end
 

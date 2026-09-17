@@ -1,0 +1,84 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The slip the finance team pays the refund from: first what it will say,
+-# then what stands above its table and the two buttons that write it.
+-# Both buttons submit this one form -- the PDF button to the action that
+-# answers with the document, the small one to the action that comes back here
+-# -- so the receipt always carries what the form last showed.
+%h3.mt-4.mb-3= t("people.refund_receipt.title")
+= render_attrs_list do
+  = labeled(t("people.refund_receipt.team_unit")) do
+    = @refund_receipt.team_unit
+  = labeled(t("people.refund_receipt.role_name")) do
+    = @refund_receipt.role_name
+  -# The fee names its own reduction, so the label is the receipt's, not a
+  -# fixed caption.
+  = labeled(@refund_receipt.total_fee_label) do
+    = @refund_receipt.total_fee_text
+  = labeled(t("people.refund_receipt.amount_paid")) do
+    = @refund_receipt.amount_paid_text
+  = labeled(t("people.refund_receipt.booking_text")) do
+    = @refund_receipt.booking_text
+  = labeled(t("people.refund_receipt.purpose")) do
+    = @refund_receipt.purpose
+  = labeled(t("people.refund_receipt.account_holder")) do
+    = @refund_receipt.account_holder
+  = labeled(t("people.refund_receipt.iban")) do
+    = @refund_receipt.iban
+
+-# One form, two actions: the small button carries a formaction to
+-# refund_receipt_text. The app has per_form_csrf_tokens on, so the token
+-# form_with would generate is bound to the form's own action and the other
+-# action rejects it -- hence the session-global token, which both accept.
+= form_with url: refund_receipt_person_deregistration_path(@person), method: :post, id: "refund_receipt_form", authenticity_token: form_authenticity_token, data: {turbo: false} do
+  .mb-2.p-2
+    = label_tag "refund_receipt_text", Person.human_attribute_name(:deregistration_refund_receipt_text), class: "form-label"
+    = text_area_tag "person[deregistration_refund_receipt_text]", @person.deregistration_refund_receipt_text, id: "refund_receipt_text", rows: 3, class: "form-control", placeholder: t("people.refund_receipt.text_placeholder")
+    -# The paragraph is shown while nothing says otherwise, so the unchecked box
+    -# is what is stored -- hence the hidden companion, which makes the absent
+    -# checkbox arrive as "0".
+    .form-check.mt-2
+      = hidden_field_tag "person[deregistration_refund_receipt_show_default_explanation]", "0", id: nil
+      = check_box_tag "person[deregistration_refund_receipt_show_default_explanation]", "1", @person.deregistration_refund_receipt_show_default_explanation?, id: "refund_receipt_explanation", class: "form-check-input"
+      = label_tag "refund_receipt_explanation", t("people.refund_receipt.show_explanation"), class: "form-check-label"
+  .p-2
+    = submit_tag t("people.refund_receipt.save_text"), id: "refund_receipt_text_submit", class: "btn btn-sm btn-outline-primary me-2", formaction: refund_receipt_text_person_deregistration_path(@person), disabled: true
+    %button#refund_receipt_submit.btn.btn-sm.btn-primary{type: "submit", formtarget: "_blank"}
+      = icon(:"file-pdf")
+      = t("people.refund_receipt.title")
+
+-# The save button is offered only while the form says something else than it
+-# did when the page was drawn. Asking for the PDF saves it too, so the button
+-# goes back to disabled the moment that button is used.
+:javascript
+  (function() {
+    var field = document.getElementById('refund_receipt_text');
+    var box = document.getElementById('refund_receipt_explanation');
+    var saveButton = document.getElementById('refund_receipt_text_submit');
+    var pdfButton = document.getElementById('refund_receipt_submit');
+    if (!field || !saveButton) { return; }
+
+    var savedText = field.value;
+    var savedExplanation = box ? box.checked : null;
+    var refresh = function() {
+      var changed = field.value !== savedText ||
+        (box !== null && box.checked !== savedExplanation);
+      saveButton.disabled = !changed;
+    };
+
+    field.addEventListener('input', refresh);
+    if (box) { box.addEventListener('change', refresh); }
+    if (pdfButton) {
+      pdfButton.addEventListener('click', function() {
+        savedText = field.value;
+        if (box) { savedExplanation = box.checked; }
+        refresh();
+      });
+    }
+    refresh();
+  })();

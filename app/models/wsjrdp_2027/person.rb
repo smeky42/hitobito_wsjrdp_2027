@@ -11,6 +11,10 @@ module Wsjrdp2027::Person
   GENDERS = %w[m w d].freeze
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
+  # Who ended the participation: the person themselves ("Abmeldung") or the
+  # contingent ("Kündigung"). An absent value means a withdrawal.
+  DEREGISTRATION_KINDS = %w[withdrawal termination].freeze
+
   # Note: Do not include store_accessor attributes in FILTER_ATTRS
   WSJRDP_FILTER_ATTRS = [
     :status,
@@ -171,6 +175,11 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :keycloak_username, strip: true
       attribute :keycloak_username, :string
 
+      jsonb_accessor :additional_info, :deregistration_kind, strip: true
+      attribute :deregistration_kind, :string
+      # Blank is the default, not an error: delete_on_blank drops the key, and an
+      # absent key reads as a withdrawal (#deregistration_kind_or_default).
+      validates :deregistration_kind, inclusion: {in: DEREGISTRATION_KINDS}, allow_blank: true
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
       attribute :deregistration_issue, :string
       jsonb_accessor :additional_info, :deregistration_requested_date
@@ -179,6 +188,18 @@ module Wsjrdp2027::Person
       attribute :deregistration_effective_date, :date
       jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_actual_compensation_cents, :integer
+      # The optional text the Moss receipt carries above its explanation
+      # paragraph. Written only by the two receipt actions of
+      # Person::DeregistrationController; blank drops the key, and the receipt
+      # then starts with the paragraph alone.
+      jsonb_accessor :additional_info, :deregistration_refund_receipt_text, strip: true
+      attribute :deregistration_refund_receipt_text, :text
+      # Whether the receipt carries its explanation paragraph. An absent key
+      # means it does, so only an explicit false is ever stored -- hence
+      # delete_on_blank: false, which would otherwise drop exactly that false
+      # and bring the default back.
+      jsonb_accessor :additional_info, :deregistration_refund_receipt_show_default_explanation, delete_on_blank: false
+      attribute :deregistration_refund_receipt_show_default_explanation, :boolean
 
       jsonb_accessor :additional_info, :late_confirmation_issue, strip: true
       attribute :late_confirmation_issue, :string
@@ -227,6 +248,22 @@ module Wsjrdp2027::Person
           [first_names[0], last_name]
         end
         name_parts.select { |s| !s.blank? }.join(" ")
+      end
+
+      # The longest of the person's names that still fits into max_length: the
+      # full name, the short one, the last name behind an initial
+      # ("K. Muster"), and last the initials ("K. M."). Where even the initials
+      # are too long they are cut -- a field with a hard limit (a SEPA
+      # remittance, a Moss booking text) takes what it can hold, and something
+      # identifying beats nothing.
+      def name_within(max_length)
+        max_length = [max_length.to_i, 0].max
+        first_initial = first_name.to_s.split.first.to_s[0, 1]
+        initials = [first_initial, last_name.to_s.strip[0, 1]]
+          .compact_blank.map { |letter| "#{letter}." }.join(" ")
+        initial_name = first_initial.blank? ? last_name.to_s.strip : "#{first_initial}. #{last_name}".strip
+        [full_name, short_full_name, initial_name, initials]
+          .compact_blank.find { |name| name.length <= max_length } || initials[0, max_length].to_s
       end
 
       def status_log_display
@@ -307,6 +344,21 @@ module Wsjrdp2027::Person
             role
           end
         end
+      end
+
+      # Which team or unit the person belongs to, spelled the way the group
+      # spells itself: the group_code of the most recent role's group. Ended
+      # roles count -- after a deregistration the role is over, and the unit it
+      # was in is exactly what the answer is about. Groups without a code (the
+      # waiting lists, the regional IST groups) are skipped by construction, so
+      # a coded group outranks an uncoded one however recent that is. Without
+      # any coded group the role itself is the answer.
+      def team_unit_code
+        roles_unscoped
+          .joins(:group)
+          .where("groups.additional_info ->> 'group_code' <> ''")
+          .order(Arel.sql("roles.start_on DESC NULLS LAST, roles.created_at DESC"))
+          .pick(Arel.sql("groups.additional_info ->> 'group_code'")) || wsjrdp_role
       end
 
       def default_role_type_for_payment_role
@@ -712,6 +764,32 @@ module Wsjrdp2027::Person
       # event, so a stored request date outranks it.
       def deregistration_compensation_date(today: nil)
         deregistration_requested_date || today || Time.zone.today
+      end
+
+      # Absent is what "show it" looks like in the store, so clearing the flag
+      # removes the key instead of writing a null -- a null would read the same
+      # but leave the store saying something it does not mean.
+      def deregistration_refund_receipt_show_default_explanation=(value)
+        if value.nil?
+          additional_info&.delete("deregistration_refund_receipt_show_default_explanation")
+        else
+          super
+        end
+      end
+
+      def deregistration_refund_receipt_show_default_explanation?
+        value = deregistration_refund_receipt_show_default_explanation
+        value.nil? || !!value
+      end
+
+      # The stored value, or the default a missing one stands for. The plain
+      # reader stays raw: the store accessor and the form need what is written.
+      def deregistration_kind_or_default
+        deregistration_kind.presence || "withdrawal"
+      end
+
+      def deregistration_termination?
+        deregistration_kind_or_default == "termination"
       end
 
       def deregistration_contractual_compensation_cents(today: nil)
