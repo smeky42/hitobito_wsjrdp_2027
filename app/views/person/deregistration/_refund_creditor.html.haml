@@ -1,0 +1,57 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# What the finance team types into Moss before the refund can be paid: the
+-# person's bank account and address, and the master data every refund creditor
+-# gets. The link leads to where those creditors are kept.
+%h3.mt-4.mb-3
+  = t("people.refund_creditor.title")
+  = link_to @refund_creditor.moss_suppliers_url, target: "_blank", rel: "noopener",
+    class: "ms-2 fs-6", title: "In neuem Tab öffnen" do
+    = t("people.refund_creditor.moss_link")
+    = icon(:"external-link-alt")
+= render_attrs_list do
+  = labeled(t("people.refund_creditor.name")) do
+    = @refund_creditor.name
+  = labeled(t("people.refund_creditor.ledger_account")) do
+    = @refund_creditor.ledger_account
+  = labeled(t("people.refund_creditor.cost_center")) do
+    = @refund_creditor.cost_center
+    .muted Alternative: #{@refund_creditor.cost_center_alternative}
+  = labeled(t("people.refund_creditor.sphere")) do
+    = @refund_creditor.sphere
+  = labeled(t("people.refund_creditor.team")) do
+    = @refund_creditor.team
+  = labeled(t("people.refund_creditor.bank_country")) do
+    = @refund_creditor.bank_country
+  = labeled(t("people.refund_creditor.iban")) do
+    = @refund_creditor.iban
+  -# The BIC is optional: a German IBAN needs none, and most of these carry no
+  -# BIC at all.
+  - if @refund_creditor.bic.present?
+    = labeled(t("people.refund_creditor.bic")) do
+      = @refund_creditor.bic
+  = labeled(t("people.refund_creditor.account_holder")) do
+    = @refund_creditor.account_holder
+  = labeled(t("people.refund_creditor.payment_method")) do
+    = @refund_creditor.payment_method
+  -# An address that needed a heuristic is worth reading before the money goes
+  -# out, so the line as it was typed hangs in the tooltip.
+  - if @refund_creditor.address_uncertain?
+    = labeled(t("people.refund_creditor.address_warning.label")) do
+      %span.text-warning{title: @refund_creditor.raw_address, rel: :tooltip, "data-bs-toggle": "tooltip"}
+        = icon(:"exclamation-triangle")
+        = t("people.refund_creditor.address_warning.text")
+        = "(#{@refund_creditor.address_notes.map { |note| t("people.refund_creditor.address_warning.#{note}") }.join(", ")})"
+  = labeled(t("people.refund_creditor.country")) do
+    = @refund_creditor.country
+  = labeled(t("people.refund_creditor.street_and_number")) do
+    = @refund_creditor.street_and_number
+  = labeled(t("people.refund_creditor.zip_code")) do
+    = @refund_creditor.zip_code
+  = labeled(t("people.refund_creditor.town")) do
+    = @refund_creditor.town

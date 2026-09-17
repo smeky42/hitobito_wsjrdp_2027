@@ -41,6 +41,7 @@ Put the `require` where it belongs:
 | --- | --- | --- | --- |
 | `rison` | RISON encode/decode | `require "rison"` | `Rison.dump`, `Rison.load` |
 | `typst` | Compile Typst `.typ` → PDF/SVG/PNG/HTML | `require "typst"` | `Typst("file.typ").compile(:pdf)` |
+| `stringex` | Unicode → ASCII folding for SEPA texts | `require "stringex/unidecoder"` | `Stringex::Unidecoder.decode` |
 | `iban-tools` | IBAN validation | `require "iban-tools"` | `IBANTools::IBAN.valid?` |
 | `geocoder` | Address → lat/long geocoding | `require "geocoder"` | `Geocoder.search`, `Geocoder::Model::Base` |
 | `chartkick` (+ `chart-js-rails`) | Charts in views | `require "chartkick"` | `Chartkick::Helper`, JS `new Chartkick.*Chart` |
@@ -98,6 +99,33 @@ Gotchas:
 - `.compile(:svg)` / `.compile(:png)` return one entry per page;
   `.compile(:pdf)` / `.compile(:html_experimental)` return a single
   combined document.
+- `.with_font_paths` takes an **array** (`with_font_paths([dir])`); a
+  bare String raises, the builder concatenates it onto a list.
+
+The wagon's own templates, the wrapper around them and the fonts they
+are compiled with: [`typst_documents.md`](typst_documents.md).
+
+
+### stringex
+
+Only `Stringex::Unidecoder` is used: it folds non-ASCII characters onto
+an ASCII spelling (`ș` → `s`, `€` → `EU`, `…` → `...`), which
+`Wsjrdp2027::SepaText` builds the SEPA transliteration on — see
+[`typst_documents.md`](typst_documents.md#sepa-text).
+
+```ruby
+require "stringex/unidecoder"
+
+Stringex::Unidecoder.decode("Ștefan – …")   # => "Stefan -- ..."
+```
+
+Gotcha: require the unidecoder file, never the whole gem. `require "stringex"`
+also loads `acts_as_url`, which extends `ActiveRecord::Base` with a public
+`included`; from then on every model that declares `scope :included` (the
+core's `Subscription`, `SubscriptionTag`, `CalendarTag`, `CalendarGroup`)
+raises `ArgumentError` when it is loaded — in development on the next code
+reload, which leaves the app answering every request with the sign-in page
+until it is restarted. `spec/domain/wsjrdp_2027/sepa_text_spec.rb` guards it.
 
 
 ### iban-tools

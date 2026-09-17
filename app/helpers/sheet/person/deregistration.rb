@@ -8,19 +8,9 @@
 
 module Sheet
   class Person < Base
-    class Finance < Base
-      tab "people.finance.tabs.fee", :person_fee_path_with_group, if: :edit
-      tab "people.finance.tabs.spend", :person_spend_path_with_group, if: :edit
-      tab "people.finance.tabs.deregistration", :person_deregistration_path_with_group, if: :log
-
-      self.parent_sheet = Sheet::Person
-
-      def model_name
-        @model_name ||= "person"
-      end
-
+    class Deregistration < Sheet::Person::Finance
       def title
-        "#{entry} - Finanzen"
+        "#{entry} - Abmeldung"
       end
     end
   end

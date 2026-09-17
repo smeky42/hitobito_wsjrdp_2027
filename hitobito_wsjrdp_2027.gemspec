@@ -19,6 +19,9 @@ Gem::Specification.new do |s|
   s.add_dependency "iban-tools", "~> 1.1"
   s.add_dependency "geocoder", "~> 1.3", ">= 1.3.7"
   s.add_dependency "rison", "~> 2.1"
+  # Only Stringex::Unidecoder is used, to fold non-ASCII letters into ASCII for
+  # SEPA texts (Wsjrdp2027::SepaText).
+  s.add_dependency "stringex", "~> 2.8"
   s.add_dependency "typst", "~> 0.15.1", ">= 0.15.1.5"
   # typst requires rubyzip ~> 3.2. With rubyzip 3.x, caxlsx writes Zip64 archives
   # by default, which Google Sheets refuses to import. caxlsx 4.4.1 disables Zip64

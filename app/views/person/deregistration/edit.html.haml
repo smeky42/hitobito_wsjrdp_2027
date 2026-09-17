@@ -5,46 +5,36 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+:css
+  .deregistration {
+    border: none;
+    background: var(--bs-light);
+    border-radius: 6px;
+    padding: 4px;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  }
+  .content-header h1 {
+    display: none;
+  }
+  #content {
+    padding-top: 10px;
+  }
+
 #main.row
-  = turbo_frame_tag_if_frame_request(target_turbo_frame) do
-    %div.deregistration
-      = standard_form @person, url: person_deregistration_path, method: :put do |f|
-        .mt-3
-        = form_buttons(f, cancel_url: return_url)
-        = f.error_messages
-        = hidden_field_tag 'target_turbo_frame', target_turbo_frame
-        = hidden_field_tag 'return_url', return_url
-        = field_set_tag do
-          - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
-          = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
-          = f.labeled_date_field :deregistration_requested_date
-          = f.labeled_date_field :deregistration_effective_date
-          = input_or_render_attrs(f, :deregistration_actual_compensation_eur)
-        = form_buttons(f, cancel_url: return_url)
-      = render_attrs_list do
-        = labeled_attr_with_help(@person, :deregistration_contractual_compensation_cents) do
-          Entschädigung nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen (T&R).
-          %br/
-          (bis 31.05.2026: 50%, bis 31.12.2026: 75%, bis 31.03.2027: 90%, danach 100%)
-          %br/
-          = deregistration_compensation_date_hint(@person)
-        - if @person.deregistration_refund_cents > 0
-          = labeled(captionize(:deregistration_refund_cents, object_class(@person))) do
-            %span.fw-semibold
-              = format_attr(@person, :deregistration_refund_cents)
-            %span.muted(style="margin-left: 8px; margin-right: 8px;") =
-            %span.muted.label(style="white-space: nowrap;")
-              \#{format_attr(@person, :amount_paid_cents)} (Bereits bezahl)
-            %span.muted.label(style="white-space: nowrap;")
-              %span(style="margin-left: 4px; margin-right: 4px;") −
-              \#{format_attr(@person, :deregistration_actual_compensation_cents)}
-        - elsif @person.deregistration_open_cents > 0
-          = labeled(captionize(:deregistration_open_cents, object_class(@person))) do
-            %span.fw-semibold(style="color: var(--bs-red);")
-              = format_attr(@person, :deregistration_open_cents)
-            %span.muted(style="margin-left: 8px; margin-right: 8px;") =
-            %span.muted.label(style="white-space: nowrap;")
-              \#{format_attr(@person, :deregistration_actual_compensation_cents)}
-            %span.muted.label(style="white-space: nowrap;")
-              %span(style="margin-left: 4px; margin-right: 4px;") −
-              \#{format_attr(@person, :amount_paid_cents)} (Bereits bezahl)
+  %div.deregistration
+    = standard_form @person, url: person_deregistration_path(@person), method: :put do |f|
+      .mt-3
+      = form_buttons(f, cancel_url: person_deregistration_path(@person))
+      = f.error_messages
+      = hidden_field_tag 'return_url', return_url
+      = field_set_tag do
+        = f.labeled_collection_select(:deregistration_kind, deregistration_kind_options, :first, :last, {selected: @person.deregistration_kind_or_default}, class: 'span2')
+        - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
+        = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
+        = f.labeled_date_field :deregistration_requested_date
+        = f.labeled_date_field :deregistration_effective_date
+        = input_or_render_attrs(f, :deregistration_actual_compensation_eur)
+      = form_buttons(f, cancel_url: person_deregistration_path(@person))
+    = render_attrs_list do
+      = render 'contractual_compensation'
+      = render 'refund'

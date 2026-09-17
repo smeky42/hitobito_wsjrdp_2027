@@ -26,6 +26,10 @@ module Wsjrdp2027::PeopleHelper
     person_spend_path(args[0], args[-1])
   end
 
+  def person_deregistration_path_with_group(group, *args)
+    person_deregistration_path(args[0], args[-1])
+  end
+
   def format_person_sepa_mail(person)
     format_email_or_nil(person.sepa_mail)
   end
@@ -100,6 +104,15 @@ module Wsjrdp2027::PeopleHelper
       hint: person.planned_total_fee_reduction_hint,
       comment: person.planned_total_fee_reduction_comment
     )
+  end
+
+  # An absent value means a withdrawal, so the page never shows an empty "Art".
+  def format_person_deregistration_kind(person)
+    I18n.t("people.deregistration_kinds.#{person.deregistration_kind_or_default}")
+  end
+
+  def deregistration_kind_options
+    Person::DEREGISTRATION_KINDS.map { |kind| [kind, I18n.t("people.deregistration_kinds.#{kind}")] }
   end
 
   def format_person_deregistration_issue(person)

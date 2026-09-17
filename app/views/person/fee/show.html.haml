@@ -9,7 +9,7 @@
   = javascript_include_tag 'hitobito_wsjrdp_2027/turbo_stream_actions', 'data-turbo-track': true
 
 :css
-  .new-accounting-entry, .new-sepa-status, .deregistration {
+  .new-accounting-entry, .new-sepa-status {
     border: none;
     background: var(--bs-light);
     border-radius: 6px;
@@ -29,8 +29,6 @@
       = action_button("Neue Buchung", @new_accounting_entry_path,
                       :plus, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
       = action_button("Finanzstatus ändern", @new_sepa_status_path,
-                      :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
-      = action_button("Abmeldung vorbereiten", @edit_deregistration_path,
                       :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
       = action_button("Rücklastschriften", @edit_debit_return_path,
                       :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})

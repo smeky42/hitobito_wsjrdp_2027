@@ -38,9 +38,6 @@ class Person::FeeController < Fin::FinController
       hide_subject: 1,
       target_turbo_frame: extra_entry_turbo_frame
     })
-    @edit_deregistration_path = edit_person_deregistration_path(person) + "?" + URI.encode_www_form({
-      target_turbo_frame: extra_entry_turbo_frame
-    })
     @edit_debit_return_path = edit_person_debit_return_path(person) + "?" + URI.encode_www_form({
       target_turbo_frame: extra_entry_turbo_frame
     })

@@ -1,0 +1,33 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- content_for(:toolbar, render('actions_show'))
+
+:css
+  .content-header h1 {
+    display: none;
+  }
+  #content {
+    padding-top: 10px;
+  }
+
+#main.row
+  = render_attrs_list do
+    = labeled_attr(@person, :deregistration_kind)
+    = labeled_attr(@person, :deregistration_issue)
+    = labeled_attr(@person, :deregistration_requested_date)
+    = labeled_attr(@person, :deregistration_effective_date)
+    = labeled_attr_with_help(@person, :deregistration_actual_compensation_cents) do
+      Vorgeschlagene Entschädigung = Beitrag der trotz Abmeldung bezahlt werden muss.
+      Das Finance Team kann über Bearbeiten einen Betrag abweichend von der
+      Pauschale nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen eintragen.
+    -# What comes out of that amount belongs with it, above the line.
+    = render 'refund'
+  = render_attrs_list do
+    = render 'contractual_compensation'
+  = render 'refund_creditor'
+  = render 'refund_receipt'
