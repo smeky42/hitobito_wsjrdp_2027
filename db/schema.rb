@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_18_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1735,10 +1735,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
     t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "cost center manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
-    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Signed budget 2025 (expenses negative); NULL = not set"
-    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Signed budget 2026 (expenses negative); NULL = not set"
-    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Signed budget 2027 (expenses negative); NULL = not set"
-    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Budget 2025; NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Budget 2026; NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Budget 2027; NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Budget 2028; NULL = not set"
     t.decimal "explicit_total_budget", precision: 20, scale: 3, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
@@ -1746,6 +1746,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
     t.text "comment", default: "", null: false
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.string "visibility", default: "auto", null: false
+    t.boolean "is_unit_cost_center", default: false
     t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
   end
@@ -1882,6 +1883,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
     t.string "moss_category", comment: "Moss Category (e.g., OTHER, TRAVEL_AND_TRANSPORTATION)"
     t.jsonb "other_moss_columns", default: {}, null: false, comment: "other Moss-specific columns"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.boolean "is_unit_budget", default: true, null: false, comment: "Flag to indicate if a booking on this account belongs to the budget of a unit"
     t.index ["number"], name: "index_wsjrdp_ledger_accounts_on_number", unique: true
     t.check_constraint "number::text !~ '^[1-9]\\d{5}$'::text", name: "chk_ledger_account_number_not_personal_account"
   end
@@ -1965,6 +1967,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
     t.string "moss_default_team_name"
     t.jsonb "other_moss_columns", default: {}, null: false, comment: "Other Moss-specific columns from the Moss supplier export (VAT Code/Rate/Name, payment terms, ...)"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future, yet-unknown data (JSONB); empty by default."
+    t.boolean "is_unit_budget", default: true, null: false, comment: "Flag to indicate if a booking on this account belongs to the budget of a unit"
     t.index ["number"], name: "index_wsjrdp_personal_accounts_on_number", unique: true
     t.index ["represented_person_id"], name: "index_wsjrdp_personal_accounts_on_represented_person_id"
     t.check_constraint "account_kind::text = 'CREDITOR'::text AND number::text ~ '^[7-9]'::text OR account_kind::text = 'DEBITOR'::text AND number::text ~ '^[1-6]'::text", name: "chk_personal_account_kind_matches_number"
@@ -1980,10 +1983,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
     t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "sphere manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
-    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Signed budget 2025 (expenses negative); NULL = not set"
-    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Signed budget 2026 (expenses negative); NULL = not set"
-    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Signed budget 2027 (expenses negative); NULL = not set"
-    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Budget 2025; NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Budget 2026; NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Budget 2027; NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Budget 2028; NULL = not set"
     t.decimal "explicit_total_budget", precision: 20, scale: 3, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true
@@ -2005,10 +2008,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_12_150000) do
     t.text "aliases", default: [], null: false, comment: "Hitobito-specific alternative names", array: true
     t.boolean "delete_without_finance_permission", default: true, null: false
     t.string "visibility", default: "auto", null: false
-    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Signed budget 2025 (expenses negative); NULL = not set"
-    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Signed budget 2026 (expenses negative); NULL = not set"
-    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Signed budget 2027 (expenses negative); NULL = not set"
-    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Signed budget 2028 (expenses negative); NULL = not set"
+    t.decimal "budget_2025", precision: 20, scale: 3, comment: "Budget 2025; NULL = not set"
+    t.decimal "budget_2026", precision: 20, scale: 3, comment: "Budget 2026; NULL = not set"
+    t.decimal "budget_2027", precision: 20, scale: 3, comment: "Budget 2027; NULL = not set"
+    t.decimal "budget_2028", precision: 20, scale: 3, comment: "Budget 2028; NULL = not set"
     t.decimal "explicit_total_budget", precision: 20, scale: 3, comment: "Explicitly set total budget for the whole period; NULL = not set"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.virtual "display_short_name", type: :string, comment: "Generated: short_name, falling back to name, then ''. The one place defining how a short display name is derived.", as: "COALESCE(NULLIF((short_name)::text, ''::text), NULLIF((name)::text, ''::text), ''::text)", stored: true

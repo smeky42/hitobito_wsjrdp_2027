@@ -126,7 +126,8 @@ class Fin::CostCentersController < Fin::FinController
 
   def cost_center_params
     params.require(:wsjrdp_cost_center).permit(
-      :budget_2025, :budget_2026, :budget_2027, :budget_2028, :explicit_total_budget
+      :budget_2025, :budget_2026, :budget_2027, :budget_2028, :explicit_total_budget,
+      :is_unit_cost_center
     )
   end
 

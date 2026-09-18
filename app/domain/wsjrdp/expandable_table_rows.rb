@@ -30,7 +30,9 @@
 #                 (Array). THE allow-list: a sort the state resolved but this map
 #                 does not know is dropped, so only fixed, safe expressions reach
 #                 ORDER BY. Normally a column collection's #sort_expressions.
-#   sum:          the column #total_sum aggregates over the WHOLE source; nil = none
+#   sum:          the column #total_sum -- and #subtotal, for the part of the
+#                 source an SQL condition picks out -- aggregates over the WHOLE
+#                 source; nil = none
 #   preload:      associations preloaded on the rendered page (relation only)
 #   tiebreaker:   the last ORDER BY level, so equal rows keep a deterministic
 #                 order: an ORDER BY fragment for a relation (":id" => "id ASC",
@@ -83,6 +85,28 @@ class Wsjrdp::ExpandableTableRows
     return nil unless @sum
 
     @total_sum ||= array? ? @source.sum { |row| row[@sum] } : @source.sum(@sum)
+  end
+
+  # The part of the WHOLE source an SQL condition picks out, as
+  # [count, sum of `sum:`] -- what a summary line needs to say "… davon X". The
+  # condition is applied to the SAME filtered source the totals read, so the
+  # share can never come from a different set than the figure above it. It is
+  # host-authored SQL like the `sort:` expressions, never anything from the
+  # request.
+  #
+  # Counted with `count(:all)`, never with a bare `#count`: a source may select
+  # columns of its own (DatevBooking.with_unit_budget), which `#count` would
+  # fold into a single COUNT() (doc/fin/unit_budget.md). The sum is nil for a
+  # table that declares no `sum:`.
+  #
+  # nil for an Array source: there is no SQL to apply to one.
+  def subtotal(condition)
+    return nil if array?
+
+    @subtotals ||= {}
+    @subtotals[condition] ||= @source.where(Arel.sql(condition)).then do |scope|
+      [scope.count(:all), @sum && scope.sum(@sum)]
+    end
   end
 
   # The active multi-column sort as [[column_key, dir], ...] (primary first),

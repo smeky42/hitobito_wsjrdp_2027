@@ -334,6 +334,110 @@ describe Fin::LedgerAccountsController do
     end
   end
 
+  # Whether a booking on this account belongs to a unit's budget: the one field
+  # of a Sachkonto Hitobito owns (everything else comes from the DATEV or the
+  # Moss export). It is read everywhere and edited on a page of its own, the same
+  # view/edit split the bookings use.
+  describe "Unit-Budget" do
+    let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+
+    def doc = Nokogiri::HTML(response.body)
+
+    def detail_labels = doc.css("dt").map { |dt| dt.text.strip }
+
+    def detail_value(label)
+      index = detail_labels.index(label)
+      index && doc.css("dd")[index].text.squish
+    end
+
+    def link_texts = doc.css("a").map { |a| a.text.strip }
+
+    it "is offered as a column of the list, not shown by default" do
+      WsjrdpLedgerAccount.find_by(number: "66500").update!(is_unit_budget: false)
+
+      get :index
+      expect(rendered_column_keys).not_to include("is_unit_budget")
+      expect(response.body).to include("Unit-Budget?")
+
+      get :index, params: {c: "nr,ub"}
+      expect(rendered_column_keys).to eq(%w[number is_unit_budget])
+      expect(cells("is_unit_budget").map { |cell| cell.gsub(/<[^>]+>/, "").strip })
+        .to eq(%w[ja ja nein])
+    end
+
+    it "shows the flag on the reading page and leads the write tier to the edit page" do
+      get :show, params: {number: "1200"}
+
+      expect(detail_value("Unit-Budget?")).to eq("ja")
+      button = doc.css("a").find { |a| a.text.strip == "Bearbeiten" }
+      expect(button["href"]).to eq(edit_ledger_account_path("1200"))
+    end
+
+    it "offers the read tier no way to edit" do
+      sign_in(reader)
+
+      get :show, params: {number: "1200"}
+
+      expect(response).to be_successful
+      expect(detail_value("Unit-Budget?")).to eq("ja")
+      expect(link_texts).not_to include("Bearbeiten")
+    end
+
+    it "renders the edit page with the select, both submits and the way back" do
+      get :edit, params: {number: "1200"}
+
+      expect(response).to be_successful
+      options = doc.css("select[name='wsjrdp_ledger_account[is_unit_budget]'] option")
+        .map { |option| [option.text.strip, option["value"]] }
+      expect(options).to eq([["ja", "true"], ["nein", "false"]])
+      buttons = doc.css("button[type=submit]").to_h { |b| [b.text.strip, b["name"]] }
+      expect(buttons).to include("Speichern" => "save",
+        "Speichern und weiter bearbeiten" => "stay")
+      cancel = doc.css("a").find { |a| a.text.strip == "Abbrechen" }
+      expect(cancel["href"]).to eq(ledger_account_path("1200"))
+    end
+
+    it "flips the flag and goes on to the reading page" do
+      patch :update, params: {number: "1200", wsjrdp_ledger_account: {is_unit_budget: "false"}}
+
+      expect(response).to redirect_to(ledger_account_path("1200"))
+      expect(WsjrdpLedgerAccount.find_by(number: "1200").is_unit_budget).to be false
+    end
+
+    it "refuses the read tier the edit page and the update" do
+      sign_in(reader)
+
+      expect { get :edit, params: {number: "1200"} }.to raise_error(CanCan::AccessDenied)
+      expect do
+        patch :update, params: {number: "1200", wsjrdp_ledger_account: {is_unit_budget: "false"}}
+      end.to raise_error(CanCan::AccessDenied)
+      expect(WsjrdpLedgerAccount.find_by(number: "1200").is_unit_budget).to be true
+    end
+
+    # The embedded bookings table of an account detail is legs-backed
+    # (DatevBooking.legs), a derived table aliased back to `datev_bookings`.
+    # The Unit-Budget columns are a select plus two joins and compose with it,
+    # which is what this asserts end to end: the condensed cell shows the bare
+    # answer, without the source.
+    it "answers in the account's own embedded bookings table" do
+      WsjrdpLedgerAccount.find_by(number: "66500").update!(is_unit_budget: false)
+
+      get :show, params: {number: "1200", bc: "bdt,ub"}
+
+      expect(response).to be_successful
+      cells = response.body.scan(%r{colkey='unit_budget'>(.*?)</td>}m).flatten
+        .map { |cell| cell.gsub(/<[^>]+>/, " ").squish }
+      expect(cells).to match_array(%w[nein ja])
+    end
+
+    # #show invents a stub record for a number without master data; there is
+    # nothing to edit on one, so #edit answers 404 instead.
+    it "has no edit page for a number without master data" do
+      expect { get :edit, params: {number: "999999"} }
+        .to raise_error(ActiveRecord::RecordNotFound)
+    end
+  end
+
   describe "GET show" do
     it "renders the account's detail page with its embedded bookings table" do
       get :show, params: {number: "1200"}

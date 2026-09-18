@@ -98,6 +98,11 @@ class FakeFilterSchema
   Schema = Struct.new(:name, :known, :sign_aliases, :options) do
     def catalog = {attributes: known.map { |key| {key: key} }}
 
+    # Wsjrdp::Filtering::BoundSchema#attributes: {Symbol => Attribute}. The
+    # resolver reads its KEYS to turn a filter `only:` into the exclude set,
+    # so the stand-in only has to answer with the right keys.
+    def attributes = known.to_h { |key| [key.to_sym, key] }
+
     # Wsjrdp::Filtering::BoundSchema#preset_group_values: the values a preset
     # group may name on this attribute, nil when this binding does not carry the
     # attribute or the attribute does not accept the `in` operator -- which here
@@ -315,6 +320,34 @@ describe Wsjrdp::TableStatePolicy do
     it "leaves a request-dependent shaping to the resolver" do
       expect { described_class.new(prefix: "", columns: COLUMNS, cols: {exclude: -> { %w[typo] }}) }
         .not_to raise_error
+    end
+
+    # `only:` says the same thing from the other side -- these are the columns
+    # the table HAS -- and is checked exactly like `exclude:`.
+    describe "only:" do
+      it "raises for a key that is not a column of the codec" do
+        expect { described_class.new(prefix: "", columns: COLUMNS, cols: {only: %w[booking_date typo]}) }
+          .to raise_error(ArgumentError, /cols: only: "typo" is not a column/)
+      end
+
+      it "raises for a default column outside the list" do
+        expect {
+          described_class.new(prefix: "", columns: COLUMNS,
+            cols: {default: %w[booking_date posting_text], only: %w[booking_date]})
+        }.to raise_error(ArgumentError, /default column\(s\) posting_text are excluded/)
+      end
+
+      it "takes a default column that IS in the list" do
+        expect {
+          described_class.new(prefix: "", columns: COLUMNS,
+            cols: {default: %w[booking_date], only: %w[booking_date posting_text]})
+        }.not_to raise_error
+      end
+
+      it "leaves a request-dependent list to the resolver" do
+        expect { described_class.new(prefix: "", columns: COLUMNS, cols: {only: -> { %w[typo] }}) }
+          .not_to raise_error
+      end
     end
   end
 
@@ -565,6 +598,40 @@ describe Wsjrdp::TableState do
         }.to raise_error(ArgumentError, /default column\(s\) posting_text are excluded/)
       end
     end
+
+    # `only:` NAMES the columns the table has; everything else of the codec is
+    # excluded by it, and an `exclude:` next to it takes further ones out.
+    describe "only:" do
+      let(:listed) { policy(cols: {only: %w[booking_date posting_text cost_center_number]}) }
+
+      it "leaves the table with the listed columns, in the codec's order" do
+        expect(resolve(listed).visible_column_keys)
+          .to eq(%w[booking_date posting_text cost_center_number])
+        expect(resolve(listed).column_states.map(&:first)).not_to include("signed_base_amount")
+      end
+
+      it "drops a column outside the list from the URL, the store and the wire" do
+        session["wsjrdp_table_state"] = {"fin/bookings#index" => {"c" => "amt"}}
+        expect(resolve(listed).visible_column_keys).to eq([])
+        state = resolve(listed, {"c" => "amt,bdt"})
+        expect(state.visible_column_keys).to eq(%w[booking_date])
+        expect(state.wire(:cols)).to eq("bdt,~posting_text,~cc")
+        expect(resolve(listed, {"s" => "amt~"}).sort_list).to eq([])
+      end
+
+      it "subtracts an exclude: on top of it" do
+        state = resolve(policy(cols: {only: %w[booking_date posting_text],
+                                      exclude: %w[posting_text]}))
+        expect(state.visible_column_keys).to eq(%w[booking_date])
+      end
+
+      it "may be a lambda, checked when it is evaluated" do
+        state = resolve(policy(cols: {only: -> { (action_name == "index") ? %w[booking_date] : nil }}))
+        expect(state.visible_column_keys).to eq(%w[booking_date])
+        expect { resolve(policy(cols: {only: -> { %w[typo] }})) }
+          .to raise_error(ArgumentError, /cols: only: "typo" is not a column/)
+      end
+    end
   end
 
   describe "the store layer" do
@@ -718,6 +785,53 @@ describe Wsjrdp::TableState do
         state = resolve(excluding_policy)
         expect(state.filter.catalog[:attributes].pluck(:key)).not_to include("sphere")
         expect(state.filter.full_catalog[:attributes].pluck(:key)).to include("sphere")
+      end
+    end
+
+    # `only:` NAMES the attributes the user half offers; every other attribute
+    # of the schema is excluded by it, which is the same enforcement from the
+    # other side -- and a page that pins a slot on an attribute it does not
+    # offer still compiles it, because fixed slots use the FULL schema.
+    describe "only:" do
+      let(:listed_policy) { filter_policy(only: %i[konto booking_date]) }
+
+      it "leaves the picker with the listed attributes only" do
+        state = resolve(listed_policy)
+        expect(state.filter.catalog[:attributes].pluck(:key)).to eq(%w[konto booking_date])
+        expect(state.filter.full_catalog[:attributes].pluck(:key))
+          .to include("sphere", "cost_center")
+        expect(state.filter.exclude).to match_array(FakeFilterSchema::KNOWN.map(&:to_sym) -
+          %i[konto booking_date])
+      end
+
+      it "drops a condition on an attribute outside the list, from URL and store alike" do
+        wire = JSON.generate([[["cost_center", "in", "3150"]], *KONTO_TREE])
+        expect(resolve(listed_policy, {"f" => wire}).filter.user_slots).to eq(KONTO_TREE)
+        session["wsjrdp_table_state"] = {"fin/bookings#index" => {"f" => wire}}
+        expect(resolve(listed_policy).filter.user_slots).to eq(KONTO_TREE)
+      end
+
+      it "subtracts an exclude: on top of it" do
+        state = resolve(filter_policy(only: %i[konto booking_date], exclude: %i[booking_date]))
+        expect(state.filter.catalog[:attributes].pluck(:key)).to eq(%w[konto])
+      end
+
+      it "still compiles a fixed slot on an attribute it does not offer" do
+        state = resolve(filter_policy(only: %i[konto],
+          fixed: [{slots: [[["cost_center", "in", "3150"]]], show: :readonly}]))
+        expect(state.filter.readonly_slots).to eq([[["cost_center", "in", "3150"]]])
+      end
+
+      it "raises for a key the schema does not carry, naming the option" do
+        expect { resolve(filter_policy(only: %i[konto typo_attribute])) }
+          .to raise_error(ArgumentError, /filter: only: :typo_attribute is not an attribute/)
+      end
+
+      it "may be a lambda, checked when it is evaluated" do
+        state = resolve(filter_policy(only: -> { (action_name == "index") ? %i[konto] : nil }))
+        expect(state.filter.catalog[:attributes].pluck(:key)).to eq(%w[konto])
+        expect { resolve(filter_policy(only: -> { %i[typo_attribute] })) }
+          .to raise_error(ArgumentError, /filter: only: :typo_attribute is not an attribute/)
       end
     end
 

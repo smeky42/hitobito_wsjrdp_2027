@@ -82,8 +82,28 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         expect(forms(".bk-connect-entry-form")).to be_empty
         expect(forms(".bk-unlink-form")).to be_empty
         expect(response.body).to include("nicht verknüpft")
-        # ... and the field edits, which start at the write tier.
+        # ... and the field edits, which start at the write tier. They live on
+        # the edit page now, so the reading page carries no input at all -- and
+        # nothing that would lead there.
         expect(response.body).not_to include("datev_booking[secondary_cost_center_number]")
+        # Both comment columns are editable fields like the others, so the read
+        # tier reads them and gets no input for either.
+        expect(response.body).not_to include("datev_booking[comment]")
+        expect(response.body).not_to include("datev_booking[user_comment]")
+        expect(response.body).not_to include(edit_booking_path(booking))
+      end
+
+      # The other half of the same boundary: the edit page itself, which the
+      # read tier must not reach even by typing its URL.
+      it "refuses the edit page" do
+        expect { get :edit, params: {id: booking.id} }.to raise_error(CanCan::AccessDenied)
+      end
+
+      it "refuses to edit a comment" do
+        expect do
+          patch :update, params: {id: booking.id, datev_booking: {user_comment: "x"}}
+        end.to raise_error(CanCan::AccessDenied)
+        expect(booking.reload.user_comment).to eq("")
       end
 
       it "refuses to connect a Beitragsbuchung" do
@@ -120,15 +140,31 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
 
       # The field edits are the write tier's -- the same gate the detail view
       # asks before it builds the form (fin/bookings/_detail), so what the page
-      # offers and what the controller accepts are the one question.
+      # offers and what the controller accepts are the one question. The inputs
+      # stand on the EDIT page; the reading page only leads there.
       it "may edit the booking fields" do
         get :show, params: {id: booking.id}
+        expect(response.body).to include(edit_booking_path(booking))
+
+        get :edit, params: {id: booking.id}
         expect(response.body).to include("datev_booking[secondary_cost_center_number]")
 
         patch :update, params: {id: booking.id,
                                 datev_booking: {sub_cost_center_number: "X1"}}
 
         expect(booking.reload.sub_cost_center_number).to eq("X1")
+      end
+
+      it "may edit both comments" do
+        get :edit, params: {id: booking.id}
+        expect(response.body).to include("datev_booking[comment]")
+          .and include("datev_booking[user_comment]")
+
+        patch :update, params: {id: booking.id,
+                                datev_booking: {comment: "intern", user_comment: "für alle"}}
+
+        expect(booking.reload.comment).to eq("intern")
+        expect(booking.user_comment).to eq("für alle")
       end
     end
 

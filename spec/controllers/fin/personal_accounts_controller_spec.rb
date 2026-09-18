@@ -111,6 +111,97 @@ describe Fin::PersonalAccountsController do
     end
   end
 
+  # Whether a booking on this Kreditor belongs to a unit's budget: the one field
+  # of a Personenkonto Hitobito owns (everything else comes from the DATEV or the
+  # Moss export). Read everywhere, edited on a page of its own -- the same
+  # view/edit split the Sachkonten and the bookings use.
+  describe "Unit-Budget" do
+    let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+
+    def detail_labels = doc.css("dt").map { |dt| dt.text.strip }
+
+    def detail_value(label)
+      index = detail_labels.index(label)
+      index && doc.css("dd")[index].text.squish
+    end
+
+    def unit_budget_cells
+      response.body[%r{<tbody[^>]*>.*</tbody>}m].to_s
+        .scan(%r{colkey='is_unit_budget'>(.*?)</td>}m).flatten
+        .map { |cell| cell.gsub(/<[^>]+>/, "").strip }
+    end
+
+    it "is offered as a column of the list, not shown by default" do
+      WsjrdpPersonalAccount.find_by(number: "700102").update!(is_unit_budget: false)
+
+      get :index
+      expect(rendered_column_keys).not_to include("is_unit_budget")
+      expect(response.body).to include("Unit-Budget?")
+
+      get :index, params: {c: "nr,ub"}
+      expect(rendered_column_keys).to eq(%w[number is_unit_budget])
+      expect(unit_budget_cells).to eq(%w[ja nein ja ja])
+    end
+
+    it "shows the flag on the reading page and leads the write tier to the edit page" do
+      get :show, params: {number: "700101"}
+
+      expect(detail_value("Unit-Budget?")).to eq("ja")
+      button = doc.css("a").find { |a| a.text.strip == "Bearbeiten" }
+      expect(button["href"]).to eq(edit_personal_account_path("700101"))
+    end
+
+    it "offers the read tier no way to edit" do
+      sign_in(reader)
+
+      get :show, params: {number: "700101"}
+
+      expect(response).to be_successful
+      expect(detail_value("Unit-Budget?")).to eq("ja")
+      expect(doc.css("a").map { |a| a.text.strip }).not_to include("Bearbeiten")
+    end
+
+    it "renders the edit page with the select, both submits and the way back" do
+      get :edit, params: {number: "700101"}
+
+      expect(response).to be_successful
+      options = doc.css("select[name='wsjrdp_personal_account[is_unit_budget]'] option")
+        .map { |option| [option.text.strip, option["value"]] }
+      expect(options).to eq([["ja", "true"], ["nein", "false"]])
+      buttons = doc.css("button[type=submit]").to_h { |b| [b.text.strip, b["name"]] }
+      expect(buttons).to include("Speichern" => "save",
+        "Speichern und weiter bearbeiten" => "stay")
+      cancel = doc.css("a").find { |a| a.text.strip == "Abbrechen" }
+      expect(cancel["href"]).to eq(personal_account_path("700101"))
+    end
+
+    it "flips the flag and goes on to the reading page" do
+      patch :update, params: {number: "700101",
+                              wsjrdp_personal_account: {is_unit_budget: "false"}}
+
+      expect(response).to redirect_to(personal_account_path("700101"))
+      expect(WsjrdpPersonalAccount.find_by(number: "700101").is_unit_budget).to be false
+    end
+
+    it "refuses the read tier the edit page and the update" do
+      sign_in(reader)
+
+      expect { get :edit, params: {number: "700101"} }.to raise_error(CanCan::AccessDenied)
+      expect do
+        patch :update, params: {number: "700101",
+                                wsjrdp_personal_account: {is_unit_budget: "false"}}
+      end.to raise_error(CanCan::AccessDenied)
+      expect(WsjrdpPersonalAccount.find_by(number: "700101").is_unit_budget).to be true
+    end
+
+    # #show invents a stub record for a number without master data; there is
+    # nothing to edit on one, so #edit answers 404 instead.
+    it "has no edit page for a number without master data" do
+      expect { get :edit, params: {number: "700999"} }
+        .to raise_error(ActiveRecord::RecordNotFound)
+    end
+  end
+
   describe "GET index with a filter" do
     it "narrows on the count with the strict > and re-counts the footer" do
       get :index, params: {f: "!(!(!(bc,gt,0)))"}
@@ -614,18 +705,21 @@ describe Fin::PersonalAccountsController do
 
     # A number the master data does not describe is a stub record: no field has
     # a value, so what is left besides header and bookings is the Moss status
-    # (a record Moss does not know counts as inaktiv, like in the list) and the
-    # six rows the partial keeps on blank: :unset -- the bank details and the
+    # (a record Moss does not know counts as inaktiv, like in the list), the
+    # Unit-Budget flag, which is NOT NULL and therefore reads as its default, and
+    # the six rows the partial keeps on blank: :unset -- the bank details and the
     # Moss defaults; with no raw column stored, the raw area renders nothing.
     it "renders a number without a Kreditor record" do
       get :show, params: {number: "799999"}
 
       expect(response).to be_successful
       expect(detail_heading).to include("799999")
-      expect(page_labels).to eq(["Moss Status", "IBAN", "BIC", "Standard-Konto",
-        "Standard-Kostenstelle", "Standard-Sphäre", "Team"])
+      expect(page_labels).to eq(["Moss Status", "Unit-Budget?", "IBAN", "BIC",
+        "Standard-Konto", "Standard-Kostenstelle", "Standard-Sphäre", "Team"])
       expect(page_row("Moss Status").at_css("dd").text.strip).to eq("inaktiv")
-      expect((page_labels - ["Moss Status"]).map { |label| page_row(label).at_css("dd").text.strip })
+      expect(page_row("Unit-Budget?").at_css("dd").text.strip).to eq("ja")
+      expect((page_labels - ["Moss Status", "Unit-Budget?"])
+        .map { |label| page_row(label).at_css("dd").text.strip })
         .to all(eq("nicht gesetzt"))
       expect(doc.css(".bk-item-detail details")).to be_empty
       expect(doc.css(".fin-embedded-bookings")).to be_present

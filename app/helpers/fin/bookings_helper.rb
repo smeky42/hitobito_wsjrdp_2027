@@ -26,6 +26,22 @@ module Fin::BookingsHelper
     end
   end
 
+  # The summary line above the FULL bookings table: how many bookings the filter
+  # leaves, what they add up to, and how much of that counts against a unit's
+  # budget. All three figures come from the SAME filtered relation -- the share
+  # is the rows object's #subtotal over the one SQL definition of the rule
+  # (doc/fin/unit_budget.md) -- so a line can never state a share of a set other
+  # than the sum beside it. Every host of the full table hands the rows
+  # DatevBooking.with_unit_budget, which is what carries the account joins the
+  # expression names.
+  def booking_table_summary(rows)
+    line = "#{rows.total_count} Buchungen · Summe (gefiltert): #{fin_money(rows.total_sum)}"
+    count, sum = rows.subtotal(DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL)
+    return line if count.nil?
+
+    "#{line} · davon Unit-Budget: #{fin_money(sum)} (#{count} Buchungen)"
+  end
+
   # number => compact display label, loaded once per request. Accounts use their
   # short_name (falling back to the full name); suppliers (the 700xxx personal
   # accounts) use their name. Account and supplier number ranges are disjoint, so
@@ -67,6 +83,8 @@ module Fin::BookingsHelper
       datev_code_cell(booking.public_send(key), datev_account_names, condensed: condensed)
     when "cost_center_number", "secondary_cost_center_number"
       datev_code_cell(booking.public_send(key), datev_cost_center_names, condensed: condensed)
+    when "unit_budget"
+      booking_unit_budget_cell(booking, condensed: condensed)
     else
       booking.public_send(key)
     end
@@ -115,11 +133,60 @@ module Fin::BookingsHelper
     I18n.t("fin.status.#{status}", default: status.humanize)
   end
 
-  # German label for the canonical English debit_credit code: "D" -> "Soll",
-  # "C" -> "Haben"; falls back to the raw code.
+  # German label for the canonical English debit_credit code: "D" -> "S",
+  # "C" -> "H"; falls back to the raw code.
   def debit_credit_label(code)
     return nil if code.blank?
     I18n.t("fin.debit_credit.#{code}", default: code)
+  end
+
+  # The same code written OUT ("Soll" / "Haben"), for the booking detail's
+  # Betrag row -- everywhere else the short S/H of #debit_credit_label stands.
+  def debit_credit_long_label(code)
+    return nil if code.blank?
+    I18n.t("fin.debit_credit_long.#{code}", default: code)
+  end
+
+  # --- Unit-Budget (the resolved answer, DatevBooking#unit_budget) ------------
+
+  # The Unit-Budget cell: "ja" / "nein", with WHERE the answer comes from muted
+  # beside it -- and the answer alone where the two accounts simply agreed, the
+  # ordinary case that names no source (#unit_budget_source_label). The
+  # condensed (in-detail) table shows the answer alone throughout.
+  def booking_unit_budget_cell(booking, condensed: false)
+    value, source = booking.unit_budget
+    answer = unit_budget_answer(value)
+    return answer if condensed
+
+    origin = unit_budget_source_label(booking, source)
+    return answer if origin.blank?
+
+    safe_join([answer, content_tag(:span, origin, class: "text-muted small")], " ")
+  end
+
+  def unit_budget_answer(value) = value ? "ja" : "nein"
+
+  # The source of an answer, named with the number it was read on:
+  # "Kostenstelle 9500" (the cost center is not a unit's own and settled it
+  # before the accounts were asked), "Konto 66500" / "Gegenkonto 1200" (that one
+  # side), "Standard" (no number named an account) -- and "Buchung" for the flag
+  # stored on the booking itself.
+  #
+  # `konten` -- both accounts known and agreeing -- is the ORDINARY case and has
+  # no label: naming both numbers would be the longest text on the page for the
+  # answer that says the least, so the field stops at "automatisch" and the cell
+  # at the bare "ja" / "nein". A source worth reading is one that singles a side
+  # out or names the booking itself.
+  def unit_budget_source_label(booking, source)
+    case source
+    when DatevBooking::UNIT_BUDGET_SOURCE_BOOKING then "Buchung"
+    when DatevBooking::UNIT_BUDGET_SOURCE_COST_CENTER
+      "Kostenstelle #{booking.cost_center_number}"
+    when DatevBooking::UNIT_BUDGET_SOURCE_KONTO then "Konto #{booking.account_number}"
+    when DatevBooking::UNIT_BUDGET_SOURCE_GEGENKONTO
+      "Gegenkonto #{booking.offsetting_account_number}"
+    when DatevBooking::UNIT_BUDGET_SOURCE_DEFAULT then "Standard"
+    end
   end
 
   # A code (account / cost center) followed by its name in muted font
@@ -358,18 +425,48 @@ module Fin::BookingsHelper
 
   # --- fin_detail formatters (fin_format_datev_booking_*) ---------------------
 
-  # Betrag with S/H indicator + optional foreign-currency line.
+  # Betrag: the base-currency (EUR) figure, then the booking's Soll/Haben
+  # written out and set apart from the number, so the two are read as two
+  # things rather than as one string.
   def fin_format_datev_booking_base_amount(booking)
-    sh = debit_credit_label(booking.debit_credit)
-    primary = [fin_money(booking.base_amount, booking.base_currency), sh].compact.join(" ")
-    parts = [primary]
-    if booking_foreign_currency?(booking)
-      tx = booking_amount_currency_str(booking.transaction_amount, booking.transaction_currency)
-      rate = booking_fx_rate_display(booking.exchange_rate)
-      fx_parts = [tx, rate ? "Kurs #{rate}" : nil].compact.join(" · ")
-      parts << content_tag(:div, fx_parts, class: "text-muted small")
-    end
-    safe_join(parts)
+    amount = fin_money(booking.base_amount, booking.base_currency)
+    return nil if amount.blank?
+
+    label = debit_credit_long_label(booking.debit_credit)
+    return amount if label.blank?
+
+    safe_join([amount, content_tag(:span, label, class: "ms-3 text-muted")])
+  end
+
+  # Original-Betrag: the amount AS BOOKED, in the booking's own currency. Shown
+  # only where that currency is not the base one -- on an EUR booking it would
+  # repeat the Betrag -- and without a Soll/Haben of its own: the Betrag above
+  # states it once, for the booking, and the figure carries its own currency.
+  def fin_format_datev_booking_transaction_amount(booking)
+    return nil unless booking_foreign_currency?(booking)
+
+    fin_money(booking.transaction_amount, booking.transaction_currency)
+  end
+
+  # Notizen (user_comment): escaped, line breaks kept, URLs linked -- and, for a
+  # viewer who holds :log on the booking (the audit tier and up), the FIN-/HELP-
+  # ticket keys of the helpdesk as well (ContractHelper#auto_link_escaped_multiline).
+  # A unit leader holds no :log on a booking and reads the keys as plain text.
+  def fin_format_datev_booking_user_comment(booking)
+    text = booking.user_comment
+    return nil if text.blank?
+    return auto_link_escaped_multiline(text) if can?(:log, booking)
+
+    auto_link(html_escape_multiline(text), sanitize: false, html: {target: "_blank"}).html_safe
+  end
+
+  # Wechselkurs: the rate that turned the Original-Betrag into the Betrag, and
+  # it belongs to that pair -- on an EUR booking the two amounts are the same
+  # figure, so there is no rate to state and the row stays away with them.
+  def fin_format_datev_booking_exchange_rate(booking)
+    return nil unless booking_foreign_currency?(booking)
+
+    booking_fx_rate_display(booking.exchange_rate)
   end
 
   def fin_format_datev_booking_account_number(booking)
@@ -388,12 +485,30 @@ module Fin::BookingsHelper
     datev_code_cell(booking.secondary_cost_center_number, datev_cost_center_names)
   end
 
+  # The RESOLVED answer, always: the value first, then where it comes from in
+  # parentheses -- "ja (Buchung)" where the booking carries the flag itself,
+  # "nein (automatisch, Kostenstelle 9500)" where the cost center settled it,
+  # "nein (automatisch, Konto 66500)" where one account decided, and the bare
+  # "ja (automatisch)" where both agreed (#unit_budget_source_label). The field
+  # is therefore never blank and stands on a reading page like any other, which
+  # is the point: a booking has a Unit-Budget answer whether or not anybody
+  # stored one on it.
   def fin_format_datev_booking_is_unit_budget(booking)
-    case booking.is_unit_budget
-    when true then "ja"
-    when false then "nein"
-    else "automatisch"
+    value, source = booking.unit_budget
+    origin = unit_budget_source_label(booking, source)
+    unless source == DatevBooking::UNIT_BUDGET_SOURCE_BOOKING
+      origin = ["automatisch", origin].compact_blank.join(", ")
     end
+    "#{unit_budget_answer(value)} (#{origin})"
+  end
+
+  # The three choices of the edit page's select. The first one leaves the
+  # booking's own flag unset and lets the cost center and the accounts decide --
+  # it therefore names the answer they currently give, so the choice reads as
+  # what it does.
+  def fin_unit_budget_select_options(booking)
+    automatic, = booking.automatic_unit_budget
+    [["automatisch (#{unit_budget_answer(automatic)})", ""], ["ja", "true"], ["nein", "false"]]
   end
 
   # The sub cost center, read within the booking's own cost center. A pair that
@@ -423,6 +538,17 @@ module Fin::BookingsHelper
     current = booking.sub_cost_center_number
     opts << [current, current] if current.present? && opts.none? { |(_, value)| value == current }
     opts
+  end
+
+  # The edit page's second sub cost center control, rendered next to the select
+  # (`extra:` of the field, Fin::DetailHelper#fin_detail_edit_field): the NUMBER
+  # of a sub cost center to create under this booking's own cost center. Given,
+  # it wins over the select -- a number that does not exist yet cannot be among
+  # its options (Fin::BookingDetailHost#resolve_new_sub_cost_center).
+  def fin_new_sub_cost_center_field(_form, _row)
+    text_field_tag(Fin::BookingDetailHost::NEW_SUB_COST_CENTER_PARAM, nil,
+      placeholder: "neue Unter-Kostenstelle", class: "form-control form-control-sm",
+      style: "max-width: 12ch")
   end
 
   def fin_cost_center_select_options

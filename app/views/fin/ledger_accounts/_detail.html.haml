@@ -15,11 +15,27 @@
 -#  de.activerecord.attributes.wsjrdp_ledger_account.
 -#
 -#  Locals: account (WsjrdpLedgerAccount), ctx (Fin::AttrFormatContext)
+-#          editing:    the kit's edit mode -- nil the list's pane (its inline
+-#                      default, i.e. no form without a form_url), false the
+-#                      reading page, true the edit page
+-#          form_url:   the PATCH target of the editable fields; nil = no form
+-#          edit_url:   the edit page the reading page's "Bearbeiten" points at
+-#          cancel_url: the reading page the edit page's "Abbrechen" returns to
+-#
+-#  Unit-Budget is the one field of a Sachkonto Hitobito owns: whether a booking
+-#  on this account belongs to a unit's budget. It is read everywhere and
+-#  editable for the write tier, which is what the edit page is for.
+- editing = local_assigns.fetch(:editing, nil)
+- form_url = local_assigns.fetch(:form_url, nil)
 = render "shared/wsjrdp/moss_status_styles"
-= fin_detail(account, ctx) do |d|
+= fin_detail(account, ctx, form_url: form_url, editing: editing,
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url]) do |d|
   - d.header back: ledger_accounts_path, back_label: "Zurück zu Sachkonten",
       label: "Sachkonto #{account.number}", title: account.name
   - d.attrs :name, :short_name, :account_kind, :moss_status
+  - d.attrs :is_unit_budget,
+      is_unit_budget: {input: :select, options: fin_account_unit_budget_options,
+                       editable: can?(:update, WsjrdpLedgerAccount)}
   - d.attrs :description, :comment
   - d.raw_data do
     - d.raw_entries :other_datev_columns, title: "DATEV Rohdaten"

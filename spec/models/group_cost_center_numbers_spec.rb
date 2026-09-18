@@ -87,6 +87,86 @@ describe Group do
     end
   end
 
+  # The wagon has no migration specs, so the second DATA step of
+  # 20260918100000_add_is_unit_budget_to_accounts is asserted here, by running
+  # its statement verbatim: every unit group whose WHOLE name is a cost-center
+  # number ("A1") gets that cost center appended to its list -- only where the
+  # cost center exists and is not in the list yet, so the statement may be run
+  # again at any time. The finance team reruns it by hand after new units
+  # (doc/fin/unit_budget.md).
+  describe "the seeded group cost centers" do
+    def assign_sql
+      <<~SQL
+        UPDATE groups g
+           SET additional_info = jsonb_set(COALESCE(g.additional_info, '{}'::jsonb),
+                                           '{cost_center_numbers}',
+                                           COALESCE(g.additional_info->'cost_center_numbers', '[]'::jsonb) || to_jsonb(g.name),
+                                           true)
+          FROM wsjrdp_cost_centers c
+         WHERE g.type = 'Group::Unit'
+           AND g.deleted_at IS NULL
+           AND g.name ~ '^[A-Z][0-9]+$'
+           AND c.number = g.name
+           AND NOT (COALESCE(g.additional_info->'cost_center_numbers', '[]'::jsonb) ? g.name)
+      SQL
+    end
+
+    def assign = ActiveRecord::Base.connection.execute(assign_sql).cmd_tuples
+
+    let(:root) { groups(:root) }
+    let!(:unit) { Group::Unit.create!(name: "A1", parent: root) }
+
+    it "gives a unit group its own cost center" do
+      expect(assign).to eq(1)
+      expect(unit.reload.cost_center_numbers).to eq(["A1"])
+    end
+
+    it "appends it to a list the group already carries" do
+      unit.update!(cost_center_numbers: ["X9"])
+
+      assign
+
+      expect(unit.reload.cost_center_numbers).to eq(["X9", "A1"])
+    end
+
+    it "changes nothing on a second run" do
+      assign
+
+      expect(assign).to eq(0)
+      expect(unit.reload.cost_center_numbers).to eq(["A1"])
+    end
+
+    it "leaves a unit whose cost center does not exist alone" do
+      other = Group::Unit.create!(name: "Z9", parent: root)
+
+      assign
+
+      expect(other.reload.cost_center_numbers).to be_nil
+    end
+
+    it "leaves a group that is not a unit alone" do
+      ist = Group::Ist.create!(name: "A1", parent: root)
+
+      assign
+
+      expect(ist.reload.cost_center_numbers).to be_nil
+    end
+
+    it "leaves a group whose name is more than the number alone" do
+      expect(groups(:unit_a).name).to eq("Unit A")
+
+      assign
+
+      expect(groups(:unit_a).reload.cost_center_numbers).to be_nil
+    end
+
+    it "leaves a deleted unit alone" do
+      unit.update_column(:deleted_at, Time.zone.now)
+
+      expect(assign).to eq(0)
+    end
+  end
+
   # The key is not among the paper-trail-skipped attributes of the group, so
   # Wsjrdp2027::PaperTrail::Events::Base lifts the store key into the version's
   # changes like a column of its own -- the same mechanism the person's

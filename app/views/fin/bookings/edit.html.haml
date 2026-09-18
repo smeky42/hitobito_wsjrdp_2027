@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of one booking: the same central detail, in the kit's :edit
+-#  mode. `form_url:` is left out, so the partial takes its own booking_path --
+-#  the one PATCH endpoint every form of the detail posts to. "Abbrechen" goes
+-#  back to the reading page.
+= wsjrdp_detail_frame("bk", @booking.id) do
+  = render "detail", booking: @booking, ctx: @ctx, editing: true,
+    cancel_url: booking_path(@booking)

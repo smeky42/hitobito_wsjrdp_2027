@@ -330,6 +330,50 @@ there beyond the regular finance tier restrictions. The rules are in
 | `finance` | `if_finance_write` | `show_finance`, `update_finance` |
 | `finance_manage` | `if_finance_manage` | `show_finance`, `update_finance` |
 
+What the two actions actually open is the group's **Buchhaltung** tab: its cost
+centers as chips, and below them the group's DATEV bookings — the Buchungen
+table of `/fin/bookkeeping/bookings`, pinned to those cost centers and reduced
+to the columns and filter attributes a group needs. A row leads to that
+booking's page on the group's own route
+(`/groups/:id/finance/bookkeeping/bookings/:id`), which shows the booking
+through the central detail partial with the group's field list: date,
+description, the amount (with its Soll/Haben written out, and the original
+amount beside it on a foreign-currency booking), Konto and Gegenkonto, the two
+cost centers, whether it belongs to the unit's budget, the comment meant for
+the group and the two Belegfelder — the last three only where they carry
+something, since the reading page leaves an unset field away. The sub cost
+center is the finance team's breakdown and stays off the group's pages
+altogether: neither the list, nor the pane, nor either page names it.
+"Unit-Budget?" is the exception and always stands: its value is resolved from
+the booking's own flag, else its two accounts, else the default, so there is no
+unset state to hide (see [`doc/fin/unit_budget.md`](fin/unit_budget.md)). It is
+also one of the columns the group's bookings table shows from the start. The
+bookkeeping
+internals stay out — the
+raw DATEV fields, the Sphäre, the Buchungs-GUID, the internal comment and the
+Verknüpfungen block, which leads into `/fin` and to a participant's fee data.
+Nothing on either page links into the Finanzen section.
+
+With `:update_finance` on the group one of those fields becomes editable:
+`user_comment`, the group's own "Notizen" on a booking, shown right under the
+description with a help line; URLs in them are links, the helpdesk's ticket
+keys only for a viewer with `:log` on the booking (the audit tier and up).
+`is_unit_budget`,
+`secondary_cost_center_number` and `sub_cost_center_number` move money between
+(sub) cost centers and stay with the finance team on `/fin`, whatever a group
+may do to its own bookings; a payload carrying one of them — or the number of a
+new sub cost center — is refused as a whole and nothing is written. Reading is
+gated on `:show_finance` alone, so the audit tier reads the pages and is offered
+no control that would answer 403.
+
+Editing happens on a **page of its own**
+(`/groups/:id/finance/bookkeeping/bookings/:id/edit`), which the same
+`:update_finance` gates: the audit tier is turned away at the page rather than
+at the save, and the reading page shows the way there only to whoever may take
+it. Creating a sub cost center beside its select is `/fin`'s edit page alone:
+the number field follows `sub_cost_center_number`, and a host that does not
+offer that field does not offer the number either.
+
 `group_full` is group-bound: a `Group::Unit::Leader` works on their own unit.
 The two `layer_and_below_full` constraints hold when the permission sits in a
 layer of the group's hierarchy that is not a `Group::Root` — a

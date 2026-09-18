@@ -19,15 +19,31 @@
 -#  wsjrdp_row_form elements stay standalone — nested <form> tags are illegal in
 -#  HTML and would break both the outer form and the inner ones.
 -#
+-#  Three edit modes (Fin::DetailHelper::EDIT_MODES, doc/fin/detail_partials.md
+-#  §6): :auto is what the kit has always done (inputs on the record's own page,
+-#  the inline toggle in an embedded pane), :view a reading page without any
+-#  form, :edit the edit page with its two submits and its cancel link.
+-#
 -#  Locals: record, ctx (Fin::AttrFormatContext), sections,
 -#          default_layout (:list / :compact / :grid), default_blank,
 -#          form_url (nil or the PATCH target for editable fields),
--#          editing (true in regular mode, false in embedded mode)
+-#          edit_mode (:auto / :view / :edit),
+-#          edit_url (the edit page, for the :view header's Bearbeiten button),
+-#          cancel_url (the reading page, for the :edit page's Abbrechen link)
 = fin_detail_styles
 .bk-item-detail
-  - editing = local_assigns.fetch(:editing, true)
+  - edit_mode = local_assigns.fetch(:edit_mode, :auto)
+  -# :view drops the form whatever the host passed; the other two modes keep
+  -# today's meaning, where a nil form_url is what says "no form".
+  - form_url = (edit_mode == :view) ? nil : local_assigns[:form_url]
+  -# The flag the CSS toggle reads: true = the inputs stand, without a toggle.
+  - editing = (edit_mode == :auto) ? ctx.regular? : (edit_mode == :edit)
+  -# An editable field stands wherever its input can be REACHED -- the edit page,
+  -# and the inline toggle of a pane. Only the reading page, which carries no
+  -# form at all, lets a blank one fall to its blank rule.
+  - editable_shown = form_url.present?
   - form_kinds = [:header, :fields]
-  = fin_detail_form_tag(record, local_assigns[:form_url], editing: editing) do |f|
+  = fin_detail_form_tag(record, form_url, editing: editing) do |f|
     - if f && !editing
       .fin-edit-toggle.text-end.p-2
         %button.btn.btn-sm.btn-outline-primary{type: "button",
@@ -40,13 +56,16 @@
         - if ctx.regular?
           = render "fin/shared/detail_header", label: section.options[:label],
             back: section.options[:back], back_label: section.options[:back_label],
-            title: section.title, toolbar: section.options[:toolbar]
+            title: section.title,
+            toolbar: fin_detail_header_toolbar(section.options[:toolbar],
+              local_assigns[:edit_url], edit_mode)
       - when :fields
         = render "fin/shared/detail_group", record: record, ctx: ctx, section: section,
           layout: section.layout || default_layout, blank: section.blank || default_blank,
-          form: f
+          form: f, editable_shown: editable_shown
     - if f
-      = fin_detail_edit_actions(f, editing)
+      = fin_detail_edit_actions(f, editing, mode: edit_mode,
+        cancel_url: local_assigns[:cancel_url])
   - sections.each do |section|
     - next if form_kinds.include?(section.kind)
     - case section.kind

@@ -17,6 +17,7 @@
 #     columns:  Fin::DatevBookingsColumns.codec,                # key => abbr codec
 #     sort:     {default: [["booking_date", "desc"]]},          # LONG names (D2b)
 #     cols:     {default: %w[booking_date signed_base_amount],   # declared order = column order
+#                only:    %w[booking_date signed_base_amount posting_text],  # ... or the
 #                exclude: %w[kind],                     # columns THIS table lacks
 #                labels:  {"party" => "Karteninhaber"}},   # ... and its own names
 #     per_page: {default: 50, max: 500},                    # or {default: :all}
@@ -24,6 +25,7 @@
 #                schema: Fin::DatevBookingsFilterSchema,          # the dataset (mandatory)
 #                fixed: [{slots: LOCKED_TREE, show: :readonly},
 #                        {slots: HIDDEN_TREE, show: :hidden}],
+#                only: %i[konto cost_center],
 #                exclude: %i[sphere],
 #                default: [[["konto", "in", "41030"]]],     # user tree, if nothing chosen
 #                presets: [{key: "with_bookings", label: "Nur mit Buchungen",
@@ -36,15 +38,20 @@
 # as lambdas and evaluated on the controller instance at resolve time.
 #
 # The FIELD-SPECIFIC options:
-#   cols:     exclude: columns of the codec that THIS table does not have, and
-#             labels: {key => "..."} the names it gives some of them -- a dataset
-#             is described ONCE (Wsjrdp::ExpandableTableColumns) and each table
-#             shapes that description (D2b). Both take LONG column keys; a key
-#             that is not in the codec, or a default column that is also
-#             excluded, raises at declaration time -- or, for a lambda, when it
-#             is evaluated.
+#   cols:     only: the columns THIS table has, exclude: the ones it does not
+#             have, and labels: {key => "..."} the names it gives some of them --
+#             a dataset is described ONCE (Wsjrdp::ExpandableTableColumns) and
+#             each table shapes that description (D2b). `only:` is the same
+#             statement from the other side: every column of the codec outside
+#             the list is excluded, and an `exclude:` next to it takes further
+#             ones out. All three take LONG column keys; a key that is not in
+#             the codec, or a default column that is also excluded, raises at
+#             declaration time -- or, for a lambda, when it is evaluated.
 #   per_page: max: the cap on a hand-written ?z=
-#   filter:   schema: (mandatory), fixed:, exclude:, default:, presets: (D2e).
+#   filter:   schema: (mandatory), fixed:, only:, exclude:, default:, presets:
+#             (D2e). `only:` / `exclude:` shape the USER half's attributes the
+#             same way `cols:` shapes the columns, and are checked against the
+#             bound schema at resolve time.
 #             A preset may additionally carry icon: (a FontAwesome 5 name
 #             WITHOUT the "fa-" prefix) and css_class: (added verbatim to its
 #             toggle link) -- display only, see doc/wsjrdp/expandable_table.md.
@@ -182,10 +189,10 @@ class Wsjrdp::TableStatePolicy
 
   def column?(key) = @columns.key?(key.to_s)
 
-  # --- the per-table column shaping (`cols: {exclude:, labels:}`) -------------
+  # --- the per-table column shaping (`cols: {only:, exclude:, labels:}`) ------
   #
-  # Both options may be LAMBDAS (the Moss list serves its five routes from one
-  # declaration, and each kind tab has other columns), so the shaped set is a
+  # All three options may be LAMBDAS (the Moss list serves its five routes from
+  # one declaration, and each kind tab has other columns), so the shaped set is a
   # per-REQUEST value and lives on the resolved Wsjrdp::TableState::ColumnSet --
   # never on this frozen object, which is one shared class-level constant.
   #
@@ -193,11 +200,18 @@ class Wsjrdp::TableStatePolicy
   # controller class loads and to an evaluated lambda at resolve time, so a typo
   # raises the same error whichever form the host chose.
 
-  # The long keys of the columns THIS table does not have, as a Set.
-  def excluded_columns(raw)
+  # The long keys of the columns THIS table does not have, as a Set: with
+  # `only:` every column of the codec outside that list, plus whatever
+  # `exclude:` takes out on top of it. `only: nil` means the table has every
+  # column the codec describes; `only: []` leaves it without any.
+  def excluded_columns(raw, only = nil)
     keys = Array(raw).map(&:to_s)
     validate_column_keys!(keys, "cols: exclude:")
-    keys.to_set
+    return keys.to_set if only.nil?
+
+    allowed = Array(only).map(&:to_s)
+    validate_column_keys!(allowed, "cols: only:")
+    (@columns.keys - allowed).to_set | keys.to_set
   end
 
   # key => the name THIS table gives that column, overriding the description's.
@@ -264,11 +278,16 @@ class Wsjrdp::TableStatePolicy
   def validate_static_column_shaping!
     options = field(:cols).options
     column_labels(options[:labels]) unless options[:labels].is_a?(Proc)
-    return if options[:exclude].is_a?(Proc)
+    only = options[:only] unless options[:only].is_a?(Proc)
+    exclude = options[:exclude] unless options[:exclude].is_a?(Proc)
+    validate_column_keys!(Array(only).map(&:to_s), "cols: only:") unless only.nil?
+    validate_column_keys!(Array(exclude).map(&:to_s), "cols: exclude:") unless exclude.nil?
+    return if options[:only].is_a?(Proc) || options[:exclude].is_a?(Proc)
 
-    excluded = excluded_columns(options[:exclude])
     default = field(:cols).default
-    validate_cols_default!(Array(default), excluded) unless default.nil? || default.is_a?(Proc)
+    return if default.nil? || default.is_a?(Proc)
+
+    validate_cols_default!(Array(default), excluded_columns(exclude, only))
   end
 
   def build_fields(field_options)

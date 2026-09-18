@@ -57,6 +57,25 @@
   })();
 
   (function () {
+    // A pane's frame answers a save with the flash INSIDE the frame
+    // (WsjrdpFormHelper#wsjrdp_detail_frame_flash) -- which is below the header
+    // line of links the table renders ABOVE the frame. Lift the message over
+    // that line, to the top of the open detail, where the eye goes first. A
+    // message lifted earlier belongs to the content the frame just replaced
+    // and goes away with it. Delegated + window-guarded like the rest.
+    if (window.__expFrameFlash) return;
+    window.__expFrameFlash = true;
+    document.addEventListener("turbo:frame-render", function (e) {
+      var frame = e.target;
+      var detail = frame.parentElement;
+      if (!detail || !detail.classList.contains("exp-detail")) return;
+      detail.querySelectorAll(":scope > .alert").forEach(function (old) { old.remove(); });
+      var alerts = frame.querySelectorAll(":scope > .alert");
+      for (var i = alerts.length - 1; i >= 0; i--) detail.prepend(alerts[i]);
+    });
+  })();
+
+  (function () {
     // THE scroll-position keeper for the whole finance area: preserve the
     // vertical scroll position across a table's paging / sorting / page-size
     // navigation AND across the reload of any form that reloads the page in

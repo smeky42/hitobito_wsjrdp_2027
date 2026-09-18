@@ -9,5 +9,13 @@
 -#  its expandable row, so a frame request answers with the frame alone; back
 -#  link and heading belong to the partial's header (d.header), which renders in
 -#  :regular mode only.
+-#
+-#  The two answer differently on purpose -- the PAGE is `editing: false` and
+-#  sends the write tier to the edit page through its header's "Bearbeiten"; the
+-#  PANE keeps the kit's own default and stays a reading view, as it always was.
+-#  A number without master data is a stub record and has nothing to edit, so it
+-#  gets no button either.
 = wsjrdp_detail_frame("supplier", @account.number) do
-  = render "fin/personal_accounts/detail", account: @account, ctx: @ctx
+  = render "fin/personal_accounts/detail", account: @account, ctx: @ctx,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && @account.persisted? && can?(:update, WsjrdpPersonalAccount) ? edit_personal_account_path(@account.number) : nil)

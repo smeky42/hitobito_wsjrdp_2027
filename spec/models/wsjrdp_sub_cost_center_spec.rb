@@ -134,21 +134,21 @@ describe WsjrdpSubCostCenter do
 
     it "takes the yearly sum or the explicit total, whichever is larger in absolute value" do
       summed = described_class.create!(cost_center: cost_center, number: "10",
-        budget_2025: -1000, budget_2026: -500, explicit_total_budget: -900)
+        budget_2025: 1000, budget_2026: 500, explicit_total_budget: 900)
       explicit = described_class.create!(cost_center: cost_center, number: "20",
-        budget_2025: -1000, explicit_total_budget: -4000)
+        budget_2025: 1000, explicit_total_budget: 4000)
 
-      expect(summed.reload.effective_total_budget).to eq(-1500)
-      expect(explicit.reload.effective_total_budget).to eq(-4000)
+      expect(summed.reload.effective_total_budget).to eq(1500)
+      expect(explicit.reload.effective_total_budget).to eq(4000)
     end
   end
 
   describe "WsjrdpBudgetable" do
     it "reports the years that have a budget set" do
       sub = described_class.create!(cost_center: cost_center, number: "10",
-        budget_2025: -1000, budget_2027: -250)
+        budget_2025: 1000, budget_2027: 250)
 
-      expect(sub.budgets_by_year).to eq(2025 => -1000, 2027 => -250)
+      expect(sub.budgets_by_year).to eq(2025 => 1000, 2027 => 250)
     end
   end
 

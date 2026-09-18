@@ -26,4 +26,11 @@ module Fin::LedgerAccountsHelper
   def fin_format_wsjrdp_ledger_account_moss_status(account)
     moss_status_cell(account.moss_status)
   end
+
+  # Whether a booking on this account belongs to a unit's budget. The column is
+  # NOT NULL, so the field always says ja or nein -- what the two accounts of a
+  # BOOKING then make of it is DatevBooking's three-step rule.
+  def fin_format_wsjrdp_ledger_account_is_unit_budget(account)
+    account_unit_budget_label(account.is_unit_budget)
+  end
 end

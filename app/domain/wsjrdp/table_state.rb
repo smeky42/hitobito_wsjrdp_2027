@@ -110,9 +110,9 @@ class Wsjrdp::TableState
   #
   # EVERYTHING IS ALREADY PARSED when this object exists. The resolver binds the
   # dataset's schema twice per request -- the FULL one for the fixed slots, the
-  # one reduced by `exclude:` for the user part -- and runs both halves through
-  # the table's filter SCHEMA (Wsjrdp::Filtering::FilterSchema, named by the
-  # policy's `schema:` and by nothing else):
+  # one reduced by `only:` / `exclude:` for the user part -- and runs both halves
+  # through the table's filter SCHEMA (Wsjrdp::Filtering::FilterSchema, named by
+  # the policy's `schema:` and by nothing else):
   #
   #   fixed slots  -> schema.parse_fixed!  STRICT: a typo raises instead of
   #                                        silently dropping the pin
@@ -423,10 +423,11 @@ class Wsjrdp::TableState
 
   # The column set of THIS table (D2b): the dataset's column description -- the
   # policy's codec, one per dataset however many tables show it -- minus the
-  # columns this table does not have (`cols: {exclude:}`), plus the names it
-  # gives some of the rest (`cols: {labels:}`).
+  # columns this table does not have (`cols: {only:}` names the ones it has,
+  # `cols: {exclude:}` the ones it lacks), plus the names it gives some of the
+  # rest (`cols: {labels:}`).
   #
-  # Both may be lambdas (the Moss list serves five routes, and each kind tab has
+  # They may be lambdas (the Moss list serves five routes, and each kind tab has
   # other columns), so this is a per-REQUEST value: the resolver builds it, the
   # state carries it, and the widget reads it from there like every other piece
   # of the state (D8.4). An excluded column is out of the ALLOW-LIST too, so a
@@ -628,14 +629,15 @@ class Wsjrdp::TableState
 
     private
 
-    # The columns THIS table has, and its names for them (D2b). `cols:
-    # {exclude:, labels:}` may be lambdas -- one declaration can serve several
+    # The columns THIS table has, and its names for them (D2b). `cols: {only:,
+    # exclude:, labels:}` may be lambdas -- one declaration can serve several
     # routes -- so they are evaluated here, per request, and checked exactly like
     # the plain declaration the policy checks at load time.
     def build_column_set
       options = @policy.field(:cols).options
       Wsjrdp::TableState::ColumnSet.new(@policy,
-        excluded: @policy.excluded_columns(@policy.evaluate(options[:exclude], @controller)),
+        excluded: @policy.excluded_columns(@policy.evaluate(options[:exclude], @controller),
+          @policy.evaluate(options[:only], @controller)),
         labels: @policy.column_labels(@policy.evaluate(options[:labels], @controller)))
     end
 
@@ -845,12 +847,12 @@ class Wsjrdp::TableState
       # The dataset comes from the DECLARATION only -- never from params, the
       # store or a cookie (Wsjrdp::TableStatePolicy#validate_filter_schema!).
       schema = policy_field.options[:schema]
-      exclude = filter_exclude(policy_field)
-      return Wsjrdp::TableState::Filter.new(schema: nil, exclude: exclude) unless schema
+      return Wsjrdp::TableState::Filter.new(schema: nil, exclude: []) unless schema
 
       # Bound here, once per resolve -- never at class load, so a schema can
       # depend on the request and the strict check below runs per request.
       bound = filter_bound(schema)
+      exclude = filter_exclude(policy_field, bound)
       user_bound = exclude.empty? ? bound : filter_bound(schema, exclude)
       entries, fixed_query = filter_fixed(policy_field, schema, bound)
       Wsjrdp::TableState::Filter.new(schema: schema, exclude: exclude,
@@ -892,8 +894,28 @@ class Wsjrdp::TableState
       schema.parse_fixed!(default_tree, schema: user_bound, what: "filter default tree")
     end
 
-    def filter_exclude(policy_field)
-      Array(@policy.evaluate(policy_field.options[:exclude], @controller)).map(&:to_sym).freeze
+    # The attribute keys the USER half does not offer: with `only:` every
+    # attribute of the bound schema outside that list, plus whatever `exclude:`
+    # takes out on top of it. Both may be lambdas, so both are evaluated here.
+    #
+    # `only:` is host-authored like a fixed slot and is therefore checked: a key
+    # the schema does not carry raises, naming the option. The check belongs
+    # here rather than at class load because the schema is bound per request --
+    # spec/controllers/fin/table_policies_spec.rb resolves every declared table
+    # of the wagon once, so a typo still fails in CI.
+    def filter_exclude(policy_field, bound)
+      exclude = Array(@policy.evaluate(policy_field.options[:exclude], @controller)).map(&:to_sym)
+      only = @policy.evaluate(policy_field.options[:only], @controller)
+      return exclude.freeze if only.nil?
+
+      allowed = Array(only).map(&:to_sym)
+      keys = bound.attributes.keys
+      unknown = allowed - keys
+      if unknown.any?
+        raise ArgumentError, "filter: only: #{unknown.first.inspect} is not an attribute of " \
+                             "this table's schema (#{keys.join(", ")})"
+      end
+      ((keys - allowed) | exclude).freeze
     end
 
     DEFAULT_PER = 50

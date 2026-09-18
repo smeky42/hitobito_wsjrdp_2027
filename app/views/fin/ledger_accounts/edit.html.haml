@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of one Sachkonto: the same central detail, in the kit's :edit
+-#  mode, with the account's own path as the PATCH target. "Abbrechen" goes back
+-#  to the reading page.
+= wsjrdp_detail_frame("account", @account.number) do
+  = render "detail", account: @account, ctx: @ctx, editing: true,
+    form_url: ledger_account_path(@account.number),
+    cancel_url: ledger_account_path(@account.number)

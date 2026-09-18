@@ -21,16 +21,37 @@
 # takes the map as its allow-list, so only these fixed, safe expressions can ever
 # reach SQL). primanota_period sorts on datev_booking_batches, which is why every
 # host of this table hands the rows object a batch-joined relation.
+#
+# `width:` is what a column needs for its HEADER and its usual cell; the full
+# table is laid out `table-layout: fixed; width: 100%`
+# (shared/wsjrdp/_expandable_table_styles), so the declared widths are also the
+# PROPORTIONS in which a table wider than their sum shares the extra room.
+# posting_text carries none: it is the one widthless column and takes whatever
+# the others leave (in the widget's `min-width` it counts as 8rem). The
+# condensed variant ignores `width:` altogether and sizes by content
+# (fin/bookings/_condensed_styles).
 module Fin::DatevBookingsColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "bkcol") do |c|
-    c.column key: "booking_date", abbr: "bdt", label: "Datum", width: "7rem",
+    # Wide enough for the longest label a host gives it: the group's Buchhaltung
+    # calls it "Buchungsdatum", which ran into the next header at 7rem.
+    c.column key: "booking_date", abbr: "bdt", label: "Datum", width: "9.5rem",
       sort: "booking_date", default: true
     c.column key: "service_date", abbr: "sdt", label: "Leistungsdatum", width: "7rem",
       sort: "service_date"
     c.column key: "signed_base_amount", abbr: "amt", label: "Betrag", numeric: true,
       width: "8rem", sort: "signed_base_amount", default: true
+    # Whether the booking belongs to a unit's budget -- the RESOLVED answer, not
+    # the stored override, so it sorts by what the cell shows. The expression is
+    # DatevBooking's own (one definition for the SELECT, the WHERE and the ORDER
+    # BY), which is why every host of this table hands the rows object a
+    # relation carrying the account joins (DatevBooking.with_unit_budget).
+    c.column key: "unit_budget", abbr: "ub", label: "Unit-Budget?",
+      condensed_label: "UB", width: "8rem",
+      sort: DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL
+    # THE widthless column: the description is the one that profits from every
+    # rem the others do not take, and it wraps.
     c.column key: "posting_text", abbr: "posting_text", label: "Beschreibung",
-      width: "16rem", sort: "posting_text", default: true
+      sort: "posting_text", default: true
     # The condensed (in-detail) table abbreviates the headers of the code
     # columns, since only the bare code is shown there (no account /
     # cost-center / supplier name).
@@ -39,9 +60,9 @@ module Fin::DatevBookingsColumns
     c.column key: "secondary_cost_center_number", abbr: "cc2", label: "Sekundäre Kostenstelle",
       condensed_label: "KSt 2", width: "11rem", sort: "secondary_cost_center_number"
     c.column key: "account_number", abbr: "acc", label: "Konto", condensed_label: "Kto",
-      width: "13rem", sort: "account_number", default: true
+      width: "12rem", sort: "account_number", default: true
     c.column key: "offsetting_account_number", abbr: "oacc", label: "Gegenkonto",
-      condensed_label: "Gkto", width: "13rem", sort: "offsetting_account_number", default: true
+      condensed_label: "Gkto", width: "12rem", sort: "offsetting_account_number", default: true
     c.column key: "document_field_1", abbr: "df1", label: "Belegfeld 1", width: "9rem",
       sort: "document_field_1"
     c.column key: "document_field_2", abbr: "df2", label: "Belegfeld 2", width: "9rem",

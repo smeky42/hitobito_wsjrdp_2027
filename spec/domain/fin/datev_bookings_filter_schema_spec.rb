@@ -136,6 +136,47 @@ describe Fin::DatevBookingsFilterSchema do
       expect(apply([[["text_any", "glob", "x*"]]]).to_sql.scan("ILIKE").size).to eq(4)
     end
 
+    # The multi-column reference over BOTH cost centers, the attribute a page
+    # scoped to a set of cost centers pins its rows with: `ist` matches if
+    # either column is in the set, `ist nicht` if neither is. SQL's three-valued
+    # logic applies to the negation as everywhere else -- a row whose secondary
+    # cost center is NULL answers unknown and is left out (see
+    # doc/wsjrdp/generic_filter_builder.md, "Negation excludes missing values").
+    it "matches either cost center, and negates over both" do
+      primary = booking(cost_center_number: "3150", secondary_cost_center_number: "9999")
+      secondary = booking(cost_center_number: "8010", secondary_cost_center_number: "3150")
+      neither = booking(cost_center_number: "8010", secondary_cost_center_number: "9999")
+
+      expect(apply([[["any_cost_center", "in", "3150"]]]).pluck(:id))
+        .to match_array([primary.id, secondary.id])
+      expect(apply([[["any_cost_center", "not_in", "3150"]]]).pluck(:id)).to eq([neither.id])
+      expect(apply([[["any_cost_center", "in", "3150", "9999"]]]).pluck(:id))
+        .to match_array([primary.id, secondary.id, neither.id])
+      sql = apply([[["any_cost_center", "in", "3150"]]]).to_sql
+      expect(sql).to include(%("cost_center_number" IN ('3150')))
+        .and include(%("secondary_cost_center_number" IN ('3150')))
+    end
+
+    # The one yes/no attribute of the bookings filter. There is no boolean type,
+    # so it is a REFERENCE over the two values -- and it compiles against the
+    # RESOLVED answer (DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL), which is why
+    # the schema's base relation carries the two account joins: the booking's own
+    # flag where it is set, the two accounts otherwise. The expression never
+    # yields NULL, so `ist nicht ja` is exactly `ist nein`.
+    it "filters by the resolved Unit-Budget, not by the stored override alone" do
+      WsjrdpLedgerAccount.create!(number: "18000", name: "Testbank")
+      WsjrdpLedgerAccount.create!(number: "66500", name: "Testaufwand",
+        is_unit_budget: false)
+      in_budget = booking(offsetting_account_number: "18000", offsetting_account_kind: "BANK")
+      out_of_budget = booking(posting_text: "aus dem Unit-Budget")
+      overridden = booking(is_unit_budget: true)
+
+      expect(apply([[["unit_budget", "in", "true"]]]).pluck(:id))
+        .to match_array([in_budget.id, overridden.id])
+      expect(apply([[["unit_budget", "in", "false"]]]).pluck(:id)).to eq([out_of_budget.id])
+      expect(apply([[["unit_budget", "not_in", "true"]]]).pluck(:id)).to eq([out_of_budget.id])
+    end
+
     it "filters by financial year and Stapel through the batch join" do
       def batch(label, financial_year, period_to)
         DatevBookingBatch.create!(
@@ -296,6 +337,40 @@ describe Fin::DatevBookingsFilterSchema do
         .select { |a| a[:variant_group] == "Betrag (Original-Währung)" }
       expect(amounts.pluck(:key)).to eq(%i[amount_original amount_original_abs])
       expect(amounts.pluck(:sign)).to eq(%i[signed absolute])
+    end
+
+    # One picker entry per cost-center column plus the one over both, in the
+    # Kostenrechnung group and directly behind the two single ones.
+    it "offers the cost center, its secondary and the entry over both" do
+      any = schema.find(:any_cost_center)
+      expect([any.label, any.short_key])
+        .to eq(["Kostenstelle oder sekundäre Kostenstelle", :ccx])
+      expect(any.operators.map(&:key)).to eq(%i[in not_in])
+      expect(any.options.pairs).to eq(schema.find(:cost_center).options.pairs)
+      keys = schema.attributes.keys
+      expect(keys[keys.index(:cost_center)..keys.index(:any_cost_center)])
+        .to eq(%i[cost_center secondary_cost_center any_cost_center])
+      entry = schema.catalog[:attributes].find { |a| a[:key] == :any_cost_center }
+      expect(entry[:group]).to eq("Kostenrechnung")
+    end
+
+    # A yes/no attribute is a REFERENCE with two options -- that is what gives
+    # the picker its labelled entries, since the vocabulary has no boolean type.
+    it "offers Unit-Budget as a two-valued reference in the Kostenrechnung group" do
+      unit_budget = schema.find(:unit_budget)
+      expect([unit_budget.label, unit_budget.short_key]).to eq(["Unit-Budget?", :ub])
+      expect(unit_budget.operators.map(&:key)).to eq(%i[in not_in])
+      expect(unit_budget.options.pairs).to eq([["true", "ja"], ["false", "nein"]])
+      entry = schema.catalog[:attributes].find { |a| a[:key] == :unit_budget }
+      expect(entry[:group]).to eq("Kostenrechnung")
+    end
+
+    it "round-trips the entry over both cost centers through its short key" do
+      query = Wsjrdp::Filtering::Query.parse([[["any_cost_center", "in", "3150"]]])
+      expect(Fin::DatevBookingsFilterSchema.encode(query, schema: schema))
+        .to eq("!(!(!(ccx,in,'3150')))")
+      expect(Fin::DatevBookingsFilterSchema.decode("!(!(!(ccx,in,'3150')))", schema: schema).as_json)
+        .to eq([[["any_cost_center", "in", "3150"]]])
     end
 
     # The currency those amounts count in, labelled as the Moss pages label it.

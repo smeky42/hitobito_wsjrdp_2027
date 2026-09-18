@@ -69,6 +69,22 @@ Rails.application.routes.draw do
       # :show, not :index, so the leaf sheet keeps its sub-tabs
       # (doc/navigation.md).
       get "finance/bookkeeping" => "group/bookkeeping#show", :as => :finance_bookkeeping
+      # PRG target of the bookings table's filter builder (see
+      # Wsjrdp::TableStateful#wsjrdp_apply_table_filter).
+      post "finance/bookkeeping/apply" => "group/bookkeeping#apply",
+        :as => :finance_bookkeeping_apply
+      # ONE booking of the group: the page a row of that table links to and the
+      # pane it lazy-loads. The id is looked up within the group's cost centers
+      # only (Group::BookingsController), so this route opens nothing the
+      # Buchhaltung tab does not already list.
+      get "finance/bookkeeping/bookings/:id" => "group/bookings#show",
+        :as => :finance_bookkeeping_booking
+      # Editing has a page of its own, reached from the reading page above and
+      # gated on :update_finance; the pane inside the table keeps its inline
+      # toggle and posts to #update directly.
+      get "finance/bookkeeping/bookings/:id/edit" => "group/bookings#edit",
+        :as => :edit_finance_bookkeeping_booking
+      patch "finance/bookkeeping/bookings/:id" => "group/bookings#update"
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
@@ -184,7 +200,10 @@ Rails.application.routes.draw do
       scope "bookkeeping" do
         # Ledger accounts (Sachkonten) and personal accounts (Kreditoren /
         # Debitoren) are keyed by their numeric DATEV account number.
-        resources :ledger_accounts, param: :number, only: [:index, :show],
+        # :show is the reading page, :edit the form page it leads to and
+        # :update its target -- the same view/edit split the bookings use, for
+        # the one field an account carries that Hitobito owns (is_unit_budget).
+        resources :ledger_accounts, param: :number, only: [:index, :show, :edit, :update],
           constraints: {number: /\d+/} do
           collection do
             # Apply target of the generic CNF filter builder (PRG; see
@@ -200,7 +219,7 @@ Rails.application.routes.draw do
             post :apply
           end
         end
-        resources :personal_accounts, param: :number, only: [:index, :show],
+        resources :personal_accounts, param: :number, only: [:index, :show, :edit, :update],
           constraints: {number: /\d+/} do
           collection do
             # Apply target of the generic CNF filter builder (PRG; see
@@ -217,7 +236,8 @@ Rails.application.routes.draw do
         # :update is the ONE endpoint for all manual associations of the booking
         # detail view (person assign/clear, entry connect/unlink): each mini-form
         # PATCHes a field subset of datev_booking (see BookingsController#update).
-        resources :bookings, only: [:index, :show, :update] do
+        # :show is the reading page, :edit the form page it leads to.
+        resources :bookings, only: [:index, :show, :edit, :update] do
           collection do
             # Apply target of the generic CNF filter builder (PRG; see
             # Fin::BookingsController#apply).

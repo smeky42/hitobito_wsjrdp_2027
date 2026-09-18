@@ -110,6 +110,7 @@ module Fin::BookkeepingHelper
       "short_name" => ->(a) { a.short_name.presence || bookkeeping_muted_dash },
       "account_kind" => ->(a) { account_kind_label(a.account_kind).presence || bookkeeping_muted_dash },
       "moss_status" => ->(a) { moss_status_cell(a.moss_status) },
+      "is_unit_budget" => ->(a) { account_unit_budget_label(a.is_unit_budget) },
       "booking_sum" => ->(a) { bookkeeping_sum_cell(a.booking_sum) },
       "booking_count" => ->(a) { a.booking_count })
   end
@@ -123,6 +124,7 @@ module Fin::BookkeepingHelper
       "name" => ->(c) { c.name.presence || bookkeeping_muted_dash },
       "short_name" => ->(c) { c.short_name.presence || bookkeeping_muted_dash },
       "moss_status" => ->(c) { moss_status_cell(c.moss_status) },
+      "is_unit_cost_center" => ->(c) { fin_unit_cost_center_label(c.is_unit_cost_center) },
       "booking_sum" => ->(c) { bookkeeping_sum_cell(c.booking_sum) },
       "booking_count" => ->(c) { c.booking_count })
   end
@@ -135,6 +137,7 @@ module Fin::BookkeepingHelper
       "number" => ->(a) { a.number },
       "name" => ->(a) { a.name.presence || bookkeeping_muted_dash },
       "moss_status" => ->(a) { moss_status_cell(a.moss_status) },
+      "is_unit_budget" => ->(a) { account_unit_budget_label(a.is_unit_budget) },
       "booking_balance" => ->(a) { bookkeeping_sum_cell(a.booking_balance) },
       "booking_count" => ->(a) { a.booking_count })
   end
@@ -175,6 +178,17 @@ module Fin::BookkeepingHelper
   def moss_status_active?(status)
     status == WsjrdpCostCenter::STATUS_ACTIVE
   end
+
+  # --- Unit-Budget on an ACCOUNT ---------------------------------------------
+
+  # The account's own flag in words. NOT NULL with `true` as its default, so
+  # there is no third state to render here -- the three-step rule that turns two
+  # accounts into a booking's answer lives on DatevBooking.
+  def account_unit_budget_label(flag) = flag ? "ja" : "nein"
+
+  # The two choices of the account edit pages' select, shared by the Sachkonten
+  # and the Kreditoren detail.
+  def fin_account_unit_budget_options = [["ja", "true"], ["nein", "false"]]
 
   # Pairs each described column with its cell. `cells` is keyed by column key and
   # is fetched, so a column without a cell (or a cell without a column) raises

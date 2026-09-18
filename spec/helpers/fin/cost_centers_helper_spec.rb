@@ -78,7 +78,7 @@ describe Fin::CostCentersHelper do
       expect(budget(2025, budget_2025: 1500)).to eq(money("1.500,00"))
     end
 
-    it "keeps the sign of a negative budget (an expense)" do
+    it "passes a negative value through with its sign" do
       expect(budget(2026, budget_2026: -2450.5)).to eq(money("-2.450,50"))
     end
 
@@ -92,8 +92,8 @@ describe Fin::CostCentersHelper do
   describe "the explicit total budget" do
     it "shows it in the money format" do
       expect(helper.fin_format_wsjrdp_cost_center_explicit_total_budget(
-        cost_center(explicit_total_budget: -4000)
-      )).to eq(money("-4.000,00"))
+        cost_center(explicit_total_budget: 4000)
+      )).to eq(money("4.000,00"))
     end
 
     it "is blank when nobody set one" do
@@ -108,10 +108,10 @@ describe Fin::CostCentersHelper do
 
     it "shows the generated total and explains where it comes from" do
       record = WsjrdpCostCenter.create!(number: "K901", name: "Testkostenstelle",
-        budget_2025: -1000, budget_2026: -500)
+        budget_2025: 1000, budget_2026: 500)
 
       value = effective(record.reload)
-      expect(value[:value]).to eq(money("-1.500,00"))
+      expect(value[:value]).to eq(money("1.500,00"))
       expect(value[:help]).to include("Automatisch berechnet")
     end
 

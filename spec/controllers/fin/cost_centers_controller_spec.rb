@@ -136,6 +136,20 @@ describe Fin::CostCentersController do
         .to eq(["Alpha", "—", "Gamma kurz"])
     end
 
+    # Whose budget a cost center holds: few carry the flag, so the column is
+    # offered rather than shown (doc/fin/unit_budget.md).
+    it "offers Unit-Kostenstelle as a column, not shown by default" do
+      get :index
+      expect(rendered_column_keys).not_to include("is_unit_cost_center")
+
+      WsjrdpCostCenter.find_by(number: "K100").update!(is_unit_cost_center: true)
+      get :index, params: {c: "nr,ukst"}
+
+      expect(rendered_column_keys).to eq(%w[number is_unit_cost_center])
+      expect(cells("is_unit_cost_center").map { |cell| cell.gsub(/<[^>]+>/, "").strip })
+        .to eq(%w[ja nein nein])
+    end
+
     it "shows the Moss status as a tinted aktiv / inaktiv, a NULL status as inaktiv" do
       get :index
       expect(cells("moss_status").map { |cell| cell[/moss-status-(\w+)/, 1] })
@@ -358,7 +372,7 @@ describe Fin::CostCentersController do
     # row counts, because this changes an existing cost center instead of adding
     # one.
     def add_budgets
-      WsjrdpCostCenter.find_by(number: "K100").update!(budget_2025: -1000, budget_2027: -250)
+      WsjrdpCostCenter.find_by(number: "K100").update!(budget_2025: 1000, budget_2027: 250)
     end
 
     # The money format of the Finanzen lists joins number and symbol with a
@@ -413,8 +427,8 @@ describe Fin::CostCentersController do
       get :show, params: {number: "K100"}
 
       expect(page_labels & budget_labels).to eq(budget_labels)
-      expect(page_value("Budget 2025")).to eq(money("-1.000,00"))
-      expect(page_value("Budget 2027")).to eq(money("-250,00"))
+      expect(page_value("Budget 2025")).to eq(money("1.000,00"))
+      expect(page_value("Budget 2027")).to eq(money("250,00"))
       expect(unset_marker("Budget 2026")).to eq("nicht gesetzt")
       expect(unset_marker("Budget 2028")).to eq("nicht gesetzt")
       expect(unset_marker("Gesamtbudget (explizit)")).to eq("nicht gesetzt")
@@ -426,7 +440,7 @@ describe Fin::CostCentersController do
       get :show, params: {number: "K100"}
 
       row = page_row("Gesamtbudget")
-      expect(row.at_css("dd").text).to include(money("-1.250,00"))
+      expect(row.at_css("dd").text).to include(money("1.250,00"))
       expect(row.at_css("dd span.form-text").text).to include("Automatisch berechnet")
     end
 
@@ -442,16 +456,40 @@ describe Fin::CostCentersController do
       expect(response.body).to include("expandable_table_level=1")
     end
 
+    # The flag that says WHOSE budget the budgets above it are. It is a plain
+    # yes/no -- NULL and false mean the same thing -- and editable for whoever
+    # may update the cost center.
+    it "offers the Unit-Kostenstelle flag behind the budgets" do
+      get :show, params: {number: "K100"}
+
+      expect(page_labels.last).to eq("Unit-Kostenstelle")
+      expect(page_value("Unit-Kostenstelle")).to eq("nein")
+      options = doc.css("select[name='wsjrdp_cost_center[is_unit_cost_center]'] option")
+        .map { |option| [option.text.strip, option["value"]] }
+      expect(options).to eq([["ja", "true"], ["nein", "false"]])
+    end
+
+    it "stores the Unit-Kostenstelle flag" do
+      patch :update, params: {number: "K100",
+                              wsjrdp_cost_center: {is_unit_cost_center: "true"}}
+      expect(WsjrdpCostCenter.find_by(number: "K100").is_unit_cost_center).to be true
+
+      patch :update, params: {number: "K100",
+                              wsjrdp_cost_center: {is_unit_cost_center: "false"}}
+      expect(WsjrdpCostCenter.find_by(number: "K100").is_unit_cost_center).to be false
+    end
+
     # A number the master data does not describe is a stub record: no field has
     # a value, so what is left besides header and bookings is the Moss status
-    # (a record Moss does not know counts as inaktiv, like in the list) and the
-    # six budget rows the partial keeps on blank: :unset.
+    # (a record Moss does not know counts as inaktiv, like in the list), the
+    # six budget rows the partial keeps on blank: :unset and the Unit-Kostenstelle
+    # flag, which is never blank -- false is an answer.
     it "renders a number without a Kostenstellen record" do
       get :show, params: {number: "K999"}
 
       expect(response).to be_successful
       expect(detail_heading).to include("K999")
-      expect(page_labels).to eq(["Moss Status"] + budget_labels)
+      expect(page_labels).to eq(["Moss Status"] + budget_labels + ["Unit-Kostenstelle"])
       expect(page_row("Moss Status").at_css("dd").text.strip).to eq("inaktiv")
       expect(budget_labels.map { |label| unset_marker(label) })
         .to all(eq("nicht gesetzt"))

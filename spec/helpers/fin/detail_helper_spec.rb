@@ -107,6 +107,16 @@ describe Fin::DetailHelper do
       expect(doc.at_css("dd span.text-muted").text).to eq("—")
     end
 
+    # "nicht gesetzt" states an absence and steps further back than the muted em
+    # dash; Bootstrap 5.2 has no .text-body-tertiary, hence the inline opacity.
+    it "sets the unset marker back further than the muted dash" do
+      doc = detail { |d| d.attrs(:bic, bic: {blank: :unset}) }
+      expect(doc.at_css("dd span.text-muted.small")["style"]).to include("opacity")
+
+      dashed = detail { |d| d.attrs(:bic, bic: {blank: :dash}) }
+      expect(dashed.at_css("dd span.text-muted")["style"]).to be_nil
+    end
+
     it "says 'nicht gesetzt' for an unset field, in every layout" do
       doc = detail { |d| d.attrs(:bic, bic: {blank: :unset}) }
       expect(doc.css("dt").map(&:text)).to eq(["BIC"])
@@ -372,6 +382,118 @@ describe Fin::DetailHelper do
       expect(doc.at_css("style").text).to include("font-weight: 400")
 
       expect(detail(embedded) { |d| d.attrs :name }.css("style")).to be_empty
+    end
+  end
+
+  # The three edit modes of `editing:` (Fin::DetailHelper::EDIT_MODES): nil
+  # keeps what the kit has always done, false is a reading page, true the edit
+  # page.
+  describe "the edit modes" do
+    let(:form_url) { "/fin/bookkeeping/personal_accounts/700000" }
+
+    # One editable field, blank, so the mode decides both whether its row stands
+    # and whether it carries an input.
+    def editable_detail(ctx = regular, editable: true, **options)
+      detail(ctx, form_url: form_url, **options) do |d|
+        d.attrs(:name, :bic, bic: {blank: :hide, editable: editable, input: :text})
+      end
+    end
+
+    def labels(doc) = doc.css("dt").map(&:text)
+
+    it "shows the inputs on the record's own page when nothing is said" do
+      doc = editable_detail
+      expect(doc.at_css("input[name='wsjrdp_personal_account[bic]']")).to be_present
+      expect(doc.at_css(".fin-edit-toggle")).to be_nil
+      expect(doc.at_css("[data-fin-editing]")["data-fin-editing"]).to eq("true")
+    end
+
+    it "offers the inline toggle in an embedded pane when nothing is said" do
+      doc = editable_detail(embedded)
+      expect(doc.at_css(".fin-edit-toggle").text).to include("Bearbeiten")
+      expect(doc.at_css("[data-fin-editing]")["data-fin-editing"]).to eq("false")
+      expect(doc.at_css("input[name='wsjrdp_personal_account[bic]']")).to be_present
+    end
+
+    it "drops the form entirely in view mode, whatever form_url says" do
+      doc = editable_detail(editing: false)
+      expect(doc.at_css("form")).to be_nil
+      expect(doc.at_css(".fin-edit-toggle")).to be_nil
+      expect(doc.at_css(".fin-edit-actions")).to be_nil
+    end
+
+    it "carries the two submits and the cancel link in edit mode" do
+      doc = editable_detail(editing: true, cancel_url: form_url)
+      expect(doc.css("button[type=submit]").pluck("name")).to eq(%w[save stay])
+      expect(doc.css("button[type=submit]").map { |b| b.text.strip })
+        .to eq(["Speichern", "Speichern und weiter bearbeiten"])
+      cancel = doc.css("a").find { |a| a.text.strip == "Abbrechen" }
+      expect(cancel["href"]).to eq(form_url)
+      expect(doc.at_css(".fin-edit-toggle")).to be_nil
+    end
+
+    it "rejects an editing: that is none of the three" do
+      expect { editable_detail(editing: :maybe) }
+        .to raise_error(ArgumentError, /editing must be nil/)
+    end
+
+    # An editable field of the page stands wherever its input can be REACHED --
+    # blank or not, since that is where the input goes.
+    it "keeps a blank editable field wherever there is a form" do
+      expect(labels(editable_detail)).to eq(%w[Name BIC])
+      expect(labels(editable_detail(embedded))).to eq(%w[Name BIC])
+      expect(labels(editable_detail(editing: true))).to eq(%w[Name BIC])
+    end
+
+    it "lets the reading page drop it by its blank rule" do
+      expect(labels(editable_detail(editing: false))).to eq(["Name"])
+    end
+
+    # Where no input is rendered -- the viewer may read the field but not change
+    # it -- the unset marker takes the empty value column's place.
+    it "marks a blank field the viewer may not edit as unset" do
+      doc = editable_detail(editing: true, editable: false)
+      expect(labels(doc)).to eq(%w[Name BIC])
+      expect(doc.at_css("input[name='wsjrdp_personal_account[bic]']")).to be_nil
+      expect(doc.at_css("dd span.text-muted.small").text).to eq("nicht gesetzt")
+    end
+
+    # A field's `extra:` names a helper rendering one more control beside the
+    # input -- how the booking edit page puts a "new sub cost center" field next
+    # to its select.
+    it "renders the extra control beside the input" do
+      stub_helper(:fin_spec_extra_field) do |_form, _row|
+        content_tag(:input, nil, name: "extra[number]")
+      end
+      doc = detail(form_url: form_url, editing: true) do |d|
+        d.attrs(:bic, bic: {editable: true, input: :text, extra: :fin_spec_extra_field})
+      end
+      expect(doc.at_css("dd input[name='wsjrdp_personal_account[bic]']")).to be_present
+      expect(doc.at_css("dd input[name='extra[number]']")).to be_present
+    end
+  end
+
+  describe "the header's Bearbeiten button" do
+    def with_edit_url(edit_url)
+      detail(regular, editing: false, edit_url: edit_url) do |d|
+        d.header back: "/fin/bookkeeping/personal_accounts", back_label: "Zurück",
+          label: "Kreditor 700000"
+        d.attrs :name
+      end
+    end
+
+    # It breaks out of the turbo frame the detail sits in; a plain link would
+    # navigate that frame and leave the page's own URL behind.
+    it "goes into the header's toolbar slot and out of the frame" do
+      button = with_edit_url("/fin/bookkeeping/personal_accounts/700000/edit")
+        .css("a").find { |a| a.text.strip == "Bearbeiten" }
+      expect(button["href"]).to eq("/fin/bookkeeping/personal_accounts/700000/edit")
+      expect(button["class"]).to include("btn-outline-primary")
+      expect(button["data-turbo-frame"]).to eq("_top")
+    end
+
+    it "renders nothing without an edit page" do
+      expect(with_edit_url(nil).css("a").map { |a| a.text.strip }).not_to include("Bearbeiten")
     end
   end
 

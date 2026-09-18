@@ -84,6 +84,29 @@ class Fin::PersonalAccountsController < Fin::FinController
     render_item_detail
   end
 
+  # The EDIT PAGE of one Kreditor; #show is the reading page it is reached from
+  # and comes back to. Authorized on the RECORD, the way #update is, so the read
+  # and the audit tier get as far as the reading page and no further. A number
+  # without master data has nothing to edit -- #show invents a stub record for
+  # it, #edit does not.
+  def edit
+    @account = WsjrdpPersonalAccount.find_by!(number: params[:number])
+    authorize!(:update, @account)
+    @ctx = Fin::AttrFormatContext.regular
+  end
+
+  def update
+    @account = WsjrdpPersonalAccount.find_by!(number: params[:number])
+    authorize!(:update, @account)
+    if @account.update(account_params)
+      redirect_to personal_account_path(@account.number),
+        notice: "Kreditor #{@account.number} aktualisiert."
+    else
+      redirect_to edit_personal_account_path(@account.number),
+        alert: "Fehler: #{@account.errors.full_messages.join(", ")}"
+    end
+  end
+
   # Apply target of the filter builder (PRG, generic implementation in
   # Wsjrdp::TableStateful). The page resets to 1.
   def apply
@@ -94,6 +117,13 @@ class Fin::PersonalAccountsController < Fin::FinController
 
   def authorize_action
     authorize!(:show, WsjrdpPersonalAccount)
+  end
+
+  # The one field of a Kreditor Hitobito owns: whether a booking on it belongs to
+  # a unit's budget. Everything else on the record comes from the DATEV or the
+  # Moss export and is rewritten by the next import.
+  def account_params
+    params.require(:wsjrdp_personal_account).permit(:is_unit_budget)
   end
 
   # THE filtered relation -- the only way from the state to the rows

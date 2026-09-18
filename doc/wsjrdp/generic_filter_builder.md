@@ -1248,6 +1248,7 @@ generic/specific boundary of §2.12(4):
              schema: Fin::DatevBookingsFilterSchema,              # the dataset (mandatory)
              fixed: [{slots: LOCKED_FILTER_TREE, show: :readonly},
                      {slots: HIDDEN_TREE,        show: :hidden}],
+             only: OFFERED_FILTER_ATTRIBUTES,               # ... or the whole offer
              exclude: EXCLUDED_FILTER_ATTRIBUTES,
              default: [[["konto", "in", "41030"]]],         # user tree, if nothing chosen
              presets: PRESETS}                              # one-click toggles
@@ -1266,12 +1267,16 @@ generic/specific boundary of §2.12(4):
     hooks: `show: :readonly` slots are rendered as locked chips, `show: :hidden`
     ones never reach the view, and **both** are parsed strictly and compiled —
     display visibility never influences enforcement.
-  - `exclude:` replaces the former `filter_excluded_attributes` hook; the
-    resolver binds the schema a second time with `bound(except: …)` and decodes
-    the user part against that reduced schema, so an excluded attribute is
-    dropped whether it arrives from the URL, from the store or from the apply
-    form. There is no code path that decodes the user part against the full
-    schema.
+  - `only:` / `exclude:` shape what the PICKER offers — the one names the
+    attributes the page offers, the other the ones it does not, and a
+    declaration may carry both (`only:` first, `exclude:` subtracting from what
+    is left). `exclude:` replaces the former `filter_excluded_attributes` hook.
+    Either way the resolver binds the schema a second time with
+    `bound(except: …)` and decodes the user part against that reduced schema, so
+    an attribute outside the offer is dropped whether it arrives from the URL,
+    from the store or from the apply form. There is no code path that decodes
+    the user part against the full schema. A key `only:` names that the schema
+    does not carry raises at resolve time, naming the option.
   - `default:` is the user tree shown when neither the param nor the store
     provides one. Host-authored, so it is parsed strictly too — against the
     *reduced* schema, because it is the user part and must be editable in the
@@ -1563,6 +1568,9 @@ generic/specific boundary of §2.12(4):
 - **"Konto oder Gegenkonto"** attribute (`any_account`, short_key `kgk`):
   REFERENCE became multi-column-capable — `ist` matches if ANY column is in the
   set, `ist nicht` if NONE is (`present`/`blank` follow the same any/all rule).
+  **"Kostenstelle oder sekundäre Kostenstelle"** (`any_cost_center`, short_key
+  `ccx`) is the same over the booking's two cost-center columns; it is what a
+  page scoped to a set of cost centers pins its rows with.
   **Bug found in testing:** the naive `Array(column)` exploded a single Arel
   attribute (a Struct) into `[table, name]`, breaking every single-column
   reference filter — replaced by an explicit `Types.wrap` with a warning

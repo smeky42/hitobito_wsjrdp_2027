@@ -1,0 +1,26 @@
+-#  Copyright (c) 2026, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+-#
+-#  One booking on the group's own route: the central detail partial with the
+-#  group's field list. The frame id carries the prefix of the table on the
+-#  Buchhaltung tab ("gb"), which is what that table's lazy pane asks for --
+-#  a different one answers the wrong frame and Turbo renders "Content missing".
+-#
+-#  The PAGE reads (`editing: false`) and leads to the edit page where the viewer
+-#  may write; the PANE keeps the inline toggle (`editing: nil`).
+-#
+-#  No back link (`back: nil`): the page is reached from the Buchhaltung tab, the
+-#  tab itself stands active above it, and the browser's own back button is the
+-#  way there. /fin keeps its "Zurück zur Liste", where the list is a page of its
+-#  own rather than a tab.
+- may_edit = can?(:update_finance, @group)
+= wsjrdp_detail_frame("gb", @booking.id) do
+  = render "fin/bookings/detail", booking: @booking, ctx: @ctx,
+    only: Group::BookingsController::FIELDS,
+    editable: (may_edit ? Group::BookingsController::EDITABLE_FIELDS : []),
+    form_url: (may_edit ? group_finance_bookkeeping_booking_path(@group, @booking) : nil),
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && may_edit ? group_edit_finance_bookkeeping_booking_path(@group, @booking) : nil),
+    back: nil

@@ -17,9 +17,9 @@
 -#  year says so, which is worth reading; every other field simply disappears
 -#  when it is blank.
 -#
--#  Budget fields (budget_2025..2028, explicit_total_budget) are editable for
--#  users who can update the cost center; effective_total_budget is a generated
--#  column and stays read-only.
+-#  Budget fields (budget_2025..2028, explicit_total_budget) and the
+-#  Unit-Kostenstelle flag are editable for users who can update the cost center;
+-#  effective_total_budget is a generated column and stays read-only.
 -#
 -#  The values come from Fin::CostCentersHelper, the labels from
 -#  de.activerecord.attributes.wsjrdp_cost_center.
@@ -39,6 +39,12 @@
       :explicit_total_budget, :effective_total_budget, blank: :unset,
       budget_2025: editable, budget_2026: editable, budget_2027: editable,
       budget_2028: editable, explicit_total_budget: editable
+  -# Beside the budgets, because it says WHOSE budget they are: a unit cost
+  -# center's Gesamtbudget is what a group's Buchhaltung measures its
+  -# Unit-Budget bookings against (doc/fin/unit_budget.md).
+  - d.attrs :is_unit_cost_center,
+      is_unit_cost_center: {input: :select, options: fin_unit_cost_center_options,
+                            editable: can?(:update, cost_center)}
   - d.attrs :description, :comment
   - d.bookings cost_center_bookings(cost_center.number),
       show_all_path: bookings_filter_path([[["cost_center", "in", cost_center.number]]]),

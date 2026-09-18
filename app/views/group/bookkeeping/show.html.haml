@@ -3,19 +3,43 @@
 -#  or later. See the COPYING file at the top-level directory or at
 -#  https://github.com/hitobito/hitobito_wsjrdp_2027.
 -#
--#  The group's Buchhaltung tab. So far it names the cost centers of the group
--#  (groups.additional_info["cost_center_numbers"], assigned on
--#  /fin/admin/group_cost_centers); sums and bookings follow.
+-#  The group's Buchhaltung tab: one compact line with the cost centers of the
+-#  group (groups.additional_info["cost_center_numbers"], assigned on
+-#  /fin/admin/group_cost_centers), the three figures of the unit's budget below
+-#  it, and its DATEV bookings below those.
+-#
+-#  The tiles read the PINNED set -- every booking of the group's cost centers --
+-#  and not what the filter leaves: the table answers what the viewer is looking
+-#  at, the tiles where the unit stands (Fin::GroupBookkeepingFigures). The
+-#  table's own summary line states the filtered figures.
+-#
+-#  The bookings table is the one from /fin/bookkeeping/bookings
+-#  (fin/bookings/_browser), pinned to those cost centers by the fixed filter
+-#  slot of Group::BookkeepingController::BOOKINGS_POLICY. `detail_page:` and
+-#  `detail_src:` keep the row's detail page and its lazy pane on the group's own
+-#  route, so nothing here leads into the Finanzen section.
 
 - title(t("groups.finance.bookkeeping.title"))
 
+-#  The figure tiles wear the look of the /fin cards' figure rows: a muted
+-#  label over a tabular figure. Only this page has them, so the few rules live
+-#  here rather than in a shared partial -- the same choice fin/overview/index
+-#  makes with .fin-area.
+:css
+  .gb-figures { display: flex; flex-wrap: wrap; gap: .9rem; margin: .9rem 0; }
+  .gb-figure { flex: 1 1 12rem; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .35rem; padding: .5rem .8rem; }
+  .gb-figure-label { display: block; font-size: .85rem; color: var(--bs-secondary-color, #6c757d); }
+  /* Tabular figures so the three numbers align under each other when the row wraps. */
+  .gb-figure-value { display: block; font-size: 1.15rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .gb-figure-hint { display: block; font-size: .8rem; color: var(--bs-secondary-color, #6c757d); }
+
 #main
-  %h2.h5= t("groups.finance.bookkeeping.cost_centers")
   - cost_centers = @group.cost_centers
-  - if cost_centers.empty?
-    %p.text-muted= t("groups.finance.bookkeeping.no_cost_centers")
-  - else
-    .d-flex.flex-wrap.gap-1
+  .d-flex.flex-wrap.align-items-baseline.gap-2
+    %span.text-muted= t("groups.finance.bookkeeping.cost_centers")
+    - if cost_centers.empty?
+      %span.text-muted= t("groups.finance.bookkeeping.no_cost_centers")
+    - else
       - cost_centers.each do |cost_center|
         %span.badge.text-bg-light.border
           -# A unit leader reaches this page without any access to the Finanzen
@@ -24,3 +48,37 @@
             = link_to cost_center.to_s, cost_center_path(cost_center.number)
           - else
             = cost_center.to_s
+
+  -# Without cost centers there is nothing to pin the table to, and an unpinned
+  -# one would list the whole contingent -- so the line above is the whole page.
+  - if group_cost_center_numbers.any?
+    -# The tiles talk of EXPENSES, as positive figures: the signed booking sums
+    -# of the figures object with their sign turned (Fin::GroupBookkeepingFigures);
+    -# the budget is positive as stored.
+    .gb-figures
+      .gb-figure
+        %span.gb-figure-label Ausgaben Gesamt
+        %span.gb-figure-value= fin_money(bookkeeping_figures.expenses_total)
+      .gb-figure
+        %span.gb-figure-label Ausgaben Unit-Budget
+        %span.gb-figure-value= fin_money(bookkeeping_figures.expenses_unit_budget)
+      .gb-figure
+        %span.gb-figure-label Unit-Budget
+        - if bookkeeping_figures.budget?
+          %span.gb-figure-value= fin_money(bookkeeping_figures.budget)
+        - else
+          %span.gb-figure-value —
+          %span.gb-figure-hint kein Unit-Budget hinterlegt
+      .gb-figure
+        %span.gb-figure-label Unit-Budget Verbraucht
+        - share = bookkeeping_figures.used_share
+        - if share
+          %span.gb-figure-value= number_to_percentage(share, precision: 0)
+        - else
+          %span.gb-figure-value —
+
+    %h2.h5.mt-4 Buchungen
+    - booking_path_for = ->(booking) { group_finance_bookkeeping_booking_path(@group, booking) }
+    = render "fin/bookings/browser", rows: bookings,
+      apply_url: group_finance_bookkeeping_apply_path(@group),
+      detail_page: booking_path_for, detail_src: booking_path_for
