@@ -89,6 +89,14 @@ describe Fin::DetailBuilder do
         .to raise_error(ArgumentError, /unknown field option\(s\) lable/)
     end
 
+    # `extra` names a helper that renders one more control beside the field's
+    # input; the builder only carries it through to the row.
+    it "carries the extra: control of an editable field" do
+      builder.attrs(:iban, iban: {editable: true, input: :select, extra: :fin_new_thing_field})
+      expect(builder.to_sections.first.items.first.options)
+        .to eq(editable: true, input: :select, extra: :fin_new_thing_field)
+    end
+
     it "rejects a layout that is none of the three" do
       expect { builder.attrs(:iban, layout: :table) }
         .to raise_error(ArgumentError, /layout must be one of list, compact, grid/)
@@ -299,6 +307,12 @@ describe Fin::DetailBuilder do
       expect(section.kind).to eq(:custom)
       expect(section.title).to eq("Verknüpfungen")
       expect(section.html).to eq("<div>Widget</div>")
+      expect(section.key).to be_nil
+    end
+
+    it "keeps the key a only: list addresses it by" do
+      builder.custom(key: :links, title: "Verknüpfungen") { "<div></div>" }
+      expect(builder.to_sections.first.key).to eq(:links)
     end
 
     it "stores what the view's capture makes of the block" do
@@ -341,6 +355,80 @@ describe Fin::DetailBuilder do
     it "freezes the field lists -- the declaration phase is over" do
       builder.attrs :name
       expect(builder.to_sections.first.items).to be_frozen
+    end
+  end
+
+  # A host that shows the same partial with FEWER fields hands the builder its
+  # field list instead of writing a partial of its own: the fields it names, the
+  # keyed sections it names, and the header, which is the page's own frame.
+  describe "only:" do
+    subject(:builder) { described_class.new(only: only) }
+
+    let(:only) { %i[name iban links] }
+
+    # The partial every example below declares, in full.
+    def declare(target = builder)
+      target.header(back: "/fin", back_label: "Zurück", label: "Kreditor 700000")
+      target.attrs :name, :short_name, :iban
+      target.attrs :bic
+      target.raw_data(key: :raw) { |d| d.raw_entries :other_datev_columns, title: "DATEV Rohdaten" }
+      target.custom(key: :links, title: "Verknüpfungen") { "<div></div>" }
+      target.custom(key: :moss, title: "Moss") { "<div></div>" }
+    end
+
+    it "keeps the listed fields and drops the rest" do
+      declare
+      expect(kinds).to eq(%i[header fields custom])
+      expect(attrs_of(1)).to eq(%i[name iban])
+    end
+
+    it "drops a field group the list leaves empty" do
+      declare
+      expect(builder.to_sections.map(&:title)).not_to include("bic")
+      expect(builder.to_sections.flat_map { |s| s.items.to_a.map(&:attr) }).to eq(%i[name iban])
+    end
+
+    it "keeps a keyed section the list names and drops the others" do
+      declare
+      expect(builder.to_sections.last.key).to eq(:links)
+      expect(builder.to_sections.map(&:key)).not_to include(:raw, :moss)
+    end
+
+    it "keeps the header, which is the page's own frame" do
+      declare
+      expect(kinds.first).to eq(:header)
+      expect(builder.to_sections.first.options[:label]).to eq("Kreditor 700000")
+    end
+
+    it "takes the list as Strings too" do
+      strings = described_class.new(only: %w[name links])
+      declare(strings)
+      expect(strings.to_sections.map(&:kind)).to eq(%i[header fields custom])
+      expect(strings.to_sections[1].items.map(&:attr)).to eq([:name])
+    end
+
+    # A keyed kind without a key: could never appear in the list, so it would
+    # vanish silently -- which is a declaration mistake, not a hidden section.
+    it "raises for a keyed section that has no key:, naming it" do
+      builder.custom(title: "Verknüpfungen") { "<div></div>" }
+      expect { builder.to_sections }
+        .to raise_error(ArgumentError, /d.custom \(Verknüpfungen\) needs a key:/)
+    end
+
+    it "names the kind alone when the section has no title either" do
+      builder.bookings [], show_all_path: "/fin", all_label: "Alle"
+      expect { builder.to_sections }.to raise_error(ArgumentError, /d.bookings needs a key:/)
+      builder2 = described_class.new(only: only)
+      builder2.raw_data { |d| d.raw_entries :other_datev_columns, title: "R" }
+      expect { builder2.to_sections }.to raise_error(ArgumentError, /d.raw_data needs a key:/)
+    end
+
+    # Without a list nothing is dropped and a missing key: is nobody's business.
+    it "changes nothing when it is not given" do
+      plain = described_class.new
+      declare(plain)
+      plain.custom(title: "Ohne Key") { "<div></div>" }
+      expect(plain.to_sections.map(&:kind)).to eq(%i[header fields fields raw_data custom custom custom])
     end
   end
 end

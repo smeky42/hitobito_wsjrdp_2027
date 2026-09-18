@@ -36,17 +36,19 @@ describe Fin::BookingsController, type: :controller do
 
   before { sign_in(manager) }
 
-  # The field-edit form starts at the write tier, so it tells that tier from
-  # the read one. Nothing on this page belongs to the manage tier alone any
-  # more, so the tier itself is asked of the ability.
-  def field_form? = response.body.include?("datev_booking[secondary_cost_center_number]")
+  # The reading page offers the write tier the way to its edit page -- the
+  # "Bearbeiten" button (doc/fin/detail_partials.md §6) -- and the read tier
+  # none, so that button tells the two tiers apart. Nothing on this page
+  # belongs to the manage tier alone any more, so the tier itself is asked of
+  # the ability.
+  def edit_offered? = response.body.include?(%(href="#{edit_booking_path(booking)}"))
 
   it "stores a valid parameter in the session and applies it right away" do
     get :show, params: {id: booking.id, max_finance_permission: "finance_read"}
 
     expect(session[:max_finance_permission]).to eq("finance_read")
     expect(response).to be_successful
-    expect(field_form?).to be(false)
+    expect(edit_offered?).to be(false)
     expect(controller.current_ability).not_to be_able_to(:update, DatevBooking)
   end
 
@@ -56,7 +58,7 @@ describe Fin::BookingsController, type: :controller do
 
     expect(controller.current_ability).to be_able_to(:update, DatevBooking)
     expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-    expect(field_form?).to be(true)
+    expect(edit_offered?).to be(true)
   end
 
   it "drops the pick on an unknown or empty value, so the default tier applies" do
@@ -66,7 +68,7 @@ describe Fin::BookingsController, type: :controller do
     expect(session[:max_finance_permission]).to be_nil
     expect(controller.current_ability).to be_able_to(:update, DatevBooking)
     expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-    expect(field_form?).to be(true) # the default is the write tier, not manage
+    expect(edit_offered?).to be(true) # the default is the write tier, not manage
   end
 
   it "drops a stale session value and behaves as if none were set" do
@@ -89,14 +91,14 @@ describe Fin::BookingsController, type: :controller do
       expect(session[:max_finance_permission]).to be_nil
       expect(controller.current_ability).to be_able_to(:update, DatevBooking)
       expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-      expect(field_form?).to be(true)
+      expect(edit_offered?).to be(true)
     end
 
     it "hands it back on a pick, and takes it away again on a reset" do
       get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
 
       expect(controller.current_ability).to be_able_to(:admin_finance, DatevBooking)
-      expect(field_form?).to be(true)
+      expect(edit_offered?).to be(true)
 
       get :show, params: {id: booking.id, max_finance_permission: ""}
 

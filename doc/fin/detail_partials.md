@@ -149,7 +149,7 @@ formatter never sees any of this.
 | key | meaning | rendered as |
 |---|---|---|
 | `value` | the text / HTML | the value side of the row (escaped unless html-safe) |
-| `help` | the field's comment | a muted line under the value (`wsjrdp_row_help`), in every layout |
+| `help` | the field's comment | a muted line under the value (`wsjrdp_row_help`), in every layout — and under the field's input where one is rendered |
 | `tooltip` | explanation of the **label** | the label's `title` |
 | `label` | a one-off label | in place of the i18n label |
 | `blank` | what to do when `value` is blank: `:hide`, `:dash`, `:empty`, `:unset` | see §6 |
@@ -230,11 +230,16 @@ produced inside the block except by `d.custom`, whose block is captured on the
 spot.
 
 ```ruby
-fin_detail(record, ctx, layout: nil, blank: nil) { |d| … }
+fin_detail(record, ctx, layout: nil, blank: nil, form_url: nil, only: nil,
+           editing: nil, edit_url: nil, cancel_url: nil) { |d| … }
 ```
 
 `layout:` sets this partial's default layout — a Symbol, or a Hash naming one
-per mode (`layout: {regular: :grid}`); `blank:` sets its default blank mode.
+per mode (`layout: {regular: :grid}`); `blank:` sets its default blank mode;
+`form_url:` is the PATCH target that wraps the editable fields; `only:` is the
+field list of a host that shows the partial with fewer fields (below);
+`editing:` picks the edit mode, `edit_url:` / `cancel_url:` are the two pages a
+split detail moves between (all three below).
 
 | call | what it declares |
 |---|---|
@@ -242,10 +247,29 @@ per mode (`layout: {regular: :grid}`); `blank:` sets its default blank mode.
 | `d.attrs(*attrs, **options)` | one group of fields, in the given order |
 | `d.attr(attr, **field_options)` | a one-field group, or one more field of the open `d.section` |
 | `d.section(title:, layout:, blank:) { \|d\| … }` | a titled group; the `d.attrs` / `d.attr` calls inside append to it |
-| `d.raw_data(title: nil, open: nil) { \|d\| … }` | a collapsible raw area; the `d.raw_entries` calls inside append to it (§8) |
+| `d.raw_data(title: nil, open: nil, key: nil) { \|d\| … }` | a collapsible raw area; the `d.raw_entries` calls inside append to it (§8) |
 | `d.raw_entries(source, title:, also: [], exclude: [], blank: :hide)` | inside `d.raw_data`: one entries block of the area, over one jsonb column (§8) |
-| `d.custom(title: nil) { … }` | captured HAML (links, forms, a model's own widgets) |
-| `d.bookings(rows, show_all_path:, all_label:)` | the embedded, paged bookings list (`fin/bookings/_embedded`) |
+| `d.custom(title: nil, key: nil) { … }` | captured HAML (links, forms, a model's own widgets) |
+| `d.bookings(rows, show_all_path:, all_label:, key: nil)` | the embedded, paged bookings list (`fin/bookings/_embedded`) |
+
+**`only:` — one partial, several hosts.** A host that shows the same record with
+FEWER fields hands `fin_detail` a list instead of writing a partial of its own:
+
+```ruby
+= fin_detail(booking, ctx, only: %i[booking_date posting_text base_amount links]) do |d|
+```
+
+The list names **attribute keys** and **section keys**, as Symbols or Strings.
+A field whose attribute it does not name falls away, a field group left without
+a single field falls away with it, and a section that carries no attributes of
+its own (`d.custom`, `d.raw_data`, `d.bookings`) is kept only when the list
+names its `key:`. The header always stays — it is the page's own frame, not
+content. Without `only:` nothing is dropped and `key:` is nobody's business.
+
+The three keyed kinds declare their `key:` next to their `title:`
+(`d.custom key: :links, title: "Verknüpfungen"`). Under `only:` one of them
+*without* a `key:` raises an `ArgumentError` naming the section: it could never
+appear in the list, so it would vanish silently.
 
 **The options of `d.attrs`.** Three keys configure the **group** —
 `layout`, `title`, `blank`. Every other key must name one of the listed
@@ -255,9 +279,52 @@ attributes and carries that field's own options:
 - d.attrs :iban, :bic, bic: {blank: :dash}, iban: {label: "IBAN (Moss)", span: 2}
 ```
 
-A field's options are `label help tooltip blank hide span align`; there is no
-`value` — a value comes from the record through its formatter, never from the
-partial.
+A field's options are `label help tooltip blank hide span align editable input
+options extra`; there is no `value` — a value comes from the record through its
+formatter, never from the partial. `editable: true` gives the field its input
+inside the partial's form (`form_url:`), `input:` picks which one (`:text`,
+`:textarea`, `:check_box`, `:select` with `options:`; the default is the
+amount's number field with a € suffix). `extra:` names a helper — called with
+the form builder and the row — that renders ONE MORE control beside that input,
+in the same flex line; the booking edit page puts the number of a *new* sub cost
+center next to the sub cost center select that way.
+
+**The three edit modes.** `editing:` says what a detail is FOR
+(`Fin::DetailHelper::EDIT_MODES`); anything but the three raises:
+
+| `editing:` | mode | what it renders |
+|---|---|---|
+| `nil` (default) | `:auto` | what the kit has always done: the record's own page shows the inputs, an embedded pane the inline "Bearbeiten" toggle |
+| `false` | `:view` | a READING page: no form at all, whatever `form_url:` says, and no toggle |
+| `true` | `:edit` | the EDIT PAGE: the inputs, "Speichern" and "Speichern und weiter bearbeiten" (both submits, the second named `stay`), and "Abbrechen" |
+
+`nil` keeps every existing caller — the Kostenstellen detail and the lazy pane
+of any bookings table — exactly as it was. The other two split one record over
+two pages, which is what the DATEV booking does:
+
+```haml
+-# the reading page                      -# the edit page
+= fin_detail(booking, ctx,               = fin_detail(booking, ctx,
+    editing: false,                          editing: true,
+    edit_url: edit_booking_path(booking))    cancel_url: booking_path(booking))
+```
+
+`edit_url:` renders a "Bearbeiten" button (`btn btn-sm btn-outline-primary`)
+through the **header's `toolbar:` slot** (§9) — in `:view` mode only, and
+nothing at all when it is nil, which is how a reading page tells a viewer who
+may not write from one who may. `cancel_url:` is the link the edit page returns
+by. Both carry `data-turbo-frame="_top"`: a detail sits INSIDE its turbo frame,
+and a plain link would navigate that frame instead of the page.
+
+**An editable field always stands where its input can be reached.** A field the
+partial declared `editable:` (the key, whatever its value) is never dropped for
+being blank wherever the detail carries a form — the edit page, and the inline
+toggle of a pane. That is where the input goes, so a blank one has to be there
+to be filled in; where no input is rendered because the field is not editable
+*for this viewer*, the unset marker takes the value column's place and says what
+the gap means. Only the reading page, which has no form at all, lets a blank
+editable field fall to its blank rule (below) — which is what lets the booking's
+detail declare `blank: :hide` on all of them and still be fillable.
 
 **Typo guards.** The builder raises on: a per-field key that names none of the
 listed attributes, an unknown field option (the message lists the known ones),
@@ -324,7 +391,13 @@ First hit wins: the **formatter's** `blank:` → the **field's** → the
 
 `:dash` and `:unset` both keep a field that carries nothing visible; `:unset`
 spells out that the master data has no value for it, which is what the
-Kreditoren detail says of the bank details and the Moss defaults.
+Kreditoren detail says of the bank details and the Moss defaults. It is set one
+step further back than `:dash` — Bootstrap 5.2 (the core's version) has no
+`.text-body-tertiary` yet, so the step is an inline `opacity` on the marker.
+
+A detail that carries a form overrules `:hide` for its **editable** fields (§6):
+they stand, and a blank one the viewer may not change shows the `:unset` marker
+in place of the input it does not get.
 
 ---
 
@@ -399,9 +472,10 @@ embedded pane gets its "Detailseite" link line from the table widget above the
 pane. One markup for every finance detail page:
 
 ```haml
-= link_to back, class: "btn btn-sm btn-link px-0 mb-2" do
-  = icon(:"arrow-left")
-  = back_label
+- if back.present?
+  = link_to back, class: "btn btn-sm btn-link px-0 mb-2" do
+    = icon(:"arrow-left")
+    = back_label
 %h1.mb-3.d-flex.align-items-baseline.flex-wrap.gap-2
   %span.text-muted.fw-light= label
   - if title.present?
@@ -413,6 +487,17 @@ pane. One markup for every finance detail page:
 `label:` is the technical part (light and muted), `title:` the record's name in
 normal weight and optional; `toolbar:` is a captured block at the right end and
 renders nothing when it is absent.
+
+`back:` (with its `back_label:`) is optional as well: `back: nil` renders no
+link at all. A host whose page is reached from the very place the link would
+lead to passes it — the group's booking page hangs under the Buchhaltung tab,
+which stands active above it, so a "Zurück zur Buchhaltung" would only repeat
+the tab. The `/fin` details keep their "Zurück zur Liste", where the list is a
+page of its own.
+
+The toolbar is also where the kit itself puts the "Bearbeiten" button of a
+reading page (§6): with `editing: false` and an `edit_url:`, the button goes in
+FRONT of whatever the section declared, so a detail keeps its own controls.
 
 The `h1` therefore lives **in the partial**, inside the page's turbo-frame
 wrapper. That is harmless: a lazy load never asks for `:regular` mode. The
@@ -478,8 +563,10 @@ layout.
 
 ## 11. What is not covered yet
 
-The Kreditoren and the Kostenstellen details are built on this kit. The other
-finance details render through their own partials:
+The Kreditoren, the Kostenstellen and the DATEV booking details are built on
+this kit — the booking on both of its hosts, `/fin/bookkeeping/bookings/:id` and
+the group's own route. The other finance details render through their own
+partials:
 
 - **Sachkonten** through `fin/shared/_item_detail`, and the **Buchungsstapel**
   page directly, both over `shared/wsjrdp/_detail_fields` (flat
@@ -487,8 +574,6 @@ finance details render through their own partials:
   `Fin::BookkeepingHelper`, labels as German string literals).
 - **Beitragsbuchung** (`fin/accounting_entries/_detail`) and the **Moss
   transaction** detail through `shared/wsjrdp/_kv_grid`.
-- **The DATEV booking** detail (`fin/bookings/_booking_detail`) through its own
-  inline grid, with its own "Rohdaten (DATEV)" section.
 
 `doc/plans/2026-09_fin-detail-partials.md` §5 records the order in which they
 move onto the kit.

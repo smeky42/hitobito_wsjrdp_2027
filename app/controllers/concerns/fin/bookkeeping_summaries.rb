@@ -94,8 +94,14 @@ module Fin::BookkeepingSummaries
   # `sum:` is the column the shown total aggregates: the account-perspective
   # signed_leg_amount for a legs-backed list, the plain signed_base_amount
   # otherwise.
+  #
+  # `with_unit_budget` carries the resolved Unit-Budget answer, which this table
+  # offers as a column like every other host does. It composes with a legs-backed
+  # scope: it adds a select and two joins over `datev_bookings`, which is the
+  # name the legs subquery is aliased back to.
   def item_bookings(scope, sum: :signed_base_amount)
-    Wsjrdp::ExpandableTableRows.new(item_bookings_table_state, scope.left_joins(:batch),
+    Wsjrdp::ExpandableTableRows.new(item_bookings_table_state,
+      scope.with_unit_budget.left_joins(:batch),
       sort: Fin::DatevBookingsColumns.sort_expressions, sum: sum,
       preload: Fin::DatevBookingsColumns::PRELOADS)
   end

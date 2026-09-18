@@ -44,6 +44,12 @@ module Fin::BookkeepingSummaryColumns
       sort: "account_kind", default: true
     c.column key: "moss_status", abbr: "ms", label: "Moss Status", width: "8rem",
       sort: MOSS_STATUS_SQL, default: true
+    # Whether a booking on this account belongs to a unit's budget -- the one
+    # field of an account Hitobito owns. Offered in the column menu, not shown by
+    # default: it answers a question about the BOOKINGS, and the chart of
+    # accounts is read for its own sake most of the time.
+    c.column key: "is_unit_budget", abbr: "ub", label: "Unit-Budget?", width: "8rem",
+      sort: "is_unit_budget"
     c.column key: "booking_sum", abbr: "sum", label: "Summe", numeric: true,
       width: "10rem", sort: "booking_sum", default: true
     c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,
@@ -63,6 +69,13 @@ module Fin::BookkeepingSummaryColumns
       sort: "LOWER(short_name)", default: true
     c.column key: "moss_status", abbr: "ms", label: "Moss Status", width: "8rem",
       sort: MOSS_STATUS_SQL, default: true
+    # Whether this cost center is a unit's OWN: its budget is then the unit's
+    # budget, and a group's Buchhaltung measures its Unit-Budget bookings
+    # against the sum of these cost centers' Gesamtbudget
+    # (doc/fin/unit_budget.md). Few cost centers carry it, so the column is
+    # offered rather than shown.
+    c.column key: "is_unit_cost_center", abbr: "ukst", label: "Unit-Kostenstelle",
+      width: "9rem", sort: "is_unit_cost_center"
     c.column key: "booking_sum", abbr: "sum", label: "Summe", numeric: true,
       width: "10rem", sort: "booking_sum", default: true
     c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,
@@ -78,6 +91,9 @@ module Fin::BookkeepingSummaryColumns
       sort: "LOWER(name)", default: true
     c.column key: "moss_status", abbr: "ms", label: "Moss Status", width: "8rem",
       sort: MOSS_STATUS_SQL, default: true
+    # Same field, same rule as on the Sachkonten above.
+    c.column key: "is_unit_budget", abbr: "ub", label: "Unit-Budget?", width: "8rem",
+      sort: "is_unit_budget"
     c.column key: "booking_balance", abbr: "bb", label: "Saldo", numeric: true,
       width: "10rem", sort: "booking_balance", default: true
     c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,

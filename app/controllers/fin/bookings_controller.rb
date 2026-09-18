@@ -25,6 +25,7 @@
 class Fin::BookingsController < Fin::FinController
   include WsjrdpNumberHelper
   include Wsjrdp::TableStateful
+  include Fin::BookingDetailHost
 
   before_action :authorize_action
   # Note: #query_entries only feeds autocomplete in editing mode, so
@@ -58,9 +59,11 @@ class Fin::BookingsController < Fin::FinController
   # decodes, validates, compiles or joins by hand (the batch join the
   # batch-backed attributes and the Primanota-Periode sort need comes from the
   # schema's own base relation, see Wsjrdp::Filtering::FilterSchema#compile).
+  # `with_unit_budget` is what puts the resolved Unit-Budget answer and its
+  # source into the rows, which is what that column shows and sorts by.
   def bookings
     @bookings ||= Wsjrdp::ExpandableTableRows.new(booking_table_state,
-      booking_table_state.filter.scope(DatevBooking.all),
+      booking_table_state.filter.scope(DatevBooking.with_unit_budget),
       sort: Fin::DatevBookingsColumns.sort_expressions,
       sum: :signed_base_amount, preload: Fin::DatevBookingsColumns::PRELOADS)
   end
@@ -77,14 +80,17 @@ class Fin::BookingsController < Fin::FinController
 
   def show
     @booking = DatevBooking.find(params[:id])
-    @ctx = if turbo_frame_request?
-      Fin::AttrFormatContext.embedded(
-        Wsjrdp::TableContext.new(level: booking_table_state.level, lazy: true)
-      )
-    else
-      Fin::AttrFormatContext.regular
-    end
-    render layout: false if turbo_frame_request?
+    show_booking_detail(booking_table_state)
+  end
+
+  # The EDIT PAGE of one booking; #show is the reading page it is reached from
+  # and comes back to. Authorized on the RECORD, the way #update is, so the read
+  # tier gets as far as the reading page and no further. It is always a page --
+  # the lazy pane of an open table row keeps its own inline toggle.
+  def edit
+    @booking = DatevBooking.find(params[:id])
+    authorize!(:update, @booking)
+    @ctx = Fin::AttrFormatContext.regular
   end
 
   # --- manual associations (booking detail view, all hosts) ------------------
@@ -121,6 +127,17 @@ class Fin::BookingsController < Fin::FinController
     render json: entries.map { |e| {id: e.id, label: entry_autocomplete_label(e)} }
   end
 
+  # The fields of a booking the write tier edits in the detail view. Both
+  # comment columns are NOT NULL with "" as their default, so a cleared comment
+  # is stored as "" rather than NULL.
+  EDITABLE_FIELDS = %w[secondary_cost_center_number is_unit_budget sub_cost_center_number
+    comment user_comment].freeze
+
+  # What the field forms may send: the editable columns plus the edit page's
+  # extra key, which resolves to sub_cost_center_number before anything is
+  # written (Fin::BookingDetailHost#resolve_new_sub_cost_center).
+  FIELD_PARAMS = (EDITABLE_FIELDS + [Fin::BookingDetailHost::NEW_SUB_COST_CENTER_FIELD]).freeze
+
   # ONE RESTful endpoint for all manual associations (PATCH booking_path):
   # every mini-form of the detail view posts a field subset of datev_booking --
   # like a page-wide form with several submit buttons, each sending only its
@@ -133,15 +150,14 @@ class Fin::BookingsController < Fin::FinController
   # subject -- so there is no person mini-form.
   def update
     booking = DatevBooking.find(params[:id])
-    attrs = params.require(:datev_booking).permit(:accounting_entry_id,
-      :secondary_cost_center_number, :is_unit_budget, :sub_cost_center_number)
-    editable_keys = attrs.keys & %w[secondary_cost_center_number is_unit_budget sub_cost_center_number]
+    attrs = params.require(:datev_booking).permit(:accounting_entry_id, *FIELD_PARAMS)
+    editable_keys = attrs.keys & FIELD_PARAMS
     if editable_keys.any?
       # The same gate the detail view asks before it builds the form at all
       # (fin/bookings/_detail), so the page and the controller answer the one
       # question.
       authorize!(:update, booking)
-      update_fields(booking, attrs.slice(*editable_keys))
+      update_fields(booking, attrs.slice(*editable_keys).to_h)
     elsif attrs.key?(:accounting_entry_id)
       update_entry_link(booking, attrs[:accounting_entry_id])
     else
@@ -151,30 +167,16 @@ class Fin::BookingsController < Fin::FinController
 
   private
 
-  # Where a mini-form of the detail view goes after its update.
-  #
-  # Inside a turbo frame the answer has to RE-RENDER THE FRAME that submitted --
-  # #show does exactly that -- so a frame request goes to the booking's own path.
-  # `redirect_back` would land on the HOST page (the Kostenstellen list, a
-  # Sachkonto detail, ...), and that page carries no frame of this row: Turbo then
-  # renders "Content missing", or, on the Buchungen list, replaces the row with
-  # the still-unloaded "Wird geladen ..." placeholder. Outside a frame the form
-  # runs with data-turbo=false and `redirect_back` is right -- it keeps the user
-  # on the list they came from.
-  #
-  # The flash is only seen on the non-frame path: a frame response renders
-  # turbo-rails' minimal layout, which has no flash slot.
-  def redirect_after_update(booking, **flash_args)
-    if turbo_frame_request?
-      redirect_to booking_path(booking), **flash_args
-    else
-      redirect_back fallback_location: booking_path(booking), **flash_args
-    end
-  end
+  # Where THIS host keeps one booking, reading and editing
+  # (Fin::BookingDetailHost).
+  def booking_detail_path(booking) = booking_path(booking)
 
-  def turbo_frame_request? = request.headers["Turbo-Frame"].present?
+  def booking_edit_path(booking) = edit_booking_path(booking)
 
   def update_fields(booking, attrs)
+    attrs = resolve_new_sub_cost_center(booking, attrs)
+    return redirect_after_update(booking, alert: NO_COST_CENTER_ALERT) if attrs.nil?
+
     coerce_nullable_boolean!(attrs, :is_unit_budget)
     blank_to_nil!(attrs, :secondary_cost_center_number)
     blank_to_nil!(attrs, :sub_cost_center_number)

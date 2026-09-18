@@ -43,6 +43,13 @@ module Fin::PersonalAccountsHelper
     moss_status_cell(account.moss_status)
   end
 
+  # Whether a booking on this account belongs to a unit's budget. The column is
+  # NOT NULL, so the field always says ja or nein -- what the two accounts of a
+  # BOOKING then make of it is DatevBooking's three-step rule.
+  def fin_format_wsjrdp_personal_account_is_unit_budget(account)
+    account_unit_budget_label(account.is_unit_budget)
+  end
+
   # The Rechnungsadresse on one line -- street, Adresszusatz, post code and city,
   # country. A part the record does not carry leaves no separator behind.
   def fin_format_wsjrdp_personal_account_address(account)

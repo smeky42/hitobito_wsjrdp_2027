@@ -82,6 +82,29 @@ class Fin::LedgerAccountsController < Fin::FinController
     render_item_detail
   end
 
+  # The EDIT PAGE of one Sachkonto; #show is the reading page it is reached from
+  # and comes back to. Authorized on the RECORD, the way #update is, so the read
+  # and the audit tier get as far as the reading page and no further. An account
+  # number without master data has nothing to edit -- #show invents a stub record
+  # for it, #edit does not.
+  def edit
+    @account = WsjrdpLedgerAccount.find_by!(number: params[:number])
+    authorize!(:update, @account)
+    @ctx = Fin::AttrFormatContext.regular
+  end
+
+  def update
+    @account = WsjrdpLedgerAccount.find_by!(number: params[:number])
+    authorize!(:update, @account)
+    if @account.update(account_params)
+      redirect_to ledger_account_path(@account.number),
+        notice: "Sachkonto #{@account.number} aktualisiert."
+    else
+      redirect_to edit_ledger_account_path(@account.number),
+        alert: "Fehler: #{@account.errors.full_messages.join(", ")}"
+    end
+  end
+
   # Apply target of the filter builder (PRG, generic implementation in
   # Wsjrdp::TableStateful). The page resets to 1.
   def apply
@@ -92,6 +115,13 @@ class Fin::LedgerAccountsController < Fin::FinController
 
   def authorize_action
     authorize!(:show, WsjrdpLedgerAccount)
+  end
+
+  # The one field of a Sachkonto Hitobito owns: whether a booking on it belongs
+  # to a unit's budget. Everything else on the record comes from the DATEV or the
+  # Moss export and is rewritten by the next import.
+  def account_params
+    params.require(:wsjrdp_ledger_account).permit(:is_unit_budget)
   end
 
   def detail_format_context

@@ -234,7 +234,7 @@ class Fin::ReconciliationController < Fin::FinController
   # comes from the schema's own base relation
   # (Wsjrdp::Filtering::FilterSchema#compile).
   def filtered_scope
-    @filtered_scope ||= booking_table_state.filter.scope(DatevBooking.all)
+    @filtered_scope ||= booking_table_state.filter.scope(DatevBooking.with_unit_budget)
   end
 
   # Both tables' URL-chosen params, so a connect redirect returns to the same

@@ -27,6 +27,12 @@ module Wsjrdp2027::Sheet::Group
       :group_map_path,
       if: :show_statistics
 
+    # The whole Finanzen area of a group hangs below this path, so the tab needs
+    # no `alt:` for the Buchhaltung's booking page: a tab's own path_method is
+    # matched as a PREFIX in the last pass of
+    # Wsjrdp2027::Sheet::Base#find_active_tab. The core's Info tab carries
+    # `no_alt: true` and therefore does not swallow the match, although
+    # "/groups/:id" is a prefix of every group path.
     tab "groups.tabs.finance",
       :group_finance_bookkeeping_path,
       if: :show_finance

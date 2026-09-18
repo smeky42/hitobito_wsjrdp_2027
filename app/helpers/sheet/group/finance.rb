@@ -9,6 +9,13 @@
 module Sheet
   class Group < Base
     class Finance < Base
+      # No `alt:` for the booking page below the Buchhaltung
+      # (/groups/:id/finance/bookkeeping/bookings/:id): a tab's own path_method
+      # is already part of its alt_paths and is matched as a PREFIX in the last
+      # pass of Wsjrdp2027::Sheet::Base#find_active_tab, so the bookkeeping path
+      # covers everything below it. The booking's own path helper could not be
+      # used here anyway -- the sheet builds a tab's paths from its path_args,
+      # which carry the group alone and not the booking's id.
       tab "groups.finance.tabs.bookkeeping",
         :group_finance_bookkeeping_path,
         if: :show_finance

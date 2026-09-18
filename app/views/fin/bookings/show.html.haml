@@ -4,5 +4,13 @@
 -#  Affero General Public License version 3 or later.
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  ONE booking: the reading page, and the pane the Buchungen table lazy-loads
+-#  into an open row. The two answer differently on purpose -- the PAGE is
+-#  `editing: false` and sends the write tier to the edit page through its
+-#  header's "Bearbeiten"; the PANE keeps the kit's own default (`editing: nil`),
+-#  the inline toggle that turns the pane's fields into inputs where they stand.
 = wsjrdp_detail_frame("bk", @booking.id) do
-  = render "detail", booking: @booking, ctx: @ctx
+  = render "detail", booking: @booking, ctx: @ctx,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && can?(:update, DatevBooking) ? edit_booking_path(@booking) : nil)

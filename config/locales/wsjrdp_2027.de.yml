@@ -423,6 +423,7 @@ de:
         moss_default_cost_center_number: Standard-Kostenstelle
         moss_default_sphere_number: Standard-Sphäre
         moss_default_team_name: Team
+        is_unit_budget: Unit-Budget?
         # the Rechnungsadresse on one line, composed by Fin::PersonalAccountsHelper
         address: Adresse
 
@@ -441,6 +442,7 @@ de:
         budget_2028: Budget 2028
         explicit_total_budget: Gesamtbudget (explizit)
         effective_total_budget: Gesamtbudget
+        is_unit_cost_center: Unit-Kostenstelle
         description: Beschreibung
         comment: Kommentar
 
@@ -472,6 +474,7 @@ de:
         short_name: Kurzname
         account_kind: Kontoart
         moss_status: Moss Status
+        is_unit_budget: Unit-Budget?
         description: Beschreibung
         comment: Kommentar
 
@@ -485,7 +488,7 @@ de:
         offsetting_account_number: Gegenkonto
         cost_center_number: Kostenstelle
         secondary_cost_center_number: Sekundäre Kostenstelle
-        is_unit_budget: Unit-Budget
+        is_unit_budget: Unit-Budget?
         sub_cost_center_number: Unter-Kostenstelle
         sphere_number: Sphäre
         document_field_1: Belegfeld 1
@@ -496,6 +499,10 @@ de:
         transaction_amount: Fremdwährungsbetrag
         transaction_currency: Fremdwährung
         exchange_rate: Wechselkurs
+        # The internal comment of the finance team, and the note everybody who
+        # reaches the booking sees (unit leaders and IST managers included).
+        comment: Kommentar
+        user_comment: Notizen
 
       # de.activerecord.attributes.datev_booking_batch (Buchungsstapel)
       datev_booking_batch:
@@ -1084,6 +1091,10 @@ de:
     debit_credit:
       D: "S"
       C: "H"
+    # The same, written out: the Betrag row of the booking detail.
+    debit_credit_long:
+      D: "Soll"
+      C: "Haben"
     moss:
       # The four kinds of a Moss transaction (the STI types of moss_transactions).
       kinds:

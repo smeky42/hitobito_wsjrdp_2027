@@ -55,6 +55,12 @@ module Fin::DatevBookingsFilterSchema
       (booked.uniq - names.keys).sort.map { |n| [n, n] }
   })
 
+  # There is no boolean attribute type; a yes/no attribute is a REFERENCE over
+  # the two values, which is also what gives the picker its two labelled options.
+  UNIT_BUDGET_OPTIONS = Wsjrdp::Filtering::Options.values(-> {
+    [["true", "ja"], ["false", "nein"]]
+  })
+
   # The base currency is always EUR, so the meaningful filter is the transaction
   # currency each booking was made in (NOT NULL, EUR for the majority): EUR and
   # every foreign currency in the data are offered.
@@ -119,6 +125,27 @@ module Fin::DatevBookingsFilterSchema
       group: "Kostenrechnung", type: Wsjrdp::Filtering::Types::REFERENCE,
       operators: %i[in not_in present blank],
       column: :secondary_cost_center_number, options: COST_CENTER_OPTIONS
+    # Either cost center of the booking (multi-column reference, like
+    # any_account below): `ist` matches if the primary OR the secondary cost
+    # center is in the set, `ist nicht` if NEITHER is. This is what a page
+    # scoped to a group's cost centers pins its rows with.
+    s.attribute key: :any_cost_center, short_key: :ccx,
+      label: "Kostenstelle oder sekundäre Kostenstelle", group: "Kostenrechnung",
+      type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
+      column: ->(t) { [t[:cost_center_number], t[:secondary_cost_center_number]] },
+      options: COST_CENTER_OPTIONS
+    # Whether the booking belongs to a unit's budget -- the RESOLVED answer
+    # (DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL), not the stored override, so
+    # the filter, the column and the detail all say the same thing. The
+    # expression names the two account joins the base relation carries (see
+    # .bound); a SELECT alias would not do, PostgreSQL cannot see one in a WHERE.
+    # The chain ends in TRUE, so the value is never NULL and `ist nicht ja`
+    # is exactly `ist nein`.
+    s.attribute key: :unit_budget, short_key: :ub, label: "Unit-Budget?",
+      group: "Kostenrechnung", type: Wsjrdp::Filtering::Types::REFERENCE,
+      operators: %i[in not_in],
+      column: ->(_t) { Arel.sql(DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL) },
+      options: UNIT_BUDGET_OPTIONS
     s.attribute key: :sphere, short_key: :sph, label: "Sphäre", group: "Kostenrechnung",
       type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in present blank],
       column: :sphere_number, options: SPHERE_OPTIONS
@@ -199,8 +226,12 @@ module Fin::DatevBookingsFilterSchema
   # The base carries the batch join so the batch-backed attributes
   # (financial_year / batch) are filterable on any relation derived
   # from it -- FilterSchema#compile merges this base into whatever relation a host
-  # hands in, so no host repeats the join.
+  # hands in, so no host repeats the join. The two Unit-Budget account lookups
+  # are there for the same reason: `unit_budget` compiles into an expression over
+  # their fixed aliases. A host that also selects the columns
+  # (DatevBooking.with_unit_budget) contributes the very same join string, and
+  # `joins` unions rather than repeats it.
   def self.bound(except: nil)
-    SCHEMA.bind(DatevBooking.left_joins(:batch), except: except)
+    SCHEMA.bind(DatevBooking.with_unit_budget_accounts.left_joins(:batch), except: except)
   end
 end

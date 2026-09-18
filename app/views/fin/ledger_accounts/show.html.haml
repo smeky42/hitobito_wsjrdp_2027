@@ -8,5 +8,13 @@
 -#  Rendered as a full page for a direct visit (the "Detailseite" link), and as
 -#  just the turbo frame when lazy-loaded into the inline expandable row on the
 -#  Sachkonten list.
+-#
+-#  The two answer differently on purpose -- the PAGE is `editing: false` and
+-#  sends the write tier to the edit page through its header's "Bearbeiten"; the
+-#  PANE keeps the kit's own default and stays a reading view, as it always was.
+-#  An account number without master data is a stub record and has nothing to
+-#  edit, so it gets no button either.
 = wsjrdp_detail_frame("account", @account.number) do
-  = render "detail", account: @account, ctx: @ctx
+  = render "detail", account: @account, ctx: @ctx,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && @account.persisted? && can?(:update, WsjrdpLedgerAccount) ? edit_ledger_account_path(@account.number) : nil)

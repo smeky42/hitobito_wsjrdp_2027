@@ -122,6 +122,188 @@ class DatevBooking < ActiveRecord::Base
     SQL
   }
 
+  # --- Unit-Budget ------------------------------------------------------------
+  #
+  # Whether a booking belongs to a unit's budget is answered in four steps:
+  #
+  #   1. the booking's own `is_unit_budget`, whenever it is not NULL;
+  #   2. otherwise its PRIMARY cost center: where that cost center is known and
+  #      is NOT a unit's own (`is_unit_cost_center` is FALSE), the answer is
+  #      `false` and the accounts are not asked -- a booking on the contingent's
+  #      cost center is not a unit's spending, whatever it was booked on. A cost
+  #      center that IS a unit's own, one whose flag is NULL and a number naming
+  #      no cost center at all all leave the question open;
+  #   3. otherwise the flags of its two accounts -- Konto and Gegenkonto, each
+  #      looked up by NUMBER -- combined with AND: a `false` on either side wins.
+  #      A number that names no account counts as unknown and the other side
+  #      decides alone;
+  #   4. otherwise `true`.
+  #
+  # The SOURCE travels with the value, so a page can say where the answer came
+  # from: `booking`, `cost_center`, `konto`, `gegenkonto`, `konten` or `default`.
+  #
+  # Sachkonten and Personenkonten use DISJOINT number ranges (the CHECK
+  # constraints of both tables enforce it), so ONE union of the two tables is an
+  # unambiguous number -> flag lookup and the LEFT JOIN over it can never
+  # multiply a row.
+  UNIT_BUDGET_ACCOUNTS_SQL = <<~SQL.squish
+    SELECT number, is_unit_budget FROM wsjrdp_ledger_accounts
+    UNION ALL
+    SELECT number, is_unit_budget FROM wsjrdp_personal_accounts
+  SQL
+
+  # The three lookups of a bookings relation, under FIXED aliases -- the
+  # expressions below name them, so they are part of the same contract. Written
+  # out as SQL rather than as associations: the account pair is polymorphic by
+  # number and both sides have to resolve against either master-data table, and
+  # the cost center hangs off a number as well, with no foreign key.
+  # `wsjrdp_cost_centers.number` is unique, so its join cannot multiply a row
+  # either.
+  UNIT_BUDGET_JOINS_SQL = <<~SQL.squish
+    LEFT JOIN wsjrdp_cost_centers ub_kostenstelle
+           ON ub_kostenstelle.number = datev_bookings.cost_center_number
+    LEFT JOIN (#{UNIT_BUDGET_ACCOUNTS_SQL}) ub_konto
+           ON ub_konto.number = datev_bookings.account_number
+    LEFT JOIN (#{UNIT_BUDGET_ACCOUNTS_SQL}) ub_gegenkonto
+           ON ub_gegenkonto.number = datev_bookings.offsetting_account_number
+  SQL
+
+  # The rule itself, as ONE expression: the four steps read as the COALESCE
+  # chain they are. It is the value the rows SELECT, the value the filter
+  # compiles its conditions against and the value the table sorts by -- three
+  # readers of one definition, never three copies of it. A WHERE cannot see a
+  # SELECT alias in PostgreSQL, so all three use the expression and not the
+  # column name it is selected under.
+  #
+  # The cost-center step is a CASE without an ELSE on purpose: it yields FALSE
+  # where the cost center says no and NULL everywhere else -- including where
+  # the flag itself is NULL, since `NULL = FALSE` is NULL -- so COALESCE walks
+  # on to the accounts in exactly the cases step 2 leaves open.
+  EFFECTIVE_IS_UNIT_BUDGET_SQL = <<~SQL.squish
+    COALESCE(datev_bookings.is_unit_budget,
+             CASE WHEN ub_kostenstelle.is_unit_cost_center = FALSE THEN FALSE END,
+             ub_konto.is_unit_budget AND ub_gegenkonto.is_unit_budget,
+             ub_konto.is_unit_budget,
+             ub_gegenkonto.is_unit_budget,
+             TRUE)
+  SQL
+
+  # Where that value came from. With both accounts known and exactly one of them
+  # saying `false`, THAT side is named -- it is the one that decided; with both
+  # agreeing, the pair is. `default` is the last step, where neither number
+  # named an account.
+  IS_UNIT_BUDGET_SOURCE_SQL = <<~SQL.squish
+    CASE
+      WHEN datev_bookings.is_unit_budget IS NOT NULL THEN 'booking'
+      WHEN ub_kostenstelle.is_unit_cost_center = FALSE THEN 'cost_center'
+      WHEN ub_konto.is_unit_budget IS NOT NULL AND ub_gegenkonto.is_unit_budget IS NOT NULL
+        THEN CASE
+               WHEN ub_konto.is_unit_budget = ub_gegenkonto.is_unit_budget THEN 'konten'
+               WHEN ub_konto.is_unit_budget = FALSE THEN 'konto'
+               ELSE 'gegenkonto'
+             END
+      WHEN ub_konto.is_unit_budget IS NOT NULL THEN 'konto'
+      WHEN ub_gegenkonto.is_unit_budget IS NOT NULL THEN 'gegenkonto'
+      ELSE 'default'
+    END
+  SQL
+
+  UNIT_BUDGET_SOURCE_BOOKING = "booking"
+  UNIT_BUDGET_SOURCE_COST_CENTER = "cost_center"
+  UNIT_BUDGET_SOURCE_KONTO = "konto"
+  UNIT_BUDGET_SOURCE_GEGENKONTO = "gegenkonto"
+  UNIT_BUDGET_SOURCE_KONTEN = "konten"
+  UNIT_BUDGET_SOURCE_DEFAULT = "default"
+
+  # The three lookups alone, without the columns: what a relation needs to
+  # FILTER or SORT by the rule. It is the bookings filter schema's base relation
+  # (Fin::DatevBookingsFilterSchema.bound), so every host's filtered relation
+  # carries the joins whether or not it selects the columns.
+  scope :with_unit_budget_accounts, -> { joins(UNIT_BUDGET_JOINS_SQL) }
+
+  # Every booking with its Unit-Budget answer as REAL columns:
+  #
+  #   effective_is_unit_budget  boolean, the rule's result
+  #   is_unit_budget_source     text, one of the five sources above
+  #
+  # Ordinary columns of the relation, so the rows carry them without a query per
+  # row (DatevBooking#unit_budget reads them) -- `select` plus the joins rather
+  # than a derived table aliased back to `datev_bookings`, deliberately: `legs`
+  # already IS such a derived table, and the account detail pages list their
+  # bookings through it. A second `from` would replace it; a select and a join
+  # compose with it, with `with_sub_cost_center` and with the filter schema's
+  # base relation, which merges its own joins into whatever relation a host
+  # hands in.
+  #
+  # The price of the select: a relation carrying these columns is COUNTED with
+  # `count(:all)`, never with a bare `#count`, which would fold the whole select
+  # list into one COUNT(). That is what Kaminari does (Wsjrdp::ExpandableTableRows
+  # #total_count), and `#total_sum` names its column as well.
+  scope :with_unit_budget, -> {
+    with_unit_budget_accounts.select(
+      "datev_bookings.*, #{EFFECTIVE_IS_UNIT_BUDGET_SQL} AS effective_is_unit_budget, " \
+      "#{IS_UNIT_BUDGET_SOURCE_SQL} AS is_unit_budget_source"
+    )
+  }
+
+  # The `is_unit_budget` flag of ONE account number, read from whichever
+  # master-data table holds it; nil where the number names no account at all.
+  # The two number ranges are disjoint, so the first hit is the answer.
+  def self.account_unit_budget_flag(number)
+    return nil if number.blank?
+
+    flag = WsjrdpLedgerAccount.where(number: number).pick(:is_unit_budget)
+    return flag unless flag.nil?
+
+    WsjrdpPersonalAccount.where(number: number).pick(:is_unit_budget)
+  end
+
+  # This booking's Unit-Budget answer as [value, source].
+  #
+  # A row loaded through `.with_unit_budget` carries both as columns and is
+  # answered from them -- a table page therefore costs no query per row. A
+  # booking loaded without them (the detail page, which needs no listing query)
+  # is computed here, from the same rule.
+  def unit_budget
+    if has_attribute?(:effective_is_unit_budget)
+      return [self[:effective_is_unit_budget], self[:is_unit_budget_source]]
+    end
+    return [is_unit_budget, UNIT_BUDGET_SOURCE_BOOKING] unless is_unit_budget.nil?
+
+    automatic_unit_budget
+  end
+
+  # The `is_unit_cost_center` flag of ONE cost-center number: nil where the
+  # number names no cost center at all, and nil where the flag itself is unset
+  # -- both leave the question open, so the two need no telling apart.
+  def self.cost_center_unit_flag(number)
+    return nil if number.blank?
+
+    WsjrdpCostCenter.where(number: number).pick(:is_unit_cost_center)
+  end
+
+  # The answer the COST CENTER and the ACCOUNTS give between them, as
+  # [value, source] -- what the booking's own flag overrides, and what the edit
+  # page offers as "automatisch". Never reads the booking's own flag.
+  #
+  # Same order as the SQL above: a cost center that is not a unit's own settles
+  # the question before the accounts are asked.
+  def automatic_unit_budget
+    if self.class.cost_center_unit_flag(cost_center_number) == false
+      return [false, UNIT_BUDGET_SOURCE_COST_CENTER]
+    end
+
+    konto = self.class.account_unit_budget_flag(account_number)
+    gegenkonto = self.class.account_unit_budget_flag(offsetting_account_number)
+    return [true, UNIT_BUDGET_SOURCE_DEFAULT] if konto.nil? && gegenkonto.nil?
+    return [konto, UNIT_BUDGET_SOURCE_KONTO] if gegenkonto.nil?
+    return [gegenkonto, UNIT_BUDGET_SOURCE_GEGENKONTO] if konto.nil?
+    return [false, UNIT_BUDGET_SOURCE_KONTO] if !konto && gegenkonto
+    return [false, UNIT_BUDGET_SOURCE_GEGENKONTO] if konto && !gegenkonto
+
+    [konto && gegenkonto, UNIT_BUDGET_SOURCE_KONTEN]
+  end
+
   # General ledger legs
   #
   # Each booking touches account (Konto) and offsetting_account

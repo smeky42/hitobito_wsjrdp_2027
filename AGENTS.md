@@ -60,6 +60,10 @@ of truth (parts may be proposal-only or already superseded):
 - [`doc/fin/sub_cost_centers.md`](doc/fin/sub_cost_centers.md) — the
   Hitobito-owned `wsjrdp_sub_cost_centers` table and its `WsjrdpSubCostCenter`
   model, linked to a cost center by number and outliving it.
+- [`doc/fin/unit_budget.md`](doc/fin/unit_budget.md) — whether a booking
+  belongs to a unit's budget: the three-step rule (the booking's own flag, else
+  its two accounts, else the default), the source that travels with the value,
+  and the one SQL definition the rows, the filter and the sort share.
 
 See [`README.md`](README.md) for the dev-environment setup.
 

@@ -12,45 +12,112 @@
 -#  The values come from Fin::BookingsHelper, the labels from
 -#  de.activerecord.attributes.datev_booking.
 -#
+-#  ONE detail for every host of a booking. A host that shows fewer fields, or
+-#  puts the booking on its own route, says so through the locals rather than
+-#  through a partial of its own:
+-#
 -#  Locals: booking (DatevBooking), ctx (Fin::AttrFormatContext)
-- form_url = can?(:update, DatevBooking) && booking.persisted? ? booking_path(booking) : nil
+-#          only:       the attribute / section keys this host shows
+-#                      (Fin::DetailBuilder#to_sections); nil = all of them
+-#          editable:   the attributes this host lets the viewer edit; nil =
+-#                      every editable field follows can?(:update, DatevBooking)
+-#          form_url:   the PATCH target of the editable fields. Given, it is
+-#                      final -- nil then means "no form at all"; left out, it is
+-#                      this page's own booking_path for the write tier.
+-#          editing:    the kit's edit mode -- nil the pane's inline toggle,
+-#                      false the reading page, true the edit page (§6 of
+-#                      doc/fin/detail_partials.md)
+-#          edit_url:   the edit page the reading page's "Bearbeiten" points at
+-#          cancel_url: the reading page the edit page's "Abbrechen" returns to
+-#          back:, back_label:  the header's back link; back: nil renders none,
+-#                      which is what a host whose page IS reached from that
+-#                      target passes (the group's booking page)
+- only = local_assigns.fetch(:only, nil)
+- back = local_assigns.fetch(:back, bookings_path)
+- back_label = local_assigns.fetch(:back_label, "Zurück zur Liste")
+- editing = local_assigns.fetch(:editing, nil)
+- given_form_url = local_assigns.fetch(:form_url, :default)
+- form_url = (given_form_url == :default) ? (can?(:update, DatevBooking) && booking.persisted? ? booking_path(booking) : nil) : given_form_url
+-# nil = the /fin rule (the write tier edits every editable field), a list = the
+-# host's own choice, per attribute.
+- editable_keys = local_assigns.fetch(:editable, nil)&.map(&:to_s)
+- may_edit = ->(attr) { editable_keys.nil? ? can?(:update, DatevBooking) : editable_keys.include?(attr.to_s) }
 -# Connecting and unlinking the Beitragsbuchung is the write tier's, as the
 -# field edits above are; Fin::BookingsController authorizes exactly these.
 -# Without it -- the read tier, e.g. an external auditor -- the section stays as
 -# a reading view.
 - may_link = can?(:update, DatevBooking)
-- editable = {editable: true}
 - cc_options = fin_cost_center_select_options
 -# Only the sub cost centers of THIS booking's cost center -- a sub cost center
 -# number is unique within its cost center only.
 - scc_options = fin_sub_cost_center_select_options(booking)
-- ub_options = [["automatisch", ""], ["ja", "true"], ["nein", "false"]]
-= fin_detail(booking, ctx, form_url: form_url) do |d|
-  - d.header back: bookings_path, back_label: "Zurück zur Liste",
+-# The first choice leaves the booking's own flag unset and lets the accounts
+-# decide, so it names the answer they give ("automatisch (ja)").
+- ub_options = fin_unit_budget_select_options(booking)
+-# Only the EDIT PAGE offers the number of a NEW sub cost center next to the
+-# select, and only to a viewer who may set that field at all.
+- new_scc = (editing == true && may_edit.call(:sub_cost_center_number)) ? :fin_new_sub_cost_center_field : nil
+= fin_detail(booking, ctx, form_url: form_url, only: only, editing: editing,
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url]) do |d|
+  - d.header back: back, back_label: back_label,
       label: "Buchung ##{booking.id}", title: booking.posting_text
-  - d.attrs :booking_date, :service_date, :posting_text,
+  -# The Notizen stand right below the description, in the same group: they are
+  -# the finance-responsible person's own words about the booking, read by
+  -# everybody who reaches it (locale: datev_booking.user_comment; URLs and, for
+  -# a viewer with :log, helpdesk tickets are linked by the formatter).
+  - notes_help = "Deine permanenten Notizen zu dieser Buchung als Finanzverantwortliche*r. Die Notizen sind sichtbar für dein UL-Team, die Unit-Manager, das Finanzteam, Kassenprüfer*innen und die Admins."
+  - d.attrs :booking_date, :service_date, :posting_text, :user_comment,
       service_date: {blank: :hide},
-      posting_text: {label: "Beschreibung"}
-  - d.attrs :base_amount, base_amount: {label: "Betrag"}
+      posting_text: {label: "Beschreibung"},
+      user_comment: {blank: :hide, input: :textarea, editable: may_edit.call(:user_comment),
+                     help: notes_help}
+  -# The base (EUR) amount with the booking's Soll/Haben written out, and -- on a
+  -# FOREIGN-currency booking only -- the amount as booked beside it, followed by
+  -# the rate between the two. The original amount carries its own currency, so
+  -# the detail needs no currency field, and no second Soll/Haben: the indicator
+  -# belongs to the booking, and is stated once. Both foreign-currency rows are
+  -# hidden on an EUR booking, where they would only repeat the Betrag.
+  - d.attrs :base_amount, :transaction_amount, :exchange_rate,
+      base_amount: {label: "Betrag"},
+      transaction_amount: {label: "Original-Betrag", blank: :hide},
+      exchange_rate: {blank: :hide}
   - d.attrs :account_number, :offsetting_account_number
+  -# The editable fields say `blank: :hide`: unset, they are noise on a READING
+  -# page and simply stay away. On the edit page the kit shows them all the same
+  -# -- with their input, or, for a viewer who may read but not change one, with
+  -# the unset marker (Fin::DetailHelper::Row#shown?).
+  -#
+  -# Unit-Budget is the exception and carries no blank rule: its value is
+  -# RESOLVED (the booking's own flag, else its two accounts, else the default),
+  -# so the row always says something and stands on a reading page as well.
   - d.attrs :cost_center_number, :secondary_cost_center_number,
       :is_unit_budget, :sub_cost_center_number, :sphere_number,
-      secondary_cost_center_number: {blank: :unset, input: :select, options: cc_options, **editable},
-      is_unit_budget: {input: :select, options: ub_options, **editable},
-      sub_cost_center_number: {blank: :unset, input: :select, options: scc_options, **editable},
+      secondary_cost_center_number: {blank: :hide, input: :select, options: cc_options,
+                                     editable: may_edit.call(:secondary_cost_center_number)},
+      is_unit_budget: {input: :select, options: ub_options,
+                       editable: may_edit.call(:is_unit_budget)},
+      sub_cost_center_number: {blank: :hide, input: :select, options: scc_options,
+                               editable: may_edit.call(:sub_cost_center_number),
+                               extra: new_scc},
       sphere_number: {blank: :unset},
       cost_center_number: {blank: :unset}
+  -# Both comment columns are NOT NULL with "" as their default, so an unwritten
+  -# comment is "" and falls under the same rule as the fields above.
+  -# "Kommentar" is the finance team's own note (locale: datev_booking.comment);
+  -# the Notizen everybody reads stand with the description above.
+  - d.attrs :comment,
+      comment: {blank: :hide, input: :textarea, editable: may_edit.call(:comment)}
   - d.attrs :document_field_1, :document_field_2, :buchungs_guid,
       document_field_1: {label: "Belegfeld 1", blank: :hide},
       document_field_2: {label: "Belegfeld 2", blank: :hide}
-  - d.custom title: "Rohdaten (DATEV)" do
+  - d.custom key: :raw, title: "Rohdaten (DATEV)" do
     .small.font-monospace
       - booking_raw_fields(booking).each do |label, value|
         - next if value.blank?
         .text-break
           %span.text-muted= "#{label}:"
           = " #{value}"
-  - d.custom title: "Verknüpfungen" do
+  - d.custom key: :links, title: "Verknüpfungen" do
     - if booking.datev_booking_batch_id
       = wsjrdp_labeled_row("Buchungsstapel") do
         - batch = booking.batch

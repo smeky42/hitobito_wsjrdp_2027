@@ -171,9 +171,12 @@ full page sets `data-turbo=false`), so the response has to re-render that frame.
 `redirect_back` lands on the host page, which contains no frame of that row —
 Turbo shows "Content missing", or leaves the row on its `Wird geladen …`
 placeholder. Redirect to the record's own path on a frame request instead; see
-`Fin::BookingsController#redirect_after_update`. Note that a frame response
-renders turbo-rails' minimal layout, which has **no flash slot**: a `notice:` on
-that path is never seen.
+`Fin::BookingsController#redirect_after_update`. A frame response renders
+turbo-rails' minimal layout, which has **no flash slot** — so
+`WsjrdpFormHelper#wsjrdp_detail_frame` renders the flash *inside* the frame on a
+frame request, and the widget's JS (`shared/wsjrdp/_expandable_table_js`) lifts
+it above the detail's header line, to the top of the open detail; a message
+lifted earlier goes away with the frame content it belonged to.
 
 Every detail opens with a **header line of double links** (§2) — that is where a
 row links to its own page; the summary row itself carries no action icon.
@@ -199,7 +202,7 @@ once the cells need lookup maps.
 |---|---|---|---|
 | **declaration** | `Wsjrdp::TableStatePolicy` | once, at **class level**; `wsjrdp_expandable_table_policy` returns the object, the host keeps it in a **constant** | which params this table owns, where each field is stored, what is fixed, what the defaults are |
 | **resolved state** | `Wsjrdp::TableState` | once **per request**, from the policy object: `wsjrdp_expandable_table_state(THINGS_POLICY)` — memoised and frozen | what this request actually asks for: sort, visible columns, filter, page size, page, open rows, pane, nesting level |
-| **rows** | `Wsjrdp::ExpandableTableRows` | once per request, from state + source | the ordered current `page`, plus `total_count` and `total_sum` over the whole source |
+| **rows** | `Wsjrdp::ExpandableTableRows` | once per request, from state + source | the ordered current `page`, plus `total_count`, `total_sum` and `subtotal(sql)` over the whole source |
 
 A column is **described once** because those three read different halves of the
 same description: the **policy** takes `codec` (the `?c=` / `?s=` allow-list) and
@@ -315,8 +318,11 @@ view. Every field option is either a bare symbol (`filter: :remember`, shorthand
 for `{policy: :remember}`) or a Hash `{policy:, default:, store:, …}`;
 `per_page` additionally takes `max:` (the cap on a hand-written `?z=`; its
 `default:` is an Integer or the symbol `:all`, which starts the table unpaged),
-`cols` takes `exclude:` and `labels:` (below), and `filter` takes `schema:`,
-`fixed:`, `exclude:`, `default:` and `presets:` (below).
+`cols` takes `only:`, `exclude:` and `labels:` (below), and `filter` takes
+`schema:`, `fixed:`, `only:`, `exclude:`, `default:` and `presets:` (below).
+`only:` and `exclude:` are the same statement from either side — the one names
+what the table has, the other what it lacks — and a declaration may carry both:
+`only:` applies first, `exclude:` takes further entries out of what is left.
 
 Without an explicit policy (D6): `sort`, `cols`, `per_page` and `page` are
 `:remember`; `filter` and `open` are `:url`. `open` and `level` can never be
@@ -372,7 +378,7 @@ tables on one page never share memory. An explicit `store_key:` (String or
 lambda) lets several actions share — or a nested table key its memory per parent
 row. A later per-person DB store implements the same four methods.
 
-#### The filter: a schema, fixed slots, exclude (D2e)
+#### The filter: a schema, fixed slots, only / exclude (D2e)
 
 The filter is the one field the controller can pin **partially** — some slots
 fixed, the rest left to the user — and the one field that needs to know **which
@@ -383,10 +389,24 @@ filter: {policy: :url,
          schema: Fin::DatevBookingsFilterSchema,          # the dataset (mandatory)
          fixed: [{slots: LOCKED_FILTER_TREE, show: :readonly},   # rendered, locked
                  {slots: HIDDEN_TREE,        show: :hidden}],    # never rendered
+         only: %i[konto cost_center booking_date],        # ... the picker's whole offer
          exclude: %i[sphere cost_center],                 # not offered in the picker
          default: [[["konto", "in", "41030"]]],           # user tree, if nothing chosen
          presets: PRESETS}                                # one-click toggles, see below
 ```
+
+**`only:` and `exclude:`** shape the USER half: `only:` names the attributes the
+picker offers and every other attribute of the schema is excluded by it,
+`exclude:` names the ones it does not offer. Both may be lambdas, both take long
+attribute keys, and a declaration may carry both — `only:` first, `exclude:`
+subtracting from what is left. They are the same enforcement either way (the
+reduced binding below), so a condition on an attribute outside the offer is
+dropped whether it arrives from the URL, from the store or from the apply form.
+A key `only:` names that the schema does not carry raises at resolve time,
+naming the option; `spec/controllers/fin/table_policies_spec.rb` resolves every
+declared table, so a typo fails in CI. **Fixed slots are unaffected** — they are
+parsed and compiled against the FULL schema, so a page may well pin a condition
+on an attribute its picker does not offer.
 
 **`schema:`** is a module extending `Wsjrdp::Filtering::FilterSchema`
 (`doc/wsjrdp/generic_filter_builder.md`, Part 4). The protocol is small and is
@@ -408,12 +428,12 @@ declares no `filter:` at all gets an **inert** filter (no catalog, no user query
 `scope` returns its argument).
 
 **Everything is parsed by the resolver, once per request.** It binds the schema
-twice — the full one and the one reduced by `exclude:` — and runs the two halves
-through it with the two different levels of strictness:
+twice — the full one and the one reduced by `only:` / `exclude:` — and runs the
+two halves through it with the two different levels of strictness:
 
 | half | source | how it is parsed |
 |---|---|---|
-| the **user** part | the `f` param **or** the store | `decode` against the **reduced** schema — tolerant: an excluded or unknown attribute is dropped, on either path, so `exclude:` cannot be bypassed |
+| the **user** part | the `f` param **or** the store | `decode` against the **reduced** schema — tolerant: an excluded or unknown attribute is dropped, on either path, so the offer cannot be bypassed |
 | the **fixed** slots | the policy (code) | `parse_fixed!` against the **full** schema — **strict**: a typo raises, naming attribute, operator and slot index |
 
 The strictness split is the point: the compiler is neutral-on-invalid, which is
@@ -431,9 +451,9 @@ declared table of the wagon once, so such a typo fails in CI.
 | `fixed_entries` / `fixed_slots` | the validated `[{slots:, show:}]` entries, and all their slots as one tree |
 | `readonly_slots` / `hidden_slots` | the fixed slots the builder shows as locked chips / the ones that never reach the view. Display visibility never influences enforcement (D8.3). |
 | `effective_slots` | fixed + user slots, i.e. what actually filters the rows |
-| `catalog` / `full_catalog` | the picker's catalog (reduced by `exclude:`) and the wider one that labels a fixed condition using an attribute the picker hides |
+| `catalog` / `full_catalog` | the picker's catalog (reduced by `only:` / `exclude:`) and the wider one that labels a fixed condition using an attribute the picker hides |
 | `presets` / `preset(**declaration)` | the policy's quick-select presets as `Wsjrdp::TableState::FilterPreset`s — one per slot preset, one per member of a preset group — and the same for a view-declared one (a group yields the Array of its members; see "Presets" below) |
-| `exclude` | the excluded attribute keys |
+| `exclude` | the excluded attribute keys — the effective set, i.e. what `only:` and `exclude:` together take out |
 | `schema` | the dataset module itself (`nil` for an inert filter) |
 | `wire` (= `state.wire(:filter)`) | the canonical short-key wire form of the user part, `""` when empty |
 | `encode_tree(tree)` | the filter builder's posted tree → wire form, for the apply redirect |
@@ -812,7 +832,9 @@ the detail row is then the slim header-line bar alone. With a **direct** detail
 the line is the first thing inside it; with a **lazy** one it sits above the
 turbo frame, so it is there while the frame still says "Wird geladen …" — the
 same place either way (`shared/wsjrdp/_detail_links`,
-`shared/wsjrdp/_expandable_table_styles`).
+`shared/wsjrdp/_expandable_table_styles`). The detail row starts its own
+`white-space` (`.exp-detail`): a condensed table sets its cells to nowrap, and
+the pane below one of its rows is prose that wraps.
 
 **Sortable headers.** A column becomes clickable by declaring a `sort:` in its
 description — `to_table_column` turns that into the widget's `sort_key:`. The
@@ -880,6 +902,18 @@ page:
 page), `total_sum` the `SUM` of the rows object's `sum:` column over the same —
 `nil` when the table declares none. The summed columns carry a baked sign
 (`doc/fin/money_conventions.md`), so a plain `SUM` is correct.
+
+**A share of that sum.** `subtotal(sql)` answers `[count, sum]` for the part of
+the **same** source an SQL condition picks out, which is what a line saying
+"… davon X" needs: the share and the total are then two readings of one
+relation and cannot come from different sets. The condition is host-authored
+SQL, like the `sort:` expressions, and never anything from the request. It is
+counted with `count(:all)` — a source that selects columns of its own
+(`DatevBooking.with_unit_budget`) would have its whole select list folded into a
+single `COUNT()` by a bare `#count` — and the sum is `nil` for a table without a
+`sum:` column. An **Array** source gets `nil`: there is no SQL to apply to one.
+The bookings table's summary uses it for the Unit-Budget share
+(`doc/fin/unit_budget.md`).
 
 **Paging (above and below).** Turn it on with a bare `t.paging` — page size and
 page come from the state, their defaults from the policy
@@ -955,10 +989,15 @@ the full list:
 
 ```ruby
 cols: {default: %w[booking_date signed_total_base_amount description],
+       only:    %w[booking_date signed_total_base_amount description party],
        exclude: %w[kind top_up_sender],            # columns THIS table lacks
        labels:  {"party" => "Karteninhaber"}}      # ... and its own names
 ```
 
+- **`only:`** names the columns THIS table has; every other column of the codec
+  is excluded by it. It is what a table declares when it shows a handful of a
+  large dataset's columns, so a column later added to the description does not
+  silently appear on it.
 - **`exclude:`** removes those columns from the table completely: they are not
   offered in the picker, never rendered, and not part of the encoded `?c=` value.
   They are also out of the **allow-list**, so a hand-written `?c=` / `?s=` or a
@@ -967,11 +1006,15 @@ cols: {default: %w[booking_date signed_total_base_amount description],
 - **`labels:`** renames a column for this table alone: the header, the condensed
   header and the picker entry all follow.
 
-Both take **long column keys** and are checked at **declaration time**: a key
-that is not in the policy's codec — or a default column that is also excluded —
-raises when the controller class loads, like every other declaration error.
+A declaration may carry `only:` and `exclude:` together: `only:` applies first,
+`exclude:` takes further columns out of what is left.
 
-Both may also be **lambdas**, evaluated on the controller per request like every
+All three take **long column keys** and are checked at **declaration time**: a
+key that is not in the policy's codec — or a default column outside the
+effective set — raises when the controller class loads, like every other
+declaration error.
+
+They may also be **lambdas**, evaluated on the controller per request like every
 other request-dependent declaration value — that is how the Moss list serves its
 five routes (the general tab plus one per kind) from one declaration, each tab
 with its own columns. A lambda is checked when it is evaluated, with the same
@@ -1209,14 +1252,18 @@ Four partials, each with one job:
 - `fin/bookings/_bookings_table` is the thin adapter onto the widget: the column
   config from `booking_table_columns(condensed:)`, the detail's header links
   (the booking's page, and "In Moss" for a booking that came from Moss), the
-  inline `_booking_detail`, the count+sum summary. Its one
+  inline `_booking_detail`, the summary line (count, sum and the Unit-Budget
+  share of that sum, `Fin::BookingsHelper#booking_table_summary`). Its one
   required local is **`rows:`** — a bookings `Wsjrdp::ExpandableTableRows` — so
   the adapter needs no prefix and no state of its own (`t.rows rows, id: …`
   brings both). `condensed: true` switches to the compact in-detail variant
-  (bare codes, the columns' `condensed_label`s, no picker).
+  (bare codes, the columns' `condensed_label`s, no picker). `detail_page:` and
+  `detail_src:` (lambdas `booking -> path`, both defaulting to `booking_path`)
+  say where a row's detail page and its lazy pane live, so a host that serves
+  the booking on a route of its own keeps both links inside that route.
 - `fin/bookings/_browser` adds the filter and renders `_bookings_table`
   directly, passing only the filter's *display* options (`apply_url`,
-  `condensed_locked`, `disabled`).
+  `condensed_locked`, `disabled`) and handing the table's own locals through.
 - `fin/bookings/_embedded` wraps the condensed variant with the "Buchungen"
   heading, the totals line and the "open in the bookings view" button, for the
   Buchhaltung detail views.
@@ -1287,6 +1334,30 @@ per-tier quick-select + the count/sum confirm), which drives whichever
 `.bk-select-scope` its `form_id` points at. Because the prefixes differ, the two
 tables page, sort and select **independently**; the connect actions return to the
 same view by re-emitting both `wire_params`.
+
+### Worked example C — the group's Buchhaltung
+
+`Group::BookkeepingController` (prefix `gb`) is the same bookings table on a
+page outside `/fin`, and it is where **`only:` and a fixed slot from a lambda**
+meet. The slot comes from `-> { group_cost_center_slots }`, evaluated on the
+controller per request: one slot, one `any_cost_center in (…)` condition over
+the cost centers of the group in the URL, `show: :readonly`. It is a fixed slot
+rather than a hand-written `where`, so the pin is compiled into the relation by
+`state.filter.scope` AND rendered as a locked chip — what the page shows and
+what it says it shows cannot drift apart. A group without cost centers yields
+`[]` and the page renders no table at all; the same emptiness is what lets the
+policies smoke spec resolve the declaration with no group loaded.
+
+`cols: {only: COLUMNS, …}` and `filter: {only: FILTERS, …}` then say which
+columns and which picker attributes this table HAS — Leistungsdatum, Sphäre,
+Primanota-Periode, Geschäftsjahr, Buchungsstapel and Beitragsbuchung are
+bookkeeping internals and are neither rendered, nor offered, nor reachable
+through a hand-written `?gbc=` / `?gbs=` / `?gbf=`. `store_key:` carries the
+group id, so each group remembers its own filter. The rows' detail page and
+lazy pane are moved onto the group's route through `detail_page:` /
+`detail_src:`; `Group::BookingsController` answers them and declares
+`prefix: "gb"` with nothing else, because all it needs from that table's state
+is the nesting `level`, whose param is shared rather than prefixed (see §3).
 
 ---
 

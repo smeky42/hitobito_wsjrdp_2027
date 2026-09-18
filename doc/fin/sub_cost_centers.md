@@ -30,7 +30,7 @@ free text, the reserved JSONB:
 | `display_short_name` | `string`, generated, stored | `short_name`, falling back to `name`, then `''`. The one place defining how a short display name is derived. |
 | `delete_without_finance_permission` | `boolean`, default `true`, `NOT NULL` | Whether the row may be deleted without a finance permission. |
 | `visibility` | `string`, default `auto`, `NOT NULL` | Hitobito-specific: `auto`, `visible` (always visible) or `hidden` (never visible). |
-| `budget_2025` … `budget_2028` | `decimal(20,3)` | One signed budget per year, expenses negative; `NULL` = not set. |
+| `budget_2025` … `budget_2028` | `decimal(20,3)` | One budget per year — an expense budget, stored positive; `NULL` = not set. |
 | `explicit_total_budget` | `decimal(20,3)` | An explicitly set total budget for the whole period; `NULL` = not set. |
 | `effective_total_budget` | `decimal(20,3)`, generated, stored | The displayed total: the yearly sum or `explicit_total_budget`, whichever is larger in absolute value. Not writable. |
 | `description` / `comment` | `text`, default `''`, `NOT NULL` | Free text. |
@@ -57,10 +57,10 @@ END
 ```
 
 yields `effective_total_budget`: the sum of the yearly budgets or the
-explicitly set total, whichever has the **larger absolute value** — budgets are
-signed with expenses negative (see
-[money_conventions.md](money_conventions.md)), so a numeric `MAX` would pick
-the *smaller* envelope of two expense budgets. With all four years `NULL` the
+explicitly set total, whichever has the **larger absolute value**. Budgets are
+expense budgets and stored positive ([unit_budget.md](unit_budget.md)); the
+comparison by absolute value makes the expression indifferent to the sign, so
+a negative value would be measured the same way. With all four years `NULL` the
 result is `explicit_total_budget`. The identical expression sits on
 `wsjrdp_cost_centers`; each migration carries its own copy because migrations
 stay self-contained. These budget columns, `effective_total_budget` included,

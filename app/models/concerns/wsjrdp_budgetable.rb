@@ -8,12 +8,14 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 # Budget columns shared by WsjrdpCostCenter, WsjrdpSubCostCenter and
-# WsjrdpSphere: one signed decimal per year (budget_2025..budget_2028, expenses
-# negative -- the sign convention of datev_bookings.amount), an optional
-# explicitly set
-# `explicit_total_budget`, and the database-generated `effective_total_budget`
-# (the yearly sum or the explicit total, whichever has the larger absolute
-# value; read-only, see the AddWsjrdpCostCenters migration).
+# WsjrdpSphere: one decimal per year (budget_2025..budget_2028), an optional
+# explicitly set `explicit_total_budget`, and the database-generated
+# `effective_total_budget` (the yearly sum or the explicit total, whichever has
+# the larger absolute value; read-only, see the AddWsjrdpCostCenters
+# migration). Budgets are EXPENSE budgets and stored positive -- unlike a
+# booking's signed amount, where an expense is negative
+# (doc/fin/unit_budget.md); the generated total compares by absolute value and
+# is indifferent to the sign.
 module WsjrdpBudgetable
   extend ActiveSupport::Concern
 

@@ -51,6 +51,16 @@
      the embedded bookings table and its container queries -- then lays out and
      shrinks against the width the user actually sees. */
   .exp-detail { position: sticky; left: 0; width: 100cqw; }
+  /* The detail is prose, however its table wraps it: the condensed table sets
+     its cells to nowrap (below), and the detail row's cell would pass that on
+     to every line of the pane -- a help line, a note -- so the pane starts its
+     own white-space again. A condensed table INSIDE the pane sets nowrap on its
+     own cells as before. */
+  .exp-detail { white-space: normal; }
+  /* A flash the pane's frame answers with (WsjrdpFormHelper#wsjrdp_detail_frame_flash)
+     is lifted above the header line by shared/wsjrdp/_expandable_table_js, so it
+     stands where the eye goes first; the side margin repeats the line's padding. */
+  .exp-detail > .alert { margin: .75rem 1rem 0; }
   /* The condensed table, generically: content-sized columns that do not wrap, so
      every column stays visible and as narrow as its text. WHICH column is the
      flexible, wrapping "leftover" one and how wide the short ones get is a

@@ -7,8 +7,9 @@
 -#
 -#  Thin adapter: renders a bookings Wsjrdp::ExpandableTableRows through the shared widget
 -#  (via wsjrdp_expandable_table). It only maps the booking specifics -- the
--#  column config, the detail's header links, the inline detail, the
--#  count+sum summary -- onto the generic options; paging, sorting, the column
+-#  column config, the detail's header links, the inline detail, the summary
+-#  line (count, sum and the Unit-Budget share of it) -- onto the generic
+-#  options; paging, sorting, the column
 -#  hamburger and row selection all come from the widget. `condensed` renders
 -#  the compact in-detail variant (bare codes, abbreviated headers, no column
 -#  picker).
@@ -19,18 +20,24 @@
 -#
 -#  Locals: rows (required, a Wsjrdp::ExpandableTableRows); condensed;
 -#  extra_columns (injected columns, e.g. the reconciliation proposal);
--#  selection; detail_top / detail_extra (booking detail slots).
+-#  selection; detail_top / detail_extra (booking detail slots);
+-#  detail_page / detail_src (lambdas booking -> path: where a row's detail
+-#  page lives and where its lazy pane is fetched from, so a host that serves
+-#  the booking on its own route -- the group's Buchhaltung -- keeps both links
+-#  inside that route; both default to this page's own booking_path).
 - condensed = local_assigns.fetch(:condensed, false)
 - extra_columns = local_assigns.fetch(:extra_columns, nil)
 - selection = local_assigns.fetch(:selection, nil)
 - detail_top = local_assigns.fetch(:detail_top, nil)
 - detail_extra = local_assigns.fetch(:detail_extra, nil)
+- detail_page = local_assigns.fetch(:detail_page, nil) || ->(booking) { booking_path(booking) }
+- detail_src = local_assigns.fetch(:detail_src, nil) || ->(booking) { booking_path(booking) }
 = wsjrdp_expandable_table do |t|
   - t.rows   rows, id: (rows.state.prefix.presence || "bk")
   - t.columns booking_table_columns(condensed: condensed), menu: !condensed,
       extra: extra_columns
   - t.row_key { |b| b.id }
-  - t.detail_page { |booking| booking_path(booking) }
+  - t.detail_page { |booking| detail_page.call(booking) }
   -# "In Moss" leads to the Moss record BEHIND this booking, on either of the two
   -# levels the Moss->DATEV chain posts at: this booking is the clearing booking
   -# of a transaction, or the expense booking of one of its splits. Unlinked
@@ -42,10 +49,13 @@
   - if detail_top || detail_extra
     - t.detail { |booking, ctx| render "fin/bookings/booking_detail", booking: booking, table_context: ctx, top: detail_top, extra: detail_extra }
   - else
-    - t.detail_src { |booking| booking_path(booking) }
+    - t.detail_src { |booking| detail_src.call(booking) }
   - t.paging
   - t.filter  local_assigns[:filter]
-  - t.summary(condensed ? nil : "#{rows.total_count} Buchungen · Summe (gefiltert): #{fin_money(rows.total_sum)}")
+  -# Count, sum and the Unit-Budget share of that sum (Fin::BookingsHelper).
+  -# The condensed variant inside a detail row states none of it: the item it
+  -# sits under already carries its own totals.
+  - t.summary(condensed ? nil : booking_table_summary(rows))
   - t.selection selection
   - t.condensed condensed
 -# The widget styles a condensed table only generically (content-sized, nowrap);

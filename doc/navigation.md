@@ -234,13 +234,150 @@ tab :moss_card_transactions_tab_label, :moss_card_transactions_path  # eine von 
 Die Gruppenseite (`/groups/:id`) trägt neben ihren Core-Tabs den Tab
 **Finanzen**; dahinter liegen eigene Unter-Tabs, zunächst nur **Buchhaltung**.
 
-Die Buchhaltung zeigt die **Kostenstellen der Gruppe** als Chips (Nummer +
-`display_short_name`), gelesen aus `Group#cost_centers`, also aus
-`groups.additional_info["cost_center_numbers"]`. Ein Chip verlinkt die
+Die Buchhaltung beginnt mit **einer kompakten Zeile**: das gemutete Wort
+„Kostenstellen" und in derselben Zeile die **Kostenstellen der Gruppe** als
+Chips (Nummer + `display_short_name`), gelesen aus `Group#cost_centers`, also
+aus `groups.additional_info["cost_center_numbers"]`. Ein Chip verlinkt die
 Kostenstelle nur, wenn `can?(:show, WsjrdpCostCenter)` gilt — eine Unit-Leitung
 kommt über ihre eigene Gruppe auf die Seite und hält im Finanzen-Bereich
 nichts. Ohne Zuordnung steht dort `groups.finance.bookkeeping.no_cost_centers`.
 Zugeordnet werden die Nummern ausschließlich in der Verwaltung (§8).
+
+### Die Kennzahlen-Kacheln
+
+Zwischen der Kostenstellen-Zeile und der Tabelle stehen vier Kacheln im Look
+der Kennzahlen-Zeilen auf `/fin` (gemutetes Label, Tabellenziffern), alle als
+positive Beträge (die vorzeichenbehafteten Summen mit gedrehtem Vorzeichen):
+**Ausgaben Gesamt** (die Buchungen der Gruppe), **Ausgaben Unit-Budget** (der
+Teil davon, der gegen das Budget der Unit zählt), **Unit-Budget** (die Summe der
+Gesamtbudgets der als Unit-Kostenstelle markierten Kostenstellen der Gruppe)
+und **Unit-Budget Verbraucht** (der Anteil in Prozent). Gerechnet wird in
+[`Fin::GroupBookkeepingFigures`](../app/domain/fin/group_bookkeeping_figures.rb),
+die der Controller als Helper-Methode `bookkeeping_figures` bereitstellt.
+
+Die Kacheln lesen die **gepinnte** Menge — jede Buchung, deren primäre oder
+sekundäre Kostenstelle eine der Gruppe ist —, **nicht** das, was der Filter
+übrig lässt: die Tabelle beantwortet „was sehe ich gerade an", die Kacheln „wo
+steht die Unit". Die gefilterten Zahlen nennt die Summenzeile der Tabelle. Das
+Budget ist die Summe der `effective_total_budget` über die Kostenstellen der
+Gruppe, die als **Unit-Kostenstelle** markiert sind; ohne ein solches Budget
+steht in der Kachel „—" und darunter der Hinweis „kein Unit-Budget
+hinterlegt". Die Regel dahinter steht in
+[`doc/fin/unit_budget.md`](fin/unit_budget.md).
+
+### Die Buchungstabelle
+
+Unter den Chips stehen die **DATEV-Buchungen der Gruppe**: dieselbe Tabelle wie
+auf `/fin/bookkeeping/bookings` (`fin/bookings/_browser` samt Filterzeile,
+Builder, Spaltenmenü, Paging, Summenzeile und aufklappbaren Detail-Panes), mit
+einer eigenen Policy im `Group::BookkeepingController` (Prefix `gb`). Drei
+Deklarationen machen sie zur Gruppen-Tabelle:
+
+- ein **fixer Filter-Slot** `[["any_cost_center", "in", *nummern]]` mit
+  `show: :readonly`, aus einem Lambda, das die Kostenstellen der geladenen
+  Gruppe liest. Er wird von `state.filter.scope` in die Relation kompiliert und
+  als gesperrter Chip angezeigt; keine URL kann ihn entfernen oder aufweiten
+  (`doc/wsjrdp/expandable_table.md`, D2e). `any_cost_center` prüft beide
+  Kostenstellen-Spalten, eine Buchung erscheint also auch über ihre sekundäre
+  Kostenstelle;
+- `cols: {only: COLUMNS, default: -> { default_booking_columns }, labels: …}` —
+  welche Spalten die Tabelle überhaupt **hat** (Leistungsdatum,
+  Primanota-Periode und Sphäre nicht) und dass `booking_date` hier
+  „Buchungsdatum" heißt. Die Vorauswahl ist ein **Lambda**, das
+  `Wsjrdp::TableStatePolicy#evaluate` pro Request auf dem Controller ausführt:
+  das Gegenkonto steht nicht darin (das Konto nennt die Seite, die das Geld
+  trägt), und bei **genau einer** Kostenstelle fällt auch die Spalte
+  Kostenstelle weg — der gesperrte Chip über der Tabelle nennt sie bereits, und
+  jede Zeile würde sie wiederholen. Ab zwei Kostenstellen steht sie wieder da.
+  Beide bleiben in `COLUMNS`, das Spaltenmenü bietet sie also weiter an. Ohne
+  Gruppe — der Policies-Smoke-Test löst jede Deklaration auf einer
+  request-losen Controller-Instanz auf — ist die Liste der Kostenstellen leer
+  und die volle Vorauswahl steht;
+- `filter: {only: FILTERS, policy: :remember, store_key: …}` — welche Attribute
+  der Picker anbietet (ohne Leistungsdatum, Geschäftsjahr, Sphäre,
+  Buchungsstapel, Beitragsbuchung), und ein Store-Key je Gruppe
+  (`group/bookkeeping:<group_id>`), damit der gemerkte Filter einer Unit nicht
+  auf der Seite einer anderen auftaucht.
+
+Eine Spalte hat die Gruppenseite, die `/fin` nur im Spaltenmenü anbietet:
+**„Unit-Budget?"** (`unit_budget`, Kürzel `ub`) steht hier gleich hinter dem
+Betrag unter den `DEFAULT_COLUMNS`, und das gleichnamige Filter-Attribut steht
+in `FILTERS`. Die Zelle sagt `ja` / `nein` und gemutet daneben, woher die
+Antwort kommt (`Kostenstelle 9500`, `Konto 66500`, `Buchung`, `Standard`) —
+waren sich beide Konten einig, steht dort nichts, das ist der Normalfall.
+Gemeint ist jeweils der **aufgelöste** Wert — die Buchung selbst, sonst ihre
+Kostenstelle, sonst ihre beiden Konten, sonst der Standard; die Regel steht in
+[`doc/fin/unit_budget.md`](fin/unit_budget.md).
+
+Über dem Filter steht dazu eine **Schnellauswahl** mit einem Preset
+„Unit-Budget" (`Group::BookkeepingController::PRESETS`): ein Klick setzt den
+Benutzer-Slot `unit_budget in (true)`, ein zweiter nimmt ihn wieder weg — ein
+Kürzel in den Benutzerteil des Filters, kein Pin, der Slot bleibt als
+gewöhnlicher Chip editierbar. Die **Summenzeile** über der Tabelle nennt neben
+Anzahl und Summe auch den Unit-Budget-Anteil daran („… · davon Unit-Budget: Y €
+(M Buchungen)"); beide Zahlen kommen aus derselben gefilterten Relation, ein
+Filter bewegt also beide.
+
+Ein von Hand geschriebenes `?gbc=` / `?gbs=` / `?gbf=` mit einem fremden Token
+wird verworfen — `only:` ist dieselbe Durchsetzung wie `exclude:`. Ohne
+Kostenstellen gibt es nichts, woran die Tabelle hängen könnte; dann steht nur
+der Leer-Hinweis. Der Filter-Builder postet nach
+`group_finance_bookkeeping_apply_path` (PRG,
+`Wsjrdp::TableStateful#wsjrdp_apply_table_filter`).
+
+### Die Buchungsseite
+
+`detail_page:` und `detail_src:` zeigen auf
+`group_finance_bookkeeping_booking_path(group, booking)`: sowohl die
+Detailseite einer Zeile als auch das lazy geladene Pane bleiben auf der Route
+der Gruppe, es führt nichts nach `/fin`. Die Seite rendert
+`Group::BookingsController#show` über `Fin::BookingDetailHost` und die zentrale
+Detailansicht `fin/bookings/_detail` — die Gruppenseite gibt nur die Feldliste
+vor (`only: FIELDS`), `editable:` und `form_url:` hängen an
+`can?(:update_finance, group)`. Was sie zeigt und was eine Unit-Leitung ändern
+darf, steht in [`doc/roles.md`](roles.md) → „Finance on a group's page".
+
+**Keinen Zurück-Link**: Lese- wie Bearbeiten-Seite geben `back: nil`
+(`doc/fin/detail_partials.md` §9), der Kopf rendert dann keinen Link. Die Seite
+wird aus dem Tab Buchhaltung heraus geöffnet, der darüber aktiv stehen bleibt;
+ein „Zurück zur Buchhaltung" wäre der Weg, den die Tab-Zeile schon anbietet.
+Auf `/fin` steht „Zurück zur Liste" weiter, denn dort ist die Liste eine eigene
+Seite und kein Tab.
+
+**Lesen und Bearbeiten sind zwei Seiten.** Die Buchungsseite zeigt die Buchung
+(`editing: false`, Detail-Kit §6 in
+[`doc/fin/detail_partials.md`](fin/detail_partials.md)); geändert wird auf einer
+eigenen Route darunter:
+
+```ruby
+get "finance/bookkeeping/bookings/:id/edit" => "group/bookings#edit",
+  :as => :edit_finance_bookkeeping_booking
+```
+
+Der Helper heißt `group_edit_finance_bookkeeping_booking_path(group, booking)`
+(das `:as` wird innerhalb von `resources :groups` mit `group_` präfigiert). Die
+Route ist auf `:update_finance` gegattert — die Lesestufe kommt nicht einmal auf
+die Seite —, und die Lese-Seite zeigt den Knopf „Bearbeiten" nur dort, wo dieses
+Recht gilt. Nach dem Speichern entscheidet der gedrückte Submit: `stay` führt
+zurück auf die Bearbeiten-Seite, `save` weiter auf die Lese-Seite
+(`Fin::BookingDetailHost#redirect_after_update`, dieselbe Logik wie unter
+`/fin`). Das **Pane** in der aufgeklappten Tabellenzeile bleibt davon unberührt:
+es behält seinen eigenen Umschalter und postet direkt auf `#update`.
+
+Die Buchung wird ausschließlich innerhalb der Kostenstellen der Gruppe gesucht
+(`DatevBooking.where(cost_center_number: …).or(… secondary_cost_center_number …)`
+und dann `find`), sonst wäre über die Gruppenroute jede Buchungs-ID des
+Kontingents lesbar; eine fremde ID ergibt 404. Der Frame trägt das Prefix der
+Tabelle (`wsjrdp_detail_frame("gb", …)`) — ein anderer würde den falschen Frame
+beantworten und Turbo zeigte „Content missing".
+
+`Group::BookingsController` deklariert dafür eine eigene, minimale Tabelle
+(`wsjrdp_expandable_table_policy prefix: "gb"`, sonst nichts): gebraucht wird
+daraus nur die **Verschachtelungstiefe**, und `level` ist das eine Feld, dessen
+Param nicht mit dem Prefix genamespaced ist
+(`Wsjrdp::TableStatePolicy::SHARED_PARAMS`) — die einbettende Tabelle schreibt
+`?expandable_table_level=N` in die Frame-URL, jede Policy liest denselben Wert
+zurück.
 
 ### Tab in der Gruppen-Sheet-Liste
 
@@ -267,6 +404,7 @@ sieht den Tab nicht.
 | `Sheet::Group` | Core + Wagon-Patch | Haupt-Tabs der Gruppenseite |
 | `Sheet::Group::Finance` | [`app/helpers/sheet/group/finance.rb`](../app/helpers/sheet/group/finance.rb) | Bereichs-Sheet, trägt die Unter-Tabs |
 | `Sheet::Group::Bookkeeping` | [`app/helpers/sheet/group/bookkeeping.rb`](../app/helpers/sheet/group/bookkeeping.rb) | Blatt-Sheet der Buchhaltung |
+| `Sheet::Group::Booking` | [`app/helpers/sheet/group/booking.rb`](../app/helpers/sheet/group/booking.rb) | Blatt-Sheet einer einzelnen Buchung |
 
 `Sheet::Group::Finance` setzt `parent_sheet = Sheet::Group` und überschreibt
 zwei Methoden:
@@ -284,6 +422,20 @@ zwei Methoden:
 `Sheet::Group::Bookkeeping` erbt von `Sheet::Group::Finance` und ändert nur den
 Titel; die `tab`-Zeilen erbt es mit. Auf das Sheet abgebildet wird
 `Group::BookkeepingController` über die Namenskonvention aus §4.
+`Sheet::Group::Booking` ist dasselbe für `Group::BookingsController`
+(Titel „<Gruppe> - Buchung").
+
+**Aktiver Tab auf der Buchungsseite.** Weder der Haupt-Tab Finanzen noch der
+Unter-Tab Buchhaltung braucht dafür ein `alt:`: `Sheet::Tab#alt_paths` enthält
+immer auch den eigenen `path_method`, und die letzte Runde von
+`Wsjrdp2027::Sheet::Base#find_active_tab` matcht diese Pfade als **Präfix**
+(`Sheet::Tab::Renderer#alt_path_of?`) — `/groups/8/finance/bookkeeping` ist der
+Anfang von `/groups/8/finance/bookkeeping/bookings/5`. Der Info-Tab des Core
+trägt `no_alt: true` und schluckt den Treffer nicht, obwohl `/groups/8` Präfix
+jedes Gruppenpfads ist. Ein `alt:` mit dem Pfad-Helper der Buchung ginge auch
+gar nicht: das Sheet baut die Pfade eines Tabs aus seinen `path_args`, und die
+tragen nur die Gruppe, nicht die ID der Buchung — `path_for` liefe in einen
+`ActionController::UrlGenerationError`, und zwar auf jeder Gruppenseite.
 
 ### Welche Tabs kommen von welchem Sheet?
 
@@ -314,10 +466,19 @@ Unter-Tabs fielen weg. Deshalb heißt die Action `show`.
 
   ```ruby
   get "finance/bookkeeping" => "group/bookkeeping#show", as: :finance_bookkeeping
+  post "finance/bookkeeping/apply" => "group/bookkeeping#apply",
+    as: :finance_bookkeeping_apply
+  get "finance/bookkeeping/bookings/:id" => "group/bookings#show",
+    as: :finance_bookkeeping_booking
+  patch "finance/bookkeeping/bookings/:id" => "group/bookings#update"
   ```
 
-  Das ergibt den Helper `group_finance_bookkeeping_path(group)` für
-  `/groups/:group_id/finance/bookkeeping`.
+  Das ergibt die Helper `group_finance_bookkeeping_path(group)` für
+  `/groups/:group_id/finance/bookkeeping`,
+  `group_finance_bookkeeping_apply_path(group)` für das PRG-Ziel des Filters
+  und `group_finance_bookkeeping_booking_path(group, booking)` für eine
+  Buchung; der PATCH auf denselben Pfad ist das Ziel der Mini-Formulare der
+  Detailansicht und braucht keinen eigenen Helper.
 - **i18n** (`config/locales/wsjrdp_2027.de.yml`): `groups.tabs.finance` für den
   Haupt-Tab, `groups.finance.tabs.bookkeeping` für den Unter-Tab,
   `groups.finance.bookkeeping.title`, `.cost_centers` und `.no_cost_centers`
@@ -344,10 +505,10 @@ Unter-Tabs fielen weg. Deshalb heißt die Action `show`.
 | --- | --- |
 | Haupt-Tab + Whitelist | `app/helpers/wsjrdp_2027/sheet/group.rb` |
 | Bereichs-Sheet (Unter-Tabs) | `app/helpers/sheet/group/finance.rb` |
-| Blatt-Sheet | `app/helpers/sheet/group/bookkeeping.rb` |
-| Controller | `app/controllers/group/bookkeeping_controller.rb` |
-| View | `app/views/group/bookkeeping/show.html.haml` |
-| Route | `config/routes.rb` (`get "finance/bookkeeping" …`) |
+| Blatt-Sheets | `app/helpers/sheet/group/bookkeeping.rb`, `app/helpers/sheet/group/booking.rb` |
+| Controller | `app/controllers/group/bookkeeping_controller.rb`, `app/controllers/group/bookings_controller.rb` |
+| Views | `app/views/group/bookkeeping/show.html.haml`, `app/views/group/bookings/show.html.haml` |
+| Routen | `config/routes.rb` (`get "finance/bookkeeping" …` + apply / bookings) |
 | i18n | `config/locales/wsjrdp_2027.de.yml` (`groups.tabs.finance`, `groups.finance.*`) |
 | Rechte | `app/abilities/wsjrdp_2027/group_ability.rb` |
 

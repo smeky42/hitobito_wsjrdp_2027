@@ -30,10 +30,10 @@ end
 
 require_relative "../../../app/domain/wsjrdp/expandable_table_rows"
 
-# Records every ORDER BY / preload / limit it is asked for and answers #page /
-# #total_count the way a Kaminari-paginated relation would.
+# Records every ORDER BY / preload / limit / WHERE it is asked for and answers
+# #page / #total_count the way a Kaminari-paginated relation would.
 class FakeTableRelation
-  attr_reader :order_by, :preloaded, :limited, :summed
+  attr_reader :order_by, :preloaded, :limited, :summed, :condition, :counted, :filtered
 
   def initialize(rows = (1..3).to_a)
     @rows = rows
@@ -51,9 +51,23 @@ class FakeTableRelation
     dup.tap { |rel| rel.instance_variable_set(:@limited, count) }
   end
 
+  # A narrower scope of its own, kept under #filtered so a spec can see WHAT was
+  # asked of it -- a real relation's #where returns a new object as well.
+  def where(condition)
+    @filtered = dup
+    @filtered.instance_variable_set(:@condition, condition)
+    @filtered.instance_variable_set(:@rows, @rows.first(1))
+    @filtered
+  end
+
+  def count(mode)
+    @counted = mode
+    @rows.size
+  end
+
   def sum(column)
     @summed = column
-    42
+    @condition ? 7 : 42
   end
 
   def total_count = @rows.size
@@ -165,6 +179,38 @@ describe Wsjrdp::ExpandableTableRows do
       expect(rows([]).total_sum).to be_nil
       expect(relation.summed).to be_nil
     end
+
+    # The "… davon X" half of a summary line: the SAME source, narrowed by one
+    # host-authored SQL condition.
+    it "#subtotal counts and sums the part of the source a condition picks out" do
+      table = rows([], sum: :signed_base_amount)
+
+      expect(table.subtotal("effective_is_unit_budget")).to eq([1, 7])
+      expect(relation.filtered.condition).to eq("effective_is_unit_budget")
+      expect(relation.filtered.summed).to eq(:signed_base_amount)
+    end
+
+    # count(:all), never a bare #count -- a source that selects columns of its
+    # own would have the whole select list folded into one COUNT().
+    it "#subtotal counts with :all" do
+      rows([], sum: :signed_base_amount).subtotal("effective_is_unit_budget")
+
+      expect(relation.filtered.counted).to eq(:all)
+    end
+
+    it "#subtotal asks the source once per condition" do
+      table = rows([], sum: :signed_base_amount)
+
+      expect(table.subtotal("effective_is_unit_budget")).to eq([1, 7])
+      first = relation.filtered
+      expect(table.subtotal("effective_is_unit_budget")).to eq([1, 7])
+      expect(relation.filtered).to equal(first)
+    end
+
+    it "#subtotal has no sum without a sum: column" do
+      expect(rows([]).subtotal("effective_is_unit_budget")).to eq([1, nil])
+      expect(relation.filtered.summed).to be_nil
+    end
   end
 
   describe "an array-backed table" do
@@ -225,6 +271,12 @@ describe Wsjrdp::ExpandableTableRows do
 
     it "#total_sum adds the declared key up over every row" do
       expect(rows([], sum: :count).total_sum).to eq(12)
+    end
+
+    # There is no SQL to apply to an Array, so a host that asks gets nothing
+    # rather than a figure computed by another rule.
+    it "#subtotal is nil" do
+      expect(rows([], sum: :count).subtotal("whatever")).to be_nil
     end
 
     it "insists on a Proc tiebreaker" do

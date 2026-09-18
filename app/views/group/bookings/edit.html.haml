@@ -1,0 +1,20 @@
+-#  Copyright (c) 2026, German Contingent for the Worldscoutjamboree 2027. This file is part of
+-#  hitobito_wsjrdp_2027 and licensed under the Affero General Public License version 3
+-#  or later. See the COPYING file at the top-level directory or at
+-#  https://github.com/hitobito/hitobito_wsjrdp_2027.
+-#
+-#  The edit page of one booking of the group. The route is gated on
+-#  :update_finance (Group::BookingsController#authorize_action), so the form is
+-#  unconditional here -- what a group may change is EDITABLE_FIELDS, and the
+-#  fields outside it stand read-only, as they do on the reading page.
+-#
+-#  No back link either (`back: nil`, like the reading page): "Abbrechen" leads
+-#  back to the booking, the Buchhaltung tab stands active above the page.
+= wsjrdp_detail_frame("gb", @booking.id) do
+  = render "fin/bookings/detail", booking: @booking, ctx: @ctx,
+    only: Group::BookingsController::FIELDS,
+    editable: Group::BookingsController::EDITABLE_FIELDS,
+    form_url: group_finance_bookkeeping_booking_path(@group, @booking),
+    editing: true,
+    cancel_url: group_finance_bookkeeping_booking_path(@group, @booking),
+    back: nil
