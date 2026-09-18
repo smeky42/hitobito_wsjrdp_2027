@@ -187,6 +187,11 @@ module Wsjrdp2027
 
     def to_pdf = TypstDocument.compile_pdf(TEMPLATE, sys_inputs: to_sys_inputs)
 
+    # The first page as a picture, for the preview on the Abmeldung page.
+    def to_png(ppi: TypstDocument::THUMBNAIL_PPI)
+      TypstDocument.compile_png(TEMPLATE, sys_inputs: to_sys_inputs, ppi: ppi)
+    end
+
     # The name reads as the document is called, umlauts and all.
     def file_name
       TypstDocument.safe_file_name(

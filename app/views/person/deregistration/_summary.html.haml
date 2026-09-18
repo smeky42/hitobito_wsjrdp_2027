@@ -1,0 +1,57 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The head of the page, above the sections: what the deregistration is on the
+-# left -- its kind, its dates and where the registration stands -- and what it
+-# comes to on the right, down to the one amount the whole page is about.
+-#
+-# A save in the capture section changes what the head counts up, so the head
+-# carries an id of its own and a saved form replaces it by that id.
+.dereg-summary#dereg-summary
+  .dereg-summary-columns
+    %div
+      = render_attrs_list do
+        = labeled(Person.human_attribute_name(:deregistration_kind)) do
+          = format_person_deregistration_kind(@person)
+        -# A ticket is the exception, so its row shows up only where there is one.
+        - if @person.deregistration_issue.present?
+          = labeled(t("people.deregistration_summary.ticket")) do
+            = format_person_deregistration_issue(@person)
+        = labeled(Person.human_attribute_name(:deregistration_requested_date)) do
+          = format_attr(@person, :deregistration_requested_date)
+        = labeled(Person.human_attribute_name(:deregistration_effective_date)) do
+          = format_attr(@person, :deregistration_effective_date)
+        = labeled(Person.human_attribute_name(:status)) do
+          = @person.status_log_display
+    %div
+      = render_attrs_list do
+        = labeled(t("people.deregistration_summary.total_fee")) do
+          = format_cents_de(@person.total_fee_cents, zero_cents: "")
+          - if (reduction = @person.total_fee_reduction_text).present?
+            %span.muted(style="margin-left: 6px;")= "(#{reduction})"
+        = labeled(t("people.deregistration_summary.amount_paid")) do
+          = format_person_amount_paid_cents(@person)
+        -# The amount and, in short, where it comes from -- the Abmeldung erfassen
+        -# section spells that out.
+        = labeled(t("people.deregistration_summary.compensation")) do
+          = format_cents_de(@person.deregistration_actual_compensation_cents || @person.deregistration_contractual_compensation_cents, zero_cents: "")
+          %span.muted(style="margin-left: 6px;")
+            = @person.deregistration_actual_compensation_cents.present? ? "(eingetragen)" : "(nach T&R)"
+        -# What the deregistration pays back, or what is still owed -- one or the
+        -# other, never both, and a refund of nothing where there is neither. The
+        -# sum behind it stands on a line of its own, with the Einbehalt as a
+        -# plain amount: the row above says where that amount comes from.
+        - if @person.deregistration_open_cents > 0
+          = labeled(t("people.deregistration_summary.claim")) do
+            %span.fw-semibold(style="color: var(--bs-red);")
+              = format_person_deregistration_open_cents(@person)
+            .muted.small= deregistration_settlement_formula(@person)
+        - else
+          = labeled(t("people.deregistration_summary.refund")) do
+            %span.fw-semibold
+              = format_person_deregistration_refund_cents(@person)
+            .muted.small= deregistration_settlement_formula(@person)

@@ -190,6 +190,8 @@ de:
         deregistration_actual_compensation_eur: Entschädigung
         deregistration_refund_cents: Rückzahlung
         deregistration_refund_receipt_text: Text im Beleg
+        deregistration_refund_receipt_show_default_explanation: Erklärungsabsatz im Beleg
+        deregistration_form_show_contractual_compensation: 'Entschädigung nach T&R im Abmelde-Formular'
         deregistration_open_cents: Ausstehender Beitrag
         debit_return_issue: Ticket Rücklastschrift
         finance_group_ids: "Finanzzugriff auf Gruppen"
@@ -727,6 +729,28 @@ de:
     deregistration_kinds:
       withdrawal: Abmeldung (durch die Person)
       termination: Kündigung (durch das Kontingent)
+    deregistration_summary:
+      ticket: Ticket
+      total_fee: Teilnahmebeitrag
+      amount_paid: Bezahlt
+      compensation: Einbehalt (Entschädigung)
+      refund: Rückzahlung
+      claim: Forderung
+    deregistration_capture:
+      title: Abmeldung erfassen
+      save: Speichern
+      save_and_stay: Speichern und weiter bearbeiten
+      cancel: Abbrechen
+    deregistration_documents:
+      save: PDF speichern
+      open: In neuem Tab öffnen
+      preview: Vorschau
+      signatures: Unterschriften
+      compensation_named: 'Entschädigung nach T&R wird genannt'
+      compensation_not_named: 'Entschädigung nach T&R wird nicht genannt'
+      explanation_printed: Erklärungsabsatz wird gedruckt
+      explanation_not_printed: Erklärungsabsatz wird nicht gedruckt
+      with_text: mit Text im Beleg
     refund_creditor:
       title: Kreditor für Rückzahlung
       moss_link: Kreditoren in Moss
@@ -752,8 +776,18 @@ de:
       street_and_number: Straße und Hausnummer
       zip_code: Postleitzahl
       town: Ort
+    deregistration_form:
+      title: Abmelde-Formular
+      button: Abmelde-Formular als PDF
+      show_contractual_compensation: 'Entschädigung nach T&R im Abmelde-Formular anzeigen'
+      show: anzeigen
+      hide: ausblenden
+      reasons:
+        termination: Die Art ist Kündigung (durch das Kontingent), das Abmelde-Formular erklärt aber den Rücktritt durch die Person.
+        no_effective_date: Bei „Abmeldung zum“ ist kein Datum eingetragen.
     refund_receipt:
-      title: Moss-Beleg Rückzahlung
+      title: Beleg für Rückzahlung in Moss
+      button: Moss-Beleg als PDF
       team_unit: Team/Unit
       role_name: Rolle
       amount_paid: Bisher bezahlt
@@ -763,9 +797,6 @@ de:
       iban: IBAN
       text_placeholder: Optionaler Text vor dem Erklärungsabsatz
       show_explanation: Erklärungsabsatz im Beleg anzeigen
-      save_text: Text speichern
-      saved: Text im Beleg gespeichert
-      unchanged: Text im Beleg nicht verändert
     finance:
       tabs:
         fee: Beiträge

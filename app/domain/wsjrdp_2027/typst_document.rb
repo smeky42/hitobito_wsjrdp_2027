@@ -10,7 +10,8 @@
 require "typst"
 
 module Wsjrdp2027
-  # Compiles one of the wagon's Typst templates to a PDF.
+  # Compiles one of the wagon's Typst templates to a PDF, or its first page to a
+  # PNG.
   #
   # The contract:
   #
@@ -21,7 +22,7 @@ module Wsjrdp2027
   # - `sys_inputs` become Typst's `sys.inputs`, which are Strings and nothing
   #   else. Every value is stringified here; structured data goes in as JSON and
   #   comes back out with Typst's `json(bytes(...))`.
-  # - The return value is the whole PDF as one binary String.
+  # - The return value is the whole PDF, or the one page, as a binary String.
   #
   # The fonts come from the wagon's own font directory rather than the system,
   # so the output does not depend on what is installed where it runs.
@@ -36,6 +37,12 @@ module Wsjrdp2027
     # What a file name must not carry, on any of the systems these PDFs travel
     # through -- everything else, umlauts included, stays as it is written.
     FILE_NAME_FORBIDDEN = /[\/\\:*?"<>|\x00-\x1F]/
+    # Enough resolution for a legible picture of a page next to the document it
+    # belongs to.
+    THUMBNAIL_PPI = 48
+    # The first bytes of a PNG, as binary: the compiled page is binary too, and
+    # comparing it with a UTF-8 string would raise.
+    PNG_SIGNATURE = "\x89PNG".b.freeze
 
     class << self
       def compile_pdf(template, sys_inputs: {})
@@ -49,6 +56,21 @@ module Wsjrdp2027
         raise "Typst produced no PDF for #{template}" unless pdf&.start_with?("%PDF")
 
         pdf
+      end
+
+      # The first page as a PNG, for a picture of the document next to it. Typst
+      # renders every page, so only the first of them is taken.
+      def compile_png(template, sys_inputs: {}, ppi: THUMBNAIL_PPI)
+        png = Typst(template_path(template).to_s)
+          .with_root(typst_dir.to_s)
+          .with_font_paths([fonts_dir.to_s])
+          .with_inputs(stringify(sys_inputs))
+          .compile(:png, ppi: ppi)
+          .pages
+          .first
+        raise "Typst produced no PNG for #{template}" unless png&.start_with?(PNG_SIGNATURE)
+
+        png
       end
 
       # A name a document can be saved under: send_data encodes the rest for

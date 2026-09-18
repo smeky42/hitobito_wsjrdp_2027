@@ -7,11 +7,10 @@
 
 -# What the finance team types into Moss before the refund can be paid: the
 -# person's bank account and address, and the master data every refund creditor
--# gets. The link leads to where those creditors are kept.
-%h3.mt-4.mb-3
-  = t("people.refund_creditor.title")
+-# gets. The first line leads to where those creditors are kept.
+%p
   = link_to @refund_creditor.moss_suppliers_url, target: "_blank", rel: "noopener",
-    class: "ms-2 fs-6", title: "In neuem Tab öffnen" do
+    title: "In neuem Tab öffnen" do
     = t("people.refund_creditor.moss_link")
     = icon(:"external-link-alt")
 = render_attrs_list do

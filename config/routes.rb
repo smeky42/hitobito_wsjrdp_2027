@@ -68,7 +68,7 @@ Rails.application.routes.draw do
       # The Buchhaltung sub-tab of the group's Finanzen tab. The action is
       # :show, not :index, so the leaf sheet keeps its sub-tabs
       # (doc/navigation.md).
-      get "finance/bookkeeping" => "group/bookkeeping#show", as: :finance_bookkeeping
+      get "finance/bookkeeping" => "group/bookkeeping#show", :as => :finance_bookkeeping
     end
 
     get "groups/:group_id/statistics/data", to: "group/statistics#statistics_data", defaults: {format: :json}
@@ -93,12 +93,16 @@ Rails.application.routes.draw do
       resource :spend, controller: "person/spend", only: [:show]
       get :moss_sso_login, path: "person/spend/moss_sso_login", to: "person/spend#moss_sso_login"
       resource :deregistration, controller: "person/deregistration", only: [:show, :edit, :update] do
-        # The receipt the finance team pays the refund from, rendered on the
-        # fly. Both are POSTs: each one first saves the text the receipt
-        # carries, the one hands the PDF back, the other returns to the page.
+        # The two documents of the page, rendered on the fly and stored nowhere:
+        # the declaration the person signs and the receipt the finance team pays
+        # the refund from -- both GETs, since what they carry is edited on the
+        # form. Each answers the PDF inline, the same PDF as a file to save
+        # behind download=1, and page 1 as a picture under .png. :sections is
+        # what the page writes back when one of its collapsibles opens or closes.
         member do
-          post :refund_receipt
-          post :refund_receipt_text
+          get :form
+          get :refund_receipt
+          post :sections
         end
       end
       resource :debit_return, controller: "person/debit_return", only: [:edit, :update]

@@ -73,6 +73,25 @@ describe Person do
     end
   end
 
+  # Which sections of a person's Abmeldung page stand open, kept for whoever is
+  # logged in -- the same facade, under its own key, as a list.
+  describe "#wsjrdp_preference_deregistration_open_sections" do
+    it "persists the list immediately, under the deregistration_open_sections key" do
+      person.wsjrdp_preference_deregistration_open_sections = %w[capture receipt]
+
+      expect(stored(person)).to eq("deregistration_open_sections" => %w[capture receipt])
+      expect(person.wsjrdp_user_preferences["deregistration_open_sections"]).to eq(%w[capture receipt])
+      expect(person).not_to be_changed
+    end
+
+    # Everything closed is a state of its own, not the absence of one.
+    it "keeps an empty list" do
+      person.wsjrdp_preference_deregistration_open_sections = []
+
+      expect(stored(person)).to eq("deregistration_open_sections" => [])
+    end
+  end
+
   describe "attribute wiring" do
     it "is registered internal-only: used, paper-trail-skipped, not public" do
       expect(Person.used_attributes).to include(:wsjrdp_user_preferences)

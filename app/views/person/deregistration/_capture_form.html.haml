@@ -1,0 +1,50 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Everything the finance team writes down about a deregistration, as a form.
+-# It stands in the body of the Abmeldung erfassen section, where the read-only
+-# list stands otherwise -- the frame around that body is what the save swaps,
+-# so the form takes the place of the list and the list the place of the form.
+-#
+-# Two ways out of the form and one beside them: Speichern brings the list back,
+-# Speichern und weiter bearbeiten hands the saved values back as a form, and
+-# Abbrechen is a plain link to the page, which inside the frame is the list.
+= standard_form @person, url: person_deregistration_path(@person), method: :put do |f|
+  = f.error_messages
+  = hidden_field_tag 'return_url', return_url
+  = field_set_tag do
+    = f.labeled_collection_select(:deregistration_kind, deregistration_kind_options, :first, :last, {selected: @person.deregistration_kind_or_default}, class: 'span2')
+    - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
+    = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
+    = f.labeled_date_field :deregistration_requested_date
+    = f.labeled_date_field :deregistration_effective_date
+    = input_or_render_attrs(f, :deregistration_actual_compensation_eur)
+    -# What follows from the compensation, in the same grid and without a field:
+    -# the bracket of section 7.2 T&R, and what comes back or is still owed.
+    = f.labeled(:deregistration_contractual_compensation_cents) do
+      .pt-1= format_attr(@person, :deregistration_contractual_compensation_cents)
+      .muted.small= render 'contractual_compensation_help'
+    - if @person.deregistration_open_cents > 0
+      = f.labeled(:deregistration_open_cents) do
+        .pt-1
+          %span.fw-semibold(style="color: var(--bs-red);")= format_attr(@person, :deregistration_open_cents)
+          %span.muted.small.ms-2= deregistration_settlement_formula(@person)
+    - else
+      = f.labeled(:deregistration_refund_cents) do
+        .pt-1
+          %span.fw-semibold= format_attr(@person, :deregistration_refund_cents)
+          %span.muted.small.ms-2= deregistration_settlement_formula(@person)
+    -# What the two documents of the page carry. Both flags mean "shown"
+    -# while their key is absent, so the box is checked from the predicate
+    -# and not from the raw value.
+    = f.labeled_boolean_field :deregistration_form_show_contractual_compensation, caption: t("people.deregistration_form.show_contractual_compensation"), checked: @person.deregistration_form_show_contractual_compensation?
+    = f.labeled_text_area :deregistration_refund_receipt_text, rows: 3, placeholder: t("people.refund_receipt.text_placeholder")
+    = f.labeled_boolean_field :deregistration_refund_receipt_show_default_explanation, caption: t("people.refund_receipt.show_explanation"), checked: @person.deregistration_refund_receipt_show_default_explanation?
+  .dereg-form-actions
+    = f.button t("people.deregistration_capture.save"), class: "btn btn-sm btn-primary"
+    = f.button t("people.deregistration_capture.save_and_stay"), class: "btn btn-sm btn-outline-primary", name: "stay", value: "1"
+    = link_to t("people.deregistration_capture.cancel"), person_deregistration_path(@person), class: "btn btn-sm btn-link"
