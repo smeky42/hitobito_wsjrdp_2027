@@ -5,14 +5,12 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+-# The form of the Abmeldung erfassen section as a page of its own: the frame the
+-# section's body carries is here as well, so a frame request takes the form out
+-# of it and a deep link -- or a browser without javascript -- gets the same form
+-# as a whole page.
+
 :css
-  .deregistration {
-    border: none;
-    background: var(--bs-light);
-    border-radius: 6px;
-    padding: 4px;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
-  }
   .content-header h1 {
     display: none;
   }
@@ -21,20 +19,5 @@
   }
 
 #main.row
-  %div.deregistration
-    = standard_form @person, url: person_deregistration_path(@person), method: :put do |f|
-      .mt-3
-      = form_buttons(f, cancel_url: person_deregistration_path(@person))
-      = f.error_messages
-      = hidden_field_tag 'return_url', return_url
-      = field_set_tag do
-        = f.labeled_collection_select(:deregistration_kind, deregistration_kind_options, :first, :last, {selected: @person.deregistration_kind_or_default}, class: 'span2')
-        - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
-        = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
-        = f.labeled_date_field :deregistration_requested_date
-        = f.labeled_date_field :deregistration_effective_date
-        = input_or_render_attrs(f, :deregistration_actual_compensation_eur)
-      = form_buttons(f, cancel_url: person_deregistration_path(@person))
-    = render_attrs_list do
-      = render 'contractual_compensation'
-      = render 'refund'
+  = turbo_frame_tag "deregistration_capture" do
+    = render 'capture_form'

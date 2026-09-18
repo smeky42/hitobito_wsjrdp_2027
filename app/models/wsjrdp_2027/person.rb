@@ -12,8 +12,10 @@ module Wsjrdp2027::Person
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
   # Who ended the participation: the person themselves ("Abmeldung") or the
-  # contingent ("Kündigung"). An absent value means a withdrawal.
-  DEREGISTRATION_KINDS = %w[withdrawal termination].freeze
+  # contingent ("Kündigung"). An absent value means a withdrawal. The kind
+  # belongs to Wsjrdp2027::DeregistrationRecord, which the person's accessors
+  # delegate to; the name stays here for everyone who asks the person for it.
+  DEREGISTRATION_KINDS = Wsjrdp2027::DeregistrationRecord::KINDS
 
   # The role types finance_group_ids is effective for: it counts only for
   # holders of :layer_and_below_full, and these three are the roles that carry
@@ -185,11 +187,6 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :keycloak_username, strip: true
       attribute :keycloak_username, :string
 
-      jsonb_accessor :additional_info, :deregistration_kind, strip: true
-      attribute :deregistration_kind, :string
-      # Blank is the default, not an error: delete_on_blank drops the key, and an
-      # absent key reads as a withdrawal (#deregistration_kind_or_default).
-      validates :deregistration_kind, inclusion: {in: DEREGISTRATION_KINDS}, allow_blank: true
       jsonb_accessor :additional_info, :deregistration_issue, strip: true
       attribute :deregistration_issue, :string
       jsonb_accessor :additional_info, :deregistration_requested_date
@@ -198,18 +195,18 @@ module Wsjrdp2027::Person
       attribute :deregistration_effective_date, :date
       jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
       attribute :deregistration_actual_compensation_cents, :integer
-      # The optional text the Moss receipt carries above its explanation
-      # paragraph. Written only by the two receipt actions of
-      # Person::DeregistrationController; blank drops the key, and the receipt
-      # then starts with the paragraph alone.
-      jsonb_accessor :additional_info, :deregistration_refund_receipt_text, strip: true
-      attribute :deregistration_refund_receipt_text, :text
-      # Whether the receipt carries its explanation paragraph. An absent key
-      # means it does, so only an explicit false is ever stored -- hence
-      # delete_on_blank: false, which would otherwise drop exactly that false
-      # and bring the default back.
-      jsonb_accessor :additional_info, :deregistration_refund_receipt_show_default_explanation, delete_on_blank: false
-      attribute :deregistration_refund_receipt_show_default_explanation, :boolean
+      # The kind of deregistration and what the Abmeldung page's two documents
+      # carry live in ONE sub-object of additional_info
+      # (Wsjrdp2027::DeregistrationRecord), which the deregistration_*
+      # accessors further down delegate to. The store accessor is what puts the
+      # key into stored_attributes, so a change of the sub-object reaches the
+      # person log as one entry (Wsjrdp2027::PaperTrail::Events::Base, rendered
+      # per sub-key by Wsjrdp2027::PaperTrail::VersionDecorator); the reader
+      # below answers the record itself rather than the raw hash.
+      store_accessor :additional_info, Wsjrdp2027::DeregistrationRecord::KEY
+      # Blank is the default, not an error: an absent kind reads as a withdrawal
+      # (#deregistration_kind_or_default).
+      validates :deregistration_kind, inclusion: {in: DEREGISTRATION_KINDS}, allow_blank: true
 
       jsonb_accessor :additional_info, :late_confirmation_issue, strip: true
       attribute :late_confirmation_issue, :string
@@ -249,6 +246,9 @@ module Wsjrdp2027::Person
       jsonb_backed_hash :wsjrdp_user_preferences
       jsonb_accessor :wsjrdp_user_preferences, :admin_tab, prefix: :wsjrdp_preference
       attribute :wsjrdp_preference_admin_tab, :string
+      # Which sections of the Abmeldung page stand open, as a list of keys. An
+      # empty list is a state of its own (everything closed), so it is stored.
+      jsonb_accessor :wsjrdp_user_preferences, :deregistration_open_sections, prefix: :wsjrdp_preference, delete_on_blank: false
 
       # The column is NOT NULL, so validates_by_schema (core person.rb) auto-adds
       # a presence validator -- but its {} default is blank?, which would make
@@ -583,25 +583,30 @@ module Wsjrdp2027::Person
       end
 
       ##
+      # Why the fee is not the regular one: how much was taken off, behind what
+      # the reduction was granted for where that is known. Nil where the fee is
+      # the regular one.
+      def total_fee_reduction_text
+        reduction = active_total_fee_reduction
+        return nil if reduction == 0
+
+        text = "reduziert um #{format_eur_de(reduction, space: "", zero_cents: "")}"
+        hint = active_total_fee_reduction_hint
+        hint.blank? ? text : "#{hint}: #{text}"
+      end
+
+      ##
       # Label for displaying total_fee_cents.
       #
       # The label gives some hints about a fee reduction if any applies.
       def total_fee_label(hint_sep: " ", space: " ")
-        reduction = active_total_fee_reduction
-        if reduction != 0
-          reduction_display = format_eur_de(reduction, space: "", zero_cents: "")
-          hint = active_total_fee_reduction_hint
-          hint_sep = ERB::Util.html_escape(hint_sep)
-          space = ERB::Util.html_escape(space)
-          reduction_hint = "reduziert um #{reduction_display}"
-          if !hint.blank?
-            reduction_hint = "#{hint}: #{reduction_hint}"
-          end
-          reduction_hint = reduction_hint.gsub(/\s+/, space).html_safe
-          "Beitrag#{hint_sep}(#{reduction_hint})".html_safe
-        else
-          "Beitrag".html_safe
-        end
+        reduction_hint = total_fee_reduction_text
+        return "Beitrag".html_safe if reduction_hint.nil?
+
+        hint_sep = ERB::Util.html_escape(hint_sep)
+        space = ERB::Util.html_escape(space)
+        reduction_hint = reduction_hint.gsub(/\s+/, space).html_safe
+        "Beitrag#{hint_sep}(#{reduction_hint})".html_safe
       end
 
       def total_fee_eur_text(hint_sep: " ", space: " ")
@@ -814,30 +819,56 @@ module Wsjrdp2027::Person
         deregistration_requested_date || today || Time.zone.today
       end
 
-      # Absent is what "show it" looks like in the store, so clearing the flag
-      # removes the key instead of writing a null -- a null would read the same
-      # but leave the store saying something it does not mean.
-      def deregistration_refund_receipt_show_default_explanation=(value)
-        if value.nil?
-          additional_info&.delete("deregistration_refund_receipt_show_default_explanation")
-        else
-          super
-        end
+      # The kind of deregistration and what the two documents of the Abmeldung
+      # page carry, as Wsjrdp2027::DeregistrationRecord holds them. Built from
+      # additional_info on every call: the stored sub-object is the truth, and a
+      # writer below replaces it as a whole.
+      def deregistration_record
+        Wsjrdp2027::DeregistrationRecord.load(self)
+      end
+
+      # The stored value, and the default a missing one stands for: the plain
+      # reader stays raw, because the form needs what is written.
+      def deregistration_kind = deregistration_record.kind
+
+      def deregistration_kind_or_default = deregistration_record.kind_or_default
+
+      def deregistration_termination? = deregistration_record.termination?
+
+      def deregistration_kind=(value)
+        write_deregistration_record(:kind, value)
+      end
+
+      def deregistration_form_show_contractual_compensation
+        deregistration_record.form_show_contractual_compensation
+      end
+
+      def deregistration_form_show_contractual_compensation?
+        deregistration_record.form_show_contractual_compensation?
+      end
+
+      def deregistration_form_show_contractual_compensation=(value)
+        write_deregistration_record(:form_show_contractual_compensation, value)
+      end
+
+      # The optional text the Moss receipt carries above its explanation
+      # paragraph; without it the receipt starts with the paragraph alone.
+      def deregistration_refund_receipt_text = deregistration_record.refund_receipt_text
+
+      def deregistration_refund_receipt_text=(value)
+        write_deregistration_record(:refund_receipt_text, value)
+      end
+
+      def deregistration_refund_receipt_show_default_explanation
+        deregistration_record.refund_receipt_show_default_explanation
       end
 
       def deregistration_refund_receipt_show_default_explanation?
-        value = deregistration_refund_receipt_show_default_explanation
-        value.nil? || !!value
+        deregistration_record.refund_receipt_show_default_explanation?
       end
 
-      # The stored value, or the default a missing one stands for. The plain
-      # reader stays raw: the store accessor and the form need what is written.
-      def deregistration_kind_or_default
-        deregistration_kind.presence || "withdrawal"
-      end
-
-      def deregistration_termination?
-        deregistration_kind_or_default == "termination"
+      def deregistration_refund_receipt_show_default_explanation=(value)
+        write_deregistration_record(:refund_receipt_show_default_explanation, value)
       end
 
       def deregistration_contractual_compensation_cents(today: nil)
@@ -857,6 +888,14 @@ module Wsjrdp2027::Person
       end
 
       private
+
+      # One attribute of the deregistration record, written back as a whole so
+      # additional_info carries the change.
+      def write_deregistration_record(attr, value)
+        record = deregistration_record
+        record.public_send(:"#{attr}=", value)
+        record.store(self)
+      end
 
       def validate_iban_format
         return if sepa_iban.blank?

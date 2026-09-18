@@ -5,8 +5,6 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-- content_for(:toolbar, render('actions_show'))
-
 :css
   .content-header h1 {
     display: none;
@@ -14,20 +12,197 @@
   #content {
     padding-top: 10px;
   }
+  .dereg-summary {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+  .dereg-summary-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+  }
+  /* Half a page is narrow for the list's own 1:2 split: the longest label
+     ("Einbehalt (Entschädigung)") needs the room a fixed column gives it, and
+     the values need the rest. */
+  .dereg-summary .labeled-grid {
+    grid-template-columns: 12rem minmax(0, 1fr);
+  }
+  .dereg-section {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    margin-top: 10px;
+  }
+  .dereg-section-bar {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    background: var(--bs-light);
+  }
+  .dereg-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    font-weight: 600;
+    text-align: left;
+  }
+  /* The action beside the head reads as a link, not as a second button. */
+  .dereg-section-action {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    font-size: .875rem;
+  }
+  .dereg-section-head .fa-chevron-right {
+    transition: transform 0.15s ease-in-out;
+  }
+  .dereg-section-head[aria-expanded="true"] .fa-chevron-right {
+    transform: rotate(90deg);
+  }
+  .dereg-section-summary {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--bs-secondary-color);
+    font-size: .875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dereg-section-body {
+    padding: 4px 14px 10px;
+  }
+  /* Hitobito's standard_form is a horizontal Bootstrap form: inside the section
+     body its field rows keep their gutter within the body's padding instead of
+     pulling out of it, so labels and inputs line up with the list they stand
+     in for. */
+  .dereg-section-body form .row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .dereg-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  /* A document next to what it says: the picture of its first page on the left,
+     the name, the facts and the buttons on the right. */
+  .dereg-doc-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 4px 8px;
+  }
+  .dereg-doc-thumb {
+    width: 96px;
+    height: auto;
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+    background: #fff;
+  }
+  .dereg-doc-frame {
+    width: 100%;
+    height: 640px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+  }
+  .dereg-doc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  /* The toggle's chevron says which way the preview goes; aria-expanded is
+     what Bootstrap keeps up to date. */
+  .dereg-doc-toggle .fa-chevron-down {
+    transition: transform 0.15s ease-in-out;
+  }
+  .dereg-doc-toggle[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+  }
 
 #main.row
-  = render_attrs_list do
-    = labeled_attr(@person, :deregistration_kind)
-    = labeled_attr(@person, :deregistration_issue)
-    = labeled_attr(@person, :deregistration_requested_date)
-    = labeled_attr(@person, :deregistration_effective_date)
-    = labeled_attr_with_help(@person, :deregistration_actual_compensation_cents) do
-      Vorgeschlagene Entschädigung = Beitrag der trotz Abmeldung bezahlt werden muss.
-      Das Finance Team kann über Bearbeiten einen Betrag abweichend von der
-      Pauschale nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen eintragen.
-    -# What comes out of that amount belongs with it, above the line.
-    = render 'refund'
-  = render_attrs_list do
-    = render 'contractual_compensation'
-  = render 'refund_creditor'
-  = render 'refund_receipt'
+  = render 'summary'
+  -# Any number of sections open at a time, and the page remembers which: the
+  -# url the javascript below posts to hangs here.
+  #dereg-sections{data: {sections_url: sections_person_deregistration_path(@person)}}
+    -# The way into the form sits in the bar of the section it changes, and it
+    -# changes that section alone: the link loads the form into the frame the
+    -# section's body carries; the page opens the section as the form arrives.
+    - edit_link = link_to(edit_person_deregistration_path(@person), class: 'dereg-section-action', data: {turbo_frame: 'deregistration_capture'}) do
+      = icon(:edit)
+      = ti(:"link.edit")
+    = render layout: 'section', locals: {key: 'capture', title: t('people.deregistration_capture.title'), summary: nil, action: edit_link, frame: 'deregistration_capture'} do
+      = render 'capture'
+    = render layout: 'section', locals: {key: 'form', title: t('people.deregistration_form.title'), summary: nil} do
+      = render 'deregistration_form'
+    -# The creditor's name is what is typed into Moss, so the bar carries it.
+    = render layout: 'section', locals: {key: 'creditor', title: t('people.refund_creditor.title'), summary: @refund_creditor.name} do
+      = render 'refund_creditor'
+    = render layout: 'section', locals: {key: 'receipt', title: t('people.refund_receipt.title'), summary: nil} do
+      = render 'refund_receipt'
+
+-# Which collapsibles are open is kept per login user, so the page opens where it
+-# was left. Bootstrap announces every opening and closing once it is through,
+-# the fetch tells the server the whole list as it then stands, and the answer
+-# is of no interest -- a preference that does not arrive costs nothing. A
+-# document's picture is asked for as its section opens and its frame as its
+-# preview opens, not before, so a closed section costs no document. Bound
+-# once, like the row-click guard: the listeners sit on the
+-# document and look their element up per event, so a Turbo visit needs no
+-# second one. A frame that loads inside a closed section opens that section as
+-# its content arrives -- after the navigation, not on the click: a click that
+-# is dispatched inside a click handler keeps Turbo from taking the link over.
+:javascript
+  (function () {
+    if (window.__wsjrdpDeregSections) return;
+    window.__wsjrdpDeregSections = true;
+    var remember = function (e) {
+      var sections = document.getElementById("dereg-sections");
+      if (!sections || !sections.contains(e.target)) return;
+      var url = sections.getAttribute("data-sections-url");
+      if (!url) return;
+      var open = Array.prototype.map.call(sections.querySelectorAll(".collapse.show"), function (el) {
+        return el.id.replace(/^dereg-section-/, "");
+      });
+      var token = document.querySelector('meta[name=csrf-token]');
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token ? token.content : ""
+        },
+        body: JSON.stringify({sections: open.join(",")}),
+        credentials: "same-origin"
+      }).catch(function () {});
+    };
+    document.addEventListener("shown.bs.collapse", remember);
+    document.addEventListener("hidden.bs.collapse", remember);
+    document.addEventListener("show.bs.collapse", function (e) {
+      if (!e.target.querySelectorAll) return;
+      var fill = function (el) {
+        if (!el.getAttribute("src")) el.setAttribute("src", el.getAttribute("data-src"));
+      };
+      // A frame belongs to the preview it is the child of: it is filled as that
+      // preview opens, or as the section around an already open preview opens
+      // -- a closed preview inside an opening section stays empty. A picture
+      // belongs to the section it stands in.
+      Array.prototype.forEach.call(
+        e.target.querySelectorAll(":scope > iframe.dereg-doc-frame, .collapse.show > iframe.dereg-doc-frame"), fill
+      );
+      Array.prototype.forEach.call(e.target.querySelectorAll("img.dereg-doc-thumb"), fill);
+    });
+    document.addEventListener("turbo:frame-load", function (e) {
+      var section = e.target.closest && e.target.closest("#dereg-sections .collapse");
+      if (!section || section.classList.contains("show")) return;
+      var head = document.querySelector('button[data-bs-target="#' + section.id + '"]');
+      if (head) head.click();
+    });
+  })();

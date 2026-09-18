@@ -139,6 +139,15 @@ module Wsjrdp2027::PeopleHelper
     end
   end
 
+  # Why the Abmelde-Formular button is greyed out, one sentence per reason --
+  # the same words next to the button, in its tooltip and in the flash a
+  # request typed in by hand comes back with.
+  def deregistration_form_unavailable_text(form)
+    form.unavailable_reasons
+      .map { |reason| t("people.deregistration_form.reasons.#{reason}") }
+      .join(" ")
+  end
+
   def format_person_deregistration_actual_compensation_cents(person)
     cents = person.deregistration_actual_compensation_cents
     if cents.present?
@@ -148,6 +157,49 @@ module Wsjrdp2027::PeopleHelper
       eur = format_cents_de(person.deregistration_contractual_compensation_cents, zero_cents: "")
       "#{eur} (nach Teilnahme- und Reisebedingungen)"
     end
+  end
+
+  # The sum behind what comes back or is still owed, in one muted line: paid
+  # minus Einbehalt for a refund, Einbehalt minus paid for a claim. The
+  # Einbehalt is a plain amount here; the rows above say where it comes from.
+  def deregistration_settlement_formula(person)
+    compensation_cents = person.deregistration_actual_compensation_cents ||
+      person.deregistration_contractual_compensation_cents
+    paid = "#{format_person_amount_paid_cents(person)} (bezahlt)"
+    compensation = "#{format_cents_de(compensation_cents, zero_cents: "")} (Einbehalt)"
+    if person.deregistration_open_cents > 0
+      "= #{compensation} − #{paid}"
+    else
+      "= #{paid} − #{compensation}"
+    end
+  end
+
+  # What the Abmelde-Formular will say, in the one line above its preview: who
+  # signs it, the day the withdrawal takes effect, and whether it names the
+  # compensation of section 7.2 T&R.
+  def deregistration_form_facts(form)
+    compensation = form.show_contractual_compensation? ? "compensation_named" : "compensation_not_named"
+    [
+      "#{t("people.deregistration_documents.signatures")}: #{form.contract_names.join(", ")}",
+      "#{Person.human_attribute_name(:deregistration_effective_date)} #{form.cancellation_date_text}",
+      t("people.deregistration_documents.#{compensation}")
+    ].compact_blank.join(" · ")
+  end
+
+  # What the Moss receipt will say, in the one line above its preview: the amount
+  # it pays back, the booking text Moss files it under, whether the explanation
+  # paragraph is printed, and that a text of its own stands above it.
+  def deregistration_receipt_facts(receipt)
+    explanation = receipt.show_explanation? ? "explanation_printed" : "explanation_not_printed"
+    facts = [receipt.amount_text, receipt.booking_text,
+      t("people.deregistration_documents.#{explanation}")]
+    facts << t("people.deregistration_documents.with_text") if receipt.greeting.present?
+    facts.compact_blank.join(" · ")
+  end
+
+  # What one of the two document flags says on the read-only page.
+  def deregistration_flag_text(shown)
+    t("people.deregistration_form.#{shown ? "show" : "hide"}")
   end
 
   def format_person_deregistration_refund_cents(person)

@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Everything the finance team writes down about a deregistration, as it stands.
+-# Nothing is editable here: the Bearbeiten link in the section's bar loads the
+-# form that carries all of it into this very place.
+= render_attrs_list do
+  = labeled_attr(@person, :deregistration_kind)
+  = labeled_attr(@person, :deregistration_issue)
+  = labeled_attr(@person, :deregistration_requested_date)
+  = labeled_attr(@person, :deregistration_effective_date)
+  = labeled_attr_with_help(@person, :deregistration_actual_compensation_cents) do
+    Vorgeschlagene Entschädigung = Beitrag der trotz Abmeldung bezahlt werden muss.
+    Das Finance Team kann über Bearbeiten einen Betrag abweichend von der
+    Pauschale nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen eintragen.
+  = render 'contractual_compensation'
+  -# What the two documents carry, which is written down here and nowhere else.
+  = labeled(Person.human_attribute_name(:deregistration_form_show_contractual_compensation)) do
+    = deregistration_flag_text(@person.deregistration_form_show_contractual_compensation?)
+  = labeled(Person.human_attribute_name(:deregistration_refund_receipt_text)) do
+    - if @person.deregistration_refund_receipt_text.present?
+      = simple_format(@person.deregistration_refund_receipt_text, {}, sanitize: true)
+    - else
+      %span.muted.fw-light –
+  = labeled(Person.human_attribute_name(:deregistration_refund_receipt_show_default_explanation)) do
+    = deregistration_flag_text(@person.deregistration_refund_receipt_show_default_explanation?)

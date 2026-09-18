@@ -1,0 +1,46 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# One of the page's two documents in a row of its own: a picture of page 1, the
+-# file name it is saved under, what it will say in a line, and the three ways to
+-# it -- the preview below, the document in a new tab, and the PDF as a file. The
+-# preview is a collapsible of the page like the sections are (its key ends in
+-# _preview), so the login user gets it back as they left it; the frame loads the
+-# document only once it is open, which the page's javascript sees to.
+-#
+-# The three are plain buttons in one flex row, so they share a baseline; the
+-# toggle keeps one label and turns its chevron instead, so nothing beside it
+-# moves when the preview opens.
+- id = "dereg-section-#{key}"
+-# The picture costs a document, so it is asked for only once its section is
+-# open: drawn in an open section it carries its src at once, in a closed one
+-# only the address, which the page's javascript copies over as the section
+-# opens (the same way the frame below is filled).
+- thumb_attrs = {alt: file_name, loading: "lazy", data: {src: thumbnail_path}}
+- thumb_attrs[:src] = thumbnail_path if section_open
+.dereg-doc-row
+  %img.dereg-doc-thumb{thumb_attrs}
+  %div
+    .fw-semibold= file_name
+    .muted.small= facts
+    .dereg-doc-actions
+      %button.btn.btn-sm.btn-outline-primary.dereg-doc-toggle{type: "button", "data-bs-toggle": "collapse", "data-bs-target": "##{id}", "aria-expanded": open.to_s, "aria-controls": id}
+        = icon(:"chevron-down")
+        = t("people.deregistration_documents.preview")
+      = link_to document_path, class: "btn btn-sm btn-outline-primary", target: "_blank" do
+        = icon(:"external-link-alt")
+        = t("people.deregistration_documents.open")
+      = link_to "#{document_path}?download=1", class: "btn btn-sm btn-primary" do
+        = icon(:download)
+        = t("people.deregistration_documents.save")
+-# A frame that is drawn open inside an open section carries its src at once;
+-# any other carries only the address (an empty src would fetch this very page)
+-# and is filled as its preview, or the section around it, opens.
+- frame_attrs = {title: frame_title, data: {src: document_path}}
+- frame_attrs[:src] = document_path if open && section_open
+%div{id: id, class: open ? "collapse show" : "collapse"}
+  %iframe.dereg-doc-frame.mt-2{frame_attrs}

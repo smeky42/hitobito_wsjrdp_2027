@@ -1,0 +1,26 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The declaration the person signs, with what this page knows filled in --
+-# whether it names the compensation of section 7.2 T&R included, which is part
+-# of the deregistration and edited on the form. The document leads the section
+-# as a picture with its facts and its buttons; where the page has no document to
+-# offer, a greyed-out button with the reasons stands in its place.
+- if @deregistration_form.available?
+  = render 'document_preview', key: 'form_preview',
+    file_name: @deregistration_form.file_name,
+    facts: deregistration_form_facts(@deregistration_form),
+    document_path: form_person_deregistration_path(@person),
+    thumbnail_path: form_person_deregistration_path(@person, format: :png),
+    open: @dereg_open_sections.include?('form_preview'),
+    section_open: @dereg_open_sections.include?('form'),
+    frame_title: t('people.deregistration_form.title')
+- else
+  .p-2
+    - unavailable_text = deregistration_form_unavailable_text(@deregistration_form)
+    = action_button(t("people.deregistration_form.button"), nil, :"file-pdf", disabled: unavailable_text, id: "deregistration_form_submit")
+    .muted.mt-2#deregistration_form_hint= unavailable_text

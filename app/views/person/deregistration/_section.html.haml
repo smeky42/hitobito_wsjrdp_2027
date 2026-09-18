@@ -1,0 +1,33 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# One collapsible section of the page: its bar holds the head, which is the
+-# heading and the trigger in one, with the chevron turning as it opens and, to
+-# the right, what the closed section says in a line -- and, where a section
+-# has one, an action of its own beside the head (a link, never inside the
+-# button). Each section opens and closes on its own; @dereg_open_sections says
+-# which stand open when the page is drawn.
+-#
+-# A section that is edited in place names the turbo frame its body lives in
+-# (`frame`), so a link or a form inside that body swaps the body alone.
+- id = "dereg-section-#{key}"
+- open = @dereg_open_sections.include?(key)
+- action = local_assigns[:action]
+- frame = local_assigns[:frame]
+.dereg-section
+  .dereg-section-bar
+    %button.dereg-section-head{type: "button", "data-bs-toggle": "collapse", "data-bs-target": "##{id}", "aria-expanded": open.to_s, "aria-controls": id}
+      = icon(:"chevron-right")
+      %span= title
+      - if summary.present?
+        %span.dereg-section-summary= summary
+    - if action.present?
+      = action
+  %div{id: id, class: open ? "collapse show" : "collapse"}
+    .dereg-section-body
+      = turbo_frame_if frame.present?, frame do
+        = yield

@@ -322,4 +322,14 @@ describe Wsjrdp2027::RefundReceipt do
       expect(described_class.new(person.reload).to_pdf).to start_with("%PDF")
     end
   end
+
+  # The picture the Abmeldung page previews the document with.
+  describe "#to_png" do
+    it "draws the first page" do
+      png = receipt.to_png
+
+      expect(png).to start_with(Wsjrdp2027::TypstDocument::PNG_SIGNATURE)
+      expect(png.bytesize).to be > 1_000
+    end
+  end
 end

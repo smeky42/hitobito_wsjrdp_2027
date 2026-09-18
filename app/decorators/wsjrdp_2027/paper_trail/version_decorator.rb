@@ -33,17 +33,41 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
 
   private
 
-  # Two jsonb store keys hold a collection the core would render with #to_s:
+  # Three jsonb store keys hold something the core would render with #to_s:
   # additional_info["finance_group_ids"] on a person is a Hash of group id =>
   # tokens (doc/roles.md -> "Finance on a group's page"),
+  # additional_info["deregistration_record"] on a person the kind of a
+  # deregistration and what its documents carry
+  # (Wsjrdp2027::DeregistrationRecord), and
   # additional_info["cost_center_numbers"] on a group an Array of cost-center
-  # numbers. Both are rendered per element instead.
+  # numbers. Each is rendered per element instead.
   def attribute_change(attr, from, to)
     case attr.to_s
     when "finance_group_ids" then finance_group_ids_change(from, to)
+    when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
     else super
     end
+  end
+
+  # One line per changed value of the record, in the order the record lists
+  # them and in the words the Abmeldung page's flash uses -- the record itself
+  # says them, so the two cannot drift apart. A value the record does not know
+  # has no line.
+  def deregistration_record_change(from, to)
+    before = deregistration_record_hash(from)
+    after = deregistration_record_hash(to)
+    lines = Wsjrdp2027::DeregistrationRecord::ATTRS
+      .reject { |key| Wsjrdp2027::DeregistrationRecord.same?(key, before[key], after[key]) }
+      .map { |key| Wsjrdp2027::DeregistrationRecord.describe_change(key, before[key], after[key]) }
+
+    h.safe_join(lines, h.tag.br)
+  end
+
+  # The stored sub-object with string keys; anything but a Hash counts as no
+  # values, so a nil side (the key added or removed) works like an empty one.
+  def deregistration_record_hash(value)
+    value.is_a?(Hash) ? value.stringify_keys : {}
   end
 
   # One line per number added and one per number removed, the removals first

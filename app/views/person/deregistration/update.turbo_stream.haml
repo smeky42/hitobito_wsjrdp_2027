@@ -1,0 +1,19 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# What a save answers the form in the capture frame with. A save that went
+-# through touches three places: the head, which counts the amounts up; the
+-# frame, which holds the read-only list again -- or the form with the saved
+-# values where Speichern und weiter bearbeiten asks for it; and the flash slot
+-# of the layout, which names what changed. Values the model refused bring the
+-# form back alone, with its errors.
+- if @dereg_saved
+  = turbo_stream.replace("dereg-summary", partial: "summary")
+  = turbo_stream.update("deregistration_capture", partial: @dereg_stay ? "capture_form" : "capture")
+  = turbo_stream.update("flash", partial: "layouts/flash", collection: %i[notice warning alert], as: :level)
+- else
+  = turbo_stream.update("deregistration_capture", partial: "capture_form")
