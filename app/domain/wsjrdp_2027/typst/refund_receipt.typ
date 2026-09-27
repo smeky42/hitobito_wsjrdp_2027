@@ -22,6 +22,7 @@
 #let refund = sys.inputs.at("refund", default: "")
 #let booking_text = sys.inputs.at("booking_text", default: "")
 #let requested_date = sys.inputs.at("requested_date", default: "")
+#let requested_date_label = sys.inputs.at("requested_date_label", default: "Rücktritt erklärt am")
 #let effective_date = sys.inputs.at("effective_date", default: "")
 #let ticket = sys.inputs.at("ticket", default: "")
 #let amount = sys.inputs.at("amount", default: "")
@@ -50,6 +51,8 @@
 #let explanation = [
     #if kind == "termination" [
         Am #requested_date_or_line ist der Reisevertrag von #person_name durch das deutsche Kontingent gekündigt worden.
+    ] else if kind == "cancellation" [
+        Am #requested_date_or_line ist die Registrierung von #person_name storniert worden, bevor ein Reisevertrag zustande gekommen ist.
     ] else [
         Am #requested_date_or_line ist der Rücktritt von #person_name vom Reisevertrag erklärt worden.
     ]
@@ -81,7 +84,7 @@
     [Team/Unit], [#team_unit],
     [Kreditor], [#creditor_name],
     [Buchungstext], [#booking-value(booking_text)],
-    [Abmeldung angefragt am], [#requested_date],
+    [#requested_date_label], [#requested_date],
     [Abmeldung zum], [#effective_date],
     [Rechnungsnummer], [#booking-value(ticket)],
     [Betrag], [#booking-value(amount)],

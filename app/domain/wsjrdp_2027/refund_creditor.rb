@@ -39,6 +39,10 @@ module Wsjrdp2027
 
     def name = "#{NAME_PREFIX} #{person.id}"
 
+    # The bank data the refund goes to: as the first document made captured
+    # it (Wsjrdp2027::DeregistrationSnapshot), or the person's current one.
+    def sepa = @sepa ||= DeregistrationSnapshot.for(person).sepa
+
     def ledger_account = LEDGER_ACCOUNT
 
     def cost_center = COST_CENTER
@@ -53,36 +57,36 @@ module Wsjrdp2027
 
     def moss_suppliers_url = MOSS_SUPPLIERS_URL
 
-    def iban = SepaAccount.iban(person)
+    def iban = SepaAccount.iban(sepa)
 
-    def account_holder = SepaAccount.account_holder(person)
+    def account_holder = SepaAccount.account_holder(sepa)
 
-    def bic = SepaAccount.bic(person)
+    def bic = SepaAccount.bic(sepa)
 
     # The country the account is held in, read off the IBAN and written the way
     # the address is -- "Deutschland", not "DE".
-    def bank_country = country_label(SepaAccount.bank_country_code(person))
+    def bank_country = country_label(SepaAccount.bank_country_code(sepa))
 
     # Where the money goes: what the SEPA address says, and Germany where it
     # says nothing -- these addresses name a country only when it is not the
     # usual one.
-    def country = country_label(SepaAccount.address_country_code(person) || DEFAULT_COUNTRY)
+    def country = country_label(SepaAccount.address_country_code(sepa) || DEFAULT_COUNTRY)
 
     # The address the bank details were given with, not the person's own: that
     # is the address the money is paid to.
-    def street_and_number = SepaAccount.street_and_number(person)
+    def street_and_number = SepaAccount.street_and_number(sepa)
 
-    def zip_code = SepaAccount.zip_code(person)
+    def zip_code = SepaAccount.zip_code(sepa)
 
-    def town = SepaAccount.town(person)
+    def town = SepaAccount.town(sepa)
 
     # The line as it was typed -- what the warning shows, so the reader can
     # check the parse against it.
-    def raw_address = person.sepa_address.to_s
+    def raw_address = sepa.sepa_address.to_s
 
     # Which heuristics the address needed. Any of them is a reason to look at
     # the line itself before the money goes out.
-    def address_notes = SepaAccount.address_notes(person)
+    def address_notes = SepaAccount.address_notes(sepa)
 
     def address_uncertain? = address_notes.any?
 

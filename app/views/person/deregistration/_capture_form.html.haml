@@ -20,8 +20,9 @@
     = f.labeled_collection_select(:deregistration_kind, deregistration_kind_options, :first, :last, {selected: @person.deregistration_kind_or_default}, class: 'span2')
     - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
     = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
-    = f.labeled_date_field :deregistration_requested_date
+    = f.labeled_date_field :deregistration_requested_date, label: @person.deregistration_requested_date_label
     = f.labeled_date_field :deregistration_effective_date
+    = f.labeled_date_field :deregistration_reply_due_date
     = input_or_render_attrs(f, :deregistration_actual_compensation_eur)
     -# What follows from the compensation, in the same grid and without a field:
     -# the bracket of section 7.2 T&R, and what comes back or is still owed.

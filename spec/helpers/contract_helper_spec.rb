@@ -118,7 +118,7 @@ describe ContractHelper do
       it "says which day the amount was read for" do
         person.deregistration_requested_date = Date.new(2026, 5, 31)
         expect(helper.deregistration_compensation_date_hint(person))
-          .to include("31.05.2026", "angefragt")
+          .to include("31.05.2026", "Rücktritt erklärt am")
 
         person.deregistration_requested_date = nil
         travel_to(Date.new(2027, 2, 1)) do

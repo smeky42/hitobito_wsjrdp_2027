@@ -17,6 +17,46 @@ describe Wsjrdp2027::DeregistrationRecord do
   let(:person) { people(:yp_a_1) }
   let(:key) { described_class::KEY }
 
+  it "knows the three kinds, a cancelled registration among them" do
+    expect(described_class::KINDS).to eq(%w[withdrawal termination cancellation])
+    record = described_class.new(kind: "cancellation")
+
+    expect(record).to be_valid
+    expect(record).to be_cancellation
+    expect(record).not_to be_termination
+    expect(record.to_h).to eq("kind" => "cancellation")
+    expect(described_class.describe("kind", "cancellation")).to eq("Storno der Registrierung (kein Vertrag)")
+  end
+
+  # The day the signed deregistration is to be back by: kept as an ISO date,
+  # read and worded as a Date.
+  describe "#form_created_date" do
+    it "stores the day as an ISO date and words it the German way" do
+      record = described_class.new(form_created_date: Date.new(2026, 9, 27))
+
+      expect(record.to_h).to eq("form_created_date" => "2026-09-27")
+      expect(described_class.describe("form_created_date", "2026-09-27")).to eq("27.09.2026")
+    end
+  end
+
+  describe "#reply_due_date" do
+    it "stores the day as an ISO date and reads it back as a Date" do
+      record = described_class.new(reply_due_date: "01.10.2026")
+
+      expect(record.reply_due_date).to eq(Date.new(2026, 10, 1))
+      expect(record.to_h).to eq("reply_due_date" => "2026-10-01")
+    end
+
+    it "writes nothing without a day" do
+      expect(described_class.new(reply_due_date: "").to_h).to eq({})
+    end
+
+    it "is worded the German way, an en dash where there is none" do
+      expect(described_class.describe("reply_due_date", "2026-10-01")).to eq("01.10.2026")
+      expect(described_class.describe("reply_due_date", nil)).to eq("–")
+    end
+  end
+
   describe ".load" do
     it "reads the defaults where the person carries nothing" do
       record = described_class.load(person)
@@ -24,6 +64,7 @@ describe Wsjrdp2027::DeregistrationRecord do
       expect(record.kind).to be_nil
       expect(record.kind_or_default).to eq("withdrawal")
       expect(record).not_to be_termination
+      expect(record).not_to be_cancellation
       expect(record.form_show_contractual_compensation).to be_nil
       expect(record).to be_form_show_contractual_compensation
       expect(record.refund_receipt_text).to be_nil
@@ -107,6 +148,19 @@ describe Wsjrdp2027::DeregistrationRecord do
 
     it "lists the values in the order the form asks for them" do
       record = described_class.new(kind: "termination",
+        reply_due_date: Date.new(2026, 10, 1),
+        effective_reply_due_date: Date.new(2026, 10, 1),
+        form_created_date: Date.new(2026, 9, 27),
+        receipt_created_date: Date.new(2026, 9, 27),
+        receipt_created_by_id: 1,
+        refund_account_holder: "Kim Muster",
+        refund_iban: "DE02120300000000202051",
+        refund_bic: "GENODE61ABC",
+        refund_sepa_address: "Musterweg 1, 12345 Musterstadt",
+        person_role: "YP",
+        person_role_name: "Youth Participant in einer Unit",
+        person_team_unit: "A1",
+        receipt_snapshot: {"amount_text" => "1,00 €"},
         form_show_contractual_compensation: false,
         refund_receipt_text: "Hallo Team",
         refund_receipt_show_default_explanation: false)

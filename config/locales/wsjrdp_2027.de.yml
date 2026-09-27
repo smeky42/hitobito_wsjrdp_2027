@@ -185,6 +185,19 @@ de:
         deregistration_issue: Ticket Abmeldung
         deregistration_requested_date: Abmeldung angefragt am
         deregistration_effective_date: Abmeldung zum
+        deregistration_reply_due_date: Rückmeldung bis
+        deregistration_form_created_date: Abmelde-Formular erstellt am
+        deregistration_receipt_created_date: Beleg erstellt am
+        deregistration_receipt_created_by_id: Beleg erstellt von
+        deregistration_person_role: Rolle für die Dokumente
+        deregistration_person_role_name: Rollenbezeichnung für die Dokumente
+        deregistration_person_team_unit: Team/Unit für die Dokumente
+        deregistration_effective_reply_due_date: Rückmeldung bis (im Formular)
+        deregistration_refund_account_holder: Kontoinhaber für die Rückzahlung
+        deregistration_refund_iban: IBAN für die Rückzahlung
+        deregistration_refund_bic: BIC für die Rückzahlung
+        deregistration_refund_sepa_address: Adresse für die Rückzahlung
+        deregistration_receipt_snapshot: Stand der Beträge im Beleg
         deregistration_contractual_compensation_cents: 'Entschädigung nach T&R'
         deregistration_actual_compensation_cents: Entschädigung
         deregistration_actual_compensation_eur: Entschädigung
@@ -736,7 +749,17 @@ de:
     deregistration_kinds:
       withdrawal: Abmeldung (durch die Person)
       termination: Kündigung (durch das Kontingent)
+      cancellation: Storno der Registrierung (kein Vertrag)
+    deregistration_requested_date_labels:
+      withdrawal: Rücktritt erklärt am
+      termination: Gekündigt am
+      cancellation: Storniert am
+    deregistration_record:
+      stored: gespeichert
+      not_stored: –
     deregistration_summary:
+      reply_due_default: (14 Tage ab Erstellung des Formulars)
+      reply_due_fixed: (im Formular festgelegt)
       ticket: Ticket
       total_fee: Teilnahmebeitrag
       amount_paid: Bezahlt
@@ -752,6 +775,7 @@ de:
       save: PDF speichern
       open: In neuem Tab öffnen
       preview: Vorschau
+      create: PDF erzeugen
       signatures: Unterschriften
       compensation_named: 'Entschädigung nach T&R wird genannt'
       compensation_not_named: 'Entschädigung nach T&R wird nicht genannt'
@@ -787,11 +811,18 @@ de:
       title: Abmelde-Formular
       button: Abmelde-Formular als PDF
       show_contractual_compensation: 'Entschädigung nach T&R im Abmelde-Formular anzeigen'
+      discard: Formular verwerfen
+      created: Abmelde-Formular erzeugt.
+      not_created: Das Abmelde-Formular ist noch nicht erzeugt.
+      discard_confirm: Das erstellte Abmelde-Formular verwerfen? Der Beleg für Rückzahlung in Moss wird mit verworfen, ebenso die gespeicherten Konto-, Rollen- und Team-Daten und die im Formular festgelegte Frist. Eine eingetragene „Rückmeldung bis“ bleibt. Beide Dokumente werden danach neu erstellt und neu datiert.
+      discarded: Abmelde-Formular und Beleg verworfen, beide werden neu erstellt.
+      created_on: Erstellt am %{date}
       show: anzeigen
       hide: ausblenden
       reasons:
         termination: Die Art ist Kündigung (durch das Kontingent), das Abmelde-Formular erklärt aber den Rücktritt durch die Person.
-        no_effective_date: Bei „Abmeldung zum“ ist kein Datum eingetragen.
+        cancellation: Die Art ist Storno der Registrierung, das Abmelde-Formular erklärt aber den Rücktritt von einem Vertrag.
+        no_date: Weder „Rücktritt erklärt am“ noch „Abmeldung zum“ ist eingetragen – eins von beiden muss gesetzt sein.
     refund_receipt:
       title: Beleg für Rückzahlung in Moss
       button: Moss-Beleg als PDF
@@ -804,6 +835,12 @@ de:
       iban: IBAN
       text_placeholder: Optionaler Text vor dem Erklärungsabsatz
       show_explanation: Erklärungsabsatz im Beleg anzeigen
+      created: Beleg für Rückzahlung erzeugt.
+      not_created: Der Beleg für Rückzahlung ist noch nicht erzeugt.
+      discard: Beleg verwerfen
+      discard_confirm: Den erstellten Beleg verwerfen? Der nächste wird neu erstellt und neu datiert.
+      discarded: Beleg verworfen, der nächste wird neu erstellt.
+      created_on_by: Erstellt am %{date} von %{name}
     finance:
       tabs:
         fee: Beiträge

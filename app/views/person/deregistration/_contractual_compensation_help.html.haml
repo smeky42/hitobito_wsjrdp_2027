@@ -12,3 +12,6 @@ Entschädigung nach Abschnitt 7.2 der Teilnahme- und Reisebedingungen (T&R).
 (bis 31.05.2026: 50%, bis 31.12.2026: 75%, bis 31.03.2027: 90%, danach 100%)
 %br/
 = deregistration_compensation_date_hint(@person)
+- if @person.deregistration_cancellation?
+  %br/
+  Storno der Registrierung: kein Vertrag, daher keine Entschädigung nach T&R.

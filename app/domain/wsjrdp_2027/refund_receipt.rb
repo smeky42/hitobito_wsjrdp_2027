@@ -37,6 +37,13 @@ module Wsjrdp2027
     # afterwards: a space and a 36-character uuid.
     PURPOSE_MAX = 140 - 37
     TEMPLATE = "refund_receipt.typ"
+    # The figures a made receipt keeps saying, whatever is booked or changed
+    # afterwards: they are stored by "PDF erzeugen" and read back from then on.
+    FROZEN = %w[
+      creditor_name total_fee_contract_text total_fee_text total_fee_label
+      amount_paid_text compensation_text amount_cents amount_text
+      booking_text purpose
+    ].freeze
 
     attr_reader :person, :generated_by
 
@@ -52,29 +59,72 @@ module Wsjrdp2027
 
     def show_explanation? = person.deregistration_refund_receipt_show_default_explanation?
 
-    def generated_on_text = I18n.l(Date.current)
+    # Whether the receipt is made -- it is, from "PDF erzeugen" on, until it
+    # is discarded.
+    def created? = person.deregistration_receipt_created_date.present?
 
-    def generated_by_name = generated_by&.full_name.to_s
+    # The day the receipt counts as made: the stored one, or today for a
+    # receipt not made yet.
+    def created_on = person.deregistration_receipt_created_date || Date.current
 
-    def kind = person.deregistration_termination? ? "termination" : "withdrawal"
-
-    def kind_word = person.deregistration_termination? ? "Kündigung" : "Abmeldung"
-
-    def kind_abbrev = person.deregistration_termination? ? "Kuend." : "Abm."
-
-    def wording
-      person.deregistration_termination? ? "Rueckzahlung nach Kuendigung" : "Rueckzahlung nach Abmeldung"
+    # Who made the receipt: the stored person, or whoever asks for one not
+    # made yet.
+    def creator
+      id = person.deregistration_receipt_created_by_id
+      id ? ::Person.find_by(id: id) : generated_by
     end
 
-    def role = person.wsjrdp_role
+    # Stores today and the person making it where nothing is stored yet --
+    # with the person's data (captured now unless the Abmelde-Formular already
+    # did) and the receipt's figures as they stand now -- and saves the person.
+    # Answers whether anything was written.
+    def record_creation!(by)
+      return false if created?
+
+      snapshot.capture!
+      figures = FROZEN.index_with { |key| public_send(key).to_s }
+      person.deregistration_receipt_snapshot = figures
+      person.deregistration_receipt_created_date = Date.current
+      person.deregistration_receipt_created_by_id = by&.id
+      person.save!
+      @snapshot = nil
+      true
+    end
+
+    # The person's data the receipt names: from the snapshot of the first
+    # document made, or current while none is.
+    def snapshot = @snapshot ||= DeregistrationSnapshot.for(person)
+
+    def generated_on_text = I18n.l(created_on)
+
+    def generated_by_name = creator&.full_name.to_s
+
+    # The three kinds as the receipt spells them: the sys input the template
+    # branches on, the word in the file name, the abbreviation in the booking
+    # text and the wording of the remittance information (SEPA-safe ASCII).
+    KIND_TEXTS = {
+      "withdrawal" => {word: "Abmeldung", abbrev: "Abm.", wording: "Rueckzahlung nach Abmeldung"},
+      "termination" => {word: "Kündigung", abbrev: "Kuend.", wording: "Rueckzahlung nach Kuendigung"},
+      "cancellation" => {word: "Storno", abbrev: "Storno", wording: "Rueckzahlung nach Storno"}
+    }.freeze
+
+    def kind = person.deregistration_kind_or_default
+
+    def kind_word = kind_texts[:word]
+
+    def kind_abbrev = kind_texts[:abbrev]
+
+    def wording = kind_texts[:wording]
+
+    def role = snapshot.role
 
     # The role as the contract writes it ("International Service Team
     # Mitglied"), so the receipt and the contract say the same thing.
-    def role_name = person_payment_role_full_name(person)
+    def role_name = snapshot.role_name
 
     def role_id = "#{role} #{person.id}"
 
-    def team_unit = person.team_unit_code.to_s
+    def team_unit = snapshot.team_unit
 
     # What the creditor the refund is paid to is called in Moss -- the same
     # name the page's creditor section states.
@@ -151,11 +201,11 @@ module Wsjrdp2027
 
     def effective_date_text = date_text(person.deregistration_effective_date)
 
-    def account_holder = SepaAccount.account_holder(person)
+    def account_holder = SepaAccount.account_holder(snapshot.sepa)
 
     # Normalized the way the SEPA exports write it, so what is read off the
     # page can be typed into online banking as it stands.
-    def iban = SepaAccount.iban(person)
+    def iban = SepaAccount.iban(snapshot.sepa)
 
     def to_sys_inputs
       {
@@ -176,6 +226,7 @@ module Wsjrdp2027
         refund: amount_text,
         booking_text: booking_text,
         requested_date: requested_date_text,
+        requested_date_label: person.deregistration_requested_date_label,
         effective_date: effective_date_text,
         ticket: ticket,
         amount: amount_text,
@@ -199,7 +250,23 @@ module Wsjrdp2027
       )
     end
 
+    # A made receipt answers its stored figures; amount_cents comes back as
+    # the integer it was.
+    module Frozen
+      FROZEN.each do |key|
+        define_method(key) do
+          stored = person.deregistration_receipt_snapshot
+          return super() unless stored.is_a?(Hash) && stored.key?(key)
+
+          (key == "amount_cents") ? stored[key].to_i : stored[key]
+        end
+      end
+    end
+    prepend Frozen
+
     private
+
+    def kind_texts = KIND_TEXTS.fetch(kind, KIND_TEXTS["withdrawal"])
 
     # A name cut to its room can end on the space of its initials, which the
     # join would double -- so the parts are stripped before they are joined.

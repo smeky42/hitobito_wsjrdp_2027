@@ -119,6 +119,7 @@
     window-address: none,
     contact-footer: false,
     classic-footer: true,
+    before-title: none,
     doc,
 ) = {
     let footer-size = if footer-size == none { body-size } else { footer-size }
@@ -187,6 +188,11 @@
     show title: set text(size: body-size, weight: "semibold")
     show title: set block(below: 1.5em)
 
+    // A line that belongs above the heading -- a deadline, a reference --
+    // set where the reader looks first.
+    if before-title != none {
+        block(width: 100%, below: 0.8em, before-title)
+    }
     title()
 
     doc

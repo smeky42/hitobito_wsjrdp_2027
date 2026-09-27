@@ -164,4 +164,15 @@ describe Wsjrdp2027::RefundCreditor do
     expect(creditor.zip_code).to eq("")
     expect(creditor.town).to eq("")
   end
+
+  # The creditor pays to the account the first made document captured.
+  it "reads the bank data the made documents captured" do
+    Wsjrdp2027::DeregistrationSnapshot.for(person).capture!
+    person.save!
+    person.update!(sepa_iban: "DE89370400440532013000", sepa_address: "Andere Straße 2, 54321 Anderswo")
+
+    creditor = described_class.new(person.reload)
+    expect(creditor.iban).to eq("DE02120300000000202051")
+    expect(creditor.town).to eq("Musterstadt")
+  end
 end

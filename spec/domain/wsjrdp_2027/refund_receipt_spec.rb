@@ -98,6 +98,21 @@ describe Wsjrdp2027::RefundReceipt do
     end
   end
 
+  describe "a cancelled registration" do
+    before { person.update!(deregistration_kind: "cancellation") }
+
+    it "is abbreviated, worded and named as one" do
+      expect(receipt.kind).to eq("cancellation")
+      expect(receipt.booking_text).to start_with("Storno YP #{person.id} ")
+      expect(receipt.purpose).to include("/ WSJ27 Rueckzahlung nach Storno HELP-1")
+      expect(receipt.file_name).to eq("WSJ27 Storno YP #{person.id} YP1 UnitA Rückzahlung.pdf")
+    end
+
+    it "compiles" do
+      expect(receipt.to_pdf).to start_with("%PDF")
+    end
+  end
+
   describe "the values the page shows" do
     it "formats the refund, the dates and the account" do
       expect(receipt.amount_cents).to eq(40_000)
@@ -330,6 +345,46 @@ describe Wsjrdp2027::RefundReceipt do
 
       expect(png).to start_with(Wsjrdp2027::TypstDocument::PNG_SIGNATURE)
       expect(png.bytesize).to be > 1_000
+    end
+  end
+
+  # A made receipt keeps saying what it said when it was made: the figures, the
+  # person's bank data, role and team -- whatever is booked or changed later.
+  describe "a made receipt" do
+    before do
+      described_class.new(person.reload).record_creation!(people(:admin))
+      AccountingEntry.create!(subject: person, author: people(:admin), amount_cents: 10_000,
+        amount_currency: "EUR", description: "Nachzahlung",
+        value_date: Date.new(2026, 10, 1), booking_date: Date.new(2026, 10, 1))
+      person.update!(sepa_name: "Alex Muster", sepa_iban: "DE89370400440532013000")
+    end
+
+    it "stores its figures and the person's data" do
+      stored = person.reload.deregistration_receipt_snapshot
+      expect(stored["amount_paid_text"]).to eq("400,00 €")
+      expect(stored["booking_text"]).to start_with("Abm. YP #{person.id}")
+      expect(person.deregistration_refund_iban).to eq("DE02120300000000202051")
+      expect(person.deregistration_refund_account_holder).to eq("Kim Alex Muster-Beispiel")
+      expect(person.deregistration_person_role).to eq("YP")
+    end
+
+    it "answers the stored values, not the current ones" do
+      receipt = described_class.new(person.reload)
+
+      expect(receipt.amount_paid_text).to eq("400,00 €")
+      expect(receipt.amount_cents).to eq(40_000)
+      expect(receipt.iban).to eq("DE02120300000000202051")
+      expect(receipt.account_holder).to eq("Kim Alex Muster-Beispiel")
+      expect(receipt.to_sys_inputs[:amount_paid]).to eq("400,00 €")
+    end
+
+    it "answers the current values again once it is discarded" do
+      Wsjrdp2027::DeregistrationSnapshot.for(person.reload).clear!
+      person.update!(deregistration_receipt_snapshot: nil, deregistration_receipt_created_date: nil)
+      receipt = described_class.new(person.reload)
+
+      expect(receipt.amount_paid_text).to eq("500,00 €")
+      expect(receipt.iban).to eq("DE89370400440532013000")
     end
   end
 end

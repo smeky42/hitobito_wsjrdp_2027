@@ -24,6 +24,9 @@ module Wsjrdp2027
     include ContractHelper
 
     TEMPLATE = "deregistration_form.typ"
+    # How long the person has to send the signed form back where the page
+    # names no day ("Rückmeldung bis").
+    REPLY_PERIOD = 14.days
 
     attr_reader :person
 
@@ -40,20 +43,28 @@ module Wsjrdp2027
 
     def show_contractual_compensation? = @show_contractual_compensation
 
-    def role = person.wsjrdp_role
+    # Role and bank data come from the snapshot the form was made with, or
+    # from the person while it is not made.
+    def snapshot = @snapshot ||= DeregistrationSnapshot.for(person)
+
+    def role = snapshot.role
 
     # The scripts' role_id_name: role, registration id and short name.
     def role_id_name = "#{role} #{person.id} #{person.short_full_name}"
 
     # Why the page offers no document, as keys the page puts into words: the
     # form is the person's own declaration of a withdrawal, so there is none
-    # for a termination by the contingent -- and none before the day the
-    # withdrawal takes effect is known, which the declaration names. Both can
+    # for a termination by the contingent or a cancelled registration -- and
+    # none before a day it can name is known: the day the withdrawal was
+    # declared or the day it takes effect, one of them at least. Several can
     # apply at once.
     def unavailable_reasons
       reasons = []
       reasons << :termination if person.deregistration_termination?
-      reasons << :no_effective_date if person.deregistration_effective_date.blank?
+      reasons << :cancellation if person.deregistration_cancellation?
+      if person.deregistration_requested_date.blank? && person.deregistration_effective_date.blank?
+        reasons << :no_date
+      end
       reasons
     end
 
@@ -83,6 +94,46 @@ module Wsjrdp2027
 
     def cancellation_date_text = date_text(person.deregistration_effective_date)
 
+    def requested_date_text = date_text(person.deregistration_requested_date)
+
+    # The day the signed form is to be back by: the one entered on the page,
+    # or two weeks from the day the form is made.
+    # The day the form counts as made: the stored one, or today for a form
+    # that has not been made yet.
+    def created_on = person.deregistration_form_created_date || Date.current
+
+    # Whether the form's day is stored -- it is, from the first PDF on.
+    def created? = person.deregistration_form_created_date.present?
+
+    # Stores today as the form's day where none is stored yet, together with
+    # the person's bank data, role and team or unit as they stand now, and
+    # saves the person. Answers whether anything was written.
+    def record_creation!
+      return false if created?
+
+      person.deregistration_form_created_date = Date.current
+      # The deadline the form names is fixed with it: the entered one, or two
+      # weeks from today.
+      person.deregistration_effective_reply_due_date =
+        person.deregistration_reply_due_date || (Date.current + REPLY_PERIOD)
+      snapshot.capture!
+      person.save!
+      true
+    end
+
+    # The deadline the form names: fixed when it was made, or -- for a form not
+    # made yet -- the entered one or two weeks from today.
+    def reply_due_date
+      person.deregistration_effective_reply_due_date ||
+        person.deregistration_reply_due_date || (created_on + REPLY_PERIOD)
+    end
+
+    def reply_due_date_text = date_text(reply_due_date)
+
+    # The day the form is made -- printed in its footer, since a deadline
+    # counted from it moves with it.
+    def generated_on_text = date_text(created_on)
+
     def amount_paid_cents = person.amount_paid_cents
 
     def actual_compensation_cents = person.deregistration_actual_compensation_cents
@@ -102,9 +153,9 @@ module Wsjrdp2027
       actual_compensation_cents.nil? ? nil : person.deregistration_open_cents
     end
 
-    def iban = SepaAccount.iban(person)
+    def iban = SepaAccount.iban(snapshot.sepa)
 
-    def account_holder = SepaAccount.account_holder(person)
+    def account_holder = SepaAccount.account_holder(snapshot.sepa)
 
     def to_sys_inputs
       {
@@ -113,6 +164,9 @@ module Wsjrdp2027
         full_name: person.full_name,
         birthday_de: birthday_text,
         cancellation_date_de: cancellation_date_text,
+        requested_date_de: requested_date_text,
+        reply_due_date_de: reply_due_date_text,
+        generated_on_de: generated_on_text,
         contract_names: contract_names.to_json,
         amount_paid_cents: amount_paid_cents,
         actual_compensation_cents: actual_compensation_cents,

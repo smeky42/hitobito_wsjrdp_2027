@@ -28,6 +28,14 @@
 }
 
 #let role_id_name = sys.inputs.at("role_id_name", default: "")
+// The day the signed form is to be back by: the one the page carries, or two
+// weeks from the day the form was made.
+#let reply_due_date_de = sys.inputs.at("reply_due_date_de", default: "")
+// The day the form was made, which a deadline counted from it depends on.
+#let generated_on_de = sys.inputs.at("generated_on_de", default: "")
+// The day the withdrawal was declared ("Rücktritt erklärt am"), empty where
+// none is entered.
+#let requested_date_de = sys.inputs.at("requested_date_de", default: "")
 #let contract_names = json(bytes(sys.inputs.at("contract_names", default: "[\"Unterschrift Teilnehmer*in\", \"\", \"\"]")))
 #let hitobitoid = text_or_line("hitobitoid", 3.9cm)
 #let full_name = text_or_line("full_name", 14cm)
@@ -79,10 +87,25 @@
     role-id-name: role_id_name,
     footer-text: [Abmeldung],
     contact-footer: true,
+    // The deadline and, under it in grey, the day the form was made -- the day
+    // a deadline without an entered one is counted from.
+    before-title: if reply_due_date_de != "" or generated_on_de != "" {
+        align(right, stack(
+            spacing: 3pt,
+            if reply_due_date_de != "" {
+                text(size: 8pt)[Bitte unterschrieben zurücksenden bis #text(weight: "semibold")[#reply_due_date_de]]
+            },
+            if generated_on_de != "" {
+                text(size: 8pt, fill: contact-grey)[Erstellt am #generated_on_de]
+            },
+        ))
+    },
 )
 
+// Where the day of the declaration is known, the form states it after the
+// person instead of an effective date in the first sentence.
 Hiermit #(if contract_names.len() == 1 [erkläre ich] else [erklären wir])
-zum #cancellation_date_de
+#if requested_date_de == "" [zum #cancellation_date_de]
 beim #rdp,
 Chausseestraße 128/129, 10115 Berlin
 den Rücktritt vom Vertrag zur Teilnahme im deutschen Kontingent
@@ -90,6 +113,9 @@ zum 26. World Scout Jamboree 2027 in Polen von
 
 #par(first-line-indent: 1.5cm, [#full_name])
 #par(first-line-indent: 1.5cm, [geboren am #birthday_de #h(2em) Anmeldungs-ID: #hitobitoid])
+#if requested_date_de != "" [
+    #par(first-line-indent: 1.5cm, [Rücktritt erklärt am #requested_date_de])
+]
 
 
 
@@ -118,6 +144,10 @@ in Höhe von #amount_paid_display bezahlt.
   für den Rücktritt vom Teilnahmevertrag dem #rdp eine Entschädigung in Höhe von
   #actual_compensation_display
   zu leisten.
+  #if reply_due_date_de != "" [
+    Dieses Angebot gilt, wenn das unterschriebene Formular bis zum
+    #text(weight: "semibold")[#reply_due_date_de] per Mail eingeht.
+  ]
 ] else [
   #(if contract_names.len() == 1 [Ich verpflichte mich] else [Wir verpflichten uns]),
   dem #rdp eine Entschädigung in Höhe von
