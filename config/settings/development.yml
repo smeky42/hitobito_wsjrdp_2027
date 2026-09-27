@@ -1,0 +1,10 @@
+# Settings of the hitobito_wsjrdp_2027 wagon for RAILS_ENV=development only; the
+# wagon loads this file after config/settings.yml.
+
+service_tokens:
+  # The HMAC secret of development service tokens when
+  # HITOBITO_SERVICE_TOKEN_HMAC_KEYS is not set
+  # (Wsjrdp2027::ServiceTokenHmacKeys). Committed and public: it only
+  # marks development tokens, which work in no other stage, and
+  # production refuses it.
+  hmac_keys_default: "development:f4055637fabbbcd831bbe281fe04c4d8a224680bc669a75cb4c6ce17a44cad6b"

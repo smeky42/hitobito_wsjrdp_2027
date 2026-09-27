@@ -1,0 +1,11 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The answer to a creation through Turbo: the notice, and the key with the
+-# token's attributes where the form and its storage choice were.
+= turbo_stream.update 'flash', partial: 'layouts/flash', collection: [:notice], as: :level
+= turbo_stream.replace 'service_token_new', partial: 'service_tokens/plain_token'

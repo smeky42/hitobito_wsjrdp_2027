@@ -1,0 +1,10 @@
+# Settings of the hitobito_wsjrdp_2027 wagon for RAILS_ENV=test only; the
+# wagon loads this file after config/settings.yml.
+
+service_tokens:
+  # The HMAC secret of test service tokens when
+  # HITOBITO_SERVICE_TOKEN_HMAC_KEYS is not set
+  # (Wsjrdp2027::ServiceTokenHmacKeys). Committed and public: it only
+  # marks test tokens, which work in no other stage, and production
+  # refuses it.
+  hmac_keys_default: "test:558451850472556add67e629c8393b55ddc9a5c68215209faf05a56572d5c350"

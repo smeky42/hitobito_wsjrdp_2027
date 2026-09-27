@@ -76,8 +76,47 @@ de:
           buddy_self: "darf nicht deine eigene Buddy ID sein."
           buddy_no_ul: "muss zu einer Person gehören, die Unit Leader ist."
           buddy_no_yp: "muss zu einer Person gehören, die Youth Participant ist."
+        service_token:
+          attributes:
+            base:
+              hmac_key_missing: >-
+                Hier (Stage %{stage}) ist kein HMAC-Schlüssel konfiguriert
+                (HITOBITO_SERVICE_TOKEN_HMAC_KEYS), deshalb lässt sich kein
+                HMAC-Token erzeugen.
+              regenerate_kind_refused: Ein Token dieser Art lässt sich für diesen API-Key hier nicht erzeugen.
+            layer:
+              not_root: "muss die oberste Gruppe sein: API-Keys gibt es nur dort."
+            acting_person_id:
+              acting_person_missing: gibt es nicht.
+              acting_person_not_assignable: darf nur ein Admin setzen oder ändern.
+            scopes:
+              unknown_scope: "enthält unbekannte Scopes: %{scopes}."
+              finance_not_assignable: "für Finanzen darf nur ein Admin setzen oder ändern."
+            adopted_stage:
+              adopt_stage_format: darf nur a–z und 0–9 enthalten.
+              adopt_production: "darf nicht production sein: Produktions-Tokens werden in der Produktion erzeugt."
+              adopt_own_stage: "ist diese Umgebung: solche Tokens hier erzeugen."
+            adopted_token:
+              adopt_format: "muss die Form hmac-sha256:<64 Hex-Zeichen> haben."
+            adopted_fingerprint:
+              adopt_fingerprint_format: "muss 44 Zeichen Base64 sein (43 Zeichen und =)."
 
     attributes:
+      service_token:
+        layer: Ebene
+        acting_person: Handelnde Person
+        acting_person_id: Handelnde Person
+        scopes: Scopes
+        wagon_scopes: Scopes
+        adopted_stage: Umgebung
+        stage: Umgebung
+        hmac_secret_key_fingerprint: Schlüssel-Fingerabdruck
+        token_kind: Speicherung des Tokens
+        adopted_token: Token-Hash
+        adopted_fingerprint: Schlüssel-Fingerabdruck
+        token: Token-Hash
+        plain_token: Token
+        key: API-Key
       group:
         is_wsjrdp: WSJRDP Gruppe
         cost_center_numbers: Kostenstellen
@@ -1192,3 +1231,94 @@ de:
   navigation:
     finance: Finanzen
     contingent: Kontingent
+
+  service_tokens:
+    abilities:
+      read_write: Lesen und Schreiben
+      read_log: Lesen, Log
+      read_write_log: Lesen und Schreiben, Log
+      finance: Finanzen
+      acting_person: "Nur soweit auch %{person} (ID %{id}) darf"
+      scopes: "Scopes: %{scopes}"
+    scope_fields:
+      log: privilegiert (:log)
+      finance: Finanzen
+      extras_need_person: >-
+        Die Zusätze „privilegiert (:log)“, Audit, Write und Manage gibt es nur mit
+        einer handelnden Person; sie gelten nur, soweit auch diese Person sie
+        hat.
+      finance_admin_only: Nur Admins dürfen die Finanz-Scopes eines API-Keys bearbeiten.
+      confirm_drop: >-
+        Ohne handelnde Person werden diese Zusätze entfernt: %{scopes}.
+        Trotzdem speichern?
+    acting_person_field:
+      help: >-
+        Name oder ID eingeben, mindestens drei Zeichen, z. B. „001“ oder „0001“
+        für Person 1. Leer lassen: Der API-Key handelt mit den Rechten unten.
+        Mit einer Person gilt zusätzlich: nur was auch diese Person darf. Im
+        Log steht weiterhin der API-Key.
+    token:
+      hmac: HMAC-SHA256 des Tokens. Gilt in %{stage}.
+      fingerprint: "Schlüssel-Fingerabdruck:"
+      fingerprint_unknown: Schlüssel-Fingerabdruck noch unbekannt (übernommen, noch nicht verwendet).
+      sha256: SHA-256 des Tokens. Gilt in jeder Umgebung.
+      plain: Das Token selbst, ungehasht gespeichert. Gilt in jeder Umgebung.
+      reach:
+        here: Wirkt hier.
+        other_stage: Wirkt hier nicht, das Token gehört zu einer anderen Umgebung.
+        key_missing: >-
+          Wirkt hier nicht: Der Schlüssel mit diesem Fingerabdruck ist hier nicht
+          konfiguriert. „Token neu erzeugen“ bindet den API-Key an den aktiven
+          Schlüssel.
+        key_unknown: >-
+          Wirkt hier, wenn der Token-Hash mit einem hier konfigurierten Schlüssel
+          erzeugt wurde; die erste Verwendung ergänzt den Fingerabdruck.
+      label:
+        hashed: Token-Hash
+        plain: Token
+      stages:
+        production: Produktion
+        development: Entwicklung
+        test: Test
+    plain_token:
+      hint:
+        hashed: >-
+          Dieses Token jetzt kopieren und sicher ablegen. Es wird nur dieses
+          eine Mal angezeigt, gespeichert ist nur sein Hash. Geht es verloren,
+          auf der Seite des API-Keys „Token neu erzeugen“ wählen.
+        plain: >-
+          Dieses Token jetzt kopieren und sicher ablegen. Es ist ungehasht
+          gespeichert: Jeder, der die Datenbank oder einen Dump lesen kann,
+          kann es lesen und benutzen.
+      copy: Kopieren
+      to_token: Zum API-Key
+    token_kind_fields:
+      legend: Speicherung des Tokens
+      hmac_html: HMAC – gilt nur in der <code>%{stage}</code> Umgebung
+      hmac_unavailable_html: HMAC – gilt nur in der <code>%{stage}</code> Umgebung; hier nicht verfügbar
+      sha256: SHA-256 – gilt in jeder Umgebung, auch in einer Kopie der Datenbank
+      plain: Ungehasht – gilt in jeder Umgebung und ist für jeden lesbar, der die Datenbank liest
+      adopt: Token-Hash einer anderen Umgebung übernehmen
+      adopt_help_html: >-
+        Umgebung und Token-Hash eines API-Keys, der in einer anderen Umgebung
+        erzeugt wurde, z. B. in <code>development</code>. Das Token gilt dann
+        nur dort. Der Schlüssel-Fingerabdruck ist freiwillig; ohne ihn trägt
+        die erste Verwendung ihn ein.
+      optional: freiwillig
+      required: Pflichtfeld
+      hmac_help_html: Mit dem aktiven Schlüssel dieser Umgebung, Fingerabdruck <code>%{fingerprint}</code>.
+      no_hmac_key: >-
+        Hier (Stage %{stage}) ist kein HMAC-Schlüssel konfiguriert
+        (HITOBITO_SERVICE_TOKEN_HMAC_KEYS).
+    regenerate_token:
+      flash:
+        success: Für %{model} wurde ein neues Token erzeugt. Das bisherige Token gilt nicht mehr.
+    actions_show:
+      regenerate_token: Token neu erzeugen
+      regenerate_token_confirm: >-
+        Ein neues Token erzeugen? Das bisherige Token gilt sofort nicht mehr;
+        wer es benutzt, braucht das neue.
+      regenerate_token_as:
+        plain: Neues Token (ungehasht)
+        sha256: Neues Token (SHA-256)
+        hmac: Neues Token (HMAC)

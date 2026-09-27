@@ -26,22 +26,9 @@ module Wsjrdp2027::VariousAbility
     # covers every action on the subject, :destroy included. The admin
     # tier therefore has full access to the finance models; the other
     # actions are listed only to spell the intent out.
-    finance_models = [
-      WsjrdpCamtTransaction,
-      WsjrdpPaymentPlan,
-      WsjrdpFinAccount,
-      MossTransaction,
-      MossExpense,
-      MossBooking,
-      DatevBooking,
-      DatevBookingBatch,
-      WsjrdpLedgerAccount,
-      WsjrdpCostCenter,
-      WsjrdpPersonalAccount
-    ]
-
-    # Every finance model but ones below shares the whole ladder.
-    finance_models.each do |model|
+    # Every finance model but the person-level ones below shares the whole
+    # ladder (Wsjrdp2027::FinanceAccess.ladder_models).
+    Wsjrdp2027::FinanceAccess.ladder_models.each do |model|
       on(model) do
         permission(:finance_read).may(:show).if_finance_read
         permission(:finance_audit).may(:show, :log).if_finance_audit

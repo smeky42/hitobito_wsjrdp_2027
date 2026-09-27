@@ -1,0 +1,83 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# How the token of the new API key is stored (Wsjrdp2027::ServiceToken::TOKEN_KINDS).
+-# The fields stand outside the core's form and join it by their form
+-# attribute, so the core's form is used as it is. The inputs have the size
+-# and font of the core form's inputs (StandardFormBuilder::FORM_CONTROL_WITH_WIDTH).
+-# The inputs of "adopt" -- the stage and the token hash of another stage --
+-# are enabled and required only while it is chosen, the fingerprint of its
+-# secret enabled and optional (data-optional); a disabled input is not sent. "hmac" names the fingerprint of the secret it uses.
+- keys = Wsjrdp2027::ServiceTokenHmacKeys.current
+- form_id = 'new_service_token'
+- chosen = entry.token_kind.presence || (keys.active ? 'hmac' : 'sha256')
+- control = StandardFormBuilder::FORM_CONTROL_WITH_WIDTH.join(' ')
+- texts = {'hmac' => keys.active ? t('.hmac_html', stage: keys.stage) : t('.hmac_unavailable_html', stage: keys.stage),
+  'sha256' => t('.sha256'), 'plain' => t('.plain'), 'adopt' => t('.adopt')}
+%fieldset#service_token_kind_fields.mb-3
+  %legend.fs-6.fw-semibold= t('.legend')
+  - if keys.active.nil?
+    %p.text-muted= t('.no_hmac_key', stage: keys.stage)
+  - ServiceToken::TOKEN_KINDS.each do |kind|
+    .form-check
+      = radio_button_tag 'service_token[token_kind]', kind, chosen == kind,
+        id: "service_token_token_kind_#{kind}", form: form_id, class: 'form-check-input',
+        disabled: kind == 'hmac' && keys.active.nil?
+      = label_tag "service_token_token_kind_#{kind}", texts[kind], class: 'form-check-label'
+    - if kind == 'hmac' && keys.active
+      .ms-4.mb-2.form-text= t('.hmac_help_html', fingerprint: keys.active.fingerprint)
+    - if kind == 'adopt'
+      .ms-4.mt-1.mb-2{data: {token_kind_input: 'adopt'}}
+        .d-flex.flex-wrap.gap-3
+          .flex-shrink-0
+            = label_tag 'service_token_adopted_stage', class: 'form-label small mb-1' do
+              = ServiceToken.human_attribute_name(:adopted_stage)
+              %span.text-danger{title: t('.required'), hidden: chosen != 'adopt', data: {required_mark: true}} *
+            = text_field_tag 'service_token[adopted_stage]', entry.adopted_stage, form: form_id,
+              id: 'service_token_adopted_stage', autocomplete: 'off', required: chosen == 'adopt',
+              disabled: chosen != 'adopt', placeholder: 'development',
+              class: "form-control form-control-sm#{' is-invalid' if entry.errors[:adopted_stage].any?}"
+          .flex-grow-1
+            = label_tag 'service_token_adopted_token', class: 'form-label small mb-1' do
+              = ServiceToken.human_attribute_name(:adopted_token)
+              %span.text-danger{title: t('.required'), hidden: chosen != 'adopt', data: {required_mark: true}} *
+            = text_field_tag 'service_token[adopted_token]', entry.adopted_token, form: form_id,
+              id: 'service_token_adopted_token', autocomplete: 'off', required: chosen == 'adopt',
+              disabled: chosen != 'adopt', placeholder: 'hmac-sha256:…',
+              class: "#{control}#{' is-invalid' if entry.errors[:adopted_token].any?}"
+        .mt-2
+          = label_tag 'service_token_adopted_fingerprint', class: 'form-label small mb-1' do
+            = ServiceToken.human_attribute_name(:adopted_fingerprint)
+            %span.text-muted= "(#{t('.optional')})"
+          = text_field_tag 'service_token[adopted_fingerprint]', entry.adopted_fingerprint, form: form_id,
+            id: 'service_token_adopted_fingerprint', autocomplete: 'off', disabled: chosen != 'adopt',
+            placeholder: 'Base64, 44 Zeichen', data: {optional: true},
+            class: "#{control}#{' is-invalid' if entry.errors[:adopted_fingerprint].any?}"
+        .form-text= t('.adopt_help_html')
+        - %i[adopted_stage adopted_token adopted_fingerprint].flat_map { |attr| entry.errors.full_messages_for(attr) }.each do |message|
+          .text-danger.small= message
+
+-# Enables and requires the input of the chosen kind and disables the others,
+-# as a choice changes. Bound once on the document, like the page's other
+-# listeners.
+:javascript
+  (function () {
+    if (window.__wsjrdpTokenKindFields) return;
+    window.__wsjrdpTokenKindFields = true;
+    document.addEventListener("change", function (e) {
+      var fieldset = e.target.closest && e.target.closest("#service_token_kind_fields");
+      if (!fieldset || e.target.name !== "service_token[token_kind]") return;
+      fieldset.querySelectorAll("[data-token-kind-input]").forEach(function (box) {
+        var active = box.getAttribute("data-token-kind-input") === e.target.value;
+        box.querySelectorAll("input").forEach(function (input) {
+          input.disabled = !active;
+          input.required = active && !input.hasAttribute("data-optional");
+        });
+        box.querySelectorAll("[data-required-mark]").forEach(function (mark) { mark.hidden = !active; });
+      });
+    });
+  })();

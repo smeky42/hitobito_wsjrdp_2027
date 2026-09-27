@@ -67,6 +67,8 @@ module HitobitoWsjrdp2027
       Event.include Wsjrdp2027::Event
       AdditionalEmail.include Wsjrdp2027::AdditionalEmail
       ActsAsTaggableOn::Tagging.include Wsjrdp2027::ActsAsTaggableOn::Tagging
+      ServiceToken.prepend Wsjrdp2027::ServiceToken
+      Authenticatable::Tokens.prepend Wsjrdp2027::Authenticatable::Tokens
 
       # Concerns
       Contactable.prepend Wsjrdp2027::Concerns::Contactable
@@ -78,11 +80,13 @@ module HitobitoWsjrdp2027
       Group::StatisticsController.include Wsjrdp2027::StatisticsController
       MailingListsController.include Wsjrdp2027::MailingListsController
       Person::QueryController.include Wsjrdp2027::Person::QueryController
+      ServiceTokensController.prepend Wsjrdp2027::ServiceTokensController
 
       # Decorators
       PersonDecorator.prepend Wsjrdp2027::PersonDecorator
       ContactableDecorator.prepend Wsjrdp2027::ContactableDecorator
       PaperTrail::VersionDecorator.prepend Wsjrdp2027::PaperTrail::VersionDecorator
+      ServiceTokenDecorator.prepend Wsjrdp2027::ServiceTokenDecorator
 
       # Helpers
       Sheet::Base.singleton_class.prepend Wsjrdp2027::Sheet::BaseClass
@@ -90,6 +94,7 @@ module HitobitoWsjrdp2027
       Sheet::Person.include Wsjrdp2027::Sheet::Person
       Sheet::Group.include Wsjrdp2027::Sheet::Group
       NavigationHelper.include Wsjrdp2027::NavigationHelper
+      FormatHelper.prepend Wsjrdp2027::FormatHelper
       StandardFormBuilder.prepend Wsjrdp2027::StandardFormBuilder
 
       # Abilities
@@ -97,6 +102,10 @@ module HitobitoWsjrdp2027
       # controller, the constructor argument on Ability, the subtraction in the
       # UserContext.
       ApplicationController.prepend Wsjrdp2027::Concerns::SessionSettings
+      # Both controllers that authenticate (Authenticatable): the pages and
+      # the JSON:API.
+      ApplicationController.prepend Wsjrdp2027::Concerns::ActingPersonToken
+      JsonApiController.prepend Wsjrdp2027::Concerns::ActingPersonToken
       Ability.prepend Wsjrdp2027::Ability
       AbilityDsl::UserContext.prepend Wsjrdp2027::UserContext
       EventAbility.include Wsjrdp2027::EventAbility
@@ -106,6 +115,8 @@ module HitobitoWsjrdp2027
       MailingListAbility.include Wsjrdp2027::MailingListAbility
       SubscriptionAbility.include Wsjrdp2027::SubscriptionAbility
       RoleAbility.include Wsjrdp2027::RoleAbility
+      ServiceTokenAbility.include Wsjrdp2027::ServiceTokenAbility
+      TokenAbility.prepend Wsjrdp2027::TokenAbility
 
       # Other
       Wizards::Steps::NewUserForm.include Wsjrdp2027::Wizards::Steps::NewUserForm
@@ -135,7 +146,23 @@ module HitobitoWsjrdp2027
 
     initializer "wsjrdp_2027.add_settings" do |_app|
       Settings.add_source!(File.join(paths["config"].existent, "settings.yml"))
+      # Settings of one Rails environment only, e.g. the public HMAC secret of
+      # development service tokens (Wsjrdp2027::ServiceTokenHmacKeys).
+      environment_settings = root.join("config", "settings", "#{Rails.env}.yml")
+      Settings.add_source!(environment_settings.to_s) if environment_settings.exist?
       Settings.reload!
+    end
+
+    # The environment Wsjrdp2027::ServiceTokenHmacKeys reads, taken at boot.
+    initializer "wsjrdp_2027.service_token_hmac_keys" do |app|
+      app.config.x.service_token_hmac_keys = ENV["HITOBITO_SERVICE_TOKEN_HMAC_KEYS"]
+      app.config.x.rails_stage = ENV["RAILS_STAGE"]
+    end
+
+    # Parses HITOBITO_SERVICE_TOKEN_HMAC_KEYS once, logs which keys are active
+    # and accepted, and stops any stage but production on a bad entry.
+    config.after_initialize do
+      Wsjrdp2027::ServiceTokenHmacKeys.current
     end
 
     initializer "wsjrdp_2027.add_inflections" do |_app|

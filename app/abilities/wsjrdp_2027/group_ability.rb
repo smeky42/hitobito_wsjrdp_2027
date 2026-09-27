@@ -33,6 +33,15 @@ module Wsjrdp2027::GroupAbility
         .none
       permission(:group_full).may(:show_statistics).in_same_group
 
+      # The API keys (service tokens) of a layer, listed for admins only
+      # (Wsjrdp2027::ServiceTokenAbility); if_layer_group is the core's
+      # constraint (group.layer?). Replaced original permissions:
+      # permission(:layer_full).may(:index_service_tokens).service_token_in_same_layer
+      # permission(:layer_and_below_full).may(:index_service_tokens).service_token_in_same_layer
+      permission(:layer_full).may(:index_service_tokens).none
+      permission(:layer_and_below_full).may(:index_service_tokens).none
+      permission(:admin).may(:index_service_tokens).if_layer_group
+
       # The group's finance tab and its pages. :show_finance opens
       # them, :update_finance is the gate for anything that edits
       # there beyond the regular finance tiers.

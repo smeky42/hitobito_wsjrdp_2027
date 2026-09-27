@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The core's new page with the choice how the key is stored above the core's
+-# form; its fields belong to that form through their form attribute.
+- title ti(:title, model: model_class_label(entry), default: model_class_label(entry))
+
+#service_token_new
+  = render 'token_kind_fields'
+  = render 'form'

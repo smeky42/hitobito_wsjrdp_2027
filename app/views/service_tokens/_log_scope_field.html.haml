@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The :log extra of a core area (people:log, ...), in the line of the core's
+-# checkbox of that area (Wsjrdp2027::StandardFormBuilder#boolean_field).
+-# Disabled without an acting person; a checked one stays checked, so the form
+-# can name it before it is dropped (service_tokens/_fields_wsjrdp_2027).
+- token = f.object
+- id = "service_token_scope_#{scope.tr(':', '_')}"
+.form-check{data: {scope_extra: scope, scope_base: "service_token_#{area}"}}
+  = check_box_tag 'service_token[wagon_scopes][]', scope, token.scopes.include?(scope), id: id,
+    class: 'form-check-input', disabled: token.acting_person_id.nil?
+  = label_tag id, class: 'form-check-label me-2' do
+    = t('service_tokens.scope_fields.log')

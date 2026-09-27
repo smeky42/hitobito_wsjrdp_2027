@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The key of a service token just made, the one time it can be read, above
+-# the token's attributes as its show page lists them (the core's attrs
+-# partial, the stored digest included).
+.service-token-plain-token
+  .alert.alert-warning
+    %p= t("service_tokens.plain_token.hint.#{ServiceToken.hashed_token?(entry.token) ? :hashed : :plain}")
+    %label.form-label.fw-semibold{for: 'service_token_plain_token'}= ServiceToken.human_attribute_name(:plain_token)
+    .input-group
+      %input#service_token_plain_token.form-control.font-monospace{type: 'text', readonly: true, value: entry.plain_token}
+      = link_to t('service_tokens.plain_token.copy'), '#', class: 'btn btn-outline-primary',
+        data: {copy_to_clipboard: entry.plain_token}
+  = render 'attrs'
+  - if action_name == 'create'
+    %p= link_to t('service_tokens.plain_token.to_token'), group_service_token_path(entry.layer, entry)

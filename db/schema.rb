@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_18_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_29_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1519,6 +1519,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_18_100000) do
     t.boolean "event_participations", default: false, null: false
     t.boolean "mailing_lists", default: false, null: false
     t.string "permission", default: "layer_read", null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.integer "acting_person_id"
+    t.string "scopes", default: [], null: false, array: true
+    t.string "stage"
+    t.string "hmac_secret_key_fingerprint"
+    t.index ["acting_person_id"], name: "index_service_tokens_on_acting_person_id"
   end
 
   create_table "sessions", id: :serial, force: :cascade do |t|
@@ -2043,6 +2049,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_18_100000) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade
   add_foreign_key "people", "self_registration_reasons"
+  add_foreign_key "service_tokens", "people", column: "acting_person_id", on_delete: :nullify
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
   add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"

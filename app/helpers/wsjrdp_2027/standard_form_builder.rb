@@ -8,6 +8,21 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Wsjrdp2027::StandardFormBuilder
+  # The core's service token form (service_tokens/_form) lists :name and
+  # :description in its first fieldset; for an admin the acting person
+  # follows there, as the core's person autocomplete over a search that
+  # finds every person, by name or by id
+  # (Wsjrdp::ServiceTokenActingPeopleController,
+  # Wsjrdp2027::ActingPersonTokenAbility). The core's form stays as it is.
+  def labeled_input_fields(*attrs)
+    fields = super
+    return fields unless object.is_a?(::ServiceToken) && attrs.include?(:description)
+    return fields unless ::ServiceToken.acting_person_admin?(template.current_user)
+
+    fields + labeled_person_field(:acting_person, help: I18n.t("service_tokens.acting_person_field.help"),
+      data: {url: template.wsjrdp_service_token_acting_people_path})
+  end
+
   def mail_addresses_field(attr, html_options = {})
     html_options[:class] = html_options[:class].to_s
     html_options[:class] += " is-invalid" if errors_on?(attr)
@@ -15,6 +30,21 @@ module Wsjrdp2027::StandardFormBuilder
       html_options[:class], *StandardFormBuilder::FORM_CONTROL_WITH_WIDTH
     ].compact.join(" ")
     text_area(attr, html_options)
+  end
+
+  # The core's service token form lists the areas of "Rechte" as checkboxes;
+  # people, groups and events get the area's :log extra in the same line
+  # (service_tokens/_log_scope_field, Wsjrdp2027::ServiceTokenScopes).
+  def boolean_field(attr, html_options = {})
+    field = super
+    return field unless object.is_a?(::ServiceToken)
+
+    log_scope = Wsjrdp2027::ServiceTokenScopes.log_scope(attr) if Wsjrdp2027::ServiceTokenScopes::CORE_AREAS.include?(attr.to_s)
+    return field unless log_scope
+
+    content_tag(:div, class: "d-flex flex-wrap align-items-baseline gap-3") do
+      field + template.render("service_tokens/log_scope_field", f: self, area: attr.to_s, scope: log_scope)
+    end
   end
 
   def labeled_inline_fields_for(
