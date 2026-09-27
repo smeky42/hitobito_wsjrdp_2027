@@ -26,6 +26,17 @@ module Wsjrdp2027::FinanceAccess
   FINANCE_TIERS = %i[finance_read finance_audit finance finance_manage].freeze
   WRITING_TIERS = %i[finance finance_manage].freeze
 
+  # The finance models that share the whole ladder, from the read tier up.
+  def self.ladder_models
+    [WsjrdpCamtTransaction, WsjrdpPaymentPlan, WsjrdpFinAccount, MossTransaction, MossExpense,
+      MossBooking, DatevBooking, DatevBookingBatch, WsjrdpLedgerAccount, WsjrdpCostCenter,
+      WsjrdpPersonalAccount]
+  end
+
+  # The finance models with person-level payment details, from the audit
+  # tier up.
+  def self.person_level_models = [AccountingEntry, WsjrdpDirectDebitPreNotification]
+
   def if_finance_read
     finance_tiers.any?
   end

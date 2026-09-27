@@ -1,0 +1,15 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The core's show page (crud/show) with "API-Key <id>" before the
+-# heading.
+- title entry.to_s
+= render 'title_prefix'
+
+- content_for(:toolbar, render('actions_show'))
+
+= render 'attrs'

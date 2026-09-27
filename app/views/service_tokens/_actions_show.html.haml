@@ -1,0 +1,17 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+= button_action_edit if can?(:edit, entry)
+-# "Token neu erzeugen" in the kinds this API key may get: one button for one
+-# kind, one per kind otherwise (Wsjrdp2027::ServiceToken#regenerate_kinds).
+- if can?(:regenerate_token, entry)
+  - kinds = entry.regenerate_kinds
+  - kinds.each do |kind|
+    = action_button(kinds.one? ? t('.regenerate_token') : t(".regenerate_token_as.#{kind}"),
+      regenerate_token_group_service_token_path(entry.layer, entry, kind: kind), :sync,
+      data: {method: :post, confirm: t('.regenerate_token_confirm')})
+= button_action_destroy if can?(:destroy, entry)

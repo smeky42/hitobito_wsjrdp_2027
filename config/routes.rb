@@ -16,9 +16,21 @@ Rails.application.routes.draw do
   get "wsjrdp/impersonate/people", to: "wsjrdp/impersonation_query#index",
     as: :wsjrdp_impersonate_query
   post "wsjrdp/impersonate", to: "wsjrdp/impersonation#create", as: :wsjrdp_impersonate
+  # The person search of a service token's acting person, for admins
+  # (Wsjrdp::ServiceTokenActingPeopleController).
+  get "wsjrdp/service_tokens/acting_people", to: "wsjrdp/service_token_acting_people#index",
+    as: :wsjrdp_service_token_acting_people
 
   language_scope do
     resources :groups do
+      # An API key's token is shown only as it is made
+      # (Wsjrdp2027::ServiceTokensController), so a lost token is replaced.
+      resources :service_tokens, only: [] do
+        member do
+          post :regenerate_token
+        end
+      end
+
       resources :people, except: [:new, :create] do
         member do
           post :send_password_instructions

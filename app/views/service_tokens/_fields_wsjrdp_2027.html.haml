@@ -1,0 +1,106 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The end of "Rechte" in the core's service token form (its render_extensions
+-# :fields): the finance scopes in one line -- finance:read as "Finanzen",
+-# then its extras by tier -- and the script that ties the extras to the acting person
+-# (Wsjrdp2027::ServiceTokenScopes).
+-#
+-# All scopes beyond the core's columns are sent as service_token[wagon_scopes][]
+-# (the empty value lets a form clear them all). Only an admin changes the
+-# finance scopes. The extras -- people:log, groups:log, events:log and the
+-# finance extras -- are disabled without an acting person.
+- token = f.object
+- admin = ServiceToken.acting_person_admin?(current_user)
+- without_person = token.acting_person_id.nil?
+= hidden_field_tag 'service_token[wagon_scopes][]', '', id: nil
+#service_token_scope_fields{data: {has_person: (!without_person).to_s, confirm_drop: t('service_tokens.scope_fields.confirm_drop', scopes: '%{scopes}')}}
+  .d-flex.flex-wrap.align-items-baseline.gap-3
+    .form-check
+      = check_box_tag 'service_token[wagon_scopes][]', 'finance:read', token.scopes.include?('finance:read'),
+        id: 'service_token_scope_finance_read', class: 'form-check-input', disabled: !admin
+      = label_tag 'service_token_scope_finance_read', t('service_tokens.scope_fields.finance'), class: 'form-check-label me-2'
+    - Wsjrdp2027::ServiceTokenScopes::AREAS['finance'].last.each do |scope|
+      - id = "service_token_scope_#{scope.tr(':', '_')}"
+      - tier = Wsjrdp2027::ServiceTokenScopes::FINANCE_PERMISSIONS[scope]
+      .form-check{data: {scope_extra: scope, scope_base: 'service_token_scope_finance_read', scope_locked: (!admin).to_s}}
+        = check_box_tag 'service_token[wagon_scopes][]', scope, token.scopes.include?(scope), id: id,
+          class: 'form-check-input', disabled: without_person || !admin
+        = label_tag id, t("wsjrdp.finance_tiers.#{tier}"), class: 'form-check-label me-2'
+  .form-text{hidden: !without_person, data: {scope_extras_hint: true}}= t('service_tokens.scope_fields.extras_need_person')
+  - unless admin
+    .form-text= t('service_tokens.scope_fields.finance_admin_only')
+
+-# Follows the acting person field -- a person picked, the field emptied (which
+-# also empties the hidden id, as the core's autocomplete does not) -- to enable
+-# or disable the extras; checks an extra's base with it and unchecks a base's
+-# extras with it; and asks before a form without acting person drops checked
+-# extras. Bound once on the document.
+:javascript
+  (function () {
+    if (window.__wsjrdpTokenScopes) return;
+    window.__wsjrdpTokenScopes = true;
+    var box = function (form) { return form.querySelector("#service_token_scope_fields"); };
+    var idField = function (form) {
+      return form.querySelector("input[type=hidden][name='service_token[acting_person_id]']");
+    };
+    var hasPerson = function (form) {
+      var id = idField(form);
+      return id ? !!id.value : box(form).getAttribute("data-has-person") === "true";
+    };
+    var extras = function (form) {
+      return Array.prototype.slice.call(form.querySelectorAll("[data-scope-extra]"));
+    };
+    var sync = function (form) {
+      if (!box(form)) return;
+      var person = hasPerson(form);
+      extras(form).forEach(function (row) {
+        var locked = row.getAttribute("data-scope-locked") === "true";
+        row.querySelector("input").disabled = !person || locked;
+      });
+      form.querySelectorAll("[data-scope-extras-hint]").forEach(function (hint) { hint.hidden = person; });
+    };
+    var personForm = function (e) {
+      return e.target && e.target.name === "service_token[acting_person]" ? e.target.form : null;
+    };
+    document.addEventListener("input", function (e) {
+      var form = personForm(e);
+      if (!form) return;
+      if (!e.target.value.trim() && idField(form)) idField(form).value = "";
+      sync(form);
+    });
+    // autoComplete.js announces a pick as "selection"; the core's handler
+    // sets the hidden id in the same turn, so look after it.
+    document.addEventListener("selection", function (e) {
+      var form = personForm(e);
+      if (form) setTimeout(function () { sync(form); }, 0);
+    }, true);
+    document.addEventListener("change", function (e) {
+      var form = e.target.form;
+      if (!form || !box(form) || e.target.type !== "checkbox") return;
+      var row = e.target.closest("[data-scope-extra]");
+      if (row && e.target.checked) {
+        var base = document.getElementById(row.getAttribute("data-scope-base"));
+        if (base && !base.disabled) base.checked = true;
+      }
+      if (!row && !e.target.checked) {
+        extras(form).forEach(function (extra) {
+          if (extra.getAttribute("data-scope-base") === e.target.id) extra.querySelector("input").checked = false;
+        });
+      }
+    });
+    document.addEventListener("submit", function (e) {
+      var form = e.target;
+      if (!box(form) || hasPerson(form)) return;
+      var dropped = extras(form).filter(function (row) { return row.querySelector("input").checked; })
+        .map(function (row) { return row.getAttribute("data-scope-extra"); });
+      if (dropped.length && !window.confirm(box(form).getAttribute("data-confirm-drop").replace("%{scopes}", dropped.join(", ")))) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
+  })();

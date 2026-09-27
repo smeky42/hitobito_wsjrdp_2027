@@ -7,11 +7,13 @@ require "spec_helper"
 
 # What :layer_and_below_full (plus the implied :layer_and_below_read) grants on
 # the LAYER GROUP the role sits in. The finance actions are added per context.
+# :index_service_tokens is not among them: only an admin lists the API keys, of
+# the root group only (spec/abilities/wsjrdp_2027/service_token_ability_spec.rb).
 LAYER_AND_BELOW_FULL_ON_OWN_LAYER = [
   :read, :show_details, :show_statistics, :update, :reactivate, :log,
   :index_people, :index_local_people, :index_full_people, :index_deep_full_people,
   :index_deleted_people, :index_events, :"index_event/courses", :index_mailing_lists,
-  :index_notes, :index_calendars, :index_service_tokens,
+  :index_notes, :index_calendars,
   :index_person_add_requests, :activate_person_add_requests, :deactivate_person_add_requests,
   :export_events, :"export_event/courses", :export_subgroups,
   :deleted_subgroups, :manage_person_tags, :manage_person_duplicates
@@ -19,7 +21,7 @@ LAYER_AND_BELOW_FULL_ON_OWN_LAYER = [
 
 # The same permission on a layer BELOW the role's own one: what is bound to the
 # role's own layer (in_same_layer) drops out -- the local people, the calendars,
-# the service tokens, the add requests, the person duplicates -- and what only
+# the add requests, the person duplicates -- and what only
 # applies further down (:create, :destroy, :modify_superior) comes in.
 LAYER_AND_BELOW_FULL_BELOW = [
   :read, :show_details, :show_statistics, :update, :reactivate, :log,
