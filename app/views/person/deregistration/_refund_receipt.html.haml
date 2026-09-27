@@ -36,4 +36,9 @@
   thumbnail_path: refund_receipt_person_deregistration_path(@person, format: :png),
   open: @dereg_open_sections.include?('receipt_preview'),
   section_open: @dereg_open_sections.include?('receipt'),
-  frame_title: t('people.refund_receipt.title')
+  frame_title: t('people.refund_receipt.title'),
+  create_path: create_receipt_person_deregistration_path(@person),
+  created: @refund_receipt.created?,
+  extra_actions: (button_to(discard_receipt_person_deregistration_path(@person), method: :post,
+    class: 'btn btn-sm btn-outline-danger',
+    form: {class: 'd-inline', data: {turbo_confirm: t('people.refund_receipt.discard_confirm')}}) { t('people.refund_receipt.discard') } if @refund_receipt.created?)

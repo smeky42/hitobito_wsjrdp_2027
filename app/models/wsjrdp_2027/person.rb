@@ -246,9 +246,6 @@ module Wsjrdp2027::Person
       jsonb_backed_hash :wsjrdp_user_preferences
       jsonb_accessor :wsjrdp_user_preferences, :admin_tab, prefix: :wsjrdp_preference
       attribute :wsjrdp_preference_admin_tab, :string
-      # Which sections of the Abmeldung page stand open, as a list of keys. An
-      # empty list is a state of its own (everything closed), so it is stored.
-      jsonb_accessor :wsjrdp_user_preferences, :deregistration_open_sections, prefix: :wsjrdp_preference, delete_on_blank: false
 
       # The column is NOT NULL, so validates_by_schema (core person.rb) auto-adds
       # a presence validator -- but its {} default is blank?, which would make
@@ -835,6 +832,19 @@ module Wsjrdp2027::Person
 
       def deregistration_termination? = deregistration_record.termination?
 
+      def deregistration_cancellation? = deregistration_record.cancellation?
+
+      # What deregistration_requested_date is called for the kind at hand: the
+      # day the person withdrew, the contingent terminated, or the registration
+      # was cancelled.
+      def deregistration_requested_date_label
+        kind = deregistration_kind_or_default
+        # A kind the form was refused for is shown again with its errors; it
+        # reads as the default until it is corrected.
+        kind = Wsjrdp2027::DeregistrationRecord::DEFAULT_KIND unless DEREGISTRATION_KINDS.include?(kind)
+        I18n.t("people.deregistration_requested_date_labels.#{kind}")
+      end
+
       def deregistration_kind=(value)
         write_deregistration_record(:kind, value)
       end
@@ -853,6 +863,50 @@ module Wsjrdp2027::Person
 
       # The optional text the Moss receipt carries above its explanation
       # paragraph; without it the receipt starts with the paragraph alone.
+      def deregistration_receipt_created_date = deregistration_record.receipt_created_date
+
+      def deregistration_receipt_created_date=(value)
+        write_deregistration_record(:receipt_created_date, value)
+      end
+
+      def deregistration_receipt_created_by_id = deregistration_record.receipt_created_by_id
+
+      def deregistration_receipt_created_by_id=(value)
+        write_deregistration_record(:receipt_created_by_id, value)
+      end
+
+      # What the first made document captured: the account a refund goes to,
+      # and the role, its name and the team or unit.
+      %i[refund_account_holder refund_iban refund_bic refund_sepa_address
+        person_role person_role_name person_team_unit].each do |key|
+        define_method(:"deregistration_#{key}") { deregistration_record.public_send(key) }
+        define_method(:"deregistration_#{key}=") { |value| write_deregistration_record(key, value) }
+      end
+
+      def deregistration_receipt_snapshot = deregistration_record.receipt_snapshot
+
+      def deregistration_receipt_snapshot=(value)
+        write_deregistration_record(:receipt_snapshot, value)
+      end
+
+      def deregistration_form_created_date = deregistration_record.form_created_date
+
+      def deregistration_form_created_date=(value)
+        write_deregistration_record(:form_created_date, value)
+      end
+
+      def deregistration_effective_reply_due_date = deregistration_record.effective_reply_due_date
+
+      def deregistration_effective_reply_due_date=(value)
+        write_deregistration_record(:effective_reply_due_date, value)
+      end
+
+      def deregistration_reply_due_date = deregistration_record.reply_due_date
+
+      def deregistration_reply_due_date=(value)
+        write_deregistration_record(:reply_due_date, value)
+      end
+
       def deregistration_refund_receipt_text = deregistration_record.refund_receipt_text
 
       def deregistration_refund_receipt_text=(value)
@@ -871,7 +925,11 @@ module Wsjrdp2027::Person
         write_deregistration_record(:refund_receipt_show_default_explanation, value)
       end
 
+      # The compensation of section 7.2 T&R. A cancelled registration never
+      # became a contract, so there is nothing the T&R could ask for.
       def deregistration_contractual_compensation_cents(today: nil)
+        return 0 if deregistration_cancellation?
+
         compute_contractual_compensation_cents(
           total_fee_cents, today: deregistration_compensation_date(today: today)
         )

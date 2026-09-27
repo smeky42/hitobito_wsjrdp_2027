@@ -42,6 +42,44 @@ describe "Person deregistration record" do
     end
   end
 
+  describe "#deregistration_reply_due_date" do
+    it "keeps the day in the sub-object" do
+      person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1))
+
+      expect(stored).to eq("reply_due_date" => "2026-10-01")
+      expect(person.reload.deregistration_reply_due_date).to eq(Date.new(2026, 10, 1))
+    end
+
+    it "drops the key when the day is cleared" do
+      person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1))
+
+      person.update!(deregistration_reply_due_date: "")
+
+      expect(person.reload.additional_info).not_to have_key(key)
+    end
+  end
+
+  # A cancelled registration never became a contract, so the T&R ask for
+  # nothing -- and what the person paid comes back unless an amount is entered.
+  describe "a cancelled registration" do
+    it "carries no compensation under the T&R" do
+      expect(person.deregistration_contractual_compensation_cents).to be > 0
+
+      person.update!(deregistration_kind: "cancellation")
+
+      expect(person.reload.deregistration_contractual_compensation_cents).to eq(0)
+      expect(person.deregistration_refund_cents).to eq(person.amount_paid_cents)
+      expect(person.deregistration_open_cents).to eq(0)
+    end
+
+    it "keeps a compensation that was entered" do
+      person.update!(deregistration_kind: "cancellation", deregistration_actual_compensation_cents: 5_000)
+
+      expect(person.reload.deregistration_contractual_compensation_cents).to eq(0)
+      expect(person.deregistration_open_cents).to eq([5_000 - person.amount_paid_cents, 0].max)
+    end
+  end
+
   describe "#deregistration_kind" do
     # The withdrawal is what an absent value stands for, so writing it stores
     # nothing -- the form sends it on every save.

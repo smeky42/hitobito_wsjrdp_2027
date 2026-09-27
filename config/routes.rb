@@ -117,7 +117,11 @@ Rails.application.routes.draw do
         # what the page writes back when one of its collapsibles opens or closes.
         member do
           get :form
+          post :create_form
+          post :discard_form
           get :refund_receipt
+          post :create_receipt
+          post :discard_receipt
           post :sections
         end
       end

@@ -21,10 +21,21 @@
         - if @person.deregistration_issue.present?
           = labeled(t("people.deregistration_summary.ticket")) do
             = format_person_deregistration_issue(@person)
-        = labeled(Person.human_attribute_name(:deregistration_requested_date)) do
+        = labeled(@person.deregistration_requested_date_label) do
           = format_attr(@person, :deregistration_requested_date)
         = labeled(Person.human_attribute_name(:deregistration_effective_date)) do
           = format_attr(@person, :deregistration_effective_date)
+        = labeled(Person.human_attribute_name(:deregistration_reply_due_date)) do
+          -# A made form names the deadline it fixed; before that the entered
+          -# one counts, or two weeks from the day the form is made.
+          - if (fixed = @person.deregistration_effective_reply_due_date)
+            = l(fixed)
+            - if fixed != @person.deregistration_reply_due_date
+              %span.muted.ms-1= t("people.deregistration_summary.reply_due_fixed")
+          - elsif @person.deregistration_reply_due_date
+            = format_person_deregistration_reply_due_date(@person)
+          - else
+            %span.muted= t("people.deregistration_summary.reply_due_default")
         = labeled(Person.human_attribute_name(:status)) do
           = @person.status_log_display
     %div

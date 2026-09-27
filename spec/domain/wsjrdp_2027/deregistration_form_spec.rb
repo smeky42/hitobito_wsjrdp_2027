@@ -63,19 +63,40 @@ describe Wsjrdp2027::DeregistrationForm do
       expect(form.unavailable_reasons).to eq([:termination])
     end
 
-    it "is not offered while the day it takes effect is unknown" do
-      person.update!(deregistration_effective_date: nil)
+    # Without a contract there is nothing to withdraw from.
+    it "is not offered for a cancelled registration" do
+      person.update!(deregistration_kind: "cancellation")
       form = described_class.new(person.reload)
 
       expect(form).not_to be_available
-      expect(form.unavailable_reasons).to eq([:no_effective_date])
+      expect(form.unavailable_reasons).to eq([:cancellation])
+    end
+
+    it "is not offered while neither the declared nor the effective day is known" do
+      person.update!(deregistration_effective_date: nil, deregistration_requested_date: nil)
+      form = described_class.new(person.reload)
+
+      expect(form).not_to be_available
+      expect(form.unavailable_reasons).to eq([:no_date])
+    end
+
+    it "is offered with the declared day alone" do
+      person.update!(deregistration_effective_date: nil, deregistration_requested_date: Date.new(2026, 9, 1))
+
+      expect(described_class.new(person.reload)).to be_available
+    end
+
+    it "is offered with the effective day alone" do
+      person.update!(deregistration_requested_date: nil)
+
+      expect(described_class.new(person.reload)).to be_available
     end
 
     it "names both reasons where both apply" do
       person.update!(deregistration_kind: "termination", deregistration_effective_date: nil)
 
       expect(described_class.new(person.reload).unavailable_reasons)
-        .to eq([:termination, :no_effective_date])
+        .to eq([:termination, :no_date])
     end
   end
 
@@ -260,6 +281,117 @@ describe Wsjrdp2027::DeregistrationForm do
     end
   end
 
+  # The day the signed form is to be back by: the page's "Rückmeldung bis",
+  # or two weeks from the day the form is made.
+  # The form's day is fixed by its first PDF and kept until the form is
+  # discarded; before that it is today.
+  describe "the day the form is made" do
+    it "is today and unstored until the form is made" do
+      travel_to(Time.zone.local(2026, 9, 27, 12)) do
+        form = described_class.new(person.reload)
+
+        expect(form).not_to be_created
+        expect(form.created_on).to eq(Date.new(2026, 9, 27))
+        expect(form.to_sys_inputs[:generated_on_de]).to eq("27.09.2026")
+      end
+    end
+
+    it "is stored once and kept, and the deadline counts from it" do
+      travel_to(Time.zone.local(2026, 9, 27, 12)) do
+        expect(described_class.new(person.reload).record_creation!).to be(true)
+      end
+
+      travel_to(Time.zone.local(2026, 10, 5, 12)) do
+        form = described_class.new(person.reload)
+
+        expect(form.record_creation!).to be(false)
+        expect(person.reload.deregistration_form_created_date).to eq(Date.new(2026, 9, 27))
+        expect(form.to_sys_inputs[:generated_on_de]).to eq("27.09.2026")
+        expect(form.reply_due_date).to eq(Date.new(2026, 10, 11))
+      end
+    end
+  end
+
+  # The person's data the form names is captured when it is made.
+  describe "a made form" do
+    it "fixes the deadline it names, two weeks from its day where none is entered" do
+      travel_to(Time.zone.local(2026, 9, 27, 12)) { described_class.new(person.reload).record_creation! }
+
+      expect(person.reload.deregistration_effective_reply_due_date).to eq(Date.new(2026, 10, 11))
+      expect(person.deregistration_reply_due_date).to be_nil
+    end
+
+    it "fixes an entered deadline, and keeps it when the entry changes later" do
+      person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1))
+      described_class.new(person.reload).record_creation!
+      person.reload.update!(deregistration_reply_due_date: Date.new(2026, 10, 20))
+
+      form = described_class.new(person.reload)
+      expect(person.deregistration_effective_reply_due_date).to eq(Date.new(2026, 10, 1))
+      expect(form.reply_due_date).to eq(Date.new(2026, 10, 1))
+    end
+
+    it "keeps the bank data, role and team it was made with" do
+      described_class.new(person.reload).record_creation!
+      person.reload.update!(sepa_name: "Alex Muster", sepa_iban: "DE89370400440532013000")
+
+      form = described_class.new(person.reload)
+      expect(person.deregistration_person_role).to eq("YP")
+      expect(person.deregistration_person_role_name).to be_present
+      expect(form.iban).to eq("DE02120300000000202051")
+      expect(form.account_holder).to eq("Kim Alex Muster-Beispiel")
+      expect(form.role_id_name).to start_with("YP #{person.id} ")
+    end
+  end
+
+  describe "#reply_due_date" do
+    it "takes the day the page names" do
+      person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1))
+      form = described_class.new(person.reload)
+
+      expect(form.reply_due_date).to eq(Date.new(2026, 10, 1))
+      expect(form.to_sys_inputs[:reply_due_date_de]).to eq("01.10.2026")
+    end
+
+    it "gives two weeks from today where the page names none" do
+      travel_to(Time.zone.local(2026, 9, 27, 12)) do
+        form = described_class.new(person.reload)
+
+        expect(form.reply_due_date).to eq(Date.new(2026, 10, 11))
+        expect(form.to_sys_inputs[:reply_due_date_de]).to eq("11.10.2026")
+      end
+    end
+
+    it "names the day it is made, for the footer" do
+      travel_to(Time.zone.local(2026, 9, 27, 12)) do
+        expect(described_class.new(person.reload).to_sys_inputs[:generated_on_de]).to eq("27.09.2026")
+      end
+    end
+
+    it "compiles with the deadline and the offer that depends on it" do
+      person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1),
+        deregistration_actual_compensation_cents: 0)
+
+      expect(described_class.new(person.reload).to_pdf).to start_with("%PDF")
+    end
+  end
+
+  # With the day of the declaration known, the first sentence drops its
+  # effective date and a line after the person names the day instead.
+  describe "the day the withdrawal was declared" do
+    it "is empty while none is entered" do
+      expect(form.to_sys_inputs[:requested_date_de]).to eq("")
+    end
+
+    it "is written the German way and compiles into the form" do
+      person.update!(deregistration_requested_date: Date.new(2026, 9, 1))
+      form = described_class.new(person.reload)
+
+      expect(form.to_sys_inputs[:requested_date_de]).to eq("01.09.2026")
+      expect(form.to_pdf).to start_with("%PDF")
+    end
+  end
+
   describe "#to_sys_inputs" do
     it "hands every value to typst as a String" do
       inputs = form.to_sys_inputs
@@ -282,7 +414,9 @@ describe Wsjrdp2027::DeregistrationForm do
 
     it "sends the key set the template reads" do
       expect(form.to_sys_inputs.keys).to eq(%i[
-        role_id_name hitobitoid full_name birthday_de cancellation_date_de contract_names
+        role_id_name hitobitoid full_name birthday_de cancellation_date_de requested_date_de
+        reply_due_date_de generated_on_de
+        contract_names
         amount_paid_cents actual_compensation_cents contractual_compensation_cents
         refund_amount_cents missing_amount_cents
         amount_paid_display actual_compensation_display contractual_compensation_display

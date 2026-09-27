@@ -15,7 +15,14 @@
 -# The three are plain buttons in one flex row, so they share a baseline; the
 -# toggle keeps one label and turns its chevron instead, so nothing beside it
 -# moves when the preview opens.
+-#
+-# A document that is made on request (`create_path`) shows none of that until it
+-# is made: an empty picture and one button that makes it. `extra_actions` stand
+-# last in the row of a made document.
 - id = "dereg-section-#{key}"
+- create_path = local_assigns[:create_path]
+- made = create_path.nil? || local_assigns[:created]
+- extra_actions = local_assigns[:extra_actions]
 -# The picture costs a document, so it is asked for only once its section is
 -# open: drawn in an open section it carries its src at once, in a closed one
 -# only the address, which the page's javascript copies over as the section
@@ -23,24 +30,35 @@
 - thumb_attrs = {alt: file_name, loading: "lazy", data: {src: thumbnail_path}}
 - thumb_attrs[:src] = thumbnail_path if section_open
 .dereg-doc-row
-  %img.dereg-doc-thumb{thumb_attrs}
+  - if made
+    %img.dereg-doc-thumb{thumb_attrs}
+  - else
+    .dereg-doc-thumb.dereg-doc-thumb-empty{"aria-hidden": "true"}
   %div
     .fw-semibold= file_name
     .muted.small= facts
     .dereg-doc-actions
-      %button.btn.btn-sm.btn-outline-primary.dereg-doc-toggle{type: "button", "data-bs-toggle": "collapse", "data-bs-target": "##{id}", "aria-expanded": open.to_s, "aria-controls": id}
-        = icon(:"chevron-down")
-        = t("people.deregistration_documents.preview")
-      = link_to document_path, class: "btn btn-sm btn-outline-primary", target: "_blank" do
-        = icon(:"external-link-alt")
-        = t("people.deregistration_documents.open")
-      = link_to "#{document_path}?download=1", class: "btn btn-sm btn-primary" do
-        = icon(:download)
-        = t("people.deregistration_documents.save")
+      - if made
+        %button.btn.btn-sm.btn-outline-primary.dereg-doc-toggle{type: "button", "data-bs-toggle": "collapse", "data-bs-target": "##{id}", "aria-expanded": open.to_s, "aria-controls": id}
+          = icon(:"chevron-down")
+          = t("people.deregistration_documents.preview")
+        = link_to document_path, class: "btn btn-sm btn-outline-primary", target: "_blank" do
+          = icon(:"external-link-alt")
+          = t("people.deregistration_documents.open")
+        = link_to "#{document_path}?download=1", class: "btn btn-sm btn-primary" do
+          = icon(:download)
+          = t("people.deregistration_documents.save")
+        = extra_actions
+      - else
+        = button_to create_path, method: :post, class: "btn btn-sm btn-primary",
+          form: {class: "d-inline", data: {turbo: false}} do
+          = icon(:"file-pdf")
+          = t("people.deregistration_documents.create")
 -# A frame that is drawn open inside an open section carries its src at once;
 -# any other carries only the address (an empty src would fetch this very page)
 -# and is filled as its preview, or the section around it, opens.
 - frame_attrs = {title: frame_title, data: {src: document_path}}
 - frame_attrs[:src] = document_path if open && section_open
-%div{id: id, class: open ? "collapse show" : "collapse"}
-  %iframe.dereg-doc-frame.mt-2{frame_attrs}
+- if made
+  %div{id: id, class: open ? "collapse show" : "collapse"}
+    %iframe.dereg-doc-frame.mt-2{frame_attrs}

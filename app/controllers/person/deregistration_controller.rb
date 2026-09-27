@@ -42,11 +42,11 @@ class Person::DeregistrationController < ApplicationController
 
   # The collapsibles of the page, in the order they stand: the four sections,
   # each with the preview of its document where it has one. Which of them are
-  # open is remembered per login user under PREFERENCE_KEY, as a list of keys;
-  # nothing stored means the first one alone.
+  # open is kept in the session under SESSION_KEY, as a list of keys; nothing
+  # kept means the first one alone.
   SECTIONS = %w[capture form form_preview creditor receipt receipt_preview].freeze
   DEFAULT_OPEN_SECTIONS = %w[capture].freeze
-  PREFERENCE_KEY = "deregistration_open_sections"
+  SESSION_KEY = :deregistration_open_sections
 
   # What a save says that wrote nothing the page shows -- a form that sent the
   # defaults again, or one that shed a stored default.
@@ -88,19 +88,82 @@ class Person::DeregistrationController < ApplicationController
       return redirect_to person_deregistration_path(person)
     end
 
+    # The form is made by #create_form and not before; until then there is no
+    # document to show.
+    unless form.created?
+      flash[:alert] = t("people.deregistration_form.not_created")
+      return redirect_to person_deregistration_path(person)
+    end
+
     send_document(form)
+  end
+
+  # Makes the form: stores its day, which every later PDF reuses, and comes
+  # back to the page with the form's section open.
+  def create_form
+    form = Wsjrdp2027::DeregistrationForm.new(person)
+    if form.available?
+      form.record_creation!
+      session[SESSION_KEY] = SECTIONS & (remembered_sections | ["form"])
+      flash[:notice] = t("people.deregistration_form.created")
+    else
+      flash[:alert] = helpers.deregistration_form_unavailable_text(form)
+    end
+    redirect_to person_deregistration_path(person)
+  end
+
+  # Throws the made form away: its day goes, and the next PDF is made -- and
+  # dated -- afresh.
+  # The receipt goes with it, since it is made from the same captured data,
+  # and so do the captured data and the deadline the form fixed. An entered
+  # deadline stays.
+  def discard_form
+    person.deregistration_form_created_date = nil
+    person.deregistration_effective_reply_due_date = nil
+    clear_receipt
+    Wsjrdp2027::DeregistrationSnapshot.for(person).clear!
+    person.save! if person.changed?
+    flash[:notice] = t("people.deregistration_form.discarded")
+    redirect_to person_deregistration_path(person)
   end
 
   # The slip the finance team pays the refund from: built from the person on
   # every request and never stored, so it says what the page says. What it
   # carries is edited on the form, which is why this one only reads.
   def refund_receipt
-    send_document(Wsjrdp2027::RefundReceipt.new(person, generated_by: current_user))
+    receipt = Wsjrdp2027::RefundReceipt.new(person, generated_by: current_user)
+    # Made by #create_receipt and not before; until then there is nothing to
+    # show.
+    unless receipt.created?
+      flash[:alert] = t("people.refund_receipt.not_created")
+      return redirect_to person_deregistration_path(person)
+    end
+
+    send_document(receipt)
   end
 
-  # Which sections the page has open, written back for whoever is logged in as
-  # one comma-separated list -- the store persists the key at once, so there is
-  # nothing to answer with. An empty list is a state of its own (everything
+  # Makes the receipt: stores its day and who made it, which every later PDF
+  # reuses, and comes back with the receipt's section open.
+  def create_receipt
+    Wsjrdp2027::RefundReceipt.new(person, generated_by: current_user).record_creation!(current_user)
+    session[SESSION_KEY] = SECTIONS & (remembered_sections | ["receipt"])
+    flash[:notice] = t("people.refund_receipt.created")
+    redirect_to person_deregistration_path(person)
+  end
+
+  # Throws the made receipt away: its day and maker go, and the next PDF is
+  # made afresh.
+  def discard_receipt
+    clear_receipt
+    # The person's data stays captured while the form still says it.
+    Wsjrdp2027::DeregistrationSnapshot.for(person).clear! unless person.deregistration_form_created_date
+    person.save! if person.changed?
+    flash[:notice] = t("people.refund_receipt.discarded")
+    redirect_to person_deregistration_path(person)
+  end
+
+  # Which sections the page has open, written back into the session as one
+  # comma-separated list -- there is nothing to answer with. An empty list is a state of its own (everything
   # closed); a key the page does not know is a request nobody's page sent.
   def sections
     return head :unprocessable_entity unless params.key?(:sections)
@@ -108,7 +171,7 @@ class Person::DeregistrationController < ApplicationController
     keys = params[:sections].to_s.split(",").map(&:strip).compact_blank
     return head :unprocessable_entity unless (keys - SECTIONS).empty?
 
-    login_person.wsjrdp_user_preferences[PREFERENCE_KEY] = SECTIONS & keys
+    session[SESSION_KEY] = SECTIONS & keys
     head :no_content
   end
 
@@ -129,6 +192,13 @@ class Person::DeregistrationController < ApplicationController
 
   private
 
+  # Forgets the made receipt: its day, its maker and its figures.
+  def clear_receipt
+    person.deregistration_receipt_created_date = nil
+    person.deregistration_receipt_created_by_id = nil
+    person.deregistration_receipt_snapshot = nil
+  end
+
   # One of the page's two documents, as the request asks for it: page 1 as a PNG
   # for the preview thumbnail (.png), the PDF as a file to save where download
   # says so, and the PDF inline otherwise. Both are built from the person on the
@@ -146,12 +216,11 @@ class Person::DeregistrationController < ApplicationController
     end
   end
 
-  # Which sections stand open, as the login user last left them: the first one
-  # where nothing is stored, and of a stored list only the keys the page knows
-  # (an older deploy's key, a hand-edited one). A stored empty list means what
-  # it says.
+  # Which sections stand open, as they were last left in this session: the
+  # first one where nothing is kept, and of a kept list only the keys the page
+  # knows (an older deploy's key). A kept empty list means what it says.
   def remembered_sections
-    stored = login_person&.wsjrdp_user_preferences&.[](PREFERENCE_KEY)
+    stored = session[SESSION_KEY]
     return DEFAULT_OPEN_SECTIONS unless stored.is_a?(Array)
 
     SECTIONS & stored.map(&:to_s)
@@ -185,9 +254,8 @@ class Person::DeregistrationController < ApplicationController
       :deregistration_issue,
       :deregistration_refund_receipt_show_default_explanation,
       :deregistration_refund_receipt_text,
-      :deregistration_requested_date,
-      :sepa_status,
-      :status
+      :deregistration_reply_due_date,
+      :deregistration_requested_date
     ]
   end
 
@@ -263,16 +331,24 @@ class Person::DeregistrationController < ApplicationController
       next unless flat.key?(attr.to_s)
 
       before, after = flat[attr.to_s]
-      "#{Person.human_attribute_name(attr)}: " \
+      "#{change_label(attr)}: " \
         "#{format_change_value(attr, before)} #{CHANGE_ARROW} " \
         "#{format_change_value(attr, after)}"
     end
   end
 
+  # The request date is called after the kind the save leaves behind; every
+  # other field by its attribute name.
+  def change_label(attr)
+    return @person.deregistration_requested_date_label if attr == :deregistration_requested_date
+
+    Person.human_attribute_name(attr)
+  end
+
   # Every deregistration field is a jsonb accessor on additional_info, which
   # Rails tracks as ONE change of that column -- so the per-field before and
-  # after have to be read out of the two hashes. The plain columns
-  # (sepa_status, status) are tracked on their own and pass through.
+  # after have to be read out of the two hashes. A plain column would be tracked
+  # on its own and pass through.
   #
   # Either hash can be empty and still carry the change: clearing the last
   # remaining field leaves {} behind, because a blank value drops its key.

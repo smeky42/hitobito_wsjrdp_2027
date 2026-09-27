@@ -18,7 +18,12 @@
     thumbnail_path: form_person_deregistration_path(@person, format: :png),
     open: @dereg_open_sections.include?('form_preview'),
     section_open: @dereg_open_sections.include?('form'),
-    frame_title: t('people.deregistration_form.title')
+    frame_title: t('people.deregistration_form.title'),
+    create_path: create_form_person_deregistration_path(@person),
+    created: @deregistration_form.created?,
+    extra_actions: (button_to(discard_form_person_deregistration_path(@person), method: :post,
+      class: 'btn btn-sm btn-outline-danger',
+      form: {class: 'd-inline', data: {turbo_confirm: t('people.deregistration_form.discard_confirm')}}) { t('people.deregistration_form.discard') } if @deregistration_form.created?)
 - else
   .p-2
     - unavailable_text = deregistration_form_unavailable_text(@deregistration_form)

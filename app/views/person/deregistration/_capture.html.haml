@@ -11,8 +11,10 @@
 = render_attrs_list do
   = labeled_attr(@person, :deregistration_kind)
   = labeled_attr(@person, :deregistration_issue)
-  = labeled_attr(@person, :deregistration_requested_date)
+  = labeled(@person.deregistration_requested_date_label) do
+    = format_attr(@person, :deregistration_requested_date)
   = labeled_attr(@person, :deregistration_effective_date)
+  = labeled_attr(@person, :deregistration_reply_due_date)
   = labeled_attr_with_help(@person, :deregistration_actual_compensation_cents) do
     Vorgeschlagene Entschädigung = Beitrag der trotz Abmeldung bezahlt werden muss.
     Das Finance Team kann über Bearbeiten einen Betrag abweichend von der

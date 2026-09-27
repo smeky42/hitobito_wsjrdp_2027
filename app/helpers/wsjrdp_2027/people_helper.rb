@@ -123,6 +123,13 @@ module Wsjrdp2027::PeopleHelper
     auto_link_escaped_multiline(person.debit_return_issue) if person.debit_return_issue.present?
   end
 
+  # The record keeps the day as a Date of its own, not as a typed column, so
+  # the list is told how to write it.
+  def format_person_deregistration_reply_due_date(person)
+    date = person.deregistration_reply_due_date
+    l(date) if date
+  end
+
   def format_person_deregistration_contractual_compensation_cents(person)
     format_cents_de(person.deregistration_contractual_compensation_cents, zero_cents: "")
   end
@@ -133,7 +140,7 @@ module Wsjrdp2027::PeopleHelper
   def deregistration_compensation_date_hint(person)
     date = l(person.deregistration_compensation_date)
     if person.deregistration_requested_date.present?
-      "Berechnet zum #{date} (Abmeldung angefragt am)."
+      "Berechnet zum #{date} (#{person.deregistration_requested_date_label})."
     else
       "Berechnet zum #{date} (heute)"
     end
@@ -176,10 +183,11 @@ module Wsjrdp2027::PeopleHelper
 
   # What the Abmelde-Formular will say, in the one line above its preview: who
   # signs it, the day the withdrawal takes effect, and whether it names the
-  # compensation of section 7.2 T&R.
+  # compensation of section 7.2 T&R -- led by the day it was made, once it is.
   def deregistration_form_facts(form)
     compensation = form.show_contractual_compensation? ? "compensation_named" : "compensation_not_named"
     [
+      (t("people.deregistration_form.created_on", date: l(form.created_on)) if form.created?),
       "#{t("people.deregistration_documents.signatures")}: #{form.contract_names.join(", ")}",
       "#{Person.human_attribute_name(:deregistration_effective_date)} #{form.cancellation_date_text}",
       t("people.deregistration_documents.#{compensation}")
@@ -191,7 +199,11 @@ module Wsjrdp2027::PeopleHelper
   # paragraph is printed, and that a text of its own stands above it.
   def deregistration_receipt_facts(receipt)
     explanation = receipt.show_explanation? ? "explanation_printed" : "explanation_not_printed"
-    facts = [receipt.amount_text, receipt.booking_text,
+    facts = []
+    if receipt.created?
+      facts << t("people.refund_receipt.created_on_by", date: l(receipt.created_on), name: receipt.generated_by_name)
+    end
+    facts += [receipt.amount_text, receipt.booking_text,
       t("people.deregistration_documents.#{explanation}")]
     facts << t("people.deregistration_documents.with_text") if receipt.greeting.present?
     facts.compact_blank.join(" · ")

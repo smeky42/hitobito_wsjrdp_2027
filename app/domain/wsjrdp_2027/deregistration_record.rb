@@ -29,9 +29,10 @@ module Wsjrdp2027
     include ActiveModel::Attributes
 
     KEY = "deregistration_record"
-    # Who ended the participation: the person themselves ("Abmeldung") or the
-    # contingent ("Kündigung").
-    KINDS = %w[withdrawal termination].freeze
+    # How the participation ended: the person withdrew from the contract
+    # ("Abmeldung"), the contingent ended it ("Kündigung"), or the registration
+    # was cancelled before a contract came about ("Storno der Registrierung").
+    KINDS = %w[withdrawal termination cancellation].freeze
     DEFAULT_KIND = "withdrawal"
     # The two flags whose absent value means "shown".
     FLAGS = %w[
@@ -42,6 +43,19 @@ module Wsjrdp2027
     # the order a change of the record is read in.
     ATTRS = %w[
       kind
+      reply_due_date
+      effective_reply_due_date
+      form_created_date
+      receipt_created_date
+      receipt_created_by_id
+      refund_account_holder
+      refund_iban
+      refund_bic
+      refund_sepa_address
+      person_role
+      person_role_name
+      person_team_unit
+      receipt_snapshot
       form_show_contractual_compensation
       refund_receipt_text
       refund_receipt_show_default_explanation
@@ -53,6 +67,36 @@ module Wsjrdp2027
     BLANK_VALUE = "–"
 
     attribute :kind, :string
+    # The day the signed deregistration is to be back by -- and so the day up
+    # to which the proposed Einbehalt stands.
+    attribute :reply_due_date, :date
+    # The deadline the made Abmelde-Formular names: reply_due_date, or two
+    # weeks from the day it was made where none was entered -- fixed by
+    # "PDF erzeugen", cleared by "Formular verwerfen".
+    attribute :effective_reply_due_date, :date
+    # The day the Abmelde-Formular was first made. It stays until the form is
+    # discarded, so the form keeps its "Erstellt am" and a deadline counted
+    # from it however often it is opened again.
+    attribute :form_created_date, :date
+    # The day the Moss refund receipt was first made and who made it, kept
+    # until the receipt is discarded -- the receipt's "Erstellt am ... von ...".
+    attribute :receipt_created_date, :date
+    attribute :receipt_created_by_id, :integer
+    # The receipt's figures as they stood when it was made
+    # (Wsjrdp2027::RefundReceipt::FROZEN), a string-keyed hash -- a made
+    # receipt keeps saying what it said.
+    attribute :receipt_snapshot
+    # The role, its name and the team or unit as the first made document
+    # captured them (Wsjrdp2027::DeregistrationSnapshot::PERSON_KEYS).
+    attribute :person_role, :string
+    attribute :person_role_name, :string
+    attribute :person_team_unit, :string
+    # The account a refund goes to, as the first made document captured it
+    # (Wsjrdp2027::DeregistrationSnapshot::REFUND_KEYS).
+    attribute :refund_account_holder, :string
+    attribute :refund_iban, :string
+    attribute :refund_bic, :string
+    attribute :refund_sepa_address, :string
     attribute :form_show_contractual_compensation, :boolean
     attribute :refund_receipt_text, :string
     attribute :refund_receipt_show_default_explanation, :boolean
@@ -76,6 +120,11 @@ module Wsjrdp2027
       def describe(sub_key, value)
         case sub_key.to_s
         when "kind" then I18n.t("people.deregistration_kinds.#{value.presence || DEFAULT_KIND}")
+        when "reply_due_date", "effective_reply_due_date", "form_created_date", "receipt_created_date"
+          value.present? ? I18n.l(value.to_date) : BLANK_VALUE
+        when "receipt_snapshot"
+          I18n.t("people.deregistration_record.#{value.present? ? "stored" : "not_stored"}")
+        when "receipt_created_by_id" then value.present? ? (::Person.find_by(id: value)&.to_s || value.to_s) : BLANK_VALUE
         when *FLAGS then I18n.t("people.deregistration_form.#{shown?(value) ? "show" : "hide"}")
         else value.to_s.squish.presence || BLANK_VALUE
         end
@@ -122,6 +171,8 @@ module Wsjrdp2027
 
     def termination? = kind_or_default == "termination"
 
+    def cancellation? = kind_or_default == "cancellation"
+
     def form_show_contractual_compensation?
       self.class.shown?(form_show_contractual_compensation)
     end
@@ -137,6 +188,16 @@ module Wsjrdp2027
     def to_h
       hash = {}
       hash["kind"] = kind if kind.present? && kind != DEFAULT_KIND
+      hash["reply_due_date"] = reply_due_date.iso8601 if reply_due_date
+      hash["effective_reply_due_date"] = effective_reply_due_date.iso8601 if effective_reply_due_date
+      hash["form_created_date"] = form_created_date.iso8601 if form_created_date
+      hash["receipt_created_date"] = receipt_created_date.iso8601 if receipt_created_date
+      hash["receipt_created_by_id"] = receipt_created_by_id if receipt_created_by_id
+      %w[refund_account_holder refund_iban refund_bic refund_sepa_address
+        person_role person_role_name person_team_unit].each do |key|
+        hash[key] = public_send(key) if public_send(key).present?
+      end
+      hash["receipt_snapshot"] = receipt_snapshot.to_h.stringify_keys if receipt_snapshot.present?
       hash["form_show_contractual_compensation"] = false if form_show_contractual_compensation == false
       hash["refund_receipt_text"] = refund_receipt_text if refund_receipt_text.present?
       hash["refund_receipt_show_default_explanation"] = false if refund_receipt_show_default_explanation == false
