@@ -2,8 +2,9 @@
 
 # LOCAL DEV ONLY — never deploy. Loaded ONLY via the gitignored symlink at
 # config/initializers/ (created by dev-only-overrides/create_symlinks.sh).
-# Disables login on :3000; the dev person comes from the optional, gitignored
-# config/dev_only_settings.local.yml (default: person 1).
+# Disables login on :3000 for requests without a token; the dev person comes
+# from the optional, gitignored config/dev_only_settings.local.yml (default:
+# person 1).
 
 # Fail-closed tripwire: if this ever reaches production, refuse to boot.
 raise "local_dev_only_login_bypass present in production!" if Rails.env.production?
@@ -48,11 +49,28 @@ if Rails.env.development?
     # the target person in, and we must NOT override that with the fixed person.
     # The flip side: whoever is signed in shadows the configured person until
     # you sign out (see the note at the settings file above).
+    #
+    # (Q3) Requests that carry a token -- a service token (X-Token header or
+    # token param) or an OAuth access token (Bearer header or access_token
+    # param) -- are left to Hitobito's own sign-in: authenticate_person! runs
+    # for them and signs the token in, and no dev person stands in, so
+    # current_ability is the token's (TokenAbility / DoorkeeperTokenAbility)
+    # exactly as in production. A request without a token keeps the bypass. A
+    # person the request's session holds still wins, so a token is tested from
+    # a client without the browser's cookies (curl, the scripts).
     ApplicationController.class_eval do
-      def authenticate? = false            # skip the authenticate_person! before_action
+      def wsjrdp_token_request?
+        request.authorization.to_s.start_with?("Bearer ") ||
+          request.headers["X-Token"].present? ||
+          params[:access_token].present? || params[:token].present?
+      end
+
+      # Run the authenticate_person! before_action for token requests only.
+      def authenticate? = wsjrdp_token_request?
 
       def current_person
-        @current_person ||= warden.user(:person) || Person.find(WSJRDP_LOGIN_BYPASS_PERSON_ID)
+        @current_person ||= warden.user(:person) ||
+          (wsjrdp_token_request? ? nil : Person.find(WSJRDP_LOGIN_BYPASS_PERSON_ID))
       end
     end
   end
