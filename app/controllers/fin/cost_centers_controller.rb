@@ -56,8 +56,13 @@ class Fin::CostCentersController < Fin::FinController
              fixed: [{slots: [[["number", "not_in", HIDDEN_COST_CENTER_NUMBER]]],
                       show: :hidden}]},
     pane: {default: 1}
+  # The Schnellauswahl of a cost center's bookings: all of them, only those of
+  # the Unit-Budget, or only the others, shown without a filter pane
+  # (fin/cost_centers/_detail).
   ITEM_BOOKINGS_POLICY = wsjrdp_expandable_table_policy(**Fin::BookkeepingSummaries
-    .item_bookings_policy_options(row_param: :number, nested: true))
+    .item_bookings_policy_options(row_param: :number, nested: true)
+    .merge(filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
+                    presets: [Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP]}))
 
   helper_method :cost_centers, :cost_center_bookings,
     :shown_booking_count, :shown_booking_sum
@@ -100,6 +105,18 @@ class Fin::CostCentersController < Fin::FinController
     render_item_detail
   end
 
+  # The EDIT PAGE of one Kostenstelle; #show is the reading page it is reached
+  # from and comes back to. Authorized on the RECORD, the way #update is. A
+  # number without master data has nothing to edit -- #show invents a stub
+  # record for it, #edit does not.
+  def edit
+    @cost_center = WsjrdpCostCenter.find_by!(number: params[:number])
+    authorize!(:update, @cost_center)
+    @ctx = Fin::AttrFormatContext.regular
+  end
+
+  # A failed save shows the edit page again, its fields keeping what was typed
+  # with the errors under them.
   def update
     @cost_center = WsjrdpCostCenter.find_by!(number: params[:number])
     authorize!(:update, @cost_center)
@@ -107,8 +124,8 @@ class Fin::CostCentersController < Fin::FinController
       redirect_to cost_center_path(@cost_center.number),
         notice: "Kostenstelle wurde aktualisiert."
     else
-      @ctx = detail_format_context
-      render :show, status: :unprocessable_entity
+      @ctx = Fin::AttrFormatContext.regular
+      render :edit, status: :unprocessable_entity
     end
   end
 
@@ -142,8 +159,16 @@ class Fin::CostCentersController < Fin::FinController
   # Cost centers stay on the plain bookings (Konto perspective): the detail's
   # list and its sum are the same net cash-flow of the tagged bookings the
   # summary row shows.
-  def cost_center_bookings(number)
-    item_bookings(DatevBooking.where(cost_center_number: number))
+  # The bookings of a cost center's detail: those with it as primary cost
+  # center; for a unit's own cost center also those with it as secondary cost
+  # center -- all costs the unit caused, as its group's Buchhaltung counts them.
+  # Only a unit's cost center offers the Unit-Budget Schnellauswahl, so only
+  # there does the table's filter narrow the bookings.
+  def cost_center_bookings(cost_center)
+    return item_bookings(DatevBooking.where(cost_center_number: cost_center.number), filter: false) unless cost_center.is_unit_cost_center
+
+    item_bookings(DatevBooking.where(cost_center_number: cost_center.number)
+      .or(DatevBooking.where(secondary_cost_center_number: cost_center.number)))
   end
 
   # WHERE the detail partial renders (Fin::AttrFormatContext): the cost center's

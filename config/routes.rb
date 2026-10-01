@@ -184,9 +184,11 @@ Rails.application.routes.draw do
       # links to (person_fees, payment_plans) have their own routes above.
       # See doc/navigation.md.
       get :fees, path: "fees", to: "fees#index", as: "fees"
-      # "Controlling" section: still empty, one overview page at
-      # /fin/controlling. See doc/navigation.md.
+      # "Controlling" section: its overview page at /fin/controlling and the
+      # Budget page. See doc/navigation.md.
       get :controlling, path: "controlling", to: "controlling#index", as: "controlling"
+      # Budget and DATEV actuals per cost center and year.
+      get "controlling/budget", to: "budgets#index", as: "controlling_budget"
       # "Verwaltung" section at /fin/admin: the two configuration pages of the
       # Finanzen section, both gated on :configure_finance on Group. The area
       # has no page of its own -- /fin/admin renders its first tab.
@@ -228,7 +230,7 @@ Rails.application.routes.draw do
           end
         end
         # Cost-center numbers may contain LETTERS -- deliberately unconstrained.
-        resources :cost_centers, param: :number, only: [:index, :show, :update] do
+        resources :cost_centers, param: :number, only: [:index, :show, :edit, :update] do
           collection do
             # Apply target of the generic CNF filter builder (PRG; see
             # Fin::CostCentersController#apply).

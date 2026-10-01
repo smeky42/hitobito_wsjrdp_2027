@@ -34,6 +34,8 @@
 -#                 right after it inside the same tbody.exp-group
 -#    sub_cell  -- ->(sub, col){ html } one sub-row cell (required with sub_rows)
 -#    sub_row_class / group_class -- ->(sub){ css } / ->(row){ css }
+-#    footer    -- ->(col){ html } one cell of a footer row (a sum row) under
+-#                 the rows, per visible column [t.footer]
 -#  Optional feature locals (see the guide): multi_sort, pagination, per_options,
 -#    columns_menu, summary, selection, filter, condensed.
 - state = local_assigns.fetch(:state)
@@ -92,6 +94,7 @@
 -# only when there is more than one page -- see the paging partial.
 - per_options = local_assigns.fetch(:per_options, nil)
 - summary = local_assigns.fetch(:summary, nil)
+- footer = local_assigns.fetch(:footer, nil)
 - filter = local_assigns.fetch(:filter, nil)
 -# Sub-rows: a row may bring rows of its own. They are drawn right after it,
 -# inside the same tbody.exp-group, through the table's VISIBLE columns -- so a
@@ -137,13 +140,16 @@
   -# A view-declared GROUP resolves to one preset per member (state.filter.preset
   -# returns the Array), a slot preset to one -- hence the flat_map.
   - filter_presets = declared_presets.any? ? declared_presets.flat_map { |p| Array(state.filter.preset(**p.to_h.symbolize_keys)) } : state.filter.presets
+  -# `panel: false`: the Schnellauswahl alone -- no pane, no toggle to open one.
+  - filter_panel = filter.fetch(:panel, true)
   = render "shared/wsjrdp/filtering/line", state: state,
-    presets: filter_presets, disabled: filter_disabled
-  = render "shared/wsjrdp/filtering/builder", state: state,
-    apply_url: filter[:apply_url],
-    presets: filter_presets,
-    condensed_locked: filter.fetch(:condensed_locked, false),
-    disabled: filter_disabled
+    presets: filter_presets, disabled: filter_disabled, panel: filter_panel
+  - if filter_panel
+    = render "shared/wsjrdp/filtering/builder", state: state,
+      apply_url: filter[:apply_url],
+      presets: filter_presets,
+      condensed_locked: filter.fetch(:condensed_locked, false),
+      disabled: filter_disabled
 
 -# The remembered selection is keyed per page AND per table, so two pages that
 -# happen to share a prefix / id_prefix never see each other's selection.
@@ -284,6 +290,14 @@
                     -# Links only (the Moss wallet): the detail row is the slim
                     -# header-line bar, nothing below it.
                     .booking-detail.exp-detail-linkbar.exp-detail-linkbar-only= links_html
+
+      - if footer && rows.present?
+        %tfoot
+          %tr.exp-footer-row
+            - if selection
+              %td.bk-select-cell
+            - columns.each do |col|
+              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= footer.call(col)
 
   - if paging_bottom_html.present?
     .mt-2= paging_bottom_html

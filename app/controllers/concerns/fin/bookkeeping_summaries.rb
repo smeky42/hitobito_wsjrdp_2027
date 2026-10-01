@@ -99,9 +99,14 @@ module Fin::BookkeepingSummaries
   # offers as a column like every other host does. It composes with a legs-backed
   # scope: it adds a select and two joins over `datev_bookings`, which is the
   # name the legs subquery is aliased back to.
-  def item_bookings(scope, sum: :signed_base_amount)
-    Wsjrdp::ExpandableTableRows.new(item_bookings_table_state,
-      scope.with_unit_budget.left_joins(:batch),
+  #
+  # `filter: false` leaves the table's filter out, for a detail that does not
+  # show it.
+  def item_bookings(scope, sum: :signed_base_amount, filter: true)
+    state = item_bookings_table_state
+    relation = scope.with_unit_budget.left_joins(:batch)
+    Wsjrdp::ExpandableTableRows.new(state,
+      filter ? state.filter.scope(relation) : relation,
       sort: Fin::DatevBookingsColumns.sort_expressions, sum: sum,
       preload: Fin::DatevBookingsColumns::PRELOADS)
   end

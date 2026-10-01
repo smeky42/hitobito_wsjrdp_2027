@@ -221,10 +221,11 @@ module Fin::DetailHelper
   # Wraps the block in a form when `form_url` is present, yielding the form
   # builder; otherwise yields nil and captures the block output as-is. In
   # regular mode (editing: true) turbo is disabled for full-page submit; in
-  # embedded mode the form submits inside its turbo frame.
+  # embedded mode the form submits inside its turbo frame. A record that failed
+  # to save opens with its inputs, so the errors under them are seen.
   def fin_detail_form_tag(record, form_url, editing:)
     if form_url
-      data = {"fin-editing": editing.to_s}
+      data = {"fin-editing": (editing || record.errors.any?).to_s}
       data[:turbo] = false if editing
       form_with(model: record, url: form_url, method: :patch, data: data) { |f| yield f }
     else
@@ -258,10 +259,30 @@ module Fin::DetailHelper
       f.select row.attr, row.options, {include_blank: false},
         class: "form-select form-select-sm", style: "max-width: 24ch"
     else
-      content_tag(:div, class: "input-group input-group-sm", style: "max-width: 16ch") do
-        f.number_field(row.attr, step: 0.01, class: "form-control form-control-sm") +
-          content_tag(:span, "€", class: "input-group-text")
-      end
+      fin_detail_amount_input(f, row.attr)
+    end
+  end
+
+  # The amount input, the default of an editable row: a text field that shows
+  # the amount German-formatted ("1.234,56", Fin::MoneyInput.format) -- a number
+  # field cannot show thousands points -- with a € suffix. The model reads the
+  # text back (WsjrdpBudgetable). After a failed save the field keeps what was
+  # typed and carries the error under it.
+  def fin_detail_amount_input(f, attr)
+    record = f.object
+    errors = record.errors[attr]
+    value = if errors.any?
+      record.public_send(:"#{attr}_before_type_cast")
+    else
+      Fin::MoneyInput.format(record.public_send(attr))
+    end
+    content_tag(:div, class: "input-group input-group-sm has-validation", style: "max-width: 20ch") do
+      safe_join([
+        f.text_field(attr, value: value, inputmode: "decimal", autocomplete: "off",
+          class: ["form-control form-control-sm", ("is-invalid" if errors.any?)].compact.join(" ")),
+        content_tag(:span, "€", class: "input-group-text"),
+        (content_tag(:div, errors.to_sentence, class: "invalid-feedback") if errors.any?)
+      ].compact)
     end
   end
 

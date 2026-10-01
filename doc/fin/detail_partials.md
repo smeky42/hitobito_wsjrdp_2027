@@ -283,8 +283,12 @@ A field's options are `label help tooltip blank hide span align editable input
 options extra`; there is no `value` — a value comes from the record through its
 formatter, never from the partial. `editable: true` gives the field its input
 inside the partial's form (`form_url:`), `input:` picks which one (`:text`,
-`:textarea`, `:check_box`, `:select` with `options:`; the default is the
-amount's number field with a € suffix). `extra:` names a helper — called with
+`:textarea`, `:check_box`, `:select` with `options:`; the default is the amount
+input). The amount input is a text field with a € suffix that shows the amount
+German-formatted, `1.234,56` (`Fin::MoneyInput.format`) — a number field cannot
+show thousands points. The budget writers of `WsjrdpBudgetable` read that text
+back (`Fin::MoneyInput.normalize`); after a failed save the field keeps what was
+typed and shows the error under it. `extra:` names a helper — called with
 the form builder and the row — that renders ONE MORE control beside that input,
 in the same flex line; the booking edit page puts the number of a *new* sub cost
 center next to the sub cost center select that way.

@@ -64,17 +64,13 @@ class Group::BookkeepingController < ApplicationController
     any_cost_center unit_budget amount amount_abs amount_original amount_original_abs
     transaction_currency booking_date konto offsetting_account any_account].freeze
 
-  # The "Schnellauswahl" above the filter: one click narrows the list to the
-  # bookings that count against the unit's own budget
+  # The "Schnellauswahl" above the filter: Alle / Nur Unit-Budget / Ohne
+  # Unit-Budget, the exclusive group a cost center's detail offers too
   # (doc/wsjrdp/expandable_table.md, "Presets"). It is a shortcut into the USER
-  # part -- `unit_budget` is one of FILTERS, so the slot the toggle adds becomes
-  # an ordinary chip the builder can edit or drop afterwards. The question a
-  # unit asks of its list most often, and the answer is the resolved one
+  # part -- `unit_budget` is one of FILTERS, so the slot it sets is one the
+  # builder can edit or drop afterwards. The answer is the resolved one
   # (doc/fin/unit_budget.md), like the column beside it.
-  PRESETS = [
-    {key: "unit_budget", label: "Unit-Budget",
-     slots: [[["unit_budget", "in", "true"]]]}
-  ].freeze
+  PRESETS = [Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP].freeze
 
   BOOKINGS_POLICY = wsjrdp_expandable_table_policy prefix: "gb",
     columns: Fin::DatevBookingsColumns.codec,

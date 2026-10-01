@@ -168,36 +168,11 @@
      data-pane-target. */
   .flt-dirty-pill { display: none; }
   .pane-toggle.flt-dirty .flt-dirty-pill { display: inline; }
-  /* Schnellauswahl (presets): toggle links in the filter LINE above this pane
-     (shared/wsjrdp/filtering/_line renders them; the styles stay here, with the
-     rest of the filter's chrome, and the two partials are always rendered
-     together). While the builder has unapplied edits every toggle is locked
-     (aria-disabled + no href, set by the JS) and the bar explains why -- a
-     preset applies at once, which would silently throw those edits away. */
-  .flt-presets { row-gap: .35rem; }
   /* "Filter zurücksetzen": the outline-danger button reads red in border AND
      text -- hitobito's `.btn { color }` rule would keep the text dark -- and
      white on the filled hover state. */
   .flt-reset-btn { color: var(--bs-danger, #dc3545); }
   .flt-reset-btn:hover, .flt-reset-btn:focus-visible { color: #fff; }
-  /* A toggle is a normal small hitobito outline button. ON = a light primary
-     tint with the primary border, so the (theme-forced, dark) button text keeps
-     its contrast -- hitobito's `.btn { color }` rule overrides Bootstrap's white
-     text, which made a filled btn-secondary unreadable -- plus a small round
-     tick indicator: empty when off, primary-filled with a white check when on. */
-  .flt-preset { display: inline-flex; align-items: center; gap: .4rem; }
-  .flt-preset[aria-pressed="true"] { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .12);
-    border-color: var(--bs-primary, #21697c); }
-  .flt-preset[aria-pressed="true"]:hover { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .2);
-    border-color: var(--bs-primary, #21697c); }
-  .flt-preset-tick { width: .95rem; height: .95rem; border-radius: 50%; flex: 0 0 auto;
-    border: 1.5px solid currentColor; opacity: .65; display: inline-grid; place-items: center; }
-  .flt-preset-tick .fas { font-size: .6rem; line-height: 1; }
-  .flt-preset[aria-pressed="true"] .flt-preset-tick { opacity: 1; background: var(--bs-primary, #21697c);
-    border-color: var(--bs-primary, #21697c); color: #fff; }
-  .flt-preset[aria-disabled="true"] { pointer-events: none; opacity: .55; }
-  .flt-preset-lock-note { display: none; color: var(--bs-warning-text-emphasis, #664d03); }
-  .flt-presets.flt-locked .flt-preset-lock-note { display: inline; }
   /* A user slot one of the Schnellauswahl's buttons speaks for -- a preset's own
      slot, or the one a group of buttons shares -- marked with a left accent
      stripe. Cosmetic only -- the server decides which button is pressed. */

@@ -8,14 +8,16 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Sheet
-  # "Controlling" -- the last sub-item of the Finanzen main-nav section. The
-  # area is new and still empty; it holds nothing but its overview page so far.
-  # This is the sheet of Fin::ControllingController (controller
-  # "fin/controlling" -> Sheet::Fin::Controlling).
+  # "Controlling" -- the last sub-item of the Finanzen main-nav section: its
+  # overview page and the Budget page (Fin::BudgetsController, whose index
+  # renders under this sheet -- Sheet::Fin::Budget). This is the sheet of
+  # Fin::ControllingController (controller "fin/controlling" ->
+  # Sheet::Fin::Controlling).
   class Fin::Controlling < Base
-    # Übersicht is an exact-match tab (no_alt) so it will not also light up on
-    # the /fin/controlling/... sub-paths a later step adds.
+    # Übersicht is an exact-match tab (no_alt) so it does not also light up on
+    # the /fin/controlling/... sub-paths.
     tab "fin.tabs.overview", :controlling_path, no_alt: true
+    tab "fin.tabs.budget", :controlling_budget_path
 
     def left_nav?
       true

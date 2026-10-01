@@ -53,8 +53,11 @@
 -#                edit control, and looking at the (locked) conditions in the
 -#                builder stays useful, so the chips render and open exactly as
 -#                they always do.
+-#    openable -- false where the table has no filter pane (`t.filter panel:
+-#                false`): the chips are then plain text
 - state = local_assigns.fetch(:state)
 - pane_id = local_assigns.fetch(:pane_id)
+- openable = local_assigns.fetch(:openable, true)
 - presets = Array(local_assigns.fetch(:presets, nil))
 - chips = et_filter_chips(state, presets: presets)
 
@@ -67,8 +70,11 @@
       -# A button, not a link: it changes nothing on the server, it only opens
       -# the pane next to it. `.pane-opener` is the open-only control of
       -# shared/wsjrdp/_collapsible_panes -- see the header above.
-      %button.flt-chip.pane-opener{type: "button", data: {pane_target: pane_id},
-        title: "Filter öffnen"}= chip.text
+      - if openable
+        %button.flt-chip.pane-opener{type: "button", data: {pane_target: pane_id},
+          title: "Filter öffnen"}= chip.text
+      - else
+        %span.flt-chip= chip.text
 - elsif presets.empty? && !state.filter.fixed?
   -# Case 1: neither a Schnellauswahl, nor a pinned condition, nor one of the
   -# user's own -- say so, rather than leaving the left half of the line blank.
