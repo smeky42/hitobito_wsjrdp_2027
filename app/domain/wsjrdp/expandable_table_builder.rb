@@ -153,6 +153,10 @@ class Wsjrdp::ExpandableTableBuilder
   #
   # Declaring presets HERE and in the policy is a host error and raises in
   # #to_locals -- there is one place per table, never two.
+  #
+  # `panel: false` renders the Schnellauswahl alone: no filter pane and no
+  # toggle to open one, the applied filter's chips as plain text. Such a table
+  # needs no apply_url -- every toggle is a GET.
   def filter(config = nil, **options)
     @locals[:filter] = options.any? ? (config || {}).merge(options) : config
   end
@@ -160,6 +164,13 @@ class Wsjrdp::ExpandableTableBuilder
   # Summary line shown above the table (e.g. "42 Buchungen · Summe: 1.234 €").
   def summary(text)
     @locals[:summary] = text
+  end
+
+  # A footer row under the rows (a sum row): the block returns one visible
+  # column's cell, given that column's config ->(col){ html }; nil leaves the
+  # cell empty.
+  def footer(&block)
+    @locals[:footer] = block
   end
 
   # Row selection configuration hash (name, id_field, form, …).

@@ -575,6 +575,38 @@ member, in declaration order, so the bar renders a member exactly as it renders
 a preset — one link, tick, icon, class — with no group title and no segment
 around them. `group?` tells the two apart.
 
+**An exclusive group** (`exclusive: true`) is a set of alternatives of which
+exactly ONE is pressed, drawn as one segmented control. The state puts an "all"
+button in front (key `<group>-all`, value `nil`, label `all_label:`, default
+"Alle"):
+
+```ruby
+{group: "unit_budget", attribute: "unit_budget", operator: "in", exclusive: true,
+ members: [{key: "unit_budget_only", label: "Nur Unit-Budget", value: "true"},
+           {key: "unit_budget_none", label: "Ohne Unit-Budget", value: "false"}]}
+```
+
+- A member is pressed when the group's slots exist and each says exactly
+  `attribute in (value)`; "all" is pressed when there is no slot of the group.
+  A slot holding two member values presses none of the buttons.
+- A member's toggle replaces the group's slots with `attribute in (value)`,
+  "all" removes them; every other slot stays. Clicking the pressed member keeps
+  it pressed.
+- `all_label:` on a group that is not exclusive raises.
+
+A cost center's detail bookings and a group's Buchhaltung carry this group
+(`Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP`).
+
+**A Schnellauswahl without a filter pane**: `t.filter panel: false`. The line
+shows the presets alone -- no pane, no toggle to open one, the applied filter's
+chips as plain text -- and needs no `apply_url`, since every toggle is a GET.
+The policy still declares the filter (`schema:`, `presets:`), which is what
+reads the param and narrows the rows:
+
+```ruby
+filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema, presets: UNIT_BUDGET_PRESETS}
+```
+
 | reader on `Wsjrdp::TableState::FilterPreset` | meaning |
 |---|---|
 | `key` / `label` | the button's name and its text |
@@ -584,6 +616,7 @@ around them. `group?` tells the two apart.
 | `icon` / `css_class` | optional display extras, `nil` by default (below) |
 | `group?` | is this button one member of a group rather than a preset of its own? |
 | `group` / `attribute` / `value` | a member's group name, the group's attribute and the one value this button stands for (`nil` on a preset) |
+| `exclusive?` | is this button one alternative of an exclusive group (exactly one pressed)? |
 | `group_values` | every member value of the button's group, in declaration order — what the chip and the builder rules read (`nil` on a preset) |
 
 - **Exact slot equality decides a preset's `active?`.** Two slots are equal iff
@@ -1389,7 +1422,7 @@ method that sets each one is in brackets.
 | `per_options` | set by `t.paging`, so its presence **is** "this table has paging": the page-size steps (`:all` = "Alle"), defaulting to `Wsjrdp::ExpandableTableBuilder::DEFAULT_PER_OPTIONS` [`t.paging`] |
 | `summary` | a summary line (HTML) [`t.summary`] |
 | `selection` | row selection config (§2) [`t.selection`] |
-| `filter` | filter builder DISPLAY config: `apply_url`, `condensed_locked`, `disabled`, plus `presets` when the view rather than the policy declares them (§2) — everything else comes from `state.filter`. Renders the filter line (presets, applied-filter chips, the pane's toggle) and, between it and the toolbar, the pane [`t.filter`] |
+| `filter` | filter builder DISPLAY config: `apply_url`, `condensed_locked`, `disabled`, `panel` (false = the Schnellauswahl alone, no pane), plus `presets` when the view rather than the policy declares them (§2) — everything else comes from `state.filter`. Renders the filter line (presets, applied-filter chips, the pane's toggle) and, between it and the toolbar, the pane [`t.filter`] |
 | `condensed` | compact in-detail variant [`t.condensed`]. The kit supplies only the generic behaviour of such a table (content-sized columns, no wrapping, tighter cells); the column widths and which column wraps are the dataset's own and are declared in a styles partial next to its table — for the bookings, `fin/bookings/_condensed_styles` |
 
 Everything else — the prefix, the default sort / page size / column set, the open

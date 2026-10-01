@@ -61,6 +61,16 @@ module Fin::DatevBookingsFilterSchema
     [["true", "ja"], ["false", "nein"]]
   })
 
+  # THE Schnellauswahl over the resolved Unit-Budget answer (doc/fin/unit_budget.md):
+  # Alle / Nur Unit-Budget / Ohne Unit-Budget, an exclusive preset group
+  # (doc/wsjrdp/expandable_table.md, "Presets"). A cost center's detail bookings
+  # and a group's Buchhaltung both offer it.
+  UNIT_BUDGET_PRESET_GROUP = {
+    group: "unit_budget", attribute: "unit_budget", operator: "in", exclusive: true,
+    members: [{key: "unit_budget_only", label: "Nur Unit-Budget", value: "true"},
+      {key: "unit_budget_none", label: "Ohne Unit-Budget", value: "false"}]
+  }.freeze
+
   # The base currency is always EUR, so the meaningful filter is the transaction
   # currency each booking was made in (NOT NULL, EUR for the majority): EUR and
   # every foreign currency in the data are offered.

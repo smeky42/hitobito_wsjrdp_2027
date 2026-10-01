@@ -7,8 +7,8 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# "Controlling" section overview at /fin/controlling (default tab). The area is
-# new and still empty -- the page carries nothing but its heading so far.
+# "Controlling" section overview at /fin/controlling (default tab): the heading
+# and a link to each page of the area.
 # controller "fin/controlling" -> Sheet::Fin::Controlling (renders the left_nav
 # + the Übersicht tab).
 class Fin::ControllingController < Fin::FinController

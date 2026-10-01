@@ -21,6 +21,7 @@
     - t.rows   cost_centers, id: "cost_center"
     - t.columns kostenstellen_columns, menu: true
     - t.row_key { |c| c.number }
+    - t.detail_link(**fin_unit_group_bookkeeping_link.except(:url), &fin_unit_group_bookkeeping_link[:url])
     - t.detail_page { |c| cost_center_path(c.number) }
     - t.detail_src { |c| cost_center_path(c.number) }
     - t.paging  per_options: [10, 25, 50, 100, :all]

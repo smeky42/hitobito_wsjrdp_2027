@@ -5,40 +5,51 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The detail of a Kostenstelle: the master data in groups, the budgets, and the
--#  cost center's embedded bookings. Shown on the Kostenstelle's own page and
--#  inside the Kostenstellen list's detail pane -- `ctx` says which, and the kit
--#  (Fin::DetailHelper) picks header and layout from it.
+-#  The detail of a Kostenstelle: the master data in groups, the budgets, the
+-#  groups of a unit's cost center, and the cost center's embedded bookings.
+-#  Shown on the Kostenstelle's own page and inside the Kostenstellen list's
+-#  detail pane -- `ctx` says which, and the kit (Fin::DetailHelper) picks header
+-#  and layout from it.
 -#
--#  There is no raw area: the table carries no other_* export columns, and the
--#  reserved `additional_info` is not master data anybody reads yet.
+-#  Reading (editing: false, the page and the pane alike): the Kurzname only
+-#  where it differs from the Bezeichnung, a yearly budget only where it is set,
+-#  the Gesamtbudget, no explicit total. The edit page (editing: true) carries
+-#  every budget field, the explicit total included, and the Unit-Kostenstelle
+-#  flag; effective_total_budget is a generated column and stays read-only.
 -#
--#  The budgets stand on blank: :unset -- a cost center without a budget for a
--#  year says so, which is worth reading; every other field simply disappears
--#  when it is blank.
--#
--#  Budget fields (budget_2025..2028, explicit_total_budget) and the
--#  Unit-Kostenstelle flag are editable for users who can update the cost center;
--#  effective_total_budget is a generated column and stays read-only.
+-#  A unit's own cost center (is_unit_cost_center) lists the bookings with it as
+-#  primary OR secondary cost center, with a Schnellauswahl Alle / Nur
+-#  Unit-Budget / Ohne Unit-Budget above them and no filter pane
+-#  (Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP); its page links to
+-#  the Buchhaltung of its group in the header (the tables' panes carry the same
+-#  link beside "Detailseite", Fin::CostCentersHelper#fin_unit_group_bookkeeping_path).
 -#
 -#  The values come from Fin::CostCentersHelper, the labels from
 -#  de.activerecord.attributes.wsjrdp_cost_center.
 -#
 -#  Locals: cost_center (WsjrdpCostCenter), ctx (Fin::AttrFormatContext)
-= render "shared/wsjrdp/moss_status_styles"
-- form_url = can?(:update, cost_center) && cost_center.persisted? ? cost_center_path(cost_center.number) : nil
+-#          editing:    false the reading page and pane, true the edit page
+-#          form_url:   the PATCH target of the editable fields; nil = no form
+-#          edit_url:   the edit page the reading page's "Bearbeiten" points at
+-#          cancel_url: the reading page the edit page's "Abbrechen" returns to
+- editing = local_assigns.fetch(:editing, false)
 - editable = {editable: true}
-= fin_detail(cost_center, ctx, form_url: form_url) do |d|
+- unit = cost_center.is_unit_cost_center
+= render "shared/wsjrdp/moss_status_styles"
+= fin_detail(cost_center, ctx, form_url: local_assigns[:form_url], editing: editing,
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url]) do |d|
+  - group_link = (render("shared/wsjrdp/detail_links", row: cost_center, detail_page: nil, detail_links: [fin_unit_group_bookkeeping_link]) if !editing && fin_unit_group_bookkeeping_path(cost_center))
   - d.header back: cost_centers_path, back_label: "Zurück zu Kostenstellen",
-      label: "Kostenstelle #{cost_center.number}", title: cost_center.name
-  - d.attrs :name, :short_name, :moss_status
+      label: "Kostenstelle #{cost_center.number}", title: cost_center.name, toolbar: group_link
+  - d.attrs :name, :short_name, :moss_status,
+      short_name: {hide: cost_center.short_name == cost_center.name}
   - d.attrs :manager, :manager_name,
       manager: {label: "Verantwortlich", hide: cost_center.manager_person_id.blank?},
       manager_name: {label: "Verantwortlich", hide: cost_center.manager_person_id.present?}
   - d.attrs :budget_2025, :budget_2026, :budget_2027, :budget_2028,
-      :explicit_total_budget, :effective_total_budget, blank: :unset,
+      :explicit_total_budget, :effective_total_budget, blank: (editing ? :unset : :hide),
       budget_2025: editable, budget_2026: editable, budget_2027: editable,
-      budget_2028: editable, explicit_total_budget: editable
+      budget_2028: editable, explicit_total_budget: editable.merge(hide: !editing)
   -# Beside the budgets, because it says WHOSE budget they are: a unit cost
   -# center's Gesamtbudget is what a group's Buchhaltung measures its
   -# Unit-Budget bookings against (doc/fin/unit_budget.md).
@@ -46,6 +57,6 @@
       is_unit_cost_center: {input: :select, options: fin_unit_cost_center_options,
                             editable: can?(:update, cost_center)}
   - d.attrs :description, :comment
-  - d.bookings cost_center_bookings(cost_center.number),
-      show_all_path: bookings_filter_path([[["cost_center", "in", cost_center.number]]]),
-      all_label: "In Buchungen-Ansicht öffnen"
+  - d.bookings cost_center_bookings(cost_center),
+      show_all_path: bookings_filter_path([[[unit ? "any_cost_center" : "cost_center", "in", cost_center.number]]]),
+      all_label: "In Buchungen-Ansicht öffnen", filter: (unit ? {panel: false} : nil)

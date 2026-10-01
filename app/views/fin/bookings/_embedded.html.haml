@@ -10,6 +10,9 @@
 -#  heading + a summary line with a split "open in the bookings view" button
 -#  introduce it; the condensed table (with its own paging above and below) is
 -#  rendered by the shared widget.
+-#
+-#  Locals: rows, show_all_path, all_label; filter (optional): the table's filter
+-#  display config, handed to the widget.
 .fin-embedded-bookings
   %hr.fin-embedded-rule
   .fw-semibold.mb-1 Buchungen
@@ -24,4 +27,5 @@
         class: "btn btn-outline-secondary px-2", title: "In neuem Tab öffnen",
         "aria-label": "In neuem Tab öffnen" do
         = icon(:"external-link-alt")
-  = render "fin/bookings/bookings_table", rows: rows, condensed: true
+  = render "fin/bookings/bookings_table", rows: rows, condensed: true,
+    filter: local_assigns[:filter]

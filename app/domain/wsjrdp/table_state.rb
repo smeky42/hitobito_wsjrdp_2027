@@ -79,6 +79,17 @@ class Wsjrdp::TableState
   #                such slot; selecting with no such slot there appends a new
   #                one, and a slot left without a value goes altogether
   #
+  # A member of an EXCLUSIVE group (`exclusive: true`, #exclusive? true) is one
+  # of several alternatives of which exactly one is pressed, the group's "all"
+  # member (value nil, label `all_label:`, default "Alle") standing for no
+  # condition at all:
+  #
+  #   active?      a member: the group's slots exist and each says exactly
+  #                `attribute in (value)`; the "all" member: there is no slot of
+  #                the group
+  #   toggle_wire  the user filter without the group's slots, plus
+  #                `attribute in (value)` for a member, nothing for "all"
+  #
   # icon and css_class are display only -- they never influence the slots, the
   # active state or the toggle URL, and a button that declares neither renders
   # exactly as it does without them.
@@ -87,16 +98,19 @@ class Wsjrdp::TableState
   # from the builder's unapplied draft -- see doc/wsjrdp/expandable_table.md,
   # "Presets".
   FilterPreset = Data.define(:key, :label, :slots, :active, :toggle_wire, :icon, :css_class,
-    :group, :attribute, :value, :group_values) do
+    :group, :attribute, :value, :group_values, :exclusive) do
     # Data has no per-member defaults; this override gives the display members
     # and the group ones theirs, so a slot preset is constructed by naming
     # neither.
     def initialize(key:, label:, slots:, active:, toggle_wire:, icon: nil, css_class: nil,
-      group: nil, attribute: nil, value: nil, group_values: nil)
+      group: nil, attribute: nil, value: nil, group_values: nil, exclusive: false)
       super
     end
 
     def active? = active
+
+    # Is this button one alternative of an exclusive group (exactly one pressed)?
+    def exclusive? = exclusive
 
     # Is this button one member of a group sharing a slot, rather than a preset
     # owning its own slots?
@@ -136,7 +150,9 @@ class Wsjrdp::TableState
   # (`{key:, label:, slots:}`), one button carrying its own slots, or a GROUP
   # (`{group:, attribute:, operator:, members:}`), several buttons that share one
   # `attribute in (values)` slot -- one FilterPreset per member, so `#presets` is
-  # one flat list of buttons in declaration order either way.
+  # one flat list of buttons in declaration order either way. A group declared
+  # `exclusive: true` is a set of alternatives with an "all" button in front
+  # (`all_label:`, default "Alle"), of which exactly one is pressed.
   class Filter
     EMPTY_CATALOG = {attributes: [].freeze}.freeze
 
@@ -144,6 +160,8 @@ class Wsjrdp::TableState
     # value of the set.
     GROUP_OPERATOR = "in"
     GROUP_KEYS = %i[group attribute operator members].freeze
+    GROUP_OPTIONAL_KEYS = %i[exclusive all_label].freeze
+    DEFAULT_ALL_LABEL = "Alle"
     MEMBER_KEYS = %i[key label value icon css_class].freeze
     MEMBER_REQUIRED_KEYS = %i[key label value].freeze
 
@@ -291,13 +309,40 @@ class Wsjrdp::TableState
       what = "filter preset group #{declaration[:group]}"
       raise ArgumentError, "#{what}: the table declares no filter schema" unless @schema
 
-      check_keys!(what, declaration, GROUP_KEYS, GROUP_KEYS)
+      check_keys!(what, declaration, GROUP_KEYS + GROUP_OPTIONAL_KEYS, GROUP_KEYS)
+      if declaration.key?(:all_label) && !declaration[:exclusive]
+        raise ArgumentError, "#{what}: all_label is for an exclusive group only"
+      end
       attribute = declaration[:attribute].to_s
       offered = attribute_values!(what, attribute, declaration[:operator])
       members = group_members(what, declaration[:members], offered)
       values = members.map { |member| member[:value].to_s }.freeze
+      return build_exclusive_group(declaration, attribute, members, values) if declaration[:exclusive]
+
       members.map { |member| build_group_member(declaration[:group], attribute, member, values) }
     end
+
+    # An exclusive group: its "all" button first, then one button per member,
+    # exactly one of them pressed.
+    def build_exclusive_group(declaration, attribute, members, values)
+      group = declaration[:group].to_s
+      without = user_slots.reject { |slot| group_slot?(slot, attribute) }
+      slots = group_slots(attribute)
+      all = Wsjrdp::TableState::FilterPreset.new(key: "#{group}-all",
+        label: (declaration[:all_label] || DEFAULT_ALL_LABEL).to_s, slots: nil,
+        active: slots.empty?, toggle_wire: encode_slots(without),
+        group: group, attribute: attribute, value: nil, group_values: values, exclusive: true)
+      [all] + members.map do |member|
+        value = member[:value].to_s
+        Wsjrdp::TableState::FilterPreset.new(key: member[:key].to_s, label: member[:label].to_s,
+          slots: nil, active: slots.any? && slots.all? { |slot| group_slot_values(slot) == [value] },
+          toggle_wire: encode_slots(without + [[[attribute, GROUP_OPERATOR, value]]]),
+          icon: member[:icon]&.to_s, css_class: member[:css_class]&.to_s,
+          group: group, attribute: attribute, value: value, group_values: values, exclusive: true)
+      end
+    end
+
+    def encode_slots(tree) = @schema.encode_tree(tree, schema: @user_bound).to_s
 
     # The option values the group's members may name, or a raised ArgumentError:
     # a group shares ONE `attribute in (values)` slot, so any other operator is a

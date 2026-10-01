@@ -9,8 +9,8 @@
 
 require "spec_helper"
 
-# The Controlling overview: the (still empty) page of the last Finanzen area,
-# and the left sub-navigation its area sheet renders.
+# The Controlling overview: the page of the last Finanzen area, and the left
+# sub-navigation its area sheet renders.
 describe Fin::ControllingController do
   render_views
 
@@ -26,10 +26,11 @@ describe Fin::ControllingController do
     end
   end
 
-  it "renders the still empty overview page" do
+  it "renders the overview page with a link to the Budget page" do
     get :index
     expect(response).to be_successful
-    expect(response.body).to include("Controlling").and include("Dieser Bereich ist noch leer.")
+    expect(Nokogiri::HTML(response.body).css("#main a").pluck("href"))
+      .to include(controlling_budget_path)
   end
 
   it "renders the six Finanzen areas next to Übersicht, Controlling active" do

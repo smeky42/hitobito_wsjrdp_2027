@@ -81,4 +81,5 @@
     - when :bookings
       = render "fin/bookings/embedded", rows: section.options[:rows],
         show_all_path: section.options[:show_all_path],
-        all_label: section.options[:all_label]
+        all_label: section.options[:all_label],
+        filter: section.options[:filter]

@@ -5,9 +5,12 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  A Kostenstelle's detail page. The same frame the Kostenstellen list
+-#  A Kostenstelle's reading page. The same frame the Kostenstellen list
 -#  lazy-loads into its expandable row, so a frame request answers with the frame
 -#  alone; back link and heading belong to the partial's header (d.header), which
--#  renders in :regular mode only.
+-#  renders in :regular mode only, and so does the "Bearbeiten" button to the
+-#  edit page. A number without master data is a stub record and has nothing to
+-#  edit.
 = wsjrdp_detail_frame("cost_center", @cost_center.number) do
-  = render "fin/cost_centers/detail", cost_center: @cost_center, ctx: @ctx
+  = render "fin/cost_centers/detail", cost_center: @cost_center, ctx: @ctx, editing: false,
+    edit_url: (@ctx.regular? && @cost_center.persisted? && can?(:update, @cost_center) ? edit_cost_center_path(@cost_center.number) : nil)

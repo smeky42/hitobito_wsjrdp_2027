@@ -106,19 +106,15 @@ describe Fin::CostCentersHelper do
   describe "the effective total budget" do
     def effective(record) = helper.fin_format_wsjrdp_cost_center_effective_total_budget(record)
 
-    it "shows the generated total and explains where it comes from" do
+    it "shows the generated total" do
       record = WsjrdpCostCenter.create!(number: "K901", name: "Testkostenstelle",
         budget_2025: 1000, budget_2026: 500)
 
-      value = effective(record.reload)
-      expect(value[:value]).to eq(money("1.500,00"))
-      expect(value[:help]).to include("Automatisch berechnet")
+      expect(effective(record.reload)).to eq(money("1.500,00"))
     end
 
-    it "keeps the explanation for a cost center without any budget" do
-      value = effective(cost_center)
-      expect(value[:value]).to be_nil
-      expect(value[:help]).to be_present
+    it "shows nothing for a cost center without any budget" do
+      expect(effective(cost_center)).to be_nil
     end
   end
 

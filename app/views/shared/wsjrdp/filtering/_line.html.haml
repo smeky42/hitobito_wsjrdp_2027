@@ -32,14 +32,23 @@
 -#                the same list to this line and to the builder
 -#    disabled -- true = read-only filter; the presets are then not shown at all
 -#                (they would apply at once)
+-#    panel    -- false = the table has no filter pane (`t.filter panel: false`):
+-#                no toggle on this line, the line never "open", and the chips
+-#                plain text rather than openers of a pane that does not exist
+-#
+-#  The members of an EXCLUSIVE group (FilterPreset#exclusive?) render as ONE
+-#  segmented control -- "Alle" first, exactly one segment pressed -- the other
+-#  entries as toggle links with a tick.
 - state = local_assigns.fetch(:state)
 - presets = Array(local_assigns.fetch(:presets, nil))
 - disabled = local_assigns.fetch(:disabled, false)
+- panel = local_assigns.fetch(:panel, true)
 - pane_id = et_pane_id(state)
 - presets_id = et_filter_presets_id(state)
 - condition_count = state.filter.user_slots.sum(&:size)
+= render "shared/wsjrdp/filtering/preset_styles"
 
-.flt-line{class: ("open" if state.pane), data: {pane_line: pane_id}}
+.flt-line{class: ("open" if panel && state.pane), data: (panel ? {pane_line: pane_id} : {})}
   .flt-line-left
     -# "Schnellauswahl": one toggle LINK per entry of the resolved list, in its
     -# order. That list is flat, so a preset carrying its own slots and one
@@ -52,7 +61,19 @@
     - if presets.any? && !disabled
       .flt-presets.d-flex.flex-wrap.align-items-center.gap-2{id: presets_id}
         %span.small.text-muted Schnellauswahl
-        - presets.each do |preset|
+        - presets.chunk_while { |a, b| a.exclusive? && b.exclusive? && a.group == b.group }.each do |chunk|
+          - if chunk.first.exclusive?
+            .btn-group.btn-group-sm.flt-segment{role: "group", "aria-label": chunk.first.group}
+              - chunk.each do |preset|
+                = link_to et_url(state, {filter: preset.toggle_wire}),
+                  class: ["btn btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" "),
+                  role: "button", aria: {pressed: preset.active?.to_s},
+                  data: {title: preset.label} do
+                  - if preset.icon.present?
+                    %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
+                  = preset.label
+            - next
+          - preset = chunk.first
           -# A LINK, not a button: a preset applies at once, so it is a GET to a
           -# shareable URL (et_url drops the page and the open rows, D4). role +
           -# aria-pressed make the on/off state audible; the lock is aria-disabled
@@ -80,14 +101,15 @@
     -# below then shows the same conditions in full) -- see .flt-line.open
     -# .flt-applied in shared/wsjrdp/_expandable_table_styles.
     = render "shared/wsjrdp/filtering/chips", state: state, pane_id: pane_id,
-      presets: presets, disabled: disabled
+      presets: presets, disabled: disabled, openable: panel
   -# The pane's toggle: data-pane-target names the pane, the badges carry the
   -# applied condition count and the builder's "nicht angewendet" state.
-  %button.btn.btn-sm.btn-outline-secondary.pane-toggle{type: "button", data: {pane_target: pane_id},
-    "aria-expanded": state.pane.to_s, "aria-controls": pane_id,
-    title: (state.pane ? "Filter einklappen" : "Filter ausklappen")}
-    %i.fas.fa-filter{"aria-hidden": "true"}
-    Filter
-    - if condition_count.positive?
-      %span.badge.bg-secondary= condition_count
-    %span.badge.text-bg-warning.flt-dirty-pill{title: "Änderungen im Filter sind noch nicht angewendet"} nicht angewendet
+  - if panel
+    %button.btn.btn-sm.btn-outline-secondary.pane-toggle{type: "button", data: {pane_target: pane_id},
+      "aria-expanded": state.pane.to_s, "aria-controls": pane_id,
+      title: (state.pane ? "Filter einklappen" : "Filter ausklappen")}
+      %i.fas.fa-filter{"aria-hidden": "true"}
+      Filter
+      - if condition_count.positive?
+        %span.badge.bg-secondary= condition_count
+      %span.badge.text-bg-warning.flt-dirty-pill{title: "Änderungen im Filter sind noch nicht angewendet"} nicht angewendet

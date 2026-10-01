@@ -5,9 +5,12 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Controlling overview (default tab of the Controlling section). The area is
--#  new and has no content yet.
+-#  Controlling overview (default tab of the Controlling section): one line per
+-#  page of the area.
 
 #main
   %h1 Controlling
-  %p.text-muted Dieser Bereich ist noch leer.
+  %ul
+    %li
+      = link_to t("fin.tabs.budget"), controlling_budget_path
+      %span.text-muted – Budget und IST nach DATEV-Buchungen je Kostenstelle und Jahr

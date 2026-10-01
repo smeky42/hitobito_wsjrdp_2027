@@ -17,8 +17,9 @@
 -#
 -#  When `form` is present and a row is marked editable, both layouts render dual
 -#  content: a .fin-edit-display span (the formatted value) and a .fin-edit-input
--#  span (the number_field inside an input-group with € suffix). The CSS toggle
--#  on [data-fin-editing] shows one or the other.
+-#  span (the row's input; by default the amount input, German-formatted with a
+-#  € suffix -- Fin::DetailHelper#fin_detail_amount_input). The CSS toggle on
+-#  [data-fin-editing] shows one or the other.
 -#
 -#  Where the detail carries a form (editable_shown) an editable field of the
 -#  page always stands, blank or not: a viewer who may change it gets its input

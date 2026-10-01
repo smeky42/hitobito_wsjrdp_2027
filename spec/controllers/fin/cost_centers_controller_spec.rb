@@ -420,28 +420,88 @@ describe Fin::CostCentersController do
       expect(page_labels).not_to include("Verantwortliche Person")
     end
 
-    # The budgets stand on blank: :unset -- they say what the master data would
-    # carry, so a year without one keeps its row and spells the absence out.
-    it "keeps all six budget rows and marks the unset ones" do
+    # The reading page shows a yearly budget only where it is set, the
+    # Gesamtbudget without a comment and no explicit total.
+    it "shows the set budgets and nothing for the unset ones" do
       add_budgets
       get :show, params: {number: "K100"}
 
-      expect(page_labels & budget_labels).to eq(budget_labels)
+      expect(page_labels & budget_labels).to eq(["Budget 2025", "Budget 2027", "Gesamtbudget"])
       expect(page_value("Budget 2025")).to eq(money("1.000,00"))
       expect(page_value("Budget 2027")).to eq(money("250,00"))
-      expect(unset_marker("Budget 2026")).to eq("nicht gesetzt")
-      expect(unset_marker("Budget 2028")).to eq("nicht gesetzt")
-      expect(unset_marker("Gesamtbudget (explizit)")).to eq("nicht gesetzt")
+      expect(page_row("Gesamtbudget").at_css("dd").text.strip).to eq(money("1.250,00"))
+      expect(page_row("Gesamtbudget").at_css("dd span.form-text")).to be_nil
+      expect(doc.css("input[name^='wsjrdp_cost_center']")).to be_empty
     end
 
-    # The generated total, with the help line saying where the number comes from.
-    it "shows the generated Gesamtbudget with its explanation" do
-      add_budgets
+    it "shows the Kurzname only where it differs from the Bezeichnung" do
+      WsjrdpCostCenter.find_by(number: "K100").update!(short_name: "Alpha Lager")
       get :show, params: {number: "K100"}
+      expect(page_labels).not_to include("Kurzname")
 
-      row = page_row("Gesamtbudget")
-      expect(row.at_css("dd").text).to include(money("1.250,00"))
-      expect(row.at_css("dd span.form-text").text).to include("Automatisch berechnet")
+      get :show, params: {number: "K300"}
+      expect(page_labels).to include("Kurzname")
+    end
+
+    it "offers no Unit-Budget Schnellauswahl over a regular cost center's bookings" do
+      get :show, params: {number: "K100"}
+      expect(doc.css(".fin-embedded-bookings .flt-segment, .fin-embedded-bookings .flt-line")).to be_empty
+    end
+
+    it "links from the reading page to the edit page" do
+      get :show, params: {number: "K100"}
+      expect(doc.css("a").pluck("href")).to include(edit_cost_center_path("K100"))
+    end
+
+    # The edit page carries every budget field, the explicit total included.
+    it "offers every budget field on the edit page" do
+      add_budgets
+      get :edit, params: {number: "K100"}
+
+      expect(page_labels & budget_labels).to eq(budget_labels)
+      expect(unset_marker("Budget 2026")).to eq("nicht gesetzt")
+    end
+
+    # The amount input of a budget, by its column.
+    def budget_input(attr) = doc.at_css("input[name='wsjrdp_cost_center[#{attr}]']")
+
+    # A number field cannot show thousands points, so the budgets stand in text
+    # inputs, German-formatted like the money of the lists, without the symbol.
+    it "shows the budgets in their inputs with thousands points and two decimals" do
+      WsjrdpCostCenter.find_by(number: "K100").update!(budget_2025: 1234.5, budget_2027: 250)
+      get :edit, params: {number: "K100"}
+
+      expect(budget_input(:budget_2025)["value"]).to eq("1.234,50")
+      expect(budget_input(:budget_2027)["value"]).to eq("250,00")
+      expect(budget_input(:budget_2026)["value"]).to be_nil
+      expect(budget_input(:budget_2025)["type"]).to eq("text")
+      expect(budget_input(:budget_2025)["inputmode"]).to eq("decimal")
+    end
+
+    it "stores budgets typed in German format" do
+      patch :update, params: {number: "K100",
+                              wsjrdp_cost_center: {budget_2025: "1.234,56", budget_2026: "2.000",
+                                                   budget_2027: "", explicit_total_budget: "99,5"}}
+
+      expect(response).to redirect_to(cost_center_path("K100"))
+      cost_center = WsjrdpCostCenter.find_by(number: "K100")
+      expect(cost_center.budget_2025).to eq(BigDecimal("1234.56"))
+      expect(cost_center.budget_2026).to eq(BigDecimal(2000))
+      expect(cost_center.budget_2027).to be_nil
+      expect(cost_center.explicit_total_budget).to eq(BigDecimal("99.5"))
+    end
+
+    # "1,234.56" is not German; read with String#to_d it would become 1.
+    it "keeps a budget it cannot read, shows the text again and says why" do
+      add_budgets
+      patch :update, params: {number: "K100", wsjrdp_cost_center: {budget_2025: "1,234.56"}}
+
+      expect(response).to have_http_status(422)
+      expect(WsjrdpCostCenter.find_by(number: "K100").budget_2025).to eq(BigDecimal(1000))
+      input = budget_input(:budget_2025)
+      expect(input["value"]).to eq("1,234.56")
+      expect(input["class"]).to include("is-invalid")
+      expect(input.parent.at_css(".invalid-feedback").text).to eq("ist keine Zahl")
     end
 
     it "renders the compact detail without a heading for a lazily loaded row" do
@@ -460,7 +520,7 @@ describe Fin::CostCentersController do
     # yes/no -- NULL and false mean the same thing -- and editable for whoever
     # may update the cost center.
     it "offers the Unit-Kostenstelle flag behind the budgets" do
-      get :show, params: {number: "K100"}
+      get :edit, params: {number: "K100"}
 
       expect(page_labels.last).to eq("Unit-Kostenstelle")
       expect(page_value("Unit-Kostenstelle")).to eq("nein")
@@ -489,11 +549,75 @@ describe Fin::CostCentersController do
 
       expect(response).to be_successful
       expect(detail_heading).to include("K999")
-      expect(page_labels).to eq(["Moss Status"] + budget_labels + ["Unit-Kostenstelle"])
+      expect(page_labels).to eq(["Moss Status", "Unit-Kostenstelle"])
       expect(page_row("Moss Status").at_css("dd").text.strip).to eq("inaktiv")
-      expect(budget_labels.map { |label| unset_marker(label) })
-        .to all(eq("nicht gesetzt"))
       expect(doc.css(".fin-embedded-bookings")).to be_present
+    end
+
+    # A unit's own cost center: all costs the unit caused, and the way to the
+    # Buchhaltung of its group.
+    describe "of a unit cost center" do
+      let(:group) { groups(:root) }
+
+      before do
+        WsjrdpCostCenter.find_by(number: "K300").update!(is_unit_cost_center: true)
+        group.update!(cost_center_numbers: ["K300"])
+        DatevBooking.create!(buchungs_guid: SecureRandom.uuid,
+          account_number: "1200", account_kind: "BANK",
+          offsetting_account_number: "66500", offsetting_account_kind: "EXPENSE",
+          cost_center_number: "K200", secondary_cost_center_number: "K300",
+          base_amount: 12, transaction_amount: 12, debit_credit: "C",
+          base_currency: "EUR", booking_date: Date.new(2026, 3, 1), posting_text: "Sekundaer K300")
+      end
+
+      it "lists the bookings with it as secondary cost center too" do
+        get :show, params: {number: "K300"}
+        expect(doc.at_css(".fin-embedded-bookings").text).to include("Sekundaer K300")
+      end
+
+      # The Schnellauswahl of the bookings: one segmented control, no filter pane.
+      it "offers Alle / Nur Unit-Budget / Ohne Unit-Budget over the bookings, without a filter pane" do
+        get :show, params: {number: "K300"}
+        bookings = doc.at_css(".fin-embedded-bookings")
+
+        expect(bookings.css(".flt-segment a").map { |a| a.text.strip })
+          .to eq(["Alle", "Nur Unit-Budget", "Ohne Unit-Budget"])
+        expect(bookings.at_css(".flt-segment a[aria-pressed='true']").text.strip).to eq("Alle")
+        expect(bookings.css(".pane-toggle, .flt-pane")).to be_empty
+      end
+
+      # K300's one booking names it as secondary cost center; its primary cost
+      # center K200 is no unit's, so it counts against no Unit-Budget
+      # (doc/fin/unit_budget.md).
+      it "narrows the bookings to the chosen alternative" do
+        choose = lambda do |label|
+          link = doc.css(".fin-embedded-bookings .flt-segment a").find { |a| a.text.strip == label }
+          get :show, params: Rack::Utils.parse_query(URI(link["href"]).query).merge("number" => "K300")
+        end
+        get :show, params: {number: "K300"}
+        expect(doc.at_css(".fin-embedded-bookings").text.squish).to include("1 Buchungen")
+
+        choose.call("Nur Unit-Budget")
+        expect(doc.at_css(".fin-embedded-bookings .flt-segment a[aria-pressed='true']").text.strip)
+          .to eq("Nur Unit-Budget")
+        expect(doc.at_css(".fin-embedded-bookings").text.squish).to include("0 Buchungen")
+
+        choose.call("Ohne Unit-Budget")
+        expect(doc.at_css(".fin-embedded-bookings").text.squish).to include("1 Buchungen")
+      end
+
+      it "links to its group's Buchhaltung, also in a new tab" do
+        get :show, params: {number: "K300"}
+        links = doc.css("a").select { |a| a["href"] == group_finance_bookkeeping_path(group) }
+        expect(links.pluck("target")).to contain_exactly(nil, "_blank")
+      end
+
+      it "offers the link beside Detailseite in a list row's pane" do
+        get :index
+        header = doc.at_css("#cost_center-K300 .exp-detail-links")
+        expect(header.text).to include("Gruppen-Buchhaltung", "Detailseite")
+        expect(doc.at_css("#cost_center-K100 .exp-detail-links").text).not_to include("Gruppen-Buchhaltung")
+      end
     end
   end
 end

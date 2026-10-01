@@ -70,6 +70,8 @@
   .bookings-table-condensed { table-layout: auto; }
   .bookings-table-condensed td, .bookings-table-condensed th { white-space: nowrap; }
   .exp-row { cursor: pointer; }
+  /* The footer row (t.footer): a sum under the rows, set apart by a double rule. */
+  .exp-footer-row > td { font-weight: 500; border-top: 2px solid var(--bs-border-color, #dee2e6); border-bottom: 0; }
   /* ... except on a table that declares neither a detail nor detail links: the
      widget then renders no disclosure attributes at all, so there is nothing to
      expand and nothing to point at. */

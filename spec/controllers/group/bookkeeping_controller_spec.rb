@@ -421,22 +421,27 @@ describe Group::BookkeepingController do
         WsjrdpLedgerAccount.create!(number: "66500", name: "Testaufwand", is_unit_budget: false)
       end
 
-      it "offers the preset, unpressed" do
+      it "offers Alle / Nur Unit-Budget / Ohne Unit-Budget, Alle pressed" do
         show(groups(:unit_a))
 
-        expect(preset_links.keys).to eq(["Unit-Budget"])
-        expect(preset_pressed("Unit-Budget")).to eq("false")
+        expect(preset_links.keys).to eq(["Alle", "Nur Unit-Budget", "Ohne Unit-Budget"])
+        expect(preset_pressed("Alle")).to eq("true")
+        expect(preset_pressed("Nur Unit-Budget")).to eq("false")
       end
 
       it "narrows the rows to the resolved answer when it is switched on" do
         own_booking.update!(is_unit_budget: true)
         show(groups(:unit_a))
 
-        get :show, params: {group_id: groups(:unit_a).id, gbf: preset_filter("Unit-Budget")}
+        get :show, params: {group_id: groups(:unit_a).id, gbf: preset_filter("Nur Unit-Budget")}
 
         expect(response).to be_successful
-        expect(preset_pressed("Unit-Budget")).to eq("true")
+        expect(preset_pressed("Nur Unit-Budget")).to eq("true")
+        expect(preset_pressed("Alle")).to eq("false")
         expect(rendered_ids).to eq([own_booking.id.to_s])
+
+        get :show, params: {group_id: groups(:unit_a).id, gbf: preset_filter("Ohne Unit-Budget")}
+        expect(rendered_ids).not_to include(own_booking.id.to_s)
       end
 
       # It is a shortcut into the USER part, not a pin: the slot lands in the
@@ -446,7 +451,7 @@ describe Group::BookkeepingController do
       it "leaves the slot in the user part of the filter" do
         show(groups(:unit_a))
 
-        get :show, params: {group_id: groups(:unit_a).id, gbf: preset_filter("Unit-Budget")}
+        get :show, params: {group_id: groups(:unit_a).id, gbf: preset_filter("Nur Unit-Budget")}
 
         expect(JSON.parse(flt_root["data-value"])).to eq([[["unit_budget", "in", "true"]]])
         expect(JSON.parse(flt_root["data-locked"])).to eq([[["any_cost_center", "in", "A1"]]])
