@@ -38,7 +38,8 @@
 #                 order: an ORDER BY fragment for a relation (":id" => "id ASC",
 #                 "accounting_entries.id DESC" verbatim), a ->(row){ comparable }
 #                 for an Array, where it is required
-#   natural_order: ->(source){ ordered source }, used when NOTHING is sorted -- an
+#   natural_order: ->(source){ ordered source }, used when NOTHING is sorted --
+#                 neither a chosen sort nor the policy's `sort: {hidden:}` -- an
 #                 order no column sort can express (the reconciliation entries put
 #                 their match proposals first). Without one, a relation falls back
 #                 to the tiebreaker and an Array keeps the order it arrived in:
@@ -109,11 +110,13 @@ class Wsjrdp::ExpandableTableRows
     end
   end
 
-  # The active multi-column sort as [[column_key, dir], ...] (primary first),
-  # from the resolved state and restricted to the `sort:` allow-list (the state's
-  # own column codec already dropped anything that is not a column of this table).
+  # The active multi-column sort as [[sort_key, dir], ...] (primary first),
+  # from the resolved state -- the chosen sort, else the policy's hidden one
+  # (Wsjrdp::TableState#effective_sort_list) -- and restricted to the `sort:`
+  # allow-list (the state's own column codec already dropped anything that is
+  # not a column or sort variant of this table).
   def sort_list
-    @sort_list ||= @state.sort_list.select { |key, _dir| @sort.key?(key) }
+    @sort_list ||= @state.effective_sort_list.select { |key, _dir| @sort.key?(key) }
   end
 
   private
@@ -158,7 +161,8 @@ class Wsjrdp::ExpandableTableRows
 
   # Stable multi-key sort over the same list, in memory: each level through its
   # extractor, ties broken by the tiebreaker so equal rows stay deterministic
-  # (Array#sort is not stable).
+  # (Array#sort is not stable). A nil value sorts last in either direction, like
+  # the relation's NULLS LAST.
   def ordered_array
     return natural_array if sort_list.empty?
 
@@ -166,13 +170,19 @@ class Wsjrdp::ExpandableTableRows
     @source.sort do |a, b|
       cmp = 0
       extractors.each do |extractor, dir|
-        c = extractor.call(a) <=> extractor.call(b)
-        c = 0 if c.nil?
-        c = -c if dir.to_s == "desc"
-        (cmp = c).zero? || break
+        (cmp = compare_level(extractor.call(a), extractor.call(b), dir)).zero? || break
       end
       cmp.zero? ? ((@tiebreaker.call(a) <=> @tiebreaker.call(b)) || 0) : cmp
     end
+  end
+
+  def compare_level(x, y, dir)
+    return 0 if x.nil? && y.nil?
+    return 1 if x.nil?
+    return -1 if y.nil?
+
+    c = (x <=> y) || 0
+    (dir.to_s == "desc") ? -c : c
   end
 
   def natural_array

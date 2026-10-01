@@ -19,15 +19,19 @@ class Fin::BudgetsController < Fin::FinController
   before_action :authorize_action
 
   # Two tables on one page, so two prefixes (doc/wsjrdp/expandable_table.md §3).
-  # Rows arrive by number; every row is shown.
+  # Rows are by number while nothing is sorted; every row is shown, the sum
+  # rows (number nil: "Alle Ausgaben", "Alle Einnahmen") among them -- they
+  # sort with the others, and last by number either way. The whole
+  # column collection goes to the policy, so the measures' sort variants are
+  # known sort keys.
   COST_CENTERS_POLICY = wsjrdp_expandable_table_policy prefix: "",
-    columns: Fin::BudgetColumns::COST_CENTERS.codec,
-    sort: {default: []},
+    columns: Fin::BudgetColumns::COST_CENTERS,
+    sort: {hidden: [["number", "asc"]]},
     cols: {default: Fin::BudgetColumns::COST_CENTERS.default_keys},
     per_page: {default: :all}
   UNITS_POLICY = wsjrdp_expandable_table_policy prefix: "u",
-    columns: Fin::BudgetColumns::UNITS.codec,
-    sort: {default: []},
+    columns: Fin::BudgetColumns::UNITS,
+    sort: {hidden: [["number", "asc"]]},
     cols: {default: Fin::BudgetColumns::UNITS.default_keys},
     per_page: {default: :all}
 
@@ -44,15 +48,15 @@ class Fin::BudgetsController < Fin::FinController
 
   def budget_rows
     @budget_rows ||= Wsjrdp::ExpandableTableRows.new(
-      wsjrdp_expandable_table_state(COST_CENTERS_POLICY), budget_overview.rows,
-      sort: Fin::BudgetColumns::COST_CENTERS.sort_expressions, tiebreaker: ->(row) { row.number }
+      wsjrdp_expandable_table_state(COST_CENTERS_POLICY), budget_overview.rows + budget_overview.sums,
+      sort: Fin::BudgetColumns::COST_CENTERS.sort_expressions, tiebreaker: ->(row) { [row.number.to_s, row.sum_label.to_s] }
     )
   end
 
   def unit_budget_rows
     @unit_budget_rows ||= Wsjrdp::ExpandableTableRows.new(
-      wsjrdp_expandable_table_state(UNITS_POLICY), unit_budget_overview.rows,
-      sort: Fin::BudgetColumns::UNITS.sort_expressions, tiebreaker: ->(row) { row.number }
+      wsjrdp_expandable_table_state(UNITS_POLICY), unit_budget_overview.rows + [unit_budget_overview.sum],
+      sort: Fin::BudgetColumns::UNITS.sort_expressions, tiebreaker: ->(row) { [row.number.to_s, row.sum_label.to_s] }
     )
   end
 

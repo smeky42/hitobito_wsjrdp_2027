@@ -25,7 +25,7 @@ module Fin::BookingBatchesColumns
       sort: "period_from", default: true
     c.column key: "period_to", abbr: "pt", label: "Periode bis", width: "9rem",
       sort: "period_to", default: true
-    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,
+    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true, sort_first: "desc",
       width: "7rem", sort: "booking_count", default: true
     c.column key: "is_finalized", abbr: "fin", label: "Festgeschrieben", width: "9rem",
       sort: "is_finalized", default: false

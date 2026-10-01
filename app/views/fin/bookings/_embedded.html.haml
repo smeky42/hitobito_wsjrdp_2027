@@ -12,10 +12,14 @@
 -#  rendered by the shared widget.
 -#
 -#  Locals: rows, show_all_path, all_label; filter (optional): the table's filter
--#  display config, handed to the widget.
+-#  display config, handed to the widget; note (optional): muted words after
+-#  the heading.
 .fin-embedded-bookings
   %hr.fin-embedded-rule
-  .fw-semibold.mb-1 Buchungen
+  .fw-semibold.mb-1
+    Buchungen
+    - if local_assigns[:note].present?
+      %span.fw-light.text-muted.small= local_assigns[:note]
   .d-flex.flex-wrap.justify-content-between.align-items-center.gap-2.mb-2
     %span.text-muted.small
       = rows.total_count

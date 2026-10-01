@@ -63,7 +63,7 @@ class Fin::ReconciliationController < Fin::FinController
   # filter, so the page always shows what its link says.
   BOOKINGS_POLICY = wsjrdp_expandable_table_policy prefix: "bk",
     columns: Fin::DatevBookingsColumns.codec,
-    sort: {default: [["booking_date", "desc"]]},
+    sort: {hidden: [["booking_date", "desc"]]},
     # Fewer default columns than the main bookings list: Kostenstelle, Konto and
     # Gegenkonto are pinned by the fixed filter anyway, and the injected proposal
     # column needs the room. (The column picker still offers every column.)

@@ -9,12 +9,14 @@
 
 module Sheet
   # "Abstimmung" -- the fifth sub-item of the Finanzen main-nav section:
-  # matching accounting entries with DATEV bookings.
+  # matching accounting entries with DATEV bookings, and the units' bookings
+  # against their budgets (Fin::UnitBookingsController, Sheet::Fin::UnitBooking).
   class Fin::Reconciliation < Base
     # Übersicht is an exact-match tab (no_alt) so it does not also light up on
     # the /reconciliation/... sub-paths.
     tab "fin.tabs.overview", :reconciliation_path, no_alt: true
     tab "fin.tabs.participant_fees", :reconciliation_participant_fees_path
+    tab "fin.tabs.unit_bookings", :reconciliation_unit_bookings_path
 
     def left_nav?
       true

@@ -1,0 +1,39 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Bootstrap tooltips with HTML content for any element with the class
+-#  wsjrdp-html-tip: its data-bs-title is the tooltip's HTML (sanitized by
+-#  Bootstrap), its title the plain text where the tooltip does not come up.
+-#  The tooltip is created on the first hover, delegated from the document, so
+-#  it works in turbo frames and after Turbo visits as well; the core's tooltip
+-#  setup runs only once on DOMContentLoaded. Inside a tooltip,
+-#  .wsjrdp-tip-muted sets a part apart, muted and light.
+-#  Emitted once per response; the window guard survives Turbo visits.
+- return if @wsjrdp_html_tooltip_js_emitted
+- @wsjrdp_html_tooltip_js_emitted = true
+:css
+  .tooltip .wsjrdp-tip-muted { opacity: .75; font-weight: 300; }
+:javascript
+  (function () {
+    if (window.__wsjrdpHtmlTooltip) return;
+    window.__wsjrdpHtmlTooltip = true;
+    function tooltipClass() {
+      return (window.jQuery && window.jQuery.fn.tooltip) ? window.jQuery.fn.tooltip.Constructor : null;
+    }
+    function show(e) {
+      var el = e.target.closest && e.target.closest(".wsjrdp-html-tip");
+      var Tip = tooltipClass();
+      if (!el || !Tip || Tip.getInstance(el)) return;
+      Tip.getOrCreateInstance(el, {html: true, placement: "top", container: "body"}).show();
+    }
+    document.addEventListener("mouseover", show);
+    document.addEventListener("focusin", show);
+    // A tooltip left open must not end up in Turbo's page snapshot.
+    document.addEventListener("turbo:before-cache", function () {
+      document.querySelectorAll(".tooltip").forEach(function (tip) { tip.remove(); });
+    });
+  })();

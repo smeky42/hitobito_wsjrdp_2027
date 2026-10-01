@@ -470,7 +470,7 @@ class Wsjrdp::TableState
   # policy's codec, one per dataset however many tables show it -- minus the
   # columns this table does not have (`cols: {only:}` names the ones it has,
   # `cols: {exclude:}` the ones it lacks), plus the names it gives some of the
-  # rest (`cols: {labels:}`).
+  # rest (`cols: {labels:}`) and the widths it gives some (`cols: {widths:}`).
   #
   # They may be lambdas (the Moss list serves five routes, and each kind tab has
   # other columns), so this is a per-REQUEST value: the resolver builds it, the
@@ -479,12 +479,13 @@ class Wsjrdp::TableState
   # hand-written ?c= / ?s= or a stale store entry naming one is dropped exactly
   # like an unknown token (D8.5) -- it is not a column of this table.
   class ColumnSet
-    attr_reader :keys, :excluded, :labels
+    attr_reader :keys, :excluded, :labels, :widths
 
-    def initialize(policy, excluded:, labels:)
+    def initialize(policy, excluded:, labels:, widths: {})
       @policy = policy
       @excluded = excluded.freeze
       @labels = labels.freeze
+      @widths = widths.freeze
       @keys = policy.column_keys.reject { |key| @excluded.include?(key) }.freeze
       freeze
     end
@@ -500,20 +501,41 @@ class Wsjrdp::TableState
 
     def excluded?(key) = @excluded.include?(key.to_s)
 
+    # A wire token of the ?s= param -> the long sort key (a column or a sort
+    # variant) of a column this table HAS, or nil: a variant goes with its
+    # column.
+    def sort_key_for(token)
+      key = @policy.sort_key_for(token)
+      key if key && sort_key?(key)
+    end
+
+    def sort_key?(key)
+      column = @policy.sort_column_for(key)
+      !column.nil? && key?(column)
+    end
+
     # The name this table gives a column, or nil when the description's own
     # label stands.
     def label(key) = @labels[key.to_s]
+
+    # The width this table gives a column, or nil when the description's own
+    # width stands.
+    def width(key) = @widths[key.to_s]
   end
 
-  attr_reader :policy, :sort_list, :column_states, :per_page, :per_value, :page,
-    :open_keys, :filter, :pane, :level, :store_key, :sources
+  attr_reader :policy, :sort_list, :hidden_sort_list, :column_states, :per_page, :per_value, :page,
+    :open_keys, :filter, :pane, :level, :view, :store_key, :sources
 
+  # `view` is the table's chosen view (the policy's `view: {values:}`), nil for
+  # a table that declares none. `hidden_sort_list` is the policy's
+  # `sort: {hidden:}`, resolved.
   def initialize(policy:, store_key:, columns:, sort_list:, column_states:, per_page:, per_value:,
-    page:, open_keys:, filter:, pane:, level:, sources:)
+    page:, open_keys:, filter:, pane:, level:, sources:, view: nil, hidden_sort_list: [])
     @policy = policy
     @store_key = store_key
     @columns = columns
     @sort_list = sort_list.map { |pair| pair.map(&:to_s).freeze }.freeze
+    @hidden_sort_list = hidden_sort_list.map { |pair| pair.map(&:to_s).freeze }.freeze
     @column_states = column_states.map { |key, active| [key.to_s, !!active].freeze }.freeze
     @per_page = per_page
     @per_value = per_value.to_s
@@ -522,6 +544,7 @@ class Wsjrdp::TableState
     @filter = filter
     @pane = pane
     @level = level
+    @view = view
     @sources = sources.freeze
     freeze
   end
@@ -533,6 +556,15 @@ class Wsjrdp::TableState
   def prefix = @policy.prefix
 
   def visible_column_keys = @column_states.filter_map { |key, active| key if active }
+
+  # The order the rows are in: the chosen (or preselected) sort, else the
+  # policy's hidden one. #sort_list stays what the header and the "Sortiert
+  # nach" bar show.
+  def effective_sort_list = @sort_list.empty? ? @hidden_sort_list : @sort_list
+
+  # The column a sort key sorts by (the key itself, or a variant's column):
+  # the level a shift-click on another variant of that column takes over.
+  def sort_column_for(key) = @policy.sort_column_for(key)
 
   # --- the column set of THIS table (the policy's `cols: exclude:` / `labels:`)
   #
@@ -547,19 +579,23 @@ class Wsjrdp::TableState
   def column_label(key, fallback = nil) = @columns.label(key) || fallback
 
   # The widget's column config Hashes, shaped for this table: the columns it
-  # excludes dropped -- they are neither rendered nor offered in the picker --
-  # and its own labels applied to the header, the condensed header and the picker
-  # alike. An excluded column cannot come back through a param or a store entry
-  # either (ColumnSet#key_for).
+  # excludes dropped -- they are neither rendered nor offered in the picker --,
+  # its own labels applied to the header, the condensed header and the picker
+  # alike, and its own widths to the header. An excluded column cannot come back
+  # through a param or a store entry either (ColumnSet#key_for).
   def column_configs(configs)
     configs.filter_map do |config|
       key = config[:key].to_s
       next if @columns.excluded?(key)
 
       label = column_label(key)
-      next config unless label
+      width = @columns.width(key)
+      next config unless label || width
 
-      config.merge(label: label, condensed_label: (label if config[:condensed_label]))
+      shaped = config
+      shaped = shaped.merge(label: label, condensed_label: (label if config[:condensed_label])) if label
+      shaped = shaped.merge(width: width) if width
+      shaped
     end
   end
 
@@ -588,6 +624,7 @@ class Wsjrdp::TableState
     when :open then @open_keys.to_a.join(",")
     when :pane then @pane ? "1" : "0"
     when :level then @level.to_s
+    when :view then @view.to_s
     else raise ArgumentError, "unknown table state field #{field.inspect}"
     end
   end
@@ -612,6 +649,9 @@ class Wsjrdp::TableState
   # The long column key of a wire token, or nil when this table has no such
   # column (an unknown token, or one this table excludes).
   def column_key(token) = @columns.key_for(token)
+
+  # The long sort key (column or sort variant) of a wire token, or nil.
+  def sort_key(token) = @columns.sort_key_for(token)
 
   def encode_sort_list(list)
     Wsjrdp::ExpandableTableSort.encode(list.map { |key, dir| [@policy.abbr_for(key), dir] }).to_s
@@ -674,8 +714,8 @@ class Wsjrdp::TableState
 
     private
 
-    # The columns THIS table has, and its names for them (D2b). `cols: {only:,
-    # exclude:, labels:}` may be lambdas -- one declaration can serve several
+    # The columns THIS table has, and its names and widths for them (D2b).
+    # `cols: {only:, exclude:, labels:, widths:}` may be lambdas -- one declaration can serve several
     # routes -- so they are evaluated here, per request, and checked exactly like
     # the plain declaration the policy checks at load time.
     def build_column_set
@@ -683,7 +723,8 @@ class Wsjrdp::TableState
       Wsjrdp::TableState::ColumnSet.new(@policy,
         excluded: @policy.excluded_columns(@policy.evaluate(options[:exclude], @controller),
           @policy.evaluate(options[:only], @controller)),
-        labels: @policy.column_labels(@policy.evaluate(options[:labels], @controller)))
+        labels: @policy.column_labels(@policy.evaluate(options[:labels], @controller)),
+        widths: @policy.column_widths(@policy.evaluate(options[:widths], @controller)))
     end
 
     def build(values)
@@ -691,7 +732,8 @@ class Wsjrdp::TableState
         sort_list: values[:sort], column_states: values[:cols],
         per_page: values[:per_page][0], per_value: values[:per_page][1],
         page: values[:page], open_keys: values[:open], filter: values[:filter],
-        pane: values[:pane], level: values[:level], sources: @sources)
+        pane: values[:pane], level: values[:level], view: values[:view], sources: @sources,
+        hidden_sort_list: hidden_sort_list)
     end
 
     # fixed > URL > store > default (D1). A param that is PRESENT but blank is an
@@ -770,14 +812,22 @@ class Wsjrdp::TableState
     # the URL, from the store or (for a sort) from the policy's default.
     def parse_sort(raw, _policy_field)
       Wsjrdp::ExpandableTableSort.decode(raw).filter_map do |token, dir|
-        key = @columns.key_for(token)
+        key = @columns.sort_key_for(token)
         key ? [key, dir] : nil
       end
     end
 
     def default_sort(value, _policy_field)
       Array(value).filter_map do |key, dir|
-        @columns.key?(key) ? [key.to_s, (dir.presence || "asc").to_s] : nil
+        @columns.sort_key?(key) ? [key.to_s, (dir.presence || "asc").to_s] : nil
+      end
+    end
+
+    # The policy's `sort: {hidden:}`, through the same allow-list as a default.
+    def hidden_sort_list
+      @hidden_sort_list ||= begin
+        policy_field = @policy.field(:sort)
+        default_sort(@policy.evaluate(policy_field.options[:hidden], @controller), policy_field)
       end
     end
 
@@ -873,6 +923,19 @@ class Wsjrdp::TableState
 
     def default_pane(value, _policy_field)
       %w[1 true].include?(value.to_s)
+    end
+
+    # A view the table declares, else its default -- an unknown token from the
+    # URL or the store never reaches the host.
+    def parse_view(raw, policy_field)
+      value = raw.strip
+      Array(policy_field.options[:values]).include?(value) ? value : default_view(@policy.evaluate(policy_field.default, @controller), policy_field)
+    end
+
+    # The declared default, else the first declared view; nil without views.
+    def default_view(value, policy_field)
+      values = Array(policy_field.options[:values])
+      values.include?(value.to_s) ? value.to_s : values.first
     end
 
     # D2e: the fixed slots always come from the policy; the user part only from

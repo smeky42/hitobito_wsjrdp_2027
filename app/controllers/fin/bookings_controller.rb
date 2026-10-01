@@ -41,7 +41,7 @@ class Fin::BookingsController < Fin::FinController
 
   BOOKINGS_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::DatevBookingsColumns.codec,
-    sort: {default: [["booking_date", "desc"]]},
+    sort: {hidden: [["booking_date", "desc"]]},
     cols: {default: Fin::DatevBookingsColumns.default_keys},
     per_page: {default: 50},
     filter: {policy: :remember, schema: Fin::DatevBookingsFilterSchema,

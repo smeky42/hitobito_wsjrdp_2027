@@ -95,7 +95,7 @@ class Fin::MossTransactionsController < Fin::FinController
   # would promise a list the pin cannot give.
   TRANSACTIONS_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::MossTransactionsColumns.codec,
-    sort: {default: [["booking_date", "desc"]]},
+    sort: {hidden: [["booking_date", "desc"]]},
     cols: {default: -> { kind_columns[:default] }, exclude: -> { kind_columns[:exclude] }},
     per_page: {default: 50},
     filter: {policy: :remember, schema: Fin::MossTransactionsFilterSchema,

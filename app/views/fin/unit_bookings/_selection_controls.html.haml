@@ -1,0 +1,156 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The bulk-action controls of the Unit-Buchungen page, over a bookings table
+-#  with row selection: the form the selection posts to, behind its button the
+-#  hint that says what the action will do and to how many bookings -- the
+-#  CURRENT selection, over all pages --, the quick-select by atom over all
+-#  pages, and the switch that shows the chosen rows alone. Without a selection
+-#  the button is disabled; the confirm dialog repeats the hint. Both the open
+-#  list (assign a secondary cost center) and the assigned list (take it off)
+-#  render it.
+-#
+-#  The row checkboxes and the all-pages selection are the shared table
+-#  selection (shared/wsjrdp/_table_selection_js); its atoms are what each row
+-#  carries in data-atom, and the form carries each atom's count as
+-#  data-<atom>-count, which the selection and the hint read for the all-pages
+-#  figures. "+ <atom>" adds the atom's rows to the selection, "nur (N)"
+-#  replaces the selection with them, "Alle (N)" selects every row of the list
+-#  over all pages, "Keine" clears the selection. The hint follows the
+-#  selection's "exptbl:selection-change" event and the form's select.
+-#
+-#  A submit remembers the page's scroll position, whether the assigned
+-#  section is open and how tall its frame is (sessionStorage, read by
+-#  fin/unit_bookings/index), so the page comes back as it was once the
+-#  section's frame has loaded. That is why the form does not carry the shared
+-#  keeper's booking-scroll-form (shared/wsjrdp/_expandable_table_js): that
+-#  one restores on turbo:load, before the frame has filled the page out.
+-#
+-#  Locals: form_url, form_id, atoms (Fin::UnitBookingReconciliation::Atom list),
+-#  total (Figure of the whole list), noun (what the total counts),
+-#  submit_label, submit_icon, submit_class (the button's colour class),
+-#  hints (the hint's sentence for one and for many bookings, with %{count} and
+-#  %{target} -- the select's chosen text -- filled in), extra (optional HTML
+-#  inside the form, ahead of the button)
+= render "fin/reconciliation/quickselect_styles"
+- atoms = local_assigns.fetch(:atoms)
+- total = local_assigns.fetch(:total)
+- form_id = local_assigns.fetch(:form_id)
+- hints = local_assigns.fetch(:hints)
+- atom_data = atoms.each_with_object({}) { |atom, data| data["#{atom.key}-count"] = atom.count }
+= form_tag form_url, method: :post, id: form_id,
+  class: "d-flex flex-wrap align-items-center gap-2 ub-selection-form",
+  data: atom_data.merge(all_count: total.count, hint_one: hints.fetch(:one), hint_many: hints.fetch(:many),
+    turbo_frame: "_top") do
+  = local_assigns[:extra]
+  %button.btn.btn-sm{type: "submit", disabled: true, class: local_assigns.fetch(:submit_class, "btn-success")}
+    = icon(submit_icon)
+    = submit_label
+  %span.small.ub-selection-hint{"aria-live": "polite"}
+.d-flex.flex-wrap.align-items-center.gap-2.mt-2.mb-3.rec-quickselect
+  %span.small.text-muted Auswählen (alle Seiten):
+  .btn-group.btn-group-sm{role: "group", "aria-label": "Auswahl aufheben oder alles auswählen"}
+    %button.btn.rec-select.ub-select.text-nowrap{type: "button", title: "Auswahl aufheben",
+      style: "--rec-tier: #6c757d", data: {mode: "none", form: form_id}} Keine
+    %button.btn.rec-select.ub-select.text-nowrap{type: "button",
+      title: "Alle #{total.count} #{noun} auswählen (alle Seiten)",
+      style: "--rec-tier: #6c757d", data: {mode: "all", form: form_id}}
+      = "Alle (#{total.count})"
+  - atoms.each do |atom|
+    .btn-group.btn-group-sm{role: "group", "aria-label": atom.label}
+      %button.btn.rec-select.ub-select.text-nowrap{type: "button",
+        title: "#{atom.label} zur Auswahl hinzufügen", "aria-label": "#{atom.label} zur Auswahl hinzufügen",
+        style: "--rec-tier: #21697c", data: {atoms: atom.key, mode: "add", form: form_id}}
+        = safe_join([icon(:plus), atom.label], " ")
+      %button.btn.rec-select.ub-select.text-nowrap{type: "button",
+        title: "Nur #{atom.label} auswählen (ersetzt die Auswahl)", "aria-label": "Nur #{atom.label} auswählen",
+        style: "--rec-tier: #21697c", data: {atoms: atom.key, mode: "only", form: form_id}}
+        = "nur (#{atom.count})"
+  .ms-auto
+    = render "shared/wsjrdp/table_only_selected_switch", form_id: form_id
+
+:javascript
+  (function () {
+    if (window.__ubSelection) return;
+    window.__ubSelection = true;
+    function scopeFor(formId) {
+      return document.querySelector('.bk-select-scope[data-select-form="' + formId + '"]');
+    }
+    function atomsCount(form, atoms) {
+      return atoms.reduce(function (a, at) { return a + (parseInt(form.dataset[at + "Count"], 10) || 0); }, 0);
+    }
+    // How many bookings the form's action will touch -- the current selection
+    // over all pages -- and the hint's sentence about it.
+    function describe(form) {
+      var scope = scopeFor(form.id);
+      var sel = (scope && window.wsjrdpSelection) ? window.wsjrdpSelection.read(scope) : null;
+      var select = form.querySelector("select");
+      var target = select ? (select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : select.value) : "";
+      var count = 0;
+      if (sel && sel.mode === "all") count = (sel.all === "1") ? (parseInt(form.dataset.allCount, 10) || 0) : atomsCount(form, sel.atoms);
+      else if (sel) count = sel.count;
+      var text = ((count === 1) ? form.dataset.hintOne : form.dataset.hintMany)
+        .replace("%{count}", count).replace("%{target}", target);
+      return {count: count, text: text};
+    }
+    function updateHint(form) {
+      var d = describe(form);
+      var hint = form.querySelector(".ub-selection-hint");
+      if (hint) { hint.textContent = d.text; hint.classList.toggle("text-muted", !d.count); }
+      var button = form.querySelector("button[type=submit]");
+      if (button) button.disabled = !d.count;
+    }
+    function updateAll(root) {
+      (root || document).querySelectorAll("form.ub-selection-form").forEach(updateHint);
+    }
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".ub-select");
+      if (!btn) return;
+      var scope = scopeFor(btn.dataset.form);
+      if (!scope || !window.wsjrdpSelection) return;
+      if (btn.dataset.mode === "none") window.wsjrdpSelection.clear(scope);
+      else if (btn.dataset.mode === "all") window.wsjrdpSelection.setAll(scope, "1");
+      else window.wsjrdpSelection.setCriteria(scope, (btn.dataset.atoms || "").split(","), btn.dataset.mode);
+    });
+    // The hint follows every change of the selection and of the form's select.
+    document.addEventListener("exptbl:selection-change", function (e) {
+      var form = document.getElementById(e.target.dataset.selectForm || "");
+      if (form && form.classList.contains("ub-selection-form")) updateHint(form);
+    });
+    document.addEventListener("change", function (e) {
+      var form = e.target.closest && e.target.closest("form.ub-selection-form");
+      if (form && e.target.tagName === "SELECT") updateHint(form);
+    });
+    document.addEventListener("turbo:load", function () { updateAll(); });
+    document.addEventListener("turbo:frame-load", function (e) { updateAll(e.target); });
+    setTimeout(function () { updateAll(); }, 0);
+    // Confirm with the hint's sentence, then submit. The real submit happens
+    // outside this handler, so it is deferred.
+    document.addEventListener("submit", function (e) {
+      var form = e.target.closest && e.target.closest(".ub-selection-form");
+      if (!form || form.dataset.ubConfirmed === "1") return;
+      e.preventDefault();
+      var d = describe(form);
+      if (!d.count) { alert("Bitte zuerst Buchungen auswählen."); return; }
+      if (!confirm(d.text + ".\n\nFortfahren?")) return;
+      var scope = scopeFor(form.id);
+      if (scope && window.wsjrdpSelection && window.wsjrdpSelection.injectRemembered) {
+        window.wsjrdpSelection.injectRemembered(scope, form);
+      }
+      try {
+        var frame = document.getElementById("unit_bookings_assigned");
+        sessionStorage.setItem("wsjrdp.ub.after", JSON.stringify({
+          scroll: window.scrollY || 0, open: !!document.querySelector("#ub-assigned.show"),
+          frameHeight: frame ? frame.offsetHeight : 0}));
+      } catch (err) {}
+      form.dataset.ubConfirmed = "1";
+      setTimeout(function () {
+        if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+        if (scope && window.wsjrdpSelection && window.wsjrdpSelection.forget) window.wsjrdpSelection.forget(scope);
+      }, 0);
+    }, true);
+  })();

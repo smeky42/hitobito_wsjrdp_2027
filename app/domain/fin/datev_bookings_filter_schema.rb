@@ -144,6 +144,16 @@ module Fin::DatevBookingsFilterSchema
       type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
       column: ->(t) { [t[:cost_center_number], t[:secondary_cost_center_number]] },
       options: COST_CENTER_OPTIONS
+    # The cost center the booking counts against in the budget
+    # (DatevBooking::BUDGET_COST_CENTER_SQL): the primary one, or the secondary
+    # one for a unit's booking outside its Unit-Budget. What the Budget page
+    # counts and a regular cost center's detail lists, so their "open in the
+    # bookings view" link shows the same bookings.
+    s.attribute key: :budget_cost_center, short_key: :bcc,
+      label: "Kostenstelle (Budget-Zuordnung)", group: "Kostenrechnung",
+      type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
+      column: ->(_t) { Arel.sql("(#{DatevBooking::BUDGET_COST_CENTER_SQL})") },
+      options: COST_CENTER_OPTIONS
     # Whether the booking belongs to a unit's budget -- the RESOLVED answer
     # (DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL), not the stored override, so
     # the filter, the column and the detail all say the same thing. The

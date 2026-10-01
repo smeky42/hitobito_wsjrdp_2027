@@ -49,13 +49,16 @@ class Fin::CostCentersController < Fin::FinController
   SUMMARY_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::BookkeepingSummaryColumns::COST_CENTERS.codec,
     # No sort by default: the rows arrive in their natural order, by number.
-    sort: {default: []},
+    sort: {hidden: [["number", "asc"]]},
     cols: {default: Fin::BookkeepingSummaryColumns::COST_CENTERS.default_keys},
     per_page: {default: Fin::BookkeepingSummaries::SUMMARY_DEFAULT_PER},
     filter: {policy: :remember, schema: Fin::CostCentersFilterSchema, presets: PRESETS,
              fixed: [{slots: [[["number", "not_in", HIDDEN_COST_CENTER_NUMBER]]],
                       show: :hidden}]},
-    pane: {default: 1}
+    pane: {default: 1},
+    # Which cost center the sums count by (WsjrdpCostCenter::VIEWS), switched
+    # in the toolbar; the detail follows it.
+    view: {default: "primary", values: WsjrdpCostCenter::VIEWS}
   # The Schnellauswahl of a cost center's bookings: all of them, only those of
   # the Unit-Budget, or only the others, shown without a filter pane
   # (fin/cost_centers/_detail).
@@ -64,7 +67,7 @@ class Fin::CostCentersController < Fin::FinController
     .merge(filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
                     presets: [Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP]}))
 
-  helper_method :cost_centers, :cost_center_bookings,
+  helper_method :cost_centers, :cost_center_bookings, :detail_view,
     :shown_booking_count, :shown_booking_sum
 
   def summary_table_state = wsjrdp_expandable_table_state(SUMMARY_POLICY)
@@ -153,22 +156,23 @@ class Fin::CostCentersController < Fin::FinController
   # both footer totals aggregate over.
   def filtered_cost_centers
     @filtered_cost_centers ||=
-      summary_table_state.filter.scope(WsjrdpCostCenter.with_booking_summary)
+      summary_table_state.filter.scope(WsjrdpCostCenter.with_booking_summary(summary_table_state.view))
   end
 
-  # Cost centers stay on the plain bookings (Konto perspective): the detail's
-  # list and its sum are the same net cash-flow of the tagged bookings the
-  # summary row shows.
-  # The bookings of a cost center's detail: those with it as primary cost
-  # center; for a unit's own cost center also those with it as secondary cost
-  # center -- all costs the unit caused, as its group's Buchhaltung counts them.
-  # Only a unit's cost center offers the Unit-Budget Schnellauswahl, so only
-  # there does the table's filter narrow the bookings.
-  def cost_center_bookings(cost_center)
-    return item_bookings(DatevBooking.where(cost_center_number: cost_center.number), filter: false) unless cost_center.is_unit_cost_center
+  # The bookings of a cost center's detail under `view` (WsjrdpCostCenter::VIEWS,
+  # the list's view -- WsjrdpCostCenter.bookings_for), the Konto perspective
+  # like the summary row. Only a unit's cost center offers the Unit-Budget
+  # Schnellauswahl, so only there does the table's filter narrow the bookings.
+  def cost_center_bookings(cost_center, view = detail_view)
+    item_bookings(WsjrdpCostCenter.bookings_for(cost_center.number, view),
+      filter: cost_center.is_unit_cost_center == true)
+  end
 
-    item_bookings(DatevBooking.where(cost_center_number: cost_center.number)
-      .or(DatevBooking.where(secondary_cost_center_number: cost_center.number)))
+  # The view a detail shows: the one its link names (`?v=`, the list's view),
+  # else counting by the primary cost center.
+  def detail_view
+    view = params[summary_table_state.param_name(:view)].to_s
+    WsjrdpCostCenter::VIEWS.include?(view) ? view : WsjrdpCostCenter::VIEWS.first
   end
 
   # WHERE the detail partial renders (Fin::AttrFormatContext): the cost center's

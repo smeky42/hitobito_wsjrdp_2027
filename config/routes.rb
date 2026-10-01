@@ -284,6 +284,19 @@ Rails.application.routes.draw do
         as: "connect_entries_reconciliation_participant_fees"
       post "reconciliation/participant_fees/connect_single_entry", to: "reconciliation#connect_single_entry",
         as: "connect_single_entry_reconciliation_participant_fees"
+      # Unit-Buchungen: the bookings the units see that neither count against a
+      # Unit-Budget nor name a secondary cost center (Fin::UnitBookingsController).
+      get "reconciliation/unit_bookings", to: "unit_bookings#index", as: "reconciliation_unit_bookings"
+      post "reconciliation/unit_bookings/apply", to: "unit_bookings#apply",
+        as: "apply_reconciliation_unit_bookings"
+      post "reconciliation/unit_bookings/assign", to: "unit_bookings#assign",
+        as: "assign_reconciliation_unit_bookings"
+      post "reconciliation/unit_bookings/clear", to: "unit_bookings#clear",
+        as: "clear_reconciliation_unit_bookings"
+      get "reconciliation/unit_bookings/assigned", to: "unit_bookings#assigned",
+        as: "assigned_reconciliation_unit_bookings"
+      post "reconciliation/unit_bookings/assigned/apply", to: "unit_bookings#apply_assigned",
+        as: "apply_assigned_reconciliation_unit_bookings"
       # DEVELOPMENT ONLY: reset every DATEV booking's links, to replay the
       # reconciliation while testing. The route does not exist in production.
       if Rails.env.development?

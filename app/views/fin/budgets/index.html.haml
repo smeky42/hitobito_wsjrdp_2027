@@ -7,64 +7,130 @@
 -#
 -#  The Controlling page "Budget": two finance expandable tables
 -#  (doc/wsjrdp/expandable_table.md), each row opening the cost center's detail
--#  (lazy, the Kostenstellen detail). First the cost centers, the years and
--#  Gesamt as columns, each cell IST / budget with a mini bar
--#  (Fin::BudgetOverview, Fin::BudgetsHelper); the sum row counts per column
--#  only the cells with a budget. Then the unit cost centers without a split by
+-#  (lazy, the Kostenstellen detail) in the matching view: "budget" for the
+-#  cost centers, "any" (all costs caused) for the units. First the cost
+-#  centers, the years and Gesamt as columns, each cell IST / budget with a mini bar
+-#  (Fin::BudgetOverview, Fin::BudgetsHelper); "Alle Ausgaben" and "Alle
+-#  Einnahmen" sum the rows in sum spending and in sum income. Then the unit cost centers without a split by
 -#  year: all costs a unit caused, and its Unit-Budget spending against its
 -#  Gesamtbudget (Fin::UnitBudgetOverview).
 :css
   .fin-budget-bar { height: 5px; border-radius: 3px; background: var(--bs-gray-200, #e9ecef); margin: 3px 0 1px auto; max-width: 9rem; overflow: hidden; }
   .fin-budget-bar-fill { height: 100%; }
   .fin-budget-amounts { white-space: normal; }
-  .fin-budget-bar-fill.fin-budget-ok { background: var(--bs-blue, #0d6efd); }
-  .fin-budget-bar-fill.fin-budget-income { background: var(--bs-success, #198754); }
-  .fin-budget-bar-fill.fin-budget-warn { background: var(--bs-orange, #fd7e14); }
-  .fin-budget-bar-fill.fin-budget-over { background: var(--bs-danger, #dc3545); }
-  .fin-budget-bar-fill.fin-budget-unbudgeted { background: var(--bs-gray-500, #adb5bd); }
+  .fin-budget-sum-row > td { background: var(--bs-tertiary-bg, #f8f9fa); }
+  .fin-budget-sorted { font-weight: 700; }
+  .fin-budget-tip { position: fixed; z-index: 1080; min-width: 13rem; max-width: 20rem; padding: .5rem .65rem;
+    background: var(--bs-body-bg, #fff); color: var(--bs-body-color, #212529); border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: .375rem; box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .15); font-size: .875rem; text-align: right; pointer-events: none; }
+  .fin-budget-tip .fin-budget-bar { max-width: none; }
+  .fin-budget-tip-heading { text-align: left; font-weight: 600; margin-bottom: .25rem; }
+  .fin-budget-tip-note { margin-top: .3rem; font-size: .8em; color: var(--bs-secondary-color, #6c757d); }
+  .fin-budget-income-bg { background-color: #3E9142; }
+  .fin-budget-unbudgeted-bg { background-color: #ADB5BD; background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .55) 0 2px, transparent 2px 5px); }
+  .fin-budget-bar-fill.fin-budget-income { background-color: #3E9142; }
+  .fin-budget-bar-fill.fin-budget-unbudgeted { background-color: #ADB5BD; background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .55) 0 2px, transparent 2px 5px); }
   .fin-budget-percent { font-size: .8em; color: var(--bs-secondary-color, #6c757d); }
   .fin-budget-percent.fin-budget-unbudgeted { font-weight: 300; }
-  .fin-budget-percent.fin-budget-warn { color: var(--bs-orange, #fd7e14); }
-  .fin-budget-percent.fin-budget-over { color: var(--bs-danger, #dc3545); font-weight: 500; }
-  .fin-budget-legend span::before { content: ""; display: inline-block; width: .8rem; height: 5px; border-radius: 2px; margin-right: .3rem; vertical-align: middle; background: var(--fin-budget-legend); }
+  .fin-budget-percent.fin-budget-income { color: #3E9142; }
+  .fin-budget-percent.fin-budget-over { font-weight: 500; }
+  .fin-budget-legend { align-items: flex-start; line-height: 1.5; }
+  .fin-budget-legend-scale { display: inline-flex; flex-direction: column; width: 16rem; }
+  /* Centred on the text line of the other legend items. */
+  .fin-budget-legend-strip { height: 6px; border-radius: 3px; margin-top: calc(.75em - 3px); }
+  .fin-budget-legend-ticks { position: relative; height: 1rem; font-size: .75em; }
+  .fin-budget-legend-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .fin-budget-legend-ticks span:first-child { transform: none; }
+  .fin-budget-legend-ticks span:last-child { transform: translateX(-100%); }
+  .fin-budget-swatch { display: inline-block; width: .9rem; height: 6px; border-radius: 3px; margin-right: .3rem; vertical-align: middle; }
 
 #main
   %h1 Budget
   %p.text-muted
-    IST ist die Summe der DATEV-Buchungen mit der Kostenstelle als primärer
-    Kostenstelle, Ausgaben positiv, das Jahr nach Buchungsdatum. Gesamt ist das
-    Gesamtbudget und alle Buchungen. Die Summenzeile zählt je Spalte nur
-    Kostenstellen mit Budget. Klick auf eine Zeile zeigt die Kostenstelle.
+    Budget-Übersicht nach Kostenstellen. Pro Kostenstelle werden die
+    Budget-mäßig zugeordneten DATEV Buchungen berücksichtigt.
+    Jede Jahresspalte zeigt, wie viel in diesem Jahr ausgegeben wurde, und
+    daneben das Budget für dieses Jahr. Die Spalte Gesamt zeigt dasselbe für
+    die ganze Zeit. Zu einer Kostenstelle zählen ihre eigenen Buchungen und
+    Buchungen einer Unit, die nicht aus dem Unit-Budget bezahlt wurden und
+    diese Kostenstelle als sekundäre Kostenstelle nennen. Ausgaben stehen als
+    positive Zahl, Einnahmen als negative.
   .fin-budget-legend.small.text-muted.d-flex.flex-wrap.gap-3.mb-2
-    %span{style: "--fin-budget-legend: var(--bs-blue, #0d6efd)"} bis 80 %
-    %span{style: "--fin-budget-legend: var(--bs-orange, #fd7e14)"} über 80 %
-    %span{style: "--fin-budget-legend: var(--bs-danger, #dc3545)"} über 100 %
-    %span{style: "--fin-budget-legend: var(--bs-success, #198754)"} Einnahmen
-    %span{style: "--fin-budget-legend: var(--bs-gray-500, #adb5bd)"} IST ohne Budget
+    %span.fin-budget-legend-scale{ "aria-label": "Farbskala der Ausschöpfung von 0 % bis 150 %" }
+      %span.fin-budget-legend-strip{ style: "background: #{fin_budget_scale_gradient}" }
+      %span.fin-budget-legend-ticks
+        - [0, 80, 100, 150].each do |pct|
+          %span{ style: "left: #{(pct * 100 / 150.0).round(1)}%" }= "#{pct} %"
+    %span
+      %span.fin-budget-swatch.fin-budget-income-bg
+      Einnahmen
+    %span
+      %span.fin-budget-swatch.fin-budget-unbudgeted-bg
+      ohne Budget
 
-  - sum = budget_overview.sum
   = wsjrdp_expandable_table do |t|
     - t.rows budget_rows, id: "budget_cost_center"
-    - t.columns fin_budget_cost_center_columns, menu: true
-    - t.row_key { |row| row.number }
+    - t.columns fin_budget_cost_center_columns(budget_rows.state), menu: true
+    - t.row_key { |row| row.number || row.sum_label.parameterize }
+    - t.row_class { |row| "fin-budget-sum-row" if fin_budget_sum_row?(row) }
+    - t.detail_if { |row| !fin_budget_sum_row?(row) }
     - t.detail_link(**fin_unit_group_bookkeeping_link.except(:url), &fin_unit_group_bookkeeping_link[:url])
-    - t.detail_page { |row| cost_center_path(row.number) }
-    - t.detail_src { |row| cost_center_path(row.number) }
-    - t.footer(&fin_budget_cost_center_footer(sum))
+    - t.detail_page { |row| cost_center_path(row.number, v: "budget") }
+    - t.detail_src { |row| cost_center_path(row.number, v: "budget") }
 
   - if unit_budget_overview.rows.any?
     %h2.h4.mt-4 Units
     %p.text-muted
-      Gesamtausgaben sind alle Buchungen mit der Unit-Kostenstelle als primärer
-      oder sekundärer Kostenstelle, also alle Kosten, die die Unit verursacht hat.
-      Unit-Budget ist der Teil davon, der zum Unit-Budget zählt, gegen das
-      Gesamtbudget der Kostenstelle – wie auf der Finanzen-Seite der Gruppe.
-    - unit_sum = unit_budget_overview.sum
+      Die Spalte Gesamtausgaben fasst alle Buchungen mit der Unit-Kostenstelle
+      als primärer oder sekundärer Kostenstelle zusammen, also alle Buchungen,
+      die die Unit verursacht hat. Die Spalte Unit-Budget ist der Teil davon,
+      der zum Unit-Budget zählt, verglichen mit dem Gesamtbudget der Kostenstelle.
     = wsjrdp_expandable_table do |t|
       - t.rows unit_budget_rows, id: "budget_unit"
-      - t.columns fin_budget_unit_columns, menu: true
-      - t.row_key { |row| row.number }
+      - t.columns fin_budget_unit_columns(unit_budget_rows.state), menu: true
+      - t.row_key { |row| row.number || row.sum_label.parameterize }
+      - t.row_class { |row| "fin-budget-sum-row" if fin_budget_sum_row?(row) }
+      - t.detail_if { |row| !fin_budget_sum_row?(row) }
       - t.detail_link(**fin_unit_group_bookkeeping_link.except(:url), &fin_unit_group_bookkeeping_link[:url])
-      - t.detail_page { |row| cost_center_path(row.number) }
-      - t.detail_src { |row| cost_center_path(row.number) }
-      - t.footer(&fin_budget_unit_footer(unit_sum))
+      - t.detail_page { |row| cost_center_path(row.number, v: "any") }
+      - t.detail_src { |row| cost_center_path(row.number, v: "any") }
+
+-# The graphical tooltips of the amount cells (Fin::BudgetsHelper#fin_budget_tipped):
+-# while the pointer is over a cell, its <template> is shown in one floating
+-# box, below the cell or above it where the window ends. Delegated and
+-# window-guarded, so it survives Turbo visits.
+:javascript
+  (function () {
+    if (window.__finBudgetTips) return;
+    window.__finBudgetTips = true;
+    var box = null, current = null;
+    function hide() {
+      if (box) box.remove();
+      box = null;
+      current = null;
+    }
+    function show(cell) {
+      var content = cell.querySelector(":scope > template.fin-budget-tip-content");
+      if (!content) return;
+      hide();
+      current = cell;
+      box = document.createElement("div");
+      box.className = "fin-budget-tip";
+      box.setAttribute("role", "tooltip");
+      box.appendChild(content.content.cloneNode(true));
+      document.body.appendChild(box);
+      var r = cell.getBoundingClientRect(), b = box.getBoundingClientRect(), gap = 6;
+      var left = Math.min(Math.max(8, r.right - b.width), window.innerWidth - b.width - 8);
+      var top = r.bottom + gap + b.height > window.innerHeight ? r.top - gap - b.height : r.bottom + gap;
+      box.style.left = left + "px";
+      box.style.top = Math.max(8, top) + "px";
+    }
+    document.addEventListener("mouseover", function (e) {
+      var cell = e.target.closest && e.target.closest(".fin-budget-tipped");
+      if (cell === current) return;
+      if (cell) show(cell); else hide();
+    });
+    document.addEventListener("scroll", hide, true);
+    document.addEventListener("turbo:before-render", hide);
+  })();
+

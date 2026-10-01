@@ -106,7 +106,7 @@ describe Wsjrdp::ExpandableTableColumns do
   describe "validation" do
     it "rejects duplicate keys" do
       expect {
-        described_class.define do |c|
+        Wsjrdp::ExpandableTableColumns.define do |c|
           c.column key: "a", abbr: "x", label: "A"
           c.column key: "a", abbr: "y", label: "B"
         end
@@ -115,7 +115,7 @@ describe Wsjrdp::ExpandableTableColumns do
 
     it "rejects duplicate abbreviations" do
       expect {
-        described_class.define do |c|
+        Wsjrdp::ExpandableTableColumns.define do |c|
           c.column key: "a", abbr: "x", label: "A"
           c.column key: "b", abbr: "x", label: "B"
         end
@@ -127,6 +127,19 @@ describe Wsjrdp::ExpandableTableColumns do
         .to raise_error(ArgumentError, /column token "a~b" must match/)
       expect { described_class.define { |c| c.column key: "a,b", label: "A" } }
         .to raise_error(ArgumentError, /column token "a,b" must match/)
+    end
+
+    it "holds sort variants to the same rules as columns" do
+      expect {
+        Wsjrdp::ExpandableTableColumns.define do |c|
+          c.column key: "a__x", label: "A"
+          c.column key: "a", label: "A", sort_variants: [{name: "x", sort: "1"}]
+        end
+      }.to raise_error(ArgumentError, /duplicate column key\(s\): a__x/)
+      expect { described_class.define { |c| c.column key: "a", label: "A", sort_variants: [{name: "x~", sort: "1"}] } }
+        .to raise_error(ArgumentError, /column token "a__x~" must match/)
+      expect { described_class.define { |c| c.column key: "a", label: "A", sort_first: "up" } }
+        .to raise_error(ArgumentError, /sort direction "up"/)
     end
 
     it "is the very rule Wsjrdp::TableStatePolicy applies to a codec" do
@@ -141,8 +154,49 @@ describe Wsjrdp::ExpandableTableColumns do
       expect(columns.fetch("amount").to_table_column(cell: cell)).to eq(
         key: "amount", abbr: "amt", label: "Betrag", condensed_label: nil,
         numeric: true, width: nil, css_class: "tblcol-amount",
-        sort_key: "amount", cell: cell
+        sort_key: "amount", sort_first: "asc", sort_variants: [], cell: cell
       )
+    end
+
+    describe "sort variants" do
+      let(:measures) do
+        Wsjrdp::ExpandableTableColumns.define do |c|
+          c.column key: "number", abbr: "nr", label: "Nr", sort: "number"
+          c.column key: "total", abbr: "tot", label: "Gesamt", sort_first: "desc",
+            sort_variants: [{name: "ist", label: "ist", title: "IST", sort: "actual"},
+              {name: "pct", label: "%", title: "Ausschöpfung", sort: "share", first: "asc"}]
+        end
+      end
+
+      it "are sort keys of their own, outside the columns" do
+        expect(measures.keys).to eq(%w[number total])
+        expect(measures.codec).to eq("number" => "nr", "total" => "tot")
+        expect(measures.sort_variant_codec).to eq(
+          "total__ist" => ["tot_ist", "total"], "total__pct" => ["tot_pct", "total"]
+        )
+        expect(measures.sort_expressions).to eq(
+          "number" => "number", "total__ist" => "actual", "total__pct" => "share"
+        )
+      end
+
+      it "are the header's chips, with the column's first direction unless they name one" do
+        expect(measures.fetch("total").to_table_column(cell: nil)).to include(
+          sort_key: nil, sort_first: "desc",
+          sort_variants: [{key: "total__ist", label: "ist", title: "IST", first: "desc"},
+            {key: "total__pct", label: "%", title: "Ausschöpfung", first: "asc"}]
+        )
+      end
+
+      it "reach a policy given the whole collection" do
+        policy = Wsjrdp::TableStatePolicy.new(prefix: "", columns: measures)
+        expect(policy.column_keys).to eq(%w[number total])
+        expect(policy.sort_key_for("tot_pct")).to eq("total__pct")
+        expect(policy.sort_key_for("total__ist")).to eq("total__ist")
+        expect(policy.sort_key_for("nr")).to eq("number")
+        expect(policy.sort_key_for("tot")).to eq("total")
+        expect(policy.sort_column_for("total__pct")).to eq("total")
+        expect(policy.abbr_for("total__pct")).to eq("tot_pct")
+      end
     end
 
     it "leaves sort_key nil for a column that cannot be sorted" do

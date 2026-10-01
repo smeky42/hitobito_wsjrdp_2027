@@ -49,11 +49,19 @@ In SQL the rule is one `COALESCE` chain with the matching `CASE` for the source
 ```sql
 COALESCE(datev_bookings.is_unit_budget,
          CASE WHEN ub_kostenstelle.is_unit_cost_center = FALSE THEN FALSE END,
-         ub_konto.is_unit_budget AND ub_gegenkonto.is_unit_budget,
-         ub_konto.is_unit_budget,
-         ub_gegenkonto.is_unit_budget,
+         ub_konto AND ub_gegenkonto,
+         ub_konto,
+         ub_gegenkonto,
          TRUE)
 ```
+
+`ub_konto` / `ub_gegenkonto` stand for the account flag
+(`DatevBooking::UB_KONTO_SQL` / `UB_GEGENKONTO_SQL`): each side is joined to both
+master-data tables on their unique `number` (aliases `ub_konto_sk`,
+`ub_konto_pk`, `ub_gegenkonto_sk`, `ub_gegenkonto_pk`), and the flag is the
+`COALESCE` of the pair -- the number ranges are disjoint, so at most one matches.
+Plain joins on a unique key keep the planner's row estimate right; a union of
+the two tables made it expect a row explosion and compile the query with JIT.
 
 The cost-center step is a `CASE` without an `ELSE` on purpose: it yields
 `FALSE` where the cost center says no and `NULL` everywhere else — including
@@ -127,7 +135,8 @@ over it can never multiply a booking row.
 ## One definition, three readers
 
 `DatevBooking` keeps the rule as SQL fragments under fixed join aliases
-(`ub_kostenstelle`, `ub_konto`, `ub_gegenkonto`) and every reader takes the same
+(`ub_kostenstelle`, `ub_konto_sk`, `ub_konto_pk`, `ub_gegenkonto_sk`,
+`ub_gegenkonto_pk`) and every reader takes the same
 expression:
 
 * **the rows** — `DatevBooking.with_unit_budget` selects it as
@@ -196,12 +205,14 @@ summary at all.
 it is a REFERENCE with two options — the same shape every other yes/no
 attribute takes.
 
-**The Schnellauswahl** of a group's Buchhaltung tab carries one preset,
-"Unit-Budget" (`Group::BookkeepingController::PRESETS`): one click adds the user
-slot `unit_budget in (true)` and the list shows what counts against the unit's
-own budget, a second click takes it away. It is a shortcut *into* the user
-filter, not a pin — the slot it adds becomes an ordinary chip the builder can
-edit or drop (`doc/wsjrdp/expandable_table.md`, "Presets").
+**The Schnellauswahl** of a group's Buchhaltung tab and of a unit cost
+center's detail is one exclusive group, Alle / Nur Unit-Budget / Ohne
+Unit-Budget (`Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP`): a
+member sets the user slot `unit_budget in (true)` or `in (false)`, "Alle"
+removes it. It is a shortcut *into* the user filter, not a pin — on the group's
+tab the slot it sets is an ordinary chip the builder can edit or drop; the cost
+center's detail shows the Schnellauswahl without a filter pane
+(`doc/wsjrdp/expandable_table.md`, "Presets").
 
 **The tiles** on a group's Buchhaltung tab state four figures over the group's
 **pinned** set — every booking whose primary or secondary cost center is one of
@@ -256,3 +267,111 @@ follows the bookings' split: the reading page shows a "Bearbeiten" button for
 the write tier, the edit page carries the select, the two submits and
 "Abbrechen", and `#update` permits `is_unit_budget` and nothing else. A number
 without master data is a stub record on the reading page and has no edit page.
+
+
+## Budget assignment
+
+Which cost center a booking counts against in the budget -- "Kostenstelle
+(Budget-Zuordnung)" -- is one SQL expression,
+`DatevBooking::BUDGET_COST_CENTER_SQL`:
+
+1. the **primary** cost center, as a rule -- also where the booking names a
+   secondary one, as long as the primary cost center is no unit's own (or is
+   unknown);
+2. the **secondary** cost center for a booking on a unit's own cost center
+   that does **not** count against the Unit-Budget (the rule above) and names a
+   secondary cost center that is no unit's -- a unit's travel costs assigned to
+   3810, say.
+
+A booking on a unit's cost center inside its Unit-Budget, or without a
+secondary cost center, stays with the unit. Each booking has exactly one budget
+cost center, so nothing counts twice.
+
+The expression reads the `ub_kostenstelle` join the Unit-Budget rule brings
+(`with_unit_budget_accounts`); whether the secondary cost center is a unit's is
+a subquery. Three readers, one definition:
+
+| Reader | Use |
+|---|---|
+| `Fin::BudgetOverview` | the Budget page groups the IST by it and the booking year; `Cell#secondary` is the part reached through the secondary cost center, shown dotted with a tooltip |
+| `WsjrdpCostCenter.with_booking_summary` / `.bookings_for` | the Kostenstellen list's view "Budget" sums by it, and a cost center's detail opened in that view (the Budget page opens its cost centers so) lists the bookings assigned to it |
+| `Fin::DatevBookingsFilterSchema` `budget_cost_center` | the bookings filter; a detail in the view "Budget" links to the bookings view filtered by it |
+
+The assignment is computed when it is read: changing a booking's or an
+account's Unit-Budget flag moves a unit's booking between the unit and the
+secondary cost center everywhere at once. The Kostenstellen list's "Summe"
+keeps counting by the primary cost center, so for a cost center like 3810 it
+differs from the Budget page.
+
+The Budget page's unit table does not use it: a unit's Gesamtausgaben, and its
+detail opened from there (view "Primär o. sekundär"), take every booking with
+it as primary or secondary cost center (`any_cost_center`).
+
+## The reconciliation page
+
+`/fin/reconciliation/unit_bookings` (`Fin::UnitBookingsController`,
+[`Fin::UnitBookingReconciliation`](../../app/domain/fin/unit_booking_reconciliation.rb))
+keeps what the units see consistent with the rule above. Every booking a unit
+sees — its primary or secondary cost center a unit's own
+(`is_unit_cost_center`) — should be one of two things: a booking on the unit's
+own cost center that counts against the Unit-Budget, or a booking that carries
+a secondary cost center saying where the cost belongs: the unit's own on a
+central booking, or a central one on the unit's booking (the travel costs of a
+unit meeting on 3810 Unit-Treffen Reisekosten, say). The page sorts what the
+units see into three disjoint sets and lists the third:
+
+| Set | Definition |
+|---|---|
+| zählen zum Unit-Budget | the rule says `true` — what a group's tile counts |
+| mit sekundärer Kostenstelle | the rule says `false`, and a secondary cost center is set |
+| offen | the rule says `false`, primary cost center a unit's own, no secondary cost center |
+
+The open bookings stand in the full bookings table, without its summary line,
+with a user filter on top (the attributes that pin the set — either cost
+center, the Unit-Budget, the always blank secondary cost center — are excluded
+from the picker; the cost center itself stays, to narrow to one unit). An
+injected
+"Vorschlag" column names the secondary cost center that fits the expense
+account on either side of the booking (`PROPOSED_SECONDARY_COST_CENTERS`: the
+travel-cost accounts 66630, 66631, 66680 and 65800 belong to 3810); a proposal
+naming a cost center the master data does not carry is none.
+
+Whoever may update bookings gets the assign controls above the table: a
+select over the assignable cost centers — every cost center that is not a
+unit's own — preset to the proposal, the row checkboxes, a quick-select over
+all pages of the current filter ("Alle (N)", "Keine", one group per atom) and
+the switch "nur Gewählte anzeigen".
+"Auswahl zuweisen" asks with the count, the sum and the cost center, then
+sets `secondary_cost_center_number` on the selected OPEN bookings in one
+statement (`assign!`; an id outside the open set is ignored, a number outside
+the assignable cost centers refused).
+
+The quick-select groups the open bookings by the account that keeps them out
+of the Unit-Budget, the deciding side of the rule above: "Konto 66630 …"
+where the Konto said no, "Gegenkto 66680 …" where the Gegenkonto alone did (a
+refund paid from the bank account), "Buchung (Flag nein)" where the booking's
+own flag did. That group is the row's ATOM (`OPEN_ATOM_SQL`, selected as
+`selection_atom` and carried in `data-atom`); the form carries each atom's
+count and sum (`data-<atom>-count` / `-sum`), and `select_all` posts either
+`1` or the chosen atoms, the way the TN-Beiträge page posts its rating tiers.
+
+The bookings that already carry a secondary cost center stand in a collapsed
+section at the end of the page, "Unit-Buchungen mit sekundärer Kostenstelle,
+die nicht zum Unit-Budget zählen", loaded into a turbo frame when the section
+opens (`#assigned`). The frame holds its own bookings browser, filter
+included: the filter's apply (`#apply_assigned`), the paging and the sorting
+navigate the frame, and the frame's state travels in the page's URL under the
+`ua` prefix, so the page hands it to the frame and a bulk action carries it
+back. The write tier gets the same controls there, grouped by the pair's
+central cost center (`ASSIGNED_ATOM_SQL`): "Sekundäre Kostenstelle löschen"
+takes it off the selected ASSIGNED bookings of the frame's filter (`clear!`).
+
+Behind each button a hint names how many bookings the action will touch —
+the current selection over all pages: "Löscht die sekundäre Kostenstelle bei
+2 ausgewählten Buchungen", "Setzt 3810 … als sekundäre Kostenstelle bei 86
+ausgewählten Buchungen" — and the button is disabled at zero; the confirm
+dialog repeats the sentence. The hint follows the selection's
+`exptbl:selection-change` event (`doc/wsjrdp/expandable_table.md`, "Row
+selection") and the form's select. A bulk action remembers the page's scroll
+position and whether the section was open (sessionStorage), and the page
+comes back that way once the section's frame has loaded.

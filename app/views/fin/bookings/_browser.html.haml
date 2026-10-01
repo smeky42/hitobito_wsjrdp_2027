@@ -18,6 +18,7 @@
 -#    apply_url:     POST target of the filter builder (PRG)
 -#    condensed_locked:  show the pinned conditions as a compact summary line
 -#    extra_columns: injected table columns (e.g. the match-proposal column)
+-#    summary:       false leaves the table's summary line out
 -#    selection:, detail_top:, detail_extra:  passed to the table
 -#    detail_page:, detail_src:  passed to the table (where this host's booking
 -#                   detail page and its lazy pane live)
@@ -25,7 +26,7 @@
     condensed_locked: local_assigns.fetch(:condensed_locked, false),
     disabled: local_assigns.fetch(:disabled, false)}
 = render "fin/bookings/bookings_table", rows: rows, filter: filter_cfg,
-  extra_columns: local_assigns[:extra_columns],
+  extra_columns: local_assigns[:extra_columns], summary: local_assigns.fetch(:summary, true),
   selection: local_assigns[:selection], detail_top: local_assigns[:detail_top],
   detail_extra: local_assigns[:detail_extra],
   detail_page: local_assigns[:detail_page], detail_src: local_assigns[:detail_src]

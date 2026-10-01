@@ -181,26 +181,6 @@ module Wsjrdp::ExpandableTableHelper
     state.encode_column_states(states.map { |col, active| [col[:key], active] })
   end
 
-  # --- sort state (multi-column, in the single <prefix>s param) --------------
-
-  # The active sort as [[column_key, dir], ...], primary first.
-  def et_sort_list(state) = state.sort_list
-
-  # The URL after clicking `key`'s header: the clicked column becomes primary and
-  # its direction advances asc -> desc -> removed. A resulting empty sort sets the
-  # param explicitly blank, so it also clears a remembered sort. When
-  # `multi: false`, only the first key is kept.
-  def et_sort_toggle_url(state, key, multi: true)
-    list = multi ? Wsjrdp::ExpandableTableSort.after_click(state.sort_list, key) :
-      Wsjrdp::ExpandableTableSort.after_click_single(state.sort_list, key)
-    et_url(state, {sort: state.encode_sort_list(list)})
-  end
-
-  # [dir, rank] for a column key in the current sort list, or [nil, nil].
-  def et_sort_state(list, key)
-    Wsjrdp::ExpandableTableSort.state(list, key)
-  end
-
   private
 
   def et_apply_change(query, state, field, value)

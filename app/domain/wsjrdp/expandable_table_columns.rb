@@ -58,7 +58,10 @@ class Wsjrdp::ExpandableTableColumns
     @by_key = @columns.to_h { |col| [col.key, col] }.freeze
     @codec = @columns.to_h { |col| [col.key, col.abbr] }.freeze
     @default_keys = @columns.select(&:default?).map(&:key).freeze
-    @sort_expressions = @columns.select(&:sortable?).to_h { |col| [col.key, col.sort] }.freeze
+    @sort_variants = @columns.flat_map(&:sort_variants).freeze
+    @sort_variant_codec = @sort_variants.to_h { |v| [v.key, [v.abbr, v.column_key].freeze] }.freeze
+    @sort_expressions = @columns.select(&:sortable?).to_h { |col| [col.key, col.sort] }
+      .merge(@sort_variants.to_h { |v| [v.key, v.sort] }).freeze
     freeze
   end
 
@@ -69,8 +72,12 @@ class Wsjrdp::ExpandableTableColumns
   # default_keys: the columns shown before the user picks any -- the policy's
   #   `cols: {default:}`.
   # sort_expressions: key => SQL expression / extractor, for the columns that can
-  #   be sorted -- the `sort:` allow-list of Wsjrdp::ExpandableTableRows.
-  attr_reader :keys, :codec, :default_keys, :sort_expressions
+  #   be sorted and for every sort variant -- the `sort:` allow-list of
+  #   Wsjrdp::ExpandableTableRows.
+  # sort_variant_codec: variant key => [abbr, column key] -- the sort-only
+  #   tokens a policy accepts in ?s= on top of the codec's columns. A policy
+  #   given the whole collection (`columns: COLUMNS`) reads both.
+  attr_reader :keys, :codec, :default_keys, :sort_expressions, :sort_variant_codec
 
   def each(&block) = @columns.each(&block)
 
@@ -87,16 +94,18 @@ class Wsjrdp::ExpandableTableColumns
   # Keys and abbreviations are both wire tokens of the ?c= / ?s= params, so they
   # have to be unique AND to pass the token rule -- which lives in ONE place,
   # Wsjrdp::TableStatePolicy, because it is that class's `columns:` codec the
-  # tokens end up in.
+  # tokens end up in. A sort variant's key and abbreviation share the ?s= param
+  # with the columns' and are held to the same rule.
   def validate!
-    duplicates(@keys).then do |dupes|
+    variants = @columns.flat_map(&:sort_variants)
+    duplicates(@keys + variants.map(&:key)).then do |dupes|
       raise ArgumentError, "duplicate column key(s): #{dupes.join(", ")}" if dupes.any?
     end
-    abbrs = @columns.map(&:abbr)
+    abbrs = @columns.map(&:abbr) + variants.map(&:abbr)
     duplicates(abbrs).then do |dupes|
       raise ArgumentError, "duplicate column abbreviation(s): #{dupes.join(", ")}" if dupes.any?
     end
-    (@keys + abbrs).each { |token| Wsjrdp::TableStatePolicy.validate_token!(token) }
+    (@keys + variants.map(&:key) + abbrs).each { |token| Wsjrdp::TableStatePolicy.validate_token!(token) }
   end
 
   def duplicates(tokens) = tokens.tally.select { |_token, count| count > 1 }.keys

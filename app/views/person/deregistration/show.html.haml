@@ -28,59 +28,11 @@
   .dereg-summary .labeled-grid {
     grid-template-columns: 12rem minmax(0, 1fr);
   }
-  .dereg-section {
-    border: 1px solid var(--bs-border-color);
-    border-radius: 6px;
-    margin-top: 10px;
-  }
-  .dereg-section-bar {
-    display: flex;
-    align-items: center;
-    border-radius: 6px;
-    background: var(--bs-light);
-  }
-  .dereg-section-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1 1 auto;
-    min-width: 0;
-    padding: 8px 14px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    font-weight: 600;
-    text-align: left;
-  }
-  /* The action beside the head reads as a link, not as a second button. */
-  .dereg-section-action {
-    flex: 0 0 auto;
-    padding: 8px 14px;
-    font-size: .875rem;
-  }
-  .dereg-section-head .fa-chevron-right {
-    transition: transform 0.15s ease-in-out;
-  }
-  .dereg-section-head[aria-expanded="true"] .fa-chevron-right {
-    transform: rotate(90deg);
-  }
-  .dereg-section-summary {
-    margin-left: auto;
-    font-weight: 400;
-    color: var(--bs-secondary-color, #6c757d);
-    font-size: .875rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .dereg-section-body {
-    padding: 4px 14px 10px;
-  }
   /* Hitobito's standard_form is a horizontal Bootstrap form: inside the section
      body its field rows keep their gutter within the body's padding instead of
      pulling out of it, so labels and inputs line up with the list they stand
      in for. */
-  .dereg-section-body form .row {
+  #dereg-sections .wsjrdp-section-body form .row {
     margin-left: 0;
     margin-right: 0;
   }
@@ -141,7 +93,7 @@
     -# The way into the form sits in the bar of the section it changes, and it
     -# changes that section alone: the link loads the form into the frame the
     -# section's body carries; the page opens the section as the form arrives.
-    - edit_link = link_to(edit_person_deregistration_path(@person), class: 'dereg-section-action', data: {turbo_frame: 'deregistration_capture'}) do
+    - edit_link = link_to(edit_person_deregistration_path(@person), class: 'wsjrdp-section-action', data: {turbo_frame: 'deregistration_capture'}) do
       = icon(:edit)
       = ti(:"link.edit")
     = render layout: 'section', locals: {key: 'capture', title: t('people.deregistration_capture.title'), summary: nil, action: edit_link, frame: 'deregistration_capture'} do

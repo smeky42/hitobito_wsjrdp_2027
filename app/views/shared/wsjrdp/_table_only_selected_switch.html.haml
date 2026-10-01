@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The switch that shows a selectable table's chosen rows alone: it names the
+-#  form the table's selection posts to (data-form), through which the shared
+-#  selection JS (shared/wsjrdp/_table_selection_js) finds the table's scope,
+-#  hides the rows whose checkbox is off and remembers the switch per table.
+-#
+-#  Locals: form_id
+- form_id = local_assigns.fetch(:form_id)
+.form-check.form-switch.mb-0.small
+  %input.form-check-input.bk-only-selected-toggle{type: "checkbox", role: "switch",
+    id: "#{form_id}-only-selected", data: {form: form_id}}
+  %label.form-check-label{for: "#{form_id}-only-selected"} nur Gewählte anzeigen

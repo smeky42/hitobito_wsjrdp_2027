@@ -308,6 +308,8 @@ describe Wsjrdp::TableStatePolicy do
     it "raises for a relabelled key that is not a column of the codec" do
       expect { described_class.new(prefix: "", columns: COLUMNS, cols: {labels: {"typo" => "X"}}) }
         .to raise_error(ArgumentError, /cols: labels: "typo" is not a column/)
+      expect { described_class.new(prefix: "", columns: COLUMNS, cols: {widths: {"typo" => "9rem"}}) }
+        .to raise_error(ArgumentError, /cols: widths: "typo" is not a column/)
     end
 
     it "raises when a default column is excluded as well" do
@@ -556,6 +558,14 @@ describe Wsjrdp::TableState do
       expect(shaped.last[:condensed_label]).to eq("Karteninhaber")
       # A column this table neither hides nor renames is passed through untouched.
       expect(shaped.first).to equal(configs.first)
+    end
+
+    it "applies the table's own widths to the column configs" do
+      state = resolve(policy(cols: {widths: {"booking_date" => "9rem"},
+                                    labels: {"cost_center_number" => "KSt"}}))
+      shaped = state.column_configs(configs.map { |config| config.merge(width: "6rem") })
+      expect(shaped.pluck(:width)).to eq(%w[9rem 6rem 6rem])
+      expect(shaped.first[:label]).to eq("Datum")
     end
 
     it "gives no condensed label to a column that had none" do
@@ -1304,6 +1314,85 @@ describe Wsjrdp::TableState do
 
     it "exposes the cookie name for the JS" do
       expect(resolve(policy).cookie_name(:pane)).to eq("wsjrdp_ts_fin_bookings_index_e")
+    end
+  end
+
+  # A view: a variant of the whole table the host reads from the state.
+  describe "sort variants and the hidden sort" do
+    # A dataset whose amount column sorts by three measures (the shape
+    # Wsjrdp::ExpandableTableColumns#sort_variant_codec gives a policy).
+    let(:dataset) do
+      Struct.new(:codec, :sort_variant_codec).new(COLUMNS,
+        {"signed_base_amount__ist" => ["amt_ist", "signed_base_amount"],
+         "signed_base_amount__pct" => ["amt_pct", "signed_base_amount"]})
+    end
+
+    def variant_policy(**options)
+      Wsjrdp::TableStatePolicy.new(prefix: "", columns: dataset, **options)
+    end
+
+    it "sorts by a variant through its wire token, and wires it back" do
+      state = resolve(variant_policy, {"s" => "amt_pct~,bdt"})
+      expect(state.sort_list).to eq([["signed_base_amount__pct", "desc"], ["booking_date", "asc"]])
+      expect(state.wire(:sort)).to eq("amt_pct~,bdt")
+      expect(state.sort_column_for("signed_base_amount__pct")).to eq("signed_base_amount")
+    end
+
+    it "keeps variants out of the columns" do
+      state = resolve(variant_policy)
+      expect(state.column_states.map(&:first)).to eq(COLUMNS.keys)
+      expect(resolve(variant_policy, {"c" => "amt_ist"}).visible_column_keys).to eq([])
+    end
+
+    it "drops a variant whose column this table does not have" do
+      state = resolve(variant_policy(cols: {exclude: %w[signed_base_amount]}), {"s" => "amt_ist,bdt"})
+      expect(state.sort_list).to eq([["booking_date", "asc"]])
+    end
+
+    it "orders by the hidden sort while nothing is chosen, and never shows it" do
+      hidden = variant_policy(sort: {hidden: [["cost_center_number", "asc"]]})
+      state = resolve(hidden)
+      expect(state.sort_list).to eq([])
+      expect(state.effective_sort_list).to eq([["cost_center_number", "asc"]])
+      expect(state.wire(:sort)).to eq("")
+      expect(resolve(hidden, {"s" => "amt_ist~"}).effective_sort_list).to eq([["signed_base_amount__ist", "desc"]])
+    end
+
+    it "remembers an explicitly removed preselected sort, so the hidden one applies" do
+      preset = variant_policy(sort: {default: [["signed_base_amount__pct", "desc"]], hidden: [["booking_date", "asc"]]})
+      expect(resolve(preset).sort_list).to eq([["signed_base_amount__pct", "desc"]])
+      resolve(preset, {"s" => ""})
+      state = resolve(preset)
+      expect(state.sort_list).to eq([])
+      expect(state.effective_sort_list).to eq([["booking_date", "asc"]])
+    end
+  end
+
+  describe "the view" do
+    let(:views) { {default: "primary", values: %w[primary secondary budget]} }
+
+    it "resolves the param when the table declares it, else the default" do
+      expect(resolve(policy(view: views), {"v" => "budget"}).view).to eq("budget")
+      expect(resolve(policy(view: views), {"v" => "typo"}).view).to eq("primary")
+      expect(resolve(policy(view: views)).view).to eq("primary")
+    end
+
+    it "is nil for a table that declares no view" do
+      expect(resolve(policy, {"v" => "budget"}).view).to be_nil
+      expect(resolve(policy).wire(:view)).to eq("")
+    end
+
+    it "is remembered, and wired for a redirect" do
+      resolve(policy(view: views), {"v" => "secondary"})
+      state = resolve(policy(view: views))
+      expect(state.view).to eq("secondary")
+      expect(resolve(policy(view: views), {"v" => "budget"}).wire_params).to include("v" => "budget")
+    end
+
+    it "refuses a default that is not one of its values, and an empty list" do
+      expect { policy(view: {default: "other", values: %w[primary]}) }
+        .to raise_error(ArgumentError, /view: default "other" is not one of primary/)
+      expect { policy(view: {values: []}) }.to raise_error(ArgumentError, /at least one view/)
     end
   end
 

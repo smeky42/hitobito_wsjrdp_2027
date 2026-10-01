@@ -57,7 +57,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   # resolve.
   WALLET_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::MossWalletColumns.codec,
-    sort: {default: [["booking_date", "desc"]]},
+    sort: {hidden: [["booking_date", "desc"]]},
     cols: {default: Fin::MossWalletColumns.default_keys},
     per_page: {default: 50},
     filter: {schema: Fin::MossWalletFilterSchema, presets: -> { wallet_presets }},

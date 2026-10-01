@@ -166,6 +166,15 @@ class Wsjrdp::ExpandableTableBuilder
     @locals[:summary] = text
   end
 
+  # The view switch of the toolbar: `label` in front of a segmented control
+  # with one segment per [value, text] of `options`, each a link that sets the
+  # table's view (the policy's `view: {values:}`; a value it does not declare
+  # raises). The host reads the chosen view from the state.
+  #   t.view label: "Summen nach", options: [["primary", "Primär"], ["budget", "Budget"]]
+  def view(label:, options:)
+    @locals[:view] = {label: label, options: options}
+  end
+
   # A footer row under the rows (a sum row): the block returns one visible
   # column's cell, given that column's config ->(col){ html }; nil leaves the
   # cell empty.
@@ -186,6 +195,14 @@ class Wsjrdp::ExpandableTableBuilder
   # Per-row CSS class lambda.
   def row_class(&block)
     @locals[:row_class] = block
+  end
+
+  # Which rows of an expandable table open a detail: ->(row){ true/false }. A
+  # row the block answers false for is a plain row -- no disclosure, no detail
+  # row (e.g. a sum row sorted among the others). Without the block every row
+  # does.
+  def detail_if(&block)
+    @locals[:detail_if] = block
   end
 
   # --- sub-rows: a row that brings rows of its own ---------------------------

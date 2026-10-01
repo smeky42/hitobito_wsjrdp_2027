@@ -17,12 +17,14 @@
 -#  every budget field, the explicit total included, and the Unit-Kostenstelle
 -#  flag; effective_total_budget is a generated column and stays read-only.
 -#
--#  A unit's own cost center (is_unit_cost_center) lists the bookings with it as
--#  primary OR secondary cost center, with a Schnellauswahl Alle / Nur
--#  Unit-Budget / Ohne Unit-Budget above them and no filter pane
--#  (Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP); its page links to
--#  the Buchhaltung of its group in the header (the tables' panes carry the same
--#  link beside "Detailseite", Fin::CostCentersHelper#fin_unit_group_bookkeeping_path).
+-#  The bookings follow the view of the list the detail was opened from
+-#  (`?v=`, WsjrdpCostCenter::VIEWS; the Budget page asks for "budget", its
+-#  units for "any"), and so does the "open in the bookings view" link. A unit's
+-#  own cost center (is_unit_cost_center) offers a Schnellauswahl Alle / Nur
+-#  Unit-Budget / Ohne Unit-Budget above them, without a filter pane
+-#  (Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP); its page links
+-#  to the Buchhaltung of its group in the header (the tables' panes carry the
+-#  same link beside "Detailseite", Fin::CostCentersHelper#fin_unit_group_bookkeeping_path).
 -#
 -#  The values come from Fin::CostCentersHelper, the labels from
 -#  de.activerecord.attributes.wsjrdp_cost_center.
@@ -57,6 +59,7 @@
       is_unit_cost_center: {input: :select, options: fin_unit_cost_center_options,
                             editable: can?(:update, cost_center)}
   - d.attrs :description, :comment
-  - d.bookings cost_center_bookings(cost_center),
-      show_all_path: bookings_filter_path([[[unit ? "any_cost_center" : "cost_center", "in", cost_center.number]]]),
-      all_label: "In Buchungen-Ansicht öffnen", filter: (unit ? {panel: false} : nil)
+  - d.bookings cost_center_bookings(cost_center, detail_view),
+      show_all_path: fin_cost_center_bookings_path(cost_center.number, detail_view),
+      all_label: "In Buchungen-Ansicht öffnen", filter: (unit ? {panel: false} : nil),
+      note: fin_cost_center_view_note(detail_view)

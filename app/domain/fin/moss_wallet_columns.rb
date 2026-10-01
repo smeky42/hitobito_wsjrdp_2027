@@ -32,7 +32,7 @@ module Fin::MossWalletColumns
       sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true
-    c.column key: "signed_base_amount", abbr: "amt", label: "Betrag", numeric: true,
+    c.column key: "signed_base_amount", abbr: "amt", label: "Betrag", numeric: true, sort_first: "desc",
       width: "6rem", sort: "moss_bookings.signed_base_amount", default: true
     # No width: the description takes whatever the other three leave, and it is
     # the one column that wants every pixel (name, party, tags, Buchungstext,

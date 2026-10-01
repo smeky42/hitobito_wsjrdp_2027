@@ -363,7 +363,7 @@ describe Group::BookkeepingController do
     end
 
     it "ignores a ?gbs= naming a column outside the table" do
-      show(groups(:unit_a))
+      get :show, params: {group_id: groups(:unit_a).id, gbs: "bdt~"}
       expect(doc.css("thead a[aria-sort]")).not_to be_empty
 
       get :show, params: {group_id: groups(:unit_a).id, gbs: "sphere~"}

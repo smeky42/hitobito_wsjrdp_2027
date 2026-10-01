@@ -1,0 +1,42 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The "Sortiert nach" bar of shared/wsjrdp/_expandable_table: the chosen sort
+-#  levels in order, in the toolbar next to the column hamburger. Shown as soon
+-#  as anything is sorted, the preselected default included (the policy's
+-#  hidden sort never). Every level can be removed (×); from two levels on, a
+-#  level can also be moved (‹ ›, or dragged -- shared/wsjrdp/_expandable_table_js
+-#  builds that URL from the levels' data-sort-token) and kept alone (◎).
+-#
+-#  Locals: state, names (sort key => name), multi (multi-column sort).
+- list = state.sort_list
+- many = multi && list.size > 1
+- level_tokens = list.map { |key, dir| state.encode_sort_list([[key, dir]]) }
+.exp-sort-bar.small{ data: { sort_param: state.param_name(:sort), sort_base_href: et_sort_url(state, list) } }
+  %span.text-muted Sortiert nach
+  - list.each_with_index do |(key, dir), index|
+    %span.exp-sort-level{ draggable: (many ? "true" : nil), title: (many ? "Ziehen, um die Reihenfolge zu ändern" : nil),
+      data: { sort_token: level_tokens[index] } }
+      %span.exp-sort-level-name
+        = names.fetch(key, key)
+        = Wsjrdp::ExpandableTableSortHelper::SORT_ARROWS.fetch(dir)
+      - if many
+        = et_sort_rank_box(state, index, names: names)
+        - if index.positive?
+          = link_to "‹", et_sort_url(state, Wsjrdp::ExpandableTableSort.move(list, index, index - 1)),
+            class: "exp-sort exp-sort-level-btn", title: "Eine Stufe nach vorne", "aria-label": "Stufe #{index + 1} nach vorne"
+        - else
+          %span.exp-sort-level-btn.disabled{ "aria-hidden": "true" } ‹
+        - if index < list.size - 1
+          = link_to "›", et_sort_url(state, Wsjrdp::ExpandableTableSort.move(list, index, index + 1)),
+            class: "exp-sort exp-sort-level-btn", title: "Eine Stufe nach hinten", "aria-label": "Stufe #{index + 1} nach hinten"
+        - else
+          %span.exp-sort-level-btn.disabled{ "aria-hidden": "true" } ›
+        = link_to "◎", et_sort_url(state, Wsjrdp::ExpandableTableSort.only(list, index)),
+          class: "exp-sort exp-sort-level-btn", title: "Nur diese Sortierung behalten", "aria-label": "Nur Stufe #{index + 1} behalten"
+      = link_to "×", et_sort_url(state, Wsjrdp::ExpandableTableSort.without(list, index)),
+        class: "exp-sort exp-sort-level-btn", title: "Diese Sortierung entfernen", "aria-label": "Sortierung nach #{names.fetch(key, key)} entfernen"

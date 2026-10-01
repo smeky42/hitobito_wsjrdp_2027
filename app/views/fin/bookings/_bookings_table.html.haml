@@ -26,6 +26,9 @@
 -#  the booking on its own route -- the group's Buchhaltung -- keeps both links
 -#  inside that route; both default to this page's own booking_path).
 - condensed = local_assigns.fetch(:condensed, false)
+-# summary: false leaves the summary line out; the default is the line of
+-# Fin::BookingsHelper#booking_table_summary on the full table.
+- summary = local_assigns.fetch(:summary, true)
 - extra_columns = local_assigns.fetch(:extra_columns, nil)
 - selection = local_assigns.fetch(:selection, nil)
 - detail_top = local_assigns.fetch(:detail_top, nil)
@@ -55,7 +58,7 @@
   -# Count, sum and the Unit-Budget share of that sum (Fin::BookingsHelper).
   -# The condensed variant inside a detail row states none of it: the item it
   -# sits under already carries its own totals.
-  - t.summary(condensed ? nil : booking_table_summary(rows))
+  - t.summary((condensed || summary == false) ? nil : booking_table_summary(rows))
   - t.selection selection
   - t.condensed condensed
 -# The widget styles a condensed table only generically (content-sized, nowrap);

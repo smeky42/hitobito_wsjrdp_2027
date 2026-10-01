@@ -68,6 +68,38 @@ describe Fin::BookingsHelper do
   # The Unter-Kostenstelle select of the booking detail. A sub cost center
   # number is unique within its cost center only, so the choice is restricted to
   # the booking's own cost center.
+  describe "#datev_cost_center_cell" do
+    before do
+      WsjrdpCostCenter.create!(number: "8100", short_name: "Kst A kurz", name: "Kostenstelle A lang")
+      WsjrdpCostCenter.create!(number: "8300", name: "Kostenstelle C")
+    end
+
+    let(:tip) { ->(cell) { Nokogiri::HTML.fragment(cell).at_css("span.wsjrdp-html-tip") } }
+
+    it "shows number and short name, muted and light, the full name in the tooltip" do
+      cell = tip.call(helper.datev_cost_center_cell("8100"))
+      expect(cell.text).to eq("8100 Kst A kurz")
+      expect(cell.at_css("span.text-muted.fw-light").text).to eq("Kst A kurz")
+      expect(cell["title"]).to eq("8100 Kostenstelle A lang")
+      expect(cell["data-bs-title"]).to eq('8100 <span class="wsjrdp-tip-muted">Kostenstelle A lang</span>')
+    end
+
+    it "takes the full name where there is no short name" do
+      expect(tip.call(helper.datev_cost_center_cell("8300")).text).to eq("8300 Kostenstelle C")
+    end
+
+    it "shows the number alone with the same tooltip when condensed" do
+      cell = tip.call(helper.datev_cost_center_cell("8100", condensed: true))
+      expect(cell.text).to eq("8100")
+      expect(cell["title"]).to eq("8100 Kostenstelle A lang")
+    end
+
+    it "shows an unknown number bare, nothing for a blank one" do
+      expect(helper.datev_cost_center_cell("8999")).to eq("8999")
+      expect(helper.datev_cost_center_cell(nil)).to be_nil
+    end
+  end
+
   describe "#fin_sub_cost_center_select_options" do
     let!(:cost_center) { WsjrdpCostCenter.create!(number: "8100", name: "Kostenstelle A") }
     let!(:other_cost_center) { WsjrdpCostCenter.create!(number: "8200", name: "Kostenstelle B") }

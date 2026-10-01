@@ -14,11 +14,12 @@ require "spec_helper"
 describe Fin::BudgetOverview do
   # A bank Konto, so signed_base_amount is -amount for "C": an outflow, which
   # the overview counts as positive spending.
-  def spend(number, amount, date, debit_credit = "C")
+  def spend(number, amount, date, debit_credit = "C", secondary: nil, is_unit_budget: nil)
     DatevBooking.create!(buchungs_guid: SecureRandom.uuid,
       account_number: "1200", account_kind: "BANK",
       offsetting_account_number: "66500", offsetting_account_kind: "EXPENSE",
-      cost_center_number: number, base_amount: amount, transaction_amount: amount,
+      cost_center_number: number, secondary_cost_center_number: secondary,
+      is_unit_budget: is_unit_budget, base_amount: amount, transaction_amount: amount,
       debit_credit: debit_credit, base_currency: "EUR", booking_date: date,
       posting_text: "Test #{number}")
   end
@@ -53,6 +54,36 @@ describe Fin::BudgetOverview do
     expect(row("K100").total).to have_attributes(budget: 1500, actual: 1200)
   end
 
+  # The budget assignment (DatevBooking::BUDGET_COST_CENTER_SQL): a unit's
+  # booking outside its Unit-Budget counts against a regular secondary cost
+  # center; inside the Unit-Budget it stays with the unit, and a regular
+  # primary cost center keeps its booking whatever the secondary one says.
+  describe "the budget assignment" do
+    before do
+      WsjrdpCostCenter.create!(number: "U2", name: "Unit 2", is_unit_cost_center: true)
+      spend("U1", 50, Date.new(2026, 5, 1), secondary: "K200", is_unit_budget: false)
+      spend("U1", 60, Date.new(2026, 5, 2), secondary: "K200", is_unit_budget: true)
+      spend("U1", 70, Date.new(2026, 5, 3), secondary: "U2", is_unit_budget: false)
+      spend("K100", 80, Date.new(2026, 5, 4), secondary: "K200")
+    end
+
+    it "counts a unit's booking outside its Unit-Budget against the regular secondary cost center" do
+      expect(row("K200").cells[2026]).to have_attributes(actual: 90, secondary: 50)
+      expect(row("K200").total).to have_attributes(actual: 90, secondary: 50)
+    end
+
+    it "leaves the primary cost center its own bookings" do
+      expect(row("K100").cells[2026]).to have_attributes(actual: 380, secondary: 0)
+    end
+
+    it "agrees with the bookings filter" do
+      assigned = Arel::Nodes::Equality.new(Arel.sql("(#{DatevBooking::BUDGET_COST_CENTER_SQL})"),
+        Arel::Nodes.build_quoted("K200"))
+      filtered = DatevBooking.with_unit_budget_accounts.where(assigned)
+      expect(-filtered.sum(:signed_base_amount)).to eq(row("K200").total.actual)
+    end
+  end
+
   it "colors by the share spent" do
     expect(row("K100").cells[2025].level).to eq(:warn)
     expect(row("K100").cells[2026].level).to eq(:ok)
@@ -71,9 +102,26 @@ describe Fin::BudgetOverview do
     expect(row("9")).to be_nil
   end
 
-  it "sums per column only the cells with a budget" do
-    expect(overview.sum.total).to have_attributes(budget: 1500, actual: 1200)
-    expect(overview.sum.cells[2026]).to have_attributes(budget: 500, actual: 300)
-    expect(overview.sum.cells[2027]).to be_empty
+  it "sums the rows in sum spending and those in sum income apart, with or without a budget" do
+    spend("K300", 80, Date.new(2026, 5, 1), "D")
+    spending, income = overview.sums
+    expect(spending.sum_label).to eq("Alle Ausgaben")
+    expect(spending.total).to have_attributes(budget: 1500, actual: 1247)
+    expect(spending.cells[2025]).to have_attributes(budget: 1000, actual: 900)
+    expect(spending.cells[2026]).to have_attributes(budget: 500, actual: 347)
+    expect(spending.cells[2027]).to be_empty
+    expect(income.sum_label).to eq("Alle Einnahmen")
+    expect(income.total).to have_attributes(budget: nil, actual: -80)
+  end
+
+  it "counts a cost center with a budget as spending, even while its IST is income" do
+    spend("K100", 5000, Date.new(2026, 6, 1), "D")
+    expect(row("K100").total.actual).to be_negative
+    expect(overview.sums.map(&:sum_label)).to eq(["Alle Ausgaben"])
+    expect(overview.sums.first.total).to have_attributes(budget: 1500, actual: -3753)
+  end
+
+  it "has no income sum without a row in sum income" do
+    expect(overview.sums.map(&:sum_label)).to eq(["Alle Ausgaben"])
   end
 end
