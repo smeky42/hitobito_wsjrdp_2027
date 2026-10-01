@@ -42,7 +42,9 @@ the two real consumers as worked examples, and finally the full local reference.
   `Fin::PersonalAccountsFilterSchema`)
 - Preset slot equality: `app/domain/wsjrdp/filtering/slot_equality.rb`
   (`Wsjrdp::Filtering::SlotEquality`)
-- Sort logic: `app/domain/wsjrdp/expandable_table_sort.rb` (RISON encode/decode)
+- Sort logic: `app/domain/wsjrdp/expandable_table_sort.rb` (RISON encode/decode,
+  click / shift-click), sort controls: `app/helpers/wsjrdp/expandable_table_sort_helper.rb`
+  and `app/views/shared/wsjrdp/_expandable_table_sort_bar.html.haml`
 - Detail nesting: `app/domain/wsjrdp/table_context.rb` (`Wsjrdp::TableContext`)
 - Sub-partials: `_expandable_table_paging`, `_expandable_table_columns_form`,
   `_table_selection_js`, `_table_hamburger`, `_expandable_table_styles`,
@@ -92,8 +94,9 @@ Everything a column *is* lives here: `key` (the long name used everywhere in
 code), `abbr` (the short wire token in `?c=` / `?s=`), `label`,
 `condensed_label`, `numeric` (right-align), `width` (for the fixed table
 layout), `sort` (how it sorts — an SQL expression for a relation, a
-`->(row){ comparable }` extractor for an array), `default` (shown before the
-user picks any) and `css_class` (derived from `css_prefix:` unless given).
+`->(row){ comparable }` extractor for an array), `sort_first` and
+`sort_variants` (§2, sortable headers), `default` (shown before the user picks
+any) and `css_class` (derived from `css_prefix:` unless given).
 `Wsjrdp::ExpandableTableColumn` is the value object; the collection is
 `Enumerable` and also answers `keys`, `fetch(key)`, `key?(key)` and `size`.
 
@@ -190,7 +193,8 @@ declares only links and its detail row is the slim header-line bar.
 
 `ExpandableTableColumn#to_table_column(cell:)` turns a description into the
 column Hash the widget expects (`key`, `abbr`, `label`, `condensed_label`,
-`numeric`, `width`, `css_class`, `sort_key`, `cell`). **The `cell:` lambda is
+`numeric`, `width`, `css_class`, `sort_key`, `sort_first`, `sort_variants`,
+`cell`). **The `cell:` lambda is
 the only thing the view adds** — everything else is the description. A helper
 that does this for a whole dataset (`booking_table_columns`,
 `moss_transaction_table_columns`, `sachkonten_columns`, …) is the normal shape
@@ -275,6 +279,7 @@ that table lives:
 | `open` | `o` | comma list of row keys | `state.open_keys` (a Set) | `:url` (cannot be remembered) |
 | `level` | `expandable_table_level` | integer (nesting depth) | `state.level` | `:url` (cannot be remembered; **not** prefixed — see below) |
 | `pane` | `e` | `1` / `0` | `state.pane` | `:remember`, store `:cookie` |
+| `view` | `v` | one of the policy's `view: {values:}` | `state.view` (nil without views) | `:remember` |
 
 Two more params are commands, not state: `<prefix>r=1` resets **that** table and
 `table_state_reset` (`Wsjrdp::TableStatePolicy::PAGE_RESET_PARAM`, its value
@@ -293,7 +298,7 @@ way, and `state.wire_params` gives back exactly the params **the URL** chose
 ```ruby
 wsjrdp_expandable_table_policy prefix: "bk",
   columns:  Fin::DatevBookingsColumns.codec,                # key => abbr codec
-  sort:     {default: [["booking_date", "desc"]]},          # LONG names
+  sort:     {hidden: [["booking_date", "desc"]]},           # LONG names
   cols:     {default: Fin::DatevBookingsColumns.default_keys},
   per_page: {default: 50, max: 500},
   filter:   {policy: :remember, schema: Fin::DatevBookingsFilterSchema, exclude: %i[sphere]},
@@ -801,7 +806,7 @@ def item_bookings_table_state = wsjrdp_expandable_table_state(ITEM_BOOKINGS_POLI
 ```ruby
 {prefix: "b",
  columns:  Fin::DatevBookingsColumns.codec,
- sort:     {default: [["booking_date", "desc"]]},
+ sort:     {hidden: [["booking_date", "desc"]]},
  cols:     {default: Fin::DatevBookingsColumns.default_keys},
  per_page: {default: CONDENSED_DEFAULT_PER},
  store_key: -> { "#{controller_path}##{action_name}:#{params[row_param]}" },
@@ -870,29 +875,83 @@ same place either way (`shared/wsjrdp/_detail_links`,
 the pane below one of its rows is prose that wraps.
 
 **Sortable headers.** A column becomes clickable by declaring a `sort:` in its
-description — `to_table_column` turns that into the widget's `sort_key:`. The
-default order is the policy's, not the view's:
+description — `to_table_column` turns that into the widget's `sort_key:`. A
+column may also declare `sort_first: "desc"` (the first click sorts
+descending — amounts and counts, where the largest matter first; names, numbers
+and dates keep the default `"asc"`) and **sort variants**: further ways to sort
+by the same column, each a chip of its own under the header label. The Budget
+page sorts each year by IST, budget and share spent:
 
 ```ruby
-sort: {default: [["total", "desc"]]}     # in wsjrdp_expandable_table_policy
+c.column key: "total", abbr: "ges", label: "Gesamt", numeric: true, sort_first: "desc",
+  sort_variants: [{name: "ist", label: "ist", title: "IST", sort: ->(row) { row.total.actual }},
+                  {name: "soll", label: "soll", title: "Budget", sort: ->(row) { row.total.budget }},
+                  {name: "pct", label: "%", title: "Ausschöpfung", sort: ->(row) { row.total.percent }}]
 ```
 
-The whole sort lives in ONE `<prefix>s` param as a comma list of the columns'
-wire tokens, a trailing `~` meaning descending and the first entry being the
-primary sort (`?s=bez,nr~`). Clicking a header makes that column primary and
-cycles it asc → desc → off; the rank shows as a small superscript when two or
-more columns are sorted. An emptied sort sets the param explicitly blank, so it
-also clears a remembered sort.
+A variant is a **sort key** (`"total__pct"`, wire token `"ges_pct"`) but never a
+column: it is not in `?c=`, the column picker or `codec`, and a table without its
+column cannot sort by it either. `label` is the chip text, `title` the measure's
+name in tooltips and the bar ("Gesamt Ausschöpfung"), `first` its first
+direction (default: the column's). A policy knows the variants only when it is
+given the whole column collection — `columns: Fin::BudgetColumns::COST_CENTERS`
+instead of its `codec`; `sort_expressions` carries them for the rows object.
+
+The whole sort lives in ONE `<prefix>s` param as a comma list of wire tokens, a
+trailing `~` meaning descending and the first entry being the primary sort
+(`?s=bez,nr~`). Every sort link is a plain link to the result of a **click**:
+
+- **click** — sort by this key alone; repeated clicks cycle its first
+  direction → the opposite one → off. "Off" clears the whole sort.
+- **shift-click** — a key not yet sorted is **appended** as the last level; a
+  sorted key steps through its cycle **in place**; another variant of an already
+  sorted column takes over that column's level (one measure per column). The
+  shift URL rides in `data-shift-href`; `shared/wsjrdp/_expandable_table_js`
+  follows it instead of the link when shift is down (a browser would open a
+  shift-clicked link in a new window).
+- the **tooltip** sits on the arrow (⇅ unsorted, ↑ / ↓ sorted) and says exactly
+  what the next click and the next shift-click do ("Klick: nur noch aufsteigend
+  nach „Datum“ sortieren / Shift-Klick: Stufe 2 auf aufsteigend ändern").
+- from two levels on, each sorted column shows its **rank** in a small outlined
+  box after its label; a shift-click on the box removes that level.
+- the **"Sortiert nach" bar** in the toolbar, right next to the column
+  hamburger, lists the chosen levels as soon as anything is sorted: × removes a
+  level; from two levels on, ‹ › move it, ◎ keeps only it, and the levels can be
+  dragged into another order. A condensed (embedded) table shows only the rank
+  boxes, no bar.
+
+An emptied sort sets the param explicitly blank, so it also clears a remembered
+— or preselected — sort. The pure logic is `Wsjrdp::ExpandableTableSort`
+(`after_click`, `after_shift_click`, `without`, `only`, `move`); the links,
+tooltips and boxes come from `Wsjrdp::ExpandableTableSortHelper`.
+
+**Default sorts.** A policy declares one of two kinds, or both:
+
+```ruby
+sort: {hidden: [["booking_date", "desc"]]}       # the rows' order while nothing is chosen
+sort: {default: [["total__pct", "desc"]]}        # a PRESELECTED sort
+```
+
+- `hidden:` orders the rows while the user has chosen nothing. It is never
+  shown: the arrows stay ⇅, the bar stays away, the URL stays clean. The finance
+  tables use it throughout — the booking lists by date, the summary lists and
+  the Budget page by number. `state.effective_sort_list` is the chosen sort,
+  else the hidden one; the rows object orders by it.
+- `default:` is a preselected sort: it is shown in the header and in the bar
+  like a chosen one and can be removed. Removing it writes an explicit blank
+  `?s=` (and remembers it), so the store does not bring it back; then the hidden
+  sort applies.
 
 Nothing in the view or the controller decodes the param — the state did that
-against the policy's column codec, and `Wsjrdp::ExpandableTableRows` orders the
-source from `state.sort_list` through the `sort:` map it was given (the
-dataset's `sort_expressions`, which is therefore the second allow-list: a sort
-key the map does not know is dropped, so only fixed, safe expressions reach
-`ORDER BY`).
+against the policy's codec (columns plus sort variants), and
+`Wsjrdp::ExpandableTableRows` orders the source from `state.effective_sort_list`
+through the `sort:` map it was given (the dataset's `sort_expressions`, which is
+therefore the second allow-list: a sort key the map does not know is dropped, so
+only fixed, safe expressions reach `ORDER BY`). A NULL / nil value sorts **last
+in either direction** (`NULLS LAST` for a relation, the same rule in Ruby for an
+Array) — a cost center without a budget never tops a "share spent" sort.
 
-An **empty** `sort_list` is the normal "nobody chose anything" case, and it is
-where `natural_order:` comes in:
+When neither a sort nor a hidden sort applies, `natural_order:` comes in:
 
 - for a **relation**, without a `natural_order:` the rows fall back to the
   `tiebreaker:` alone (`:id` by default; a fragment that names its own direction
@@ -905,10 +964,10 @@ where `natural_order:` comes in:
   sort can. The reconciliation entries table puts its match proposals first that
   way (`Fin::ReconciliationController#order_proposals_first`).
 
-Do *not* declare a sort default that the query then overrides: the header arrows
-are rendered straight from the resolved state, so a declared default nobody
-honours puts an arrow on a column the table is not sorted by. Express the
-natural order as the empty-`sort_list` case instead.
+Do *not* declare a preselected `default:` that the query then overrides: the
+header arrows are rendered straight from the resolved state, so a default
+nobody honours puts an arrow on a column the table is not sorted by. Declare it
+`hidden:`, or express the natural order as the empty case.
 
 An array-backed table must give a `->(row){ comparable }` **tiebreaker** (the
 constructor raises otherwise) so equal rows stay in a deterministic order —
@@ -919,9 +978,8 @@ so `Fin::BookkeepingSummaryColumns::NUMBER` compares them as a **String**
 order).
 
 Multi-column sort is the **default** display mode. For tables that should only
-ever sort by one column, pass `t.sort multi: false` — this uses the same RISON
-infrastructure but constrains to a single key (via `after_click_single`), so the
-URL always has at most one sort token and the UI never shows rank numbers.
+ever sort by one column, pass `t.sort multi: false`: a click already sorts by
+one key, and the widget then offers no shift-click and shows no ranks.
 
 **A summary line.** It is a plain String, so it is the host that decides what to
 count — normally the rows object's own totals over the WHOLE source, not the
@@ -1024,7 +1082,8 @@ the full list:
 cols: {default: %w[booking_date signed_total_base_amount description],
        only:    %w[booking_date signed_total_base_amount description party],
        exclude: %w[kind top_up_sender],            # columns THIS table lacks
-       labels:  {"party" => "Karteninhaber"}}      # ... and its own names
+       labels:  {"party" => "Karteninhaber"},      # ... its own names
+       widths:  {"party" => "9rem"}}               # ... and widths
 ```
 
 - **`only:`** names the columns THIS table has; every other column of the codec
@@ -1038,11 +1097,15 @@ cols: {default: %w[booking_date signed_total_base_amount description],
   token — the column simply does not exist on this table.
 - **`labels:`** renames a column for this table alone: the header, the condensed
   header and the picker entry all follow.
+- **`widths:`** gives a column another width for this table alone, where its
+  own name needs more room in the header than the description's (the group's
+  Buchhaltung calls the date column "Buchungsdatum"). The condensed variant
+  sizes by content and ignores it, as it ignores every `width:`.
 
 A declaration may carry `only:` and `exclude:` together: `only:` applies first,
 `exclude:` takes further columns out of what is left.
 
-All three take **long column keys** and are checked at **declaration time**: a
+All of them take **long column keys** and are checked at **declaration time**: a
 key that is not in the policy's codec — or a default column outside the
 effective set — raises when the controller class loads, like every other
 declaration error.
@@ -1089,6 +1152,24 @@ posts completely.
 
 `on_filter_change:` defaults to `:clear`. `:narrow` (keep the still-matching
 rows) is reserved — passing it raises `NotImplementedError` for now.
+
+**Following the selection.** Every change of a table's selection — a
+checkbox, the page box, the quick-select, a restore — ends in the scope
+dispatching `exptbl:selection-change` (bubbling, on `.bk-select-scope`), with
+`window.wsjrdpSelection.read(scope)` current: `{mode: "all", all: "1" |
+"<atoms>", atoms: [...]}` or `{mode: "ids", count, sum}` (the summed `amount`
+of the remembered ids, in cents). A page that states what its bulk action
+will do listens to that event (the Unit-Buchungen page's hints,
+`fin/unit_bookings/_selection_controls`).
+
+**Showing the chosen rows alone.** `shared/wsjrdp/_table_only_selected_switch`
+(local `form_id`, the form the table's selection posts to) renders the switch
+"nur Gewählte anzeigen" anywhere on the page; the selection JS finds the
+table's scope through that form, hides the rows whose checkbox is off
+(`tbody.exp-group.bk-unselected`, kept in step by every refresh) and remembers
+the switch per table in sessionStorage next to the selection. A selectable
+table inside a lazily loaded turbo frame restores its selection and its switch
+on `turbo:frame-load`.
 
 **A filter.** Pass a `filter:` config. The filter occupies the two lines above
 the table's toolbar: a framed **filter line** (presets, applied-filter chips,
@@ -1185,6 +1266,26 @@ of 50 rows is 50 rows however many sub-rows they bring — which also means the
 host must preload what its sub-rows read, or pay for it per row.
 
 ---
+
+### A view: a variant of the whole table
+
+A **view** is not a filter: it changes what every row SAYS, not which rows
+there are -- the Kostenstellen list counts its sums by the primary cost center,
+the secondary one, either of them or the budget assignment. The policy declares
+the views, the host reads `state.view`, the view renders the switch:
+
+```ruby
+view: {default: "primary", values: WsjrdpCostCenter::VIEWS}   # policy
+```
+
+```haml
+- t.view label: "Summen nach", options: [["primary", "Primär"], ["budget", "Budget"]]
+```
+
+The view is remembered like the sort (`?v=`), never enters the filter param, and
+a token the table does not declare falls back to the default. A detail opened
+from a row follows the view when the host puts it into the detail's URL
+(`fin/cost_centers/index`).
 
 ## 3. Namespacing: several tables on one page (`prefix`)
 
@@ -1355,7 +1456,7 @@ both declared in `Fin::ReconciliationController`:
 - the **entries** table (`prefix "ae"`, columns and sort allow-list both from
   `Fin::AccountingEntriesColumns`) rendered through `wsjrdp_expandable_table`
   directly, with the reverse match-proposal column, its own selection and
-  candidate list. It declares **no sort default**: an empty `sort_list` is its
+  candidate list. It declares **no sort default**, hidden or preselected: an empty `sort_list` is its
   natural "proposals first" order, which it hands the rows object as its
   `natural_order:` (plus `tiebreaker: "accounting_entries.id DESC"`), so no
   header carries an arrow until the user picks a sort.
@@ -1421,6 +1522,8 @@ method that sets each one is in brackets.
 | `multi_sort` | `true` (default): multi-column sort; `false`: single-column sort on the same RISON infrastructure (§2) [`t.sort multi:`] |
 | `per_options` | set by `t.paging`, so its presence **is** "this table has paging": the page-size steps (`:all` = "Alle"), defaulting to `Wsjrdp::ExpandableTableBuilder::DEFAULT_PER_OPTIONS` [`t.paging`] |
 | `summary` | a summary line (HTML) [`t.summary`] |
+| `view` | the view switch in the toolbar: `{label:, options: [[value, text], ..]}`, one segment per view, the chosen one pressed; each segment links to `?<prefix>v=<value>` and closes the open details. An option the policy does not declare raises [`t.view`] |
+| `footer` | `->(col){ html }` one cell of a footer row under the rows (a sum row), per visible column [`t.footer`] |
 | `selection` | row selection config (§2) [`t.selection`] |
 | `filter` | filter builder DISPLAY config: `apply_url`, `condensed_locked`, `disabled`, `panel` (false = the Schnellauswahl alone, no pane), plus `presets` when the view rather than the policy declares them (§2) — everything else comes from `state.filter`. Renders the filter line (presets, applied-filter chips, the pane's toggle) and, between it and the toolbar, the pane [`t.filter`] |
 | `condensed` | compact in-detail variant [`t.condensed`]. The kit supplies only the generic behaviour of such a table (content-sized columns, no wrapping, tighter cells); the column widths and which column wraps are the dataset's own and are declared in a styles partial next to its table — for the bookings, `fin/bookings/_condensed_styles` |

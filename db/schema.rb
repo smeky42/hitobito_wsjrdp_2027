@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_29_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_02_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -338,6 +338,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_29_100000) do
     t.index ["cost_center_number"], name: "index_datev_bookings_on_cost_center_number"
     t.index ["datev_booking_batch_id"], name: "index_datev_bookings_on_datev_booking_batch_id"
     t.index ["offsetting_account_number"], name: "index_datev_bookings_on_offsetting_account_number"
+    t.index ["secondary_cost_center_number"], name: "index_datev_bookings_on_secondary_cost_center_number"
     t.index ["sphere_number"], name: "index_datev_bookings_on_sphere_number"
     t.index ["zusatzinformation"], name: "index_datev_bookings_on_zusatzinformation", opclass: :jsonb_path_ops, using: :gin
     t.check_constraint "account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text])", name: "chk_datev_booking_account_kind"

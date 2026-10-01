@@ -50,9 +50,9 @@ module Fin::BookkeepingSummaryColumns
     # accounts is read for its own sake most of the time.
     c.column key: "is_unit_budget", abbr: "ub", label: "Unit-Budget?", width: "8rem",
       sort: "is_unit_budget"
-    c.column key: "booking_sum", abbr: "sum", label: "Summe", numeric: true,
+    c.column key: "booking_sum", abbr: "sum", label: "Summe", numeric: true, sort_first: "desc",
       width: "10rem", sort: "booking_sum", default: true
-    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,
+    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true, sort_first: "desc",
       width: "7rem", sort: "booking_count", default: true
   end
 
@@ -76,9 +76,9 @@ module Fin::BookkeepingSummaryColumns
     # offered rather than shown.
     c.column key: "is_unit_cost_center", abbr: "ukst", label: "Unit-Kostenstelle",
       width: "9rem", sort: "is_unit_cost_center"
-    c.column key: "booking_sum", abbr: "sum", label: "Summe", numeric: true,
+    c.column key: "booking_sum", abbr: "sum", label: "Summe", numeric: true, sort_first: "desc",
       width: "10rem", sort: "booking_sum", default: true
-    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,
+    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true, sort_first: "desc",
       width: "7rem", sort: "booking_count", default: true
   end
 
@@ -94,9 +94,9 @@ module Fin::BookkeepingSummaryColumns
     # Same field, same rule as on the Sachkonten above.
     c.column key: "is_unit_budget", abbr: "ub", label: "Unit-Budget?", width: "8rem",
       sort: "is_unit_budget"
-    c.column key: "booking_balance", abbr: "bb", label: "Saldo", numeric: true,
+    c.column key: "booking_balance", abbr: "bb", label: "Saldo", numeric: true, sort_first: "desc",
       width: "10rem", sort: "booking_balance", default: true
-    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true,
+    c.column key: "booking_count", abbr: "bc", label: "Buchungen", numeric: true, sort_first: "desc",
       width: "7rem", sort: "booking_count", default: true
   end
 end

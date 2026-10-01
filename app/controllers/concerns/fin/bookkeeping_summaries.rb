@@ -62,7 +62,7 @@ module Fin::BookkeepingSummaries
   def self.item_bookings_policy_options(row_param:, nested: false)
     options = {prefix: "b",
                columns: Fin::DatevBookingsColumns.codec,
-               sort: {default: [["booking_date", "desc"]]},
+               sort: {hidden: [["booking_date", "desc"]]},
                cols: {default: Fin::DatevBookingsColumns.default_keys},
                per_page: {default: CONDENSED_DEFAULT_PER},
                store_key: -> { "#{controller_path}##{action_name}:#{params[row_param]}" }}

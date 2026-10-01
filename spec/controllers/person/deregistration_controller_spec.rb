@@ -37,14 +37,14 @@ describe Person::DeregistrationController do
   end
 
   # The heads of the four sections, in the order they stand.
-  def section_heads(doc) = doc.css("#dereg-sections .dereg-section-head")
+  def section_heads(doc) = doc.css("#dereg-sections .wsjrdp-section-head")
 
   def section_titles(doc) = section_heads(doc).map { |head| head.css("span").first.text.strip }
 
   def section_summary(doc, key)
     section_heads(doc)
       .find { |head| head["data-bs-target"] == "#dereg-section-#{key}" }
-      .css(".dereg-section-summary").text.strip
+      .css(".wsjrdp-section-summary").text.strip
   end
 
   def section_body(doc, key) = doc.css("#dereg-section-#{key}").first
@@ -912,13 +912,13 @@ describe Person::DeregistrationController do
       doc = Nokogiri::HTML(response.body)
       expect(doc.css(".btn-toolbar a").pluck("href")).not_to include(edit_person_deregistration_path(yp))
 
-      bar = doc.css("#dereg-sections .dereg-section-bar").first
-      link = bar.css("a.dereg-section-action").first
+      bar = doc.css("#dereg-sections .wsjrdp-section-bar").first
+      link = bar.css("a.wsjrdp-section-action").first
       expect(link).to be_present
       expect(link["href"]).to eq(edit_person_deregistration_path(yp))
       expect(link.text).to include("Bearbeiten")
-      expect(bar.css("button.dereg-section-head a")).to be_empty
-      expect(doc.css("#dereg-sections a.dereg-section-action").size).to eq(1)
+      expect(bar.css("button.wsjrdp-section-head a")).to be_empty
+      expect(doc.css("#dereg-sections a.wsjrdp-section-action").size).to eq(1)
     end
 
     # Abmeldung erfassen is edited where it stands: its body is a turbo frame,
@@ -943,7 +943,7 @@ describe Person::DeregistrationController do
         get :show, params: {person_id: yp.id}
 
         link = Nokogiri::HTML(response.body)
-          .css("#dereg-sections a.dereg-section-action").first
+          .css("#dereg-sections a.wsjrdp-section-action").first
         expect(link["data-turbo-frame"]).to eq("deregistration_capture")
         expect(link.attributes.keys.grep(/^data-/)).to eq(["data-turbo-frame"])
       end

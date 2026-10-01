@@ -142,31 +142,37 @@ class DatevBooking < ActiveRecord::Base
   # The SOURCE travels with the value, so a page can say where the answer came
   # from: `booking`, `cost_center`, `konto`, `gegenkonto`, `konten` or `default`.
   #
+  # The lookups of a bookings relation, under FIXED aliases -- the expressions
+  # below name them, so they are part of the same contract. Written out as SQL
+  # rather than as associations: the account pair is polymorphic by number and
+  # both sides have to resolve against either master-data table, and the cost
+  # center hangs off a number as well, with no foreign key.
+  #
+  # Each account side is two plain joins, one per master-data table, on its
+  # unique `number`: the planner then knows every join yields at most one row
+  # (a union of the two tables would hide that, making it expect a row
+  # explosion and switch on JIT compilation for a query of milliseconds).
   # Sachkonten and Personenkonten use DISJOINT number ranges (the CHECK
-  # constraints of both tables enforce it), so ONE union of the two tables is an
-  # unambiguous number -> flag lookup and the LEFT JOIN over it can never
-  # multiply a row.
-  UNIT_BUDGET_ACCOUNTS_SQL = <<~SQL.squish
-    SELECT number, is_unit_budget FROM wsjrdp_ledger_accounts
-    UNION ALL
-    SELECT number, is_unit_budget FROM wsjrdp_personal_accounts
-  SQL
-
-  # The three lookups of a bookings relation, under FIXED aliases -- the
-  # expressions below name them, so they are part of the same contract. Written
-  # out as SQL rather than as associations: the account pair is polymorphic by
-  # number and both sides have to resolve against either master-data table, and
-  # the cost center hangs off a number as well, with no foreign key.
-  # `wsjrdp_cost_centers.number` is unique, so its join cannot multiply a row
-  # either.
+  # constraints of both tables enforce it), so at most one of the pair matches
+  # and UB_KONTO_SQL / UB_GEGENKONTO_SQL read whichever does.
   UNIT_BUDGET_JOINS_SQL = <<~SQL.squish
     LEFT JOIN wsjrdp_cost_centers ub_kostenstelle
            ON ub_kostenstelle.number = datev_bookings.cost_center_number
-    LEFT JOIN (#{UNIT_BUDGET_ACCOUNTS_SQL}) ub_konto
-           ON ub_konto.number = datev_bookings.account_number
-    LEFT JOIN (#{UNIT_BUDGET_ACCOUNTS_SQL}) ub_gegenkonto
-           ON ub_gegenkonto.number = datev_bookings.offsetting_account_number
+    LEFT JOIN wsjrdp_ledger_accounts ub_konto_sk
+           ON ub_konto_sk.number = datev_bookings.account_number
+    LEFT JOIN wsjrdp_personal_accounts ub_konto_pk
+           ON ub_konto_pk.number = datev_bookings.account_number
+    LEFT JOIN wsjrdp_ledger_accounts ub_gegenkonto_sk
+           ON ub_gegenkonto_sk.number = datev_bookings.offsetting_account_number
+    LEFT JOIN wsjrdp_personal_accounts ub_gegenkonto_pk
+           ON ub_gegenkonto_pk.number = datev_bookings.offsetting_account_number
   SQL
+
+  # The Unit-Budget flag of the Konto and of the Gegenkonto; NULL where the
+  # number names no account. The flag column is NOT NULL, so NULL means exactly
+  # "no account".
+  UB_KONTO_SQL = "COALESCE(ub_konto_sk.is_unit_budget, ub_konto_pk.is_unit_budget)"
+  UB_GEGENKONTO_SQL = "COALESCE(ub_gegenkonto_sk.is_unit_budget, ub_gegenkonto_pk.is_unit_budget)"
 
   # The rule itself, as ONE expression: the four steps read as the COALESCE
   # chain they are. It is the value the rows SELECT, the value the filter
@@ -182,9 +188,9 @@ class DatevBooking < ActiveRecord::Base
   EFFECTIVE_IS_UNIT_BUDGET_SQL = <<~SQL.squish
     COALESCE(datev_bookings.is_unit_budget,
              CASE WHEN ub_kostenstelle.is_unit_cost_center = FALSE THEN FALSE END,
-             ub_konto.is_unit_budget AND ub_gegenkonto.is_unit_budget,
-             ub_konto.is_unit_budget,
-             ub_gegenkonto.is_unit_budget,
+             #{UB_KONTO_SQL} AND #{UB_GEGENKONTO_SQL},
+             #{UB_KONTO_SQL},
+             #{UB_GEGENKONTO_SQL},
              TRUE)
   SQL
 
@@ -196,15 +202,41 @@ class DatevBooking < ActiveRecord::Base
     CASE
       WHEN datev_bookings.is_unit_budget IS NOT NULL THEN 'booking'
       WHEN ub_kostenstelle.is_unit_cost_center = FALSE THEN 'cost_center'
-      WHEN ub_konto.is_unit_budget IS NOT NULL AND ub_gegenkonto.is_unit_budget IS NOT NULL
+      WHEN #{UB_KONTO_SQL} IS NOT NULL AND #{UB_GEGENKONTO_SQL} IS NOT NULL
         THEN CASE
-               WHEN ub_konto.is_unit_budget = ub_gegenkonto.is_unit_budget THEN 'konten'
-               WHEN ub_konto.is_unit_budget = FALSE THEN 'konto'
+               WHEN #{UB_KONTO_SQL} = #{UB_GEGENKONTO_SQL} THEN 'konten'
+               WHEN #{UB_KONTO_SQL} = FALSE THEN 'konto'
                ELSE 'gegenkonto'
              END
-      WHEN ub_konto.is_unit_budget IS NOT NULL THEN 'konto'
-      WHEN ub_gegenkonto.is_unit_budget IS NOT NULL THEN 'gegenkonto'
+      WHEN #{UB_KONTO_SQL} IS NOT NULL THEN 'konto'
+      WHEN #{UB_GEGENKONTO_SQL} IS NOT NULL THEN 'gegenkonto'
       ELSE 'default'
+    END
+  SQL
+
+  # The cost center a booking counts against in the budget ("Kostenstelle
+  # (Budget-Zuordnung)", doc/fin/unit_budget.md, "Budget assignment"): the
+  # PRIMARY cost center, except for a booking on a unit's own cost center that
+  # does not count against the Unit-Budget and names a SECONDARY cost center
+  # that is no unit's -- that one counts against the secondary cost center
+  # (e.g. a unit's travel costs assigned to 3810). A primary cost center that is
+  # no unit's or unknown always keeps the booking, also with a secondary one.
+  #
+  # Like EFFECTIVE_IS_UNIT_BUDGET_SQL it reads the `ub_kostenstelle` join of
+  # UNIT_BUDGET_JOINS_SQL; the secondary cost center's flag is a subquery, so
+  # no further join is needed. The Budget page groups by it, a regular cost
+  # center's detail lists its bookings by it, and the bookings filter offers it
+  # (Fin::DatevBookingsFilterSchema, `budget_cost_center`) -- one definition.
+  BUDGET_COST_CENTER_SQL = <<~SQL.squish
+    CASE
+      WHEN ub_kostenstelle.is_unit_cost_center IS TRUE
+           AND NOT (#{EFFECTIVE_IS_UNIT_BUDGET_SQL})
+           AND NULLIF(datev_bookings.secondary_cost_center_number, '') IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM wsjrdp_cost_centers bz_secondary
+                            WHERE bz_secondary.number = datev_bookings.secondary_cost_center_number
+                              AND bz_secondary.is_unit_cost_center IS TRUE)
+        THEN datev_bookings.secondary_cost_center_number
+      ELSE datev_bookings.cost_center_number
     END
   SQL
 

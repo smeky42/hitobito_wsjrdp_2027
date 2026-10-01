@@ -18,7 +18,7 @@ class Fin::BookingBatchesController < Fin::FinController
 
   SUMMARY_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::BookingBatchesColumns::BATCHES.codec,
-    sort: {default: [["period_to", "desc"], ["primanota_number", "desc"]]},
+    sort: {hidden: [["period_to", "desc"], ["primanota_number", "desc"]]},
     cols: {default: Fin::BookingBatchesColumns::BATCHES.default_keys},
     per_page: {default: 50},
     filter: {policy: :remember, schema: Fin::BookingBatchesFilterSchema},

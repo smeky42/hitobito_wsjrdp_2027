@@ -103,28 +103,37 @@ describe Wsjrdp::ExpandableTableSort do
     end
   end
 
+  describe ".next_dir" do
+    it "cycles first direction, opposite direction, not sorted" do
+      expect([nil, "asc", "desc"].map { |dir| sort.next_dir(dir, "asc") }).to eq(["asc", "desc", nil])
+      expect([nil, "desc", "asc"].map { |dir| sort.next_dir(dir, "desc") }).to eq(["desc", "asc", nil])
+    end
+
+    it "starts ascending by default" do
+      expect(sort.next_dir(nil)).to eq("asc")
+    end
+  end
+
   describe ".after_click" do
-    # docstring examples
-    it "adds a new column as primary asc" do
+    it "sorts by a new key alone, in its first direction" do
       expect(sort.after_click([], "bez")).to eq([["bez", "asc"]])
+      expect(sort.after_click([], "sum", first: "desc")).to eq([["sum", "desc"]])
     end
 
-    it "flips an existing asc primary to desc" do
+    it "steps the key along its cycle" do
       expect(sort.after_click([["bez", "asc"]], "bez")).to eq([["bez", "desc"]])
-    end
-
-    it "removes a desc column" do
       expect(sort.after_click([["bez", "desc"]], "bez")).to eq([])
+      expect(sort.after_click([["sum", "desc"]], "sum", first: "desc")).to eq([["sum", "asc"]])
+      expect(sort.after_click([["sum", "asc"]], "sum", first: "desc")).to eq([])
     end
 
-    it "prepends a new column before existing ones" do
-      expect(sort.after_click([["bez", "asc"]], "nr"))
-        .to eq([["nr", "asc"], ["bez", "asc"]])
+    it "replaces every other level" do
+      expect(sort.after_click([["bez", "asc"]], "nr")).to eq([["nr", "asc"]])
+      expect(sort.after_click([["nr", "asc"], ["bez", "asc"]], "bez")).to eq([["bez", "desc"]])
     end
 
-    it "promotes a secondary column to primary desc" do
-      expect(sort.after_click([["nr", "asc"], ["bez", "asc"]], "bez"))
-        .to eq([["bez", "desc"], ["nr", "asc"]])
+    it "clears the whole sort when the key steps to not sorted" do
+      expect(sort.after_click([["nr", "asc"], ["bez", "desc"]], "bez")).to eq([])
     end
 
     it "converts token to string" do
@@ -132,26 +141,52 @@ describe Wsjrdp::ExpandableTableSort do
     end
   end
 
-  describe ".after_click_single" do
-    it "adds a new column as single asc" do
-      expect(sort.after_click_single([], "bez")).to eq([["bez", "asc"]])
+  describe ".after_shift_click" do
+    let(:slot) { ->(key) { key.split("__").first } }
+
+    it "appends a new key as the last level" do
+      expect(sort.after_shift_click([["nr", "asc"]], "bez")).to eq([["nr", "asc"], ["bez", "asc"]])
+      expect(sort.after_shift_click([], "sum", first: "desc")).to eq([["sum", "desc"]])
     end
 
-    it "flips asc to desc" do
-      expect(sort.after_click_single([["bez", "asc"]], "bez")).to eq([["bez", "desc"]])
+    it "steps a key in place" do
+      list = [["nr", "asc"], ["bez", "asc"]]
+      expect(sort.after_shift_click(list, "nr")).to eq([["nr", "desc"], ["bez", "asc"]])
+      expect(sort.after_shift_click(list, "bez")).to eq([["nr", "asc"], ["bez", "desc"]])
     end
 
-    it "removes a desc column" do
-      expect(sort.after_click_single([["bez", "desc"]], "bez")).to eq([])
+    it "drops a key that steps to not sorted, keeping the others" do
+      expect(sort.after_shift_click([["nr", "desc"], ["bez", "asc"]], "nr")).to eq([["bez", "asc"]])
     end
 
-    it "replaces the current column instead of accumulating" do
-      expect(sort.after_click_single([["bez", "asc"]], "nr")).to eq([["nr", "asc"]])
+    it "lets another variant of the same column take over that level" do
+      list = [["nr", "asc"], ["y26__ist", "asc"], ["bez", "asc"]]
+      expect(sort.after_shift_click(list, "y26__pct", first: "desc", slot: slot))
+        .to eq([["nr", "asc"], ["y26__pct", "desc"], ["bez", "asc"]])
     end
 
-    it "constrains to one key even when the input has multiple" do
-      expect(sort.after_click_single([["nr", "asc"], ["bez", "asc"]], "bez"))
-        .to eq([["bez", "desc"]])
+    it "keeps variants of different columns apart" do
+      expect(sort.after_shift_click([["y26__ist", "desc"]], "y27__ist", first: "desc", slot: slot))
+        .to eq([["y26__ist", "desc"], ["y27__ist", "desc"]])
+    end
+  end
+
+  describe ".without / .only / .move" do
+    let(:list) { [["a", "asc"], ["b", "desc"], ["c", "asc"]] }
+
+    it "removes one level" do
+      expect(sort.without(list, 1)).to eq([["a", "asc"], ["c", "asc"]])
+    end
+
+    it "keeps only one level" do
+      expect(sort.only(list, 2)).to eq([["c", "asc"]])
+      expect(sort.only(list, 5)).to eq(list)
+    end
+
+    it "moves a level" do
+      expect(sort.move(list, 2, 0)).to eq([["c", "asc"], ["a", "asc"], ["b", "desc"]])
+      expect(sort.move(list, 0, 1)).to eq([["b", "desc"], ["a", "asc"], ["c", "asc"]])
+      expect(sort.move(list, 0, 3)).to eq(list)
     end
   end
 

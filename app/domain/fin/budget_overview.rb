@@ -14,18 +14,23 @@
 # * Budget: budget_<year> of the cost center; Gesamt is its
 #   effective_total_budget (WsjrdpBudgetable). Budgets are expense budgets,
 #   stored positive.
-# * IST: the bookings whose PRIMARY cost center is this one -- the "Summe" of the
-#   Kostenstellen list (WsjrdpCostCenter.with_booking_summary) -- with the sign
-#   turned, so spending counts positive like the budget. The year is the year of
-#   the booking date; Gesamt counts every booking, whatever its year.
+# * IST: the bookings assigned to this cost center in the budget
+#   (DatevBooking::BUDGET_COST_CENTER_SQL, "Kostenstelle (Budget-Zuordnung)"):
+#   those with it as primary cost center, plus a unit's bookings outside its
+#   Unit-Budget that name it as secondary cost center -- with the sign turned,
+#   so spending counts positive like the budget. Cell#secondary is the part
+#   reached through the secondary cost center. The year is the year of the
+#   booking date; Gesamt counts every booking, whatever its year.
 # * Rows: every cost center with a budget or with bookings, plus a number that
 #   only bookings carry; the placeholder number the Kostenstellen list pins out
 #   (Fin::CostCentersController::HIDDEN_COST_CENTER_NUMBER) stays out here too.
 #   The unit cost centers (is_unit_cost_center) have a table of their own
 #   (Fin::UnitBudgetOverview).
-# * Sum: per column only the cells with a budget, so the IST of the sum is
-#   comparable with its budget -- the income cost centers, which carry no
-#   budget, would otherwise turn it negative.
+# * Sums (#sums): "Alle Ausgaben" over the rows with a budget or whose Gesamt
+#   IST is spending (zero included), "Alle Einnahmen" over the rest -- income
+#   without a budget; per column the IST of those rows against the budgets
+#   that are set. A budget is an expense budget, so a cost center with one
+#   counts as spending even while its IST is income.
 class Fin::BudgetOverview
   YEARS = WsjrdpBudgetable::BUDGET_YEARS
 
@@ -33,8 +38,13 @@ class Fin::BudgetOverview
   WARN_PERCENT = 80
   OVER_PERCENT = 100
 
-  # One budget against its IST. `budget` is nil when none is set.
-  Cell = Data.define(:budget, :actual) do
+  # One budget against its IST. `budget` is nil when none is set; `secondary`
+  # is the part of the IST assigned through the secondary cost center.
+  Cell = Data.define(:budget, :actual, :secondary) do
+    def initialize(budget:, actual:, secondary: BigDecimal(0))
+      super
+    end
+
     # The IST as a share of the budget in percent; nil without a positive budget.
     def percent = budget&.positive? ? actual * 100 / budget : nil
 
@@ -55,29 +65,40 @@ class Fin::BudgetOverview
 
     def empty? = budget.nil? && actual.zero?
 
-    # The cell as a sum counts it: itself with a budget, else nothing.
-    def budgeted = budget ? self : EMPTY_CELL
-
     def +(other)
       budgets = [budget, other.budget].compact
-      Cell.new(budget: budgets.empty? ? nil : budgets.sum, actual: actual + other.actual)
+      Cell.new(budget: budgets.empty? ? nil : budgets.sum, actual: actual + other.actual,
+        secondary: secondary + other.secondary)
     end
   end
 
   # One cost center: its cells per year and its Gesamt. `cost_center` is nil for
-  # a number that only bookings carry.
-  Row = Data.define(:number, :cost_center, :cells, :total) do
+  # a number that only bookings carry. A sum row has no number and a
+  # `sum_label` instead.
+  Row = Data.define(:number, :cost_center, :cells, :total, :sum_label) do
+    def initialize(number:, cost_center:, cells:, total:, sum_label: nil)
+      super
+    end
+
     # The Bezeichnung; nil for a number that only bookings carry.
     def name = cost_center&.name.presence
+
+    # Counted in "Alle Ausgaben": a budget in any column, or in sum spending
+    # (zero included).
+    def spending? = !total.actual.negative? || !total.budget.nil? || cells.values.any? { |cell| !cell.budget.nil? }
   end
+
+  SPENDING_LABEL = "Alle Ausgaben"
+  INCOME_LABEL = "Alle Einnahmen"
 
   EMPTY_CELL = Cell.new(budget: nil, actual: BigDecimal(0))
 
-  # The sum row of `rows`: per column the cells with a budget (Cell#budgeted).
-  def self.sum_of(rows)
-    cells = YEARS.index_with { |year| rows.map { |row| row.cells[year].budgeted }.reduce(EMPTY_CELL, :+) }
-    total = rows.map { |row| row.total.budgeted }.reduce(EMPTY_CELL, :+)
-    Row.new(number: nil, cost_center: nil, cells: cells, total: total)
+  # The sum row of `rows`, labelled `label`: per column the sum of every row's
+  # cell.
+  def self.sum_of(rows, label)
+    cells = YEARS.index_with { |year| rows.map { |row| row.cells[year] }.reduce(EMPTY_CELL, :+) }
+    total = rows.map(&:total).reduce(EMPTY_CELL, :+)
+    Row.new(number: nil, cost_center: nil, cells: cells, total: total, sum_label: label)
   end
 
   def initialize(excluded_numbers: [Fin::CostCentersController::HIDDEN_COST_CENTER_NUMBER])
@@ -95,30 +116,44 @@ class Fin::BudgetOverview
     end
   end
 
-  # The sum over the rows.
-  def sum = self.class.sum_of(rows)
+  # The sum rows: "Alle Ausgaben" over the rows that are #spending?, "Alle
+  # Einnahmen" over the others -- each only when it has rows.
+  def sums
+    spending, income = rows.partition(&:spending?)
+    [[spending, SPENDING_LABEL], [income, INCOME_LABEL]]
+      .filter_map { |part, label| self.class.sum_of(part, label) if part.any? }
+  end
 
   private
 
   def row(number, cost_center)
     cells = YEARS.index_with do |year|
-      Cell.new(budget: cost_center&.budget_for(year), actual: actuals.fetch([number, year], 0).to_d)
+      actual, secondary = actuals.fetch([number, year], [0, 0])
+      Cell.new(budget: cost_center&.budget_for(year), actual: actual.to_d, secondary: secondary.to_d)
     end
-    total_actual = actuals.sum { |(key_number, _year), amount| (key_number == number) ? amount : 0 }
-    total = Cell.new(budget: cost_center&.effective_total_budget, actual: total_actual.to_d)
+    own = actuals.select { |(key_number, _year), _sums| key_number == number }.values
+    total = Cell.new(budget: cost_center&.effective_total_budget, actual: own.sum(&:first).to_d,
+      secondary: own.sum(&:last).to_d)
     return nil if total.empty? && cells.values.all?(&:empty?)
 
     Row.new(number: number, cost_center: cost_center, cells: cells, total: total)
   end
 
-  # {[number, year] => IST}: the bookings' sum per primary cost center and
-  # booking year, sign turned (spending positive).
+  # {[number, year] => [IST, part through the secondary cost center]}: the
+  # bookings' sum per budget cost center and booking year, sign turned
+  # (spending positive).
   def actuals
-    @actuals ||= DatevBooking
-      .where.not(cost_center_number: nil)
-      .where.not(cost_center_number: @excluded_numbers)
-      .group(:cost_center_number, Arel.sql("EXTRACT(YEAR FROM booking_date)::integer"))
-      .sum(:signed_base_amount)
-      .transform_values { |sum| -sum }
+    @actuals ||= begin
+      assigned = "(#{DatevBooking::BUDGET_COST_CENTER_SQL})"
+      DatevBooking.with_unit_budget_accounts
+        .where(Arel.sql("#{assigned} IS NOT NULL"))
+        .where(Arel::Nodes::NotIn.new(Arel.sql(assigned), @excluded_numbers.map { |n| Arel::Nodes.build_quoted(n) }))
+        .group(Arel.sql(assigned), Arel.sql("EXTRACT(YEAR FROM datev_bookings.booking_date)::integer"))
+        .pluck(Arel.sql(assigned), Arel.sql("EXTRACT(YEAR FROM datev_bookings.booking_date)::integer"),
+          Arel.sql("-SUM(datev_bookings.signed_base_amount)"),
+          Arel.sql("-COALESCE(SUM(datev_bookings.signed_base_amount) FILTER " \
+                   "(WHERE #{assigned} IS DISTINCT FROM datev_bookings.cost_center_number), 0)"))
+        .to_h { |number, year, actual, secondary| [[number, year], [actual, secondary]] }
+    end
   end
 end

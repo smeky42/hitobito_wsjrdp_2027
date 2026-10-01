@@ -21,6 +21,9 @@
 :css
   .bk-select-cell .form-check-input { width: 1.1rem !important; height: 1.1rem;
     min-width: 1.1rem; margin: 0; padding: 0; flex: 0 0 auto; }
+  /* "nur Gewählte anzeigen" (shared/wsjrdp/_table_only_selected_switch): the
+     rows whose checkbox is off hide; refresh() keeps the class in step. */
+  .bk-select-scope.bk-only-selected tbody.exp-group.bk-unselected { display: none; }
 :javascript
   (function () {
     if (window.__bkSelection) return;
@@ -78,9 +81,22 @@
       refresh(scope);
     }
 
+    // Every change of the selection ends here, and the scope says so with
+    // "exptbl:selection-change" (bubbling), for whatever a page shows about
+    // its selection (the read() figures are current by then).
     function refresh(scope) {
+      refreshState(scope);
+      scope.dispatchEvent(new CustomEvent("exptbl:selection-change", {bubbles: true}));
+    }
+
+    function refreshState(scope) {
       var all = allBox(scope), cs = checks(scope);
       var onPage = cs.filter(function (c) { return c.checked; }).length;
+      // The switch "nur Gewählte anzeigen" hides the rows marked here.
+      scope.querySelectorAll("tbody.exp-group").forEach(function (group) {
+        var c = group.querySelector(".bk-select-check");
+        group.classList.toggle("bk-unselected", !(c && c.checked));
+      });
       if (all) {
         all.checked = cs.length > 0 && onPage === cs.length;
         all.indeterminate = onPage > 0 && onPage < cs.length;
@@ -95,7 +111,8 @@
       if (mode) {
         // all-pages mode: the count is the SUM of the active atoms' counts
         // (disjoint atoms -> additive), read from the linked form.
-        var n = form ? atomsOf(mode).reduce(function (a, at) { return a + (parseInt(form.dataset[at + "Count"], 10) || 0); }, 0) : total;
+        var n = (mode === "1" || !form) ? total
+          : atomsOf(mode).reduce(function (a, at) { return a + (parseInt(form.dataset[at + "Count"], 10) || 0); }, 0);
         info.textContent = "Alle " + n + " ausgewählt (alle Seiten).";
         if (allLink) allLink.textContent = "";
         if (clearLink) clearLink.style.display = "";
@@ -116,8 +133,27 @@
     }
 
     function scopeOf(el) { return el.closest(".bk-select-scope"); }
+    function scopeForForm(formId) { return document.querySelector('.bk-select-scope[data-select-form="' + formId + '"]'); }
+
+    // "nur Gewählte anzeigen": a switch outside the table names the table's
+    // form; its state is remembered per table like the selection itself.
+    function onlyKey(scope) { return "wsjrdp.exptbl.only." + (scope.dataset.selectKey || ""); }
+    function applyOnly(scope) {
+      var on = false;
+      try { on = sessionStorage.getItem(onlyKey(scope)) === "1"; } catch (e) {}
+      scope.classList.toggle("bk-only-selected", on);
+      var toggle = document.querySelector('.bk-only-selected-toggle[data-form="' + (scope.dataset.selectForm || "") + '"]');
+      if (toggle) toggle.checked = on;
+    }
 
     document.addEventListener("change", function (e) {
+      if (e.target.classList && e.target.classList.contains("bk-only-selected-toggle")) {
+        var only = scopeForForm(e.target.dataset.form || "");
+        if (!only) return;
+        try { sessionStorage.setItem(onlyKey(only), e.target.checked ? "1" : "0"); } catch (err) {}
+        applyOnly(only);
+        return;
+      }
       var scope = scopeOf(e.target);
       if (!scope) return;
       if (e.target.classList.contains("bk-select-all")) {
@@ -140,9 +176,13 @@
     });
 
     window.wsjrdpSelection = {
+      // The selection as a page reads it: mode "all" with `all` the raw
+      // all-pages value ("1" = every row, else the atom list) and the atoms,
+      // or mode "ids" with the count and the summed amount (cents) of the
+      // remembered ids, over every page.
       read: function (scope) {
         var st = state(scope);
-        if (st.all) return { mode: "all", atoms: atomsOf(st.all) };
+        if (st.all) return { mode: "all", all: st.all, atoms: atomsOf(st.all) };
         var ids = Object.keys(st.sel);
         return { mode: "ids", count: ids.length, sum: ids.reduce(function (a, id) { return a + (parseInt(st.sel[id], 10) || 0); }, 0) };
       },
@@ -183,8 +223,14 @@
       forget: function (scope) { try { sessionStorage.removeItem(keyFor(scope)); } catch (e) {} }
     };
 
-    function initAll() { document.querySelectorAll(".bk-select-scope[data-select-key]").forEach(restore); }
+    function init(scope) { restore(scope); applyOnly(scope); }
+    function initAll() { document.querySelectorAll(".bk-select-scope[data-select-key]").forEach(init); }
     initAll();
     window.__bkSelectionInit = initAll;
     document.addEventListener("turbo:load", function () { if (window.__bkSelectionInit) window.__bkSelectionInit(); });
+    // A selectable table that arrives inside a turbo frame (a lazily loaded
+    // section) restores its selection and its switch when the frame loads.
+    document.addEventListener("turbo:frame-load", function (e) {
+      e.target.querySelectorAll(".bk-select-scope[data-select-key]").forEach(init);
+    });
   })();

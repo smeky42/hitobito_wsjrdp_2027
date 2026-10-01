@@ -469,13 +469,13 @@ describe Fin::LedgerAccountsController do
     it "remembers the embedded table's sort per account (D2)" do
       get :show, params: {number: "1200", bs: "amt"}
       get :show, params: {number: "1200"}
-      # amt is the active, ascending sort of THIS account's table: clicking it
-      # again would turn it around and leave nothing else.
-      expect(response.body).to include("bs=amt~")
+      # amt is the remembered, ascending sort of THIS account's table.
+      expect(Nokogiri::HTML(response.body).css("a[aria-sort]").map { |link| link.attribute("aria-sort").value }).to eq(["ascending"])
 
       get :show, params: {number: "66500"}
-      # The other account still has the policy default (booking_date, desc).
-      expect(response.body).to include("bs=amt,bdt~")
+      # The other account still has nothing chosen: its hidden sort (booking
+      # date, desc) shows no arrow.
+      expect(Nokogiri::HTML(response.body).css("a[aria-sort]")).to be_empty
     end
   end
 end

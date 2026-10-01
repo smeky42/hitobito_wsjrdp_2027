@@ -37,8 +37,32 @@
   .exp-sort:hover .exp-sort-caret { opacity: .6; }
   .exp-sort-caret.exp-sort-on { opacity: 1; font-weight: 700; font-size: .82em; }
   .exp-sort-active { font-weight: 600; }
-  /* Priority rank for multi-column sort (1, 2, 3 …): muted, superscript-ish. */
-  .exp-sort-rank { margin-left: .1rem; font-size: .7em; vertical-align: super; opacity: .75; }
+  /* The rank of a sort level (1, 2, 3 …) from two levels on: a small outlined
+     box after the header label -- not a superscript, which would read as a
+     footnote. A shift-click on it removes the level. */
+  .exp-sort-rank { display: inline-block; min-width: 1.15em; margin-left: .3rem; padding: 0 .2em;
+    border: 1px solid currentColor; border-radius: .2rem; font-size: .68em; font-weight: 600;
+    line-height: 1.35; text-align: center; vertical-align: .1em; opacity: .7; cursor: default; user-select: none; }
+  /* A column's sort variants: one chip per measure under the label. */
+  .exp-sort-chips { display: flex; flex-wrap: wrap; gap: .15rem; margin-top: .15rem; font-weight: 400; }
+  .text-end > .exp-sort-chips { justify-content: flex-end; }
+  .exp-sort-chip { padding: 0 .25rem; font-size: .75em; line-height: 1.5;
+    border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 1rem; }
+  .exp-sort-chip.exp-sort-active { background: var(--bs-secondary-bg, #e9ecef); }
+  .exp-sort-chip .exp-sort-caret { margin-left: .15rem; }
+  .exp-sort.exp-sort-chip:hover, .exp-sort.exp-sort-level-btn:hover { text-decoration: none !important; }
+  .exp-sort-chip:hover { border-color: var(--bs-secondary-color, #6c757d); }
+  /* The "Sortiert nach" bar, right-aligned in the toolbar next to the
+     hamburger. */
+  .exp-sort-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .35rem; margin-left: auto; }
+  .exp-sort-level { display: inline-flex; align-items: center; gap: .1rem; padding: .05rem .2rem .05rem .55rem;
+    border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 1rem; background: var(--bs-body-bg, #fff); white-space: nowrap; }
+  .exp-sort-level[draggable] { cursor: grab; }
+  .exp-sort-level.exp-sort-dragging { opacity: .4; }
+  .exp-sort-level .exp-sort-rank { margin: 0 .15rem 0 .3rem; }
+  .exp-sort-level-btn { padding: 0 .2rem; color: inherit; text-decoration: none; opacity: .55; }
+  .exp-sort-level-btn:hover { opacity: 1; }
+  .exp-sort-level-btn.disabled { opacity: .2; }
   /* The scrolling table wrappers are size containers: the 100cqw sticky width
      below and the container queries a dataset writes for its condensed table
      (fin/bookings/_condensed_styles) both measure the *visible* box, not the

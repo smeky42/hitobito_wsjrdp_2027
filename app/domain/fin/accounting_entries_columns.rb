@@ -19,7 +19,7 @@ module Fin::AccountingEntriesColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define do |c|
     c.column key: "date", abbr: "date", label: "Datum", width: "6.5rem", default: true,
       sort: "COALESCE(accounting_entries.value_date, accounting_entries.booking_date)"
-    c.column key: "amount", abbr: "amount", label: "Betrag", numeric: true, width: "7rem",
+    c.column key: "amount", abbr: "amount", label: "Betrag", numeric: true, sort_first: "desc", width: "7rem",
       sort: "accounting_entries.amount_cents", default: true
     c.column key: "description", abbr: "descr", label: "Beschreibung",
       sort: "accounting_entries.description", default: true

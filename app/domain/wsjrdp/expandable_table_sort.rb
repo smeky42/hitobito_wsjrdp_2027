@@ -61,26 +61,73 @@ module Wsjrdp::ExpandableTableSort
     list.map { |sym, dir| (dir.to_s == "desc") ? "#{sym}#{DESC_SUFFIX}" : sym.to_s }.join(",")
   end
 
-  # Apply one header click to the current list. The clicked column becomes the
-  # PRIMARY sort and its direction advances: not-sorted -> asc -> desc -> removed.
+  # The direction a sort key takes after one more click: a key cycles through
+  # its first direction, the opposite one and "not sorted" (nil). A name or a
+  # number starts ascending, an amount usually descending (the column's
+  # `sort_first:`).
+  #   next_dir(nil, "asc")    => "asc"
+  #   next_dir("asc", "asc")  => "desc"
+  #   next_dir("desc", "asc") => nil
+  #   next_dir(nil, "desc")   => "desc"
+  def next_dir(current, first = "asc")
+    first = first.to_s
+    cycle = [first, opposite(first), nil]
+    cycle[(cycle.index(current&.to_s) + 1) % cycle.size]
+  end
+
+  def opposite(dir) = (dir.to_s == "desc") ? "asc" : "desc"
+
+  # The direction of a key in the list, or nil.
+  def dir_of(list, token)
+    token = token.to_s
+    list.find { |sym, _| sym == token }&.last
+  end
+
+  # A plain click: the clicked key becomes the ONLY sort, its direction one step
+  # further along its cycle (from wherever it stood in the list); a step to "not
+  # sorted" clears the whole sort.
   #   after_click([], "bez")                          => [["bez","asc"]]
   #   after_click([["bez","asc"]], "bez")             => [["bez","desc"]]
   #   after_click([["bez","desc"]], "bez")            => []
-  #   after_click([["bez","asc"]], "nr")              => [["nr","asc"],["bez","asc"]]
-  #   after_click([["nr","asc"],["bez","asc"]],"bez") => [["bez","desc"],["nr","asc"]]
-  def after_click(list, token)
+  #   after_click([["nr","asc"],["bez","asc"]], "bez") => [["bez","desc"]]
+  def after_click(list, token, first: "asc")
     token = token.to_s
-    idx = list.index { |sym, _| sym == token }
-    return [[token, "asc"]] + list if idx.nil?
-
-    dir = list[idx][1].to_s
-    rest = list.reject.with_index { |_, i| i == idx }
-    (dir == "asc") ? [[token, "desc"]] + rest : rest
+    dir = next_dir(dir_of(list, token), first)
+    dir ? [[token, dir]] : []
   end
 
-  # Like after_click but constrains to at most 1 key (for single-sort mode).
-  def after_click_single(list, token)
-    after_click(list, token).first(1)
+  # A shift-click: a key already in the list steps along its cycle IN PLACE (and
+  # leaves the list at "not sorted"); a new key is appended as the last level.
+  # Keys of one SLOT -- the sort variants of one column ("ist", "soll", "%") --
+  # share one level: a variant clicked while another variant of its column
+  # sorts takes over that level at its first direction. `slot:` maps a key to
+  # its slot (default: every key is a slot of its own).
+  #   after_shift_click([["nr","asc"]], "bez")             => [["nr","asc"],["bez","asc"]]
+  #   after_shift_click([["nr","asc"],["bez","asc"]], "nr") => [["nr","desc"],["bez","asc"]]
+  def after_shift_click(list, token, first: "asc", slot: ->(key) { key })
+    token = token.to_s
+    at = list.index { |sym, _| slot.call(sym) == slot.call(token) }
+    return list + [[token, next_dir(nil, first)]] if at.nil?
+
+    dir = (list[at][0] == token) ? next_dir(list[at][1], first) : next_dir(nil, first)
+    return list.reject.with_index { |_, i| i == at } if dir.nil?
+
+    list.each_with_index.map { |level, i| (i == at) ? [token, dir] : level }
+  end
+
+  # The list without its level at `index` (the "x" of the "Sortiert nach" bar,
+  # the shift-click on a rank box).
+  def without(list, index) = list.reject.with_index { |_, i| i == index }
+
+  # Only the level at `index` (the bar's "nur diese").
+  def only(list, index) = list[index] ? [list[index]] : list
+
+  # The level at `from` moved to position `to` (the bar's "‹" / "›").
+  def move(list, from, to)
+    return list unless list[from] && to.between?(0, list.size - 1)
+
+    rest = without(list, from)
+    rest.insert(to, list[from])
   end
 
   # [dir, rank] (1-based priority) for a token in the list, or [nil, nil] if the

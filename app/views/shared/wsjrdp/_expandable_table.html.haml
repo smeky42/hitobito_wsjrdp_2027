@@ -34,6 +34,8 @@
 -#                 right after it inside the same tbody.exp-group
 -#    sub_cell  -- ->(sub, col){ html } one sub-row cell (required with sub_rows)
 -#    sub_row_class / group_class -- ->(sub){ css } / ->(row){ css }
+-#    view      -- {label:, options: [[value, text], ..]} the view switch in the
+-#                 toolbar, one segment per view the policy declares [t.view]
 -#    footer    -- ->(col){ html } one cell of a footer row (a sum row) under
 -#                 the rows, per visible column [t.footer]
 -#  Optional feature locals (see the guide): multi_sort, pagination, per_options,
@@ -58,6 +60,9 @@
 -# rows are not disclosure controls, so they carry neither role="button" nor the
 -# collapse trigger.
 - expandable = !(detail.nil? && detail_src.nil?) || has_detail_links
+-# detail_if: ->(row){ bool } -- which rows of an expandable table open a
+-# detail [t.detail_if]; nil = every row.
+- detail_if = local_assigns.fetch(:detail_if, nil)
 - detail_level = state.level
 - param = state.param_name(:open)
 - open_keys = state.open_keys
@@ -74,14 +79,21 @@
 -# calls them (cols: exclude: / labels:), so an excluded column is neither
 -# rendered here nor offered in the picker below.
 - columns = et_visible_columns(state, all_columns) + extra_columns
--# Sort: one <prefix>s param holds the column(s) + direction(s). Clicking a header
--# makes it primary and cycles asc/desc/off. When multi_sort is false, only one
--# sort key is shown and kept (single-sort on the same infrastructure). The list
--# is already resolved (including the policy's default sort), so the arrows show
--# exactly what the controller ordered by.
+-# Sort: one <prefix>s param holds the sort keys + directions. A click on a sort
+-# link sorts by that key alone, cycling its first direction / the opposite one /
+-# off; a shift-click appends a level or steps it in place (Wsjrdp::
+-# ExpandableTableSortHelper). When multi_sort is false there is no shift-click
+-# and no rank. The list is the resolved, shown sort (the preselected default
+-# included, the policy's hidden sort not), so the arrows show what was chosen.
 - multi_sort = local_assigns.fetch(:multi_sort, true)
-- sort_list = multi_sort ? state.sort_list : state.sort_list.first(1)
-- display_sort_list = sort_list
+- sort_list = state.sort_list
+- sort_links = !state.fixed?(:sort)
+- sort_names = et_sort_names(state, all_columns)
+- show_ranks = multi_sort && sort_list.size >= 2
+-# The "Sortiert nach" bar: in the toolbar, as soon as anything is sorted -- not
+-# for a fixed sort and not in a condensed (embedded) table, which only shows
+-# the rank boxes.
+- sort_bar = sort_links && !condensed && sort_list.any?
 - selection = local_assigns.fetch(:selection, nil)
 -# on_filter_change: :clear (default) drops a remembered selection when the
 -# filter changes. :narrow (keep the still-matching rows) is a planned option --
@@ -95,6 +107,11 @@
 - per_options = local_assigns.fetch(:per_options, nil)
 - summary = local_assigns.fetch(:summary, nil)
 - footer = local_assigns.fetch(:footer, nil)
+- view = local_assigns.fetch(:view, nil)
+- if view
+  - declared_views = Array(state.policy.field(:view).options[:values])
+  - unknown_views = view[:options].map { |value, _| value.to_s } - declared_views
+  - raise ArgumentError, "expandable_table view options #{unknown_views.join(", ")} are not views the table declares" if unknown_views.any?
 - filter = local_assigns.fetch(:filter, nil)
 -# Sub-rows: a row may bring rows of its own. They are drawn right after it,
 -# inside the same tbody.exp-group, through the table's VISIBLE columns -- so a
@@ -117,7 +134,7 @@
 - paging_bottom_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :bottom) if per_options
 -# The filter has its OWN two lines above the toolbar (the filter line and the
 -# pane between it and the toolbar), so it does not make a toolbar by itself.
-- has_toolbar = columns_menu || paging_top_html.present? || summary || (selection && selection[:all_param])
+- has_toolbar = columns_menu || paging_top_html.present? || summary || view || (selection && selection[:all_param]) || sort_bar
 
 = render "shared/wsjrdp/expandable_table_styles"
 = render "shared/wsjrdp/row_click_guard"
@@ -162,6 +179,17 @@
     -# (.exp-toolbar-below-filter).
     .d-flex.flex-wrap.justify-content-between.align-items-end.gap-2.mb-2{ class: ("exp-toolbar-below-filter" if filter) }
       .d-flex.flex-column.gap-1.flex-grow-1{ style: "min-width: 0" }
+        - if view
+          -# The view switch: a link per view, the chosen one pressed. A view
+          -# changes what the rows say, so the open details go with it.
+          = render "shared/wsjrdp/filtering/preset_styles"
+          .exp-view.d-flex.flex-wrap.align-items-center.gap-2.small
+            %span.text-muted= view[:label]
+            .btn-group.btn-group-sm.flt-segment{ role: "group", "aria-label": view[:label] }
+              - view[:options].each do |value, text|
+                = link_to text, et_url(state, {view: value, open: nil}),
+                  class: "btn btn-outline-secondary flt-preset", role: "button",
+                  aria: { pressed: (state.view == value.to_s).to_s }
         - if summary
           .text-muted.small= summary
         - if paging_top_html.present?
@@ -172,6 +200,10 @@
             %a.bk-select-all-pages.ms-2{ href: "#" }
             %a.bk-select-clear.ms-2{ href: "#" } Auswahl aufheben
             %input{ type: "hidden", name: selection[:all_param], value: "", form: selection[:form], class: "bk-select-all-field" }
+      -# Between them, right-aligned next to the hamburger: the "Sortiert nach"
+      -# bar.
+      - if sort_bar
+        = render "shared/wsjrdp/expandable_table_sort_bar", state: state, names: sort_names, multi: multi_sort
       -# Right: the table's controls as one joined group -- only the column
       -# hamburger; the filter toggle sits in the filter line above
       -# (shared/wsjrdp/filtering/_line), where it does not move when the pane
@@ -192,23 +224,29 @@
           - columns.each do |col|
             - label = (condensed && col[:condensed_label]) || col[:label]
             %th.text-nowrap.exp-col{ class: [col[:css_class], ("text-end" if col[:numeric])].compact, style: ("width: #{col[:width]}" if col[:width] && !condensed), data: { colkey: col[:key] } }
-              - if col[:sort_key] && !state.fixed?(:sort)
-                - dir, rank = et_sort_state(display_sort_list, col[:sort_key].to_s)
-                = link_to et_sort_toggle_url(state, col[:sort_key].to_s, multi: multi_sort), class: ["exp-sort text-reset text-decoration-none", ("exp-sort-active" if dir)], aria: { sort: (dir ? "#{dir}ending" : nil) } do
-                  = label
-                  - if dir
-                    %span.exp-sort-caret.exp-sort-on{ "aria-hidden": "true" }= (dir.to_s == "asc") ? "↑" : "↓"
-                    - if multi_sort && display_sort_list.size >= 2
-                      %span.exp-sort-rank.text-muted{ "aria-hidden": "true" }= rank
-                  - else
-                    %span.exp-sort-caret{ "aria-hidden": "true" } ⇅
+              - variants = Array(col[:sort_variants])
+              - level = (et_sort_level_of_column(state, col[:key]) if show_ranks)
+              - if sort_links && col[:sort_key]
+                = et_sort_link(state, col[:sort_key], label, first: col[:sort_first] || "asc", names: sort_names, multi: multi_sort)
               - else
                 -# A fixed sort (D8.8) is rendered without a link -- as a
                 -# courtesy, not as the protection: the ORDER BY comes from the
                 -# state either way.
                 = label
-                - if col[:sort_key] && (fixed_dir = et_sort_state(display_sort_list, col[:sort_key].to_s).first)
-                  %span.exp-sort-caret.exp-sort-on{ "aria-hidden": "true" }= (fixed_dir.to_s == "asc") ? "↑" : "↓"
+                - if col[:sort_key] && (fixed_dir = Wsjrdp::ExpandableTableSort.dir_of(sort_list, col[:sort_key]))
+                  = et_sort_arrow(fixed_dir)
+              - if level
+                = et_sort_rank_box(state, level, names: sort_names, removable: sort_links)
+              - if variants.any?
+                -# The column's sort variants, one chip each ("ist ⇅").
+                .exp-sort-chips
+                  - variants.each do |variant|
+                    - if sort_links
+                      = et_sort_link(state, variant[:key], variant[:label], first: variant[:first], names: sort_names, multi: multi_sort, css_class: "exp-sort-chip")
+                    - elsif (fixed_dir = Wsjrdp::ExpandableTableSort.dir_of(sort_list, variant[:key]))
+                      %span.exp-sort-chip.exp-sort-active
+                        = variant[:label]
+                        = et_sort_arrow(fixed_dir)
       - if rows.blank?
         %tbody
           %tr
@@ -219,6 +257,7 @@
       -# group, so there is one structure to style and to read.
       - rows.each do |row|
         - key = row_key.call(row).to_s
+        - row_expandable = expandable && (detail_if.nil? || detail_if.call(row))
         - detail_id = "#{id_prefix}-#{key}"
         - is_open = open_keys.include?(key)
         -# The disclosure half of the group's rows -- the head row and each of
@@ -226,7 +265,7 @@
         -# Built as a Hash so a table WITHOUT a detail emits none of these
         -# attributes at all (a nil inside the literal would still render
         -# role='' / tabindex='').
-        - disclosure = expandable ? { role: "button", tabindex: 0,
+        - disclosure = row_expandable ? { role: "button", tabindex: 0,
           data: { "bs-toggle": "collapse", "bs-target": "##{detail_id}" },
           aria: { expanded: is_open.to_s, controls: detail_id } } : {}
         %tbody.exp-group{ class: (group_class && group_class.call(row)) }
@@ -252,7 +291,7 @@
                 %td.bk-select-cell
               - columns.each do |col|
                 %td.exp-col.exp-sub-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= sub_cell.call(sub, col)
-          - if expandable
+          - if row_expandable
             -# The detail is the group's LAST row: it opens under the whole
             -# group, sub-rows included. exp-open marks the open one for the CSS
             -# (shared/wsjrdp/_expandable_table_js keeps it in sync on toggle) --

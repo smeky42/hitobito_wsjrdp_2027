@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The assigned bookings of the Unit-Buchungen page, as the turbo frame its
+-#  collapsed section loads (Fin::UnitBookingsController#assigned): for the
+-#  write tier the controls that take the secondary cost center off the
+-#  selection, then the bookings browser with its filter. The filter's apply,
+-#  the paging and the sorting navigate the frame; the clear form and a row's
+-#  detail links lead out of it. Without the Turbo-Frame header the same frame
+-#  renders inside the page.
+- may_assign = may_assign?
+- carry = assigned_bookings.state.wire_params
+= turbo_frame_tag "unit_bookings_assigned" do
+  - if may_assign
+    = render "fin/unit_bookings/selection_controls",
+      form_url: clear_reconciliation_unit_bookings_path(carry), form_id: "ua-clear-form",
+      atoms: assigned_atoms, total: assigned_figure, noun: "Buchungen",
+      submit_label: "Sekundäre Kostenstelle löschen", submit_icon: :eraser,
+      submit_class: "btn-outline-danger",
+      hints: {one: "Löscht die sekundäre Kostenstelle bei 1 ausgewählten Buchung",
+              many: "Löscht die sekundäre Kostenstelle bei %{count} ausgewählten Buchungen"}
+  = render "fin/bookings/browser", rows: assigned_bookings,
+    apply_url: apply_assigned_reconciliation_unit_bookings_path, summary: false,
+    selection: (may_assign ? {name: "booking_ids[]", id_field: ->(b) { b.id }, form: "ua-clear-form",
+      all_param: "select_all", total_count: assigned_bookings.total_count,
+      row_data: ->(b) { {atom: b.selection_atom, amount: (b.signed_base_amount * 100).round} }} : nil)

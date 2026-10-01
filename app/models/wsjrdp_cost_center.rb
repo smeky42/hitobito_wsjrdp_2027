@@ -49,24 +49,69 @@ class WsjrdpCostCenter < ActiveRecord::Base
   # `.sum(:booking_sum)` / `.sum(:booking_count)` give the footer totals of the
   # FILTERED set. A LEFT JOIN, so a cost center without bookings still appears.
   #
-  # The totals are the Konto perspective (signed_base_amount), the same
-  # net cash-flow of the tagged bookings the page has always shown, and they
-  # follow the PRIMARY cost center only (`cost_center_number`), never the
-  # secondary one.
-  scope :with_booking_summary, -> {
-    totals = DatevBooking.where.not(cost_center_number: nil)
-      .select("cost_center_number, SUM(signed_base_amount) AS booking_sum, " \
-              "COUNT(*) AS booking_count")
-      .group(:cost_center_number)
+  # The totals are the Konto perspective (signed_base_amount), the same net
+  # cash-flow of the tagged bookings the page has always shown. `view` names the
+  # cost center a booking counts for (VIEWS):
+  #
+  #   primary    its cost_center_number
+  #   secondary  its secondary_cost_center_number (a booking without one counts
+  #              nowhere)
+  #   any        either of the two -- a booking counts ONCE per cost center, but
+  #              for both when the two differ, so a sum over several rows counts
+  #              it twice
+  #   budget     its budget assignment (DatevBooking::BUDGET_COST_CENTER_SQL)
+  VIEWS = %w[primary secondary any budget].freeze
+
+  scope :with_booking_summary, ->(view = "primary") {
     from(Arel.sql(<<~SQL.squish))
       (SELECT cc.*,
               COALESCE(t.booking_sum, 0) AS booking_sum,
               COALESCE(t.booking_count, 0) AS booking_count
          FROM wsjrdp_cost_centers cc
-         LEFT JOIN (#{totals.to_sql}) t ON t.cost_center_number = cc.number)
+         LEFT JOIN (#{booking_totals_sql(view)}) t ON t.cost_center_number = cc.number)
       AS wsjrdp_cost_centers
     SQL
   }
+
+  # The bookings of one cost center under `view` (VIEWS), as a DatevBooking
+  # relation that carries the Unit-Budget joins.
+  def self.bookings_for(number, view)
+    scope = DatevBooking.with_unit_budget_accounts
+    case view.to_s
+    when "secondary" then scope.where(secondary_cost_center_number: number)
+    when "any" then scope.where(cost_center_number: number).or(scope.where(secondary_cost_center_number: number))
+    when "budget"
+      scope.where(Arel::Nodes::Equality.new(Arel.sql("(#{DatevBooking::BUDGET_COST_CENTER_SQL})"),
+        Arel::Nodes.build_quoted(number)))
+    else scope.where(cost_center_number: number)
+    end
+  end
+
+  # {cost_center_number, booking_sum, booking_count} per cost center under `view`.
+  def self.booking_totals_sql(view)
+    columns = "SUM(signed_base_amount) AS booking_sum, COUNT(*) AS booking_count"
+    case view.to_s
+    when "secondary"
+      DatevBooking.where.not(secondary_cost_center_number: [nil, ""])
+        .select("secondary_cost_center_number AS cost_center_number, #{columns}")
+        .group(:secondary_cost_center_number).to_sql
+    when "any"
+      legs = DatevBooking.where.not(cost_center_number: nil)
+        .select(:cost_center_number, :signed_base_amount).to_sql
+      second = DatevBooking.where.not(secondary_cost_center_number: [nil, ""])
+        .where("secondary_cost_center_number IS DISTINCT FROM cost_center_number")
+        .select("secondary_cost_center_number AS cost_center_number", :signed_base_amount).to_sql
+      "SELECT cost_center_number, #{columns} FROM (#{legs} UNION ALL #{second}) legs GROUP BY cost_center_number"
+    when "budget"
+      assigned = "(#{DatevBooking::BUDGET_COST_CENTER_SQL})"
+      DatevBooking.with_unit_budget_accounts
+        .select("#{assigned} AS cost_center_number, SUM(datev_bookings.signed_base_amount) AS booking_sum, COUNT(*) AS booking_count")
+        .group(Arel.sql(assigned)).to_sql
+    else
+      DatevBooking.where.not(cost_center_number: nil)
+        .select("cost_center_number, #{columns}").group(:cost_center_number).to_sql
+    end
+  end
 
   def active?
     moss_status == STATUS_ACTIVE

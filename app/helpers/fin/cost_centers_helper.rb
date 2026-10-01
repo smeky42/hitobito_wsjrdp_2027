@@ -59,6 +59,25 @@ module Fin::CostCentersHelper
     fin_unit_cost_center_label(cost_center.is_unit_cost_center)
   end
 
+  # The views of the Kostenstellen list (WsjrdpCostCenter::VIEWS): the label of
+  # its segment, the words under a detail's "Buchungen" heading, and the
+  # bookings filter attribute its "open in the bookings view" link uses.
+  COST_CENTER_VIEWS = {
+    "primary" => {label: "Primär", note: "nach Kostenstelle", filter: "cost_center"},
+    "secondary" => {label: "Sekundär", note: "nach sekundärer Kostenstelle", filter: "secondary_cost_center"},
+    "any" => {label: "Primär o. sekundär", note: "nach Kostenstelle oder sekundärer Kostenstelle",
+              filter: "any_cost_center"},
+    "budget" => {label: "Budget", note: "nach Budget-Zuordnung", filter: "budget_cost_center"}
+  }.freeze
+
+  def fin_cost_center_view_options = COST_CENTER_VIEWS.map { |view, info| [view, info[:label]] }
+
+  def fin_cost_center_view_note(view) = COST_CENTER_VIEWS.fetch(view)[:note]
+
+  def fin_cost_center_bookings_path(number, view)
+    bookings_filter_path([[[COST_CENTER_VIEWS.fetch(view)[:filter], "in", number]]])
+  end
+
   # The Buchhaltung of the group a unit's own cost center belongs to (the group
   # whose cost_center_numbers name it), nil for any other cost center and for
   # one no group carries. The tables declare it as a double link beside

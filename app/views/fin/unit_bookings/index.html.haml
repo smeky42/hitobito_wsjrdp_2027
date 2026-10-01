@@ -1,0 +1,154 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The Abstimmung page "Unit-Buchungen" (Fin::UnitBookingsController,
+-#  Fin::UnitBookingReconciliation): the figures over what the units see, the
+-#  open bookings -- with the assign controls and the row selection for the
+-#  write tier -- and, collapsed at the end, the bookings that already carry a
+-#  secondary cost center, loaded into their turbo frame when the section opens.
+-#  After a bulk action the page comes back as it was: the section open if it
+-#  was, its frame loaded right away in the room it took, the scroll position
+-#  restored (the controls remember all three in sessionStorage); a visit
+-#  naming the section's anchor opens it as well.
+- figures = {shown: reconciliation.figure(reconciliation.shown),
+             unit_budget: reconciliation.figure(reconciliation.unit_budget),
+             assigned: reconciliation.figure(reconciliation.assigned),
+             open: reconciliation.figure(reconciliation.open)}
+- may_assign = may_assign?
+
+#main
+  %h1 Unit-Buchungen
+  %p.text-muted
+    Jede Buchung, die eine Unit sieht, soll entweder zum Unit-Budget zählen
+    oder eine sekundäre Kostenstelle tragen, die sagt, wohin die Kosten zentral
+    gehören – Reisekosten zu Unit-Treffen etwa 3810 Unit-Treffen Reisekosten.
+    Eine Unit sieht jede Buchung mit ihrer Kostenstelle als primärer oder
+    sekundärer Kostenstelle.
+
+  .d-flex.flex-wrap.gap-3.mb-3
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(figures[:shown].count, delimiter: ".")
+      .text-muted.small für Units sichtbar
+      .small.fw-semibold.text-muted= "Σ #{fin_money(figures[:shown].sum)}"
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(figures[:unit_budget].count, delimiter: ".")
+      .text-muted.small zählen zum Unit-Budget
+      .small.fw-semibold.text-muted= "Σ #{fin_money(figures[:unit_budget].sum)}"
+    .border.rounded.p-3
+      .fs-3.fw-semibold= number_with_delimiter(figures[:assigned].count, delimiter: ".")
+      .text-muted.small mit sekundärer Kostenstelle
+      .small.fw-semibold.text-muted= "Σ #{fin_money(figures[:assigned].sum)}"
+    .border.rounded.p-3{class: (figures[:open].count.positive? ? "border-danger" : "border-success")}
+      .fs-3.fw-semibold{class: (figures[:open].count.positive? ? "text-danger" : "text-success")}
+        = number_with_delimiter(figures[:open].count, delimiter: ".")
+      .text-muted.small offen
+      .small.fw-semibold.text-muted= "Σ #{fin_money(figures[:open].sum)}"
+
+  %h2.h4.mt-4 Offene Buchungen
+  %p.text-muted.small
+    Buchungen auf einer Unit-Kostenstelle, die weder zum Unit-Budget zählen noch
+    eine sekundäre Kostenstelle haben. Die Spalte „Vorschlag" nennt die
+    sekundäre Kostenstelle, die zum Konto passt (Reisekonten → 3810, auch als
+    Gegenkonto). Die Schnellauswahl fasst die Buchungen nach dem Konto zusammen,
+    das sie aus dem Unit-Budget hält. Klick auf eine Zeile zeigt die Buchung;
+    dort lässt sich auch eine einzelne Buchung bearbeiten.
+
+  -# Everything that ASSIGNS is the write tier's (the controller authorizes
+  -# :update for the assign action): the form, its quick-select and the row
+  -# checkboxes it collects. The read tier keeps the page as a reading view.
+  - if may_assign
+    - options = reconciliation.assignable_cost_centers.map { |cost_center| [Fin::UnitBookingReconciliation.label(cost_center), cost_center.number] }
+    - cost_center_select = capture do
+      %label.small.text-muted{for: "ub-assign-cost-center"} Sekundäre Kostenstelle
+      = select_tag "secondary_cost_center_number",
+        options_for_select(options, reconciliation.proposal_for("66630")&.number),
+        id: "ub-assign-cost-center", class: "form-select form-select-sm w-auto", required: true
+    = render "fin/unit_bookings/selection_controls",
+      form_url: assign_reconciliation_unit_bookings_path(open_bookings.state.wire_params),
+      form_id: "ub-assign-form", atoms: open_atoms, total: filtered_open_figure,
+      noun: "offene Buchungen", submit_label: "Auswahl zuweisen", submit_icon: :tag,
+      hints: {one: "Setzt %{target} als sekundäre Kostenstelle bei 1 ausgewählten Buchung",
+              many: "Setzt %{target} als sekundäre Kostenstelle bei %{count} ausgewählten Buchungen"},
+      extra: cost_center_select
+
+  - proposal_cell = ->(booking) do
+    - proposal = reconciliation.proposal(booking)
+    - proposal ? content_tag(:span, Fin::UnitBookingReconciliation.label(proposal), class: "text-muted") : "".html_safe
+  = render "fin/bookings/browser", rows: open_bookings,
+    apply_url: apply_reconciliation_unit_bookings_path, summary: false,
+    extra_columns: [{key: "proposal", label: "Vorschlag", cell: proposal_cell}],
+    selection: (may_assign ? {name: "booking_ids[]", id_field: ->(b) { b.id }, form: "ub-assign-form",
+      all_param: "select_all", total_count: open_bookings.total_count,
+      row_data: ->(b) { {atom: b.selection_atom, amount: (b.signed_base_amount * 100).round} }} : nil)
+
+  -# The assigned bookings open on demand, in a collapsible section
+  -# (shared/wsjrdp/_collapsible_section): the frame is lazy, so it loads when
+  -# the section is expanded and not before. As a block it can hold the room
+  -# its content took while it loads again (comeBack below).
+  .mt-4
+    = render layout: "shared/wsjrdp/collapsible_section",
+      locals: {id: "ub-assigned",
+               title: "Unit-Buchungen mit sekundärer Kostenstelle, die nicht zum Unit-Budget zählen"} do
+      %p.text-muted.small.mt-2
+        Zentral gebuchte Buchungen mit der Unit als sekundärer Kostenstelle, und
+        Buchungen der Unit mit einer zentralen sekundären Kostenstelle. Buchungen,
+        die zum Unit-Budget zählen, stehen hier nicht, auch nicht mit sekundärer
+        Kostenstelle. Die Schnellauswahl fasst die Liste nach der zentralen
+        Kostenstelle zusammen; „Sekundäre Kostenstelle löschen" wirkt nur auf die
+        Auswahl, der Hinweis hinter dem Knopf nennt ihre Zahl.
+      = turbo_frame_tag "unit_bookings_assigned", class: "d-block",
+        src: assigned_reconciliation_unit_bookings_path(assigned_bookings.state.wire_params),
+        loading: "lazy" do
+        .text-muted.small.py-3 Wird geladen …
+
+  :javascript
+    (function () {
+      var KEY = "wsjrdp.ub.after";
+      function read() { try { return JSON.parse(sessionStorage.getItem(KEY)); } catch (e) { return null; } }
+      function done() { try { sessionStorage.removeItem(KEY); } catch (e) {} }
+      function open() {
+        var section = document.getElementById("ub-assigned");
+        var toggle = document.querySelector('[data-bs-target="#ub-assigned"]');
+        if (!section || section.classList.contains("show")) return;
+        section.classList.add("show");
+        if (toggle) toggle.setAttribute("aria-expanded", "true");
+      }
+      // What a bulk action remembered (fin/unit_bookings/_selection_controls):
+      // open the section again, hold the room its frame took -- the frame is
+      // lazy and would wait to be scrolled into view, so it is loaded right
+      // away --, and put the page back where it was: at once, in place of
+      // Turbo's scroll to the top, and again once the frame has loaded. The
+      // scrolls are instant; the page's smooth scrolling would animate them.
+      // The memory stays until the page is back.
+      function comeBack() {
+        if (window.location.hash === "#ub-assigned") open();
+        var after = read();
+        if (!after) return;
+        if (after.open) open();
+        var scroll = function () { window.scrollTo({top: after.scroll || 0, left: 0, behavior: "instant"}); };
+        var frame = document.getElementById("unit_bookings_assigned");
+        if (after.open && frame && !frame.hasAttribute("complete")) {
+          if (frame.dataset.ubRestore) return;
+          frame.dataset.ubRestore = "1";
+          if (after.frameHeight) frame.style.minHeight = after.frameHeight + "px";
+          frame.addEventListener("turbo:frame-load", function () {
+            frame.style.minHeight = "";
+            setTimeout(function () { scroll(); done(); }, 0);
+          }, {once: true});
+          frame.setAttribute("loading", "eager");
+          setTimeout(scroll, 0);
+        } else {
+          setTimeout(function () { scroll(); done(); }, 0);
+        }
+      }
+      comeBack();
+      if (!window.__ubComeBack) {
+        window.__ubComeBack = true;
+        document.addEventListener("turbo:load", comeBack);
+        window.addEventListener("hashchange", function () { if (window.location.hash === "#ub-assigned") open(); });
+      }
+    })();

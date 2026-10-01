@@ -1062,6 +1062,7 @@ de:
       booking_batches: "Buchungsstapel"
       bookings: "Buchungen"
       participant_fees: "TN-Beiträge"
+      unit_bookings: "Unit-Buchungen"
       transactions: "Transaktionen"
       finance_groups: "Gruppen-Finanzzugriff"
       group_cost_centers: "Gruppen-Kostenstellen"

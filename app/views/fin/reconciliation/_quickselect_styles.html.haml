@@ -1,0 +1,17 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The looks of the quick-select buttons of the Abstimmung pages
+-#  (fin/reconciliation/_connect_controls, fin/unit_bookings/_selection_controls):
+-#  an outline button in the colour its --rec-tier names, filled on hover.
+-#  Emitted once per request.
+- unless @rec_quickselect_styles_emitted
+  - @rec_quickselect_styles_emitted = true
+  :css
+    .rec-quickselect .btn.rec-select{color:var(--rec-tier);background-color:transparent;border-color:var(--rec-tier)}
+    .rec-quickselect .btn.rec-select:hover,.rec-quickselect .btn.rec-select:active,.rec-quickselect .btn.rec-select:focus-visible{color:#fff;background-color:var(--rec-tier);background-color:color-mix(in srgb,var(--rec-tier),#000 20%);border-color:var(--rec-tier);border-color:color-mix(in srgb,var(--rec-tier),#000 20%)}
+    .rec-quickselect .btn.rec-select:focus-visible{outline:none;box-shadow:0 0 0 .2rem color-mix(in srgb,var(--rec-tier),transparent 70%)}

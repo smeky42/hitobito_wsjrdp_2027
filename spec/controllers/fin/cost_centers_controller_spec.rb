@@ -84,8 +84,11 @@ describe Fin::CostCentersController do
   end
 
   # The preset toggle links by label, each as its raw <a> tag.
+  # The Schnellauswahl's toggles, inside its bar (the view switch of the
+  # toolbar looks alike but is no preset).
   def preset_links
-    response.body.scan(%r{<a[^>]*\bflt-preset\b[^>]*>.*?</a>}m)
+    response.body[%r{<div[^>]*\bflt-presets\b.*?</div>}m].to_s
+      .scan(%r{<a[^>]*\bflt-preset\b[^>]*>.*?</a>}m)
       .to_h { |tag| [tag.gsub(/<[^>]+>/, "").strip, tag] }
   end
 
@@ -120,9 +123,9 @@ describe Fin::CostCentersController do
 
       same, new_tab = bars.first.css("a")
       expect(same.text.squish).to eq("Detailseite")
-      expect(same["href"]).to eq(cost_center_path("K100"))
+      expect(same["href"]).to eq(cost_center_path("K100", v: "primary"))
       expect(same["target"]).to be_nil
-      expect(new_tab["href"]).to eq(cost_center_path("K100"))
+      expect(new_tab["href"]).to eq(cost_center_path("K100", v: "primary"))
       expect(new_tab["target"]).to eq("_blank")
       expect(new_tab["title"]).to eq("Detailseite in neuem Tab öffnen")
     end
@@ -186,6 +189,66 @@ describe Fin::CostCentersController do
 
       get :index, params: {s: "ms,nr"}
       expect(rendered_numbers).to eq(%w[K100 K200 K300])
+    end
+  end
+
+  # The view switch: which cost center the sums count by
+  # (WsjrdpCostCenter::VIEWS).
+  describe "GET index with a view" do
+    before do
+      create_cost_center("U1", "Unit eins", "U1", "active").update!(is_unit_cost_center: true)
+      DatevBooking.create!(buchungs_guid: SecureRandom.uuid,
+        account_number: "1200", account_kind: "BANK",
+        offsetting_account_number: "66500", offsetting_account_kind: "EXPENSE",
+        cost_center_number: "U1", secondary_cost_center_number: "K200", is_unit_budget: false,
+        base_amount: 5, transaction_amount: 5, debit_credit: "D",
+        base_currency: "EUR", booking_date: Date.new(2026, 2, 1), posting_text: "Unit auf K200")
+    end
+
+    def counts = cells("booking_count").map { |cell| cell.gsub(/<[^>]+>/, "").strip }
+
+    def count_of(number)
+      rows = body_rows.scan(%r{<tr[^>]*aria-controls='cost_center-#{number}'.*?</tr>}m)
+      rows.first.to_s[/colkey='booking_count'>(.*?)<\/td>/m, 1].to_s.gsub(/<[^>]+>/, "").strip
+    end
+
+    it "offers the four views, Primär pressed by default" do
+      get :index
+      segments = doc.css(".exp-view .flt-segment a")
+      expect(segments.map { |a| a.text.strip }).to eq(["Primär", "Sekundär", "Primär o. sekundär", "Budget"])
+      expect(segments.find { |a| a["aria-pressed"] == "true" }.text.strip).to eq("Primär")
+    end
+
+    it "counts by the chosen cost center" do
+      get :index
+      expect([count_of("K200"), count_of("U1")]).to eq(%w[1 1])
+
+      get :index, params: {v: "secondary"}
+      expect([count_of("K200"), count_of("U1")]).to eq(%w[1 0])
+
+      get :index, params: {v: "any"}
+      expect([count_of("K200"), count_of("U1")]).to eq(%w[2 1])
+
+      get :index, params: {v: "budget"}
+      expect([count_of("K200"), count_of("U1")]).to eq(%w[2 0])
+    end
+
+    it "warns that the view any counts a booking with two cost centers twice" do
+      get :index, params: {v: "any"}
+      expect(doc.at_css(".alert-warning").text).to include("mehrfach")
+      get :index, params: {v: "primary"}
+      expect(doc.at_css(".alert-warning")).to be_nil
+    end
+
+    it "remembers the view" do
+      get :index, params: {v: "budget"}
+      get :index
+      expect(doc.at_css(".exp-view a[aria-pressed='true']").text.strip).to eq("Budget")
+    end
+
+    it "opens each row's detail in the chosen view" do
+      get :index, params: {v: "budget"}
+      expect(doc.at_css("turbo-frame#bkframe-cost_center-K200")["src"]).to include("v=budget")
     end
   end
 
@@ -312,13 +375,15 @@ describe Fin::CostCentersController do
     end
 
     # "In Buchungen-Ansicht öffnen" leads to the Buchungen listing pinned to
-    # this Kostenstelle. That page reads its filter from the ?f= param alone
-    # (Rison with the schema's short keys, cost_center -> cc), so the link
-    # carries the condition there and not in a query param of its own.
-    it "opens the Buchungen listing filtered to this Kostenstelle" do
-      get :show, params: {number: "K100"}
-
-      expect(open_in_bookings_href).to eq("/fin/bookkeeping/bookings?f=!(!(!(cc,in,'K100')))")
+    # this Kostenstelle the way the detail lists its bookings -- by the view of
+    # the list it was opened from. That page reads its filter from the ?f=
+    # param alone (Rison with the schema's short keys), so the link carries the
+    # condition there and not in a query param of its own.
+    it "opens the Buchungen listing filtered to this Kostenstelle, by the view" do
+      {nil => "cc", "secondary" => "cc2", "any" => "ccx", "budget" => "bcc"}.each do |view, key|
+        get :show, params: {number: "K100", v: view}.compact
+        expect(open_in_bookings_href).to eq("/fin/bookkeeping/bookings?f=!(!(!(#{key},in,'K100')))"), view.inspect
+      end
     end
 
     # The embedded bookings table brings the same header line. Its "In Moss"
@@ -448,6 +513,24 @@ describe Fin::CostCentersController do
       expect(doc.css(".fin-embedded-bookings .flt-segment, .fin-embedded-bookings .flt-line")).to be_empty
     end
 
+    # A regular cost center lists what the Budget page counts for it: also a
+    # unit's booking outside its Unit-Budget that names it as secondary cost
+    # center, and its link filters by the budget assignment.
+    it "lists a unit's booking assigned to it as secondary cost center" do
+      WsjrdpCostCenter.find_by(number: "K300").update!(is_unit_cost_center: true)
+      DatevBooking.create!(buchungs_guid: SecureRandom.uuid,
+        account_number: "1200", account_kind: "BANK",
+        offsetting_account_number: "66500", offsetting_account_kind: "EXPENSE",
+        cost_center_number: "K300", secondary_cost_center_number: "K200", is_unit_budget: false,
+        base_amount: 9, transaction_amount: 9, debit_credit: "C",
+        base_currency: "EUR", booking_date: Date.new(2026, 3, 1), posting_text: "Unit auf K200")
+      get :show, params: {number: "K200", v: "budget"}
+      expect(doc.at_css(".fin-embedded-bookings").text).to include("Unit auf K200")
+
+      get :show, params: {number: "K200"}
+      expect(doc.at_css(".fin-embedded-bookings").text).not_to include("Unit auf K200")
+    end
+
     it "links from the reading page to the edit page" do
       get :show, params: {number: "K100"}
       expect(doc.css("a").pluck("href")).to include(edit_cost_center_path("K100"))
@@ -570,8 +653,8 @@ describe Fin::CostCentersController do
           base_currency: "EUR", booking_date: Date.new(2026, 3, 1), posting_text: "Sekundaer K300")
       end
 
-      it "lists the bookings with it as secondary cost center too" do
-        get :show, params: {number: "K300"}
+      it "lists the bookings with it as secondary cost center too, in the view any" do
+        get :show, params: {number: "K300", v: "any"}
         expect(doc.at_css(".fin-embedded-bookings").text).to include("Sekundaer K300")
       end
 
@@ -594,7 +677,7 @@ describe Fin::CostCentersController do
           link = doc.css(".fin-embedded-bookings .flt-segment a").find { |a| a.text.strip == label }
           get :show, params: Rack::Utils.parse_query(URI(link["href"]).query).merge("number" => "K300")
         end
-        get :show, params: {number: "K300"}
+        get :show, params: {number: "K300", v: "any"}
         expect(doc.at_css(".fin-embedded-bookings").text.squish).to include("1 Buchungen")
 
         choose.call("Nur Unit-Budget")

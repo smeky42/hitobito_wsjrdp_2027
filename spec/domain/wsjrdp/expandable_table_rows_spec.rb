@@ -75,8 +75,9 @@ end
 
 describe Wsjrdp::ExpandableTableRows do
   # A state that only answers what the rows object asks of it.
-  def state_for(sort_list, paginated: nil)
-    double("state", sort_list: sort_list, paginate: paginated || :the_page)
+  def state_for(sort_list, paginated: nil, hidden: [])
+    double("state", sort_list: sort_list, paginate: paginated || :the_page,
+      effective_sort_list: sort_list.empty? ? hidden : sort_list)
   end
 
   let(:sort) { {"date" => "bookings.booking_date", "amount" => "bookings.amount_cents"} }
@@ -226,8 +227,8 @@ describe Wsjrdp::ExpandableTableRows do
     end
     let(:tiebreaker) { ->(r) { r[:number].to_s } }
 
-    def rows(sort_list, **options)
-      described_class.new(state_for(sort_list), source,
+    def rows(sort_list, hidden: [], **options)
+      described_class.new(state_for(sort_list, hidden: hidden), source,
         sort: extractors, tiebreaker: tiebreaker, **options)
     end
 
@@ -262,6 +263,18 @@ describe Wsjrdp::ExpandableTableRows do
       table = rows([["secret", "asc"]])
       expect(table.sort_list).to eq([])
       expect(paged_numbers(table)).to eq(%w[1000 K2 900])
+    end
+
+    it "sorts a nil value last in either direction" do
+      with_nil = source + [{number: "500", name: "beta", sum: nil, count: 0}]
+      table = ->(dir) { described_class.new(state_for([["sum", dir]]), with_nil, sort: extractors, tiebreaker: tiebreaker) }
+      expect(paged_numbers(table.call("desc"))).to eq(%w[1000 900 K2 500])
+      expect(paged_numbers(table.call("asc"))).to eq(%w[K2 1000 900 500])
+    end
+
+    it "uses the hidden sort while nothing is sorted, the chosen one otherwise" do
+      expect(paged_numbers(rows([], hidden: [["number", "asc"]]))).to eq(%w[1000 900 K2])
+      expect(paged_numbers(rows([["sum", "desc"]], hidden: [["number", "asc"]]))).to eq(%w[1000 900 K2])
     end
 
     it "uses natural_order: while nothing is sorted" do

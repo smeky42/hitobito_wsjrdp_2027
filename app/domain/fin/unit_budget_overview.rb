@@ -22,7 +22,12 @@
 class Fin::UnitBudgetOverview
   # One unit cost center. `unit_budget` is a Fin::BudgetOverview::Cell: the
   # Unit-Budget spending against the Gesamtbudget.
-  Row = Data.define(:cost_center, :expenses, :unit_budget) do
+  # A sum row has no cost center and a `sum_label` instead.
+  Row = Data.define(:cost_center, :expenses, :unit_budget, :sum_label) do
+    def initialize(cost_center:, expenses:, unit_budget:, sum_label: nil)
+      super
+    end
+
     def number = cost_center&.number
 
     def name = cost_center&.name.presence
@@ -38,11 +43,15 @@ class Fin::UnitBudgetOverview
     end
   end
 
-  # The sum over the rows: the spending of all units, and the Unit-Budget
-  # spending of the units with a budget against their budgets.
+  # The sum row "Alle Ausgaben" over the units with a budget or whose
+  # Gesamtausgaben are spending (zero included): their spending, and their
+  # Unit-Budget spending against the budgets that are set. A unit without a
+  # budget in sum income has no sum row of its own.
   def sum
-    cell = rows.map { |row| row.unit_budget.budgeted }.reduce(Fin::BudgetOverview::EMPTY_CELL, :+)
-    Row.new(cost_center: nil, expenses: rows.sum(&:expenses), unit_budget: cell)
+    spending = rows.reject { |row| row.expenses.negative? && row.unit_budget.budget.nil? }
+    cell = spending.map(&:unit_budget).reduce(Fin::BudgetOverview::EMPTY_CELL, :+)
+    Row.new(cost_center: nil, expenses: spending.sum(&:expenses), unit_budget: cell,
+      sum_label: Fin::BudgetOverview::SPENDING_LABEL)
   end
 
   private

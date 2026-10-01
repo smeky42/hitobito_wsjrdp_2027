@@ -20,12 +20,7 @@
 -# override hitobito's legacy ".btn:focus" teal fill (specificity .btn:focus = 2,
 -# ours = 3/4) so a mouse-focused button REVERTS after a click instead of staying
 -# filled. Fill on :hover/:active/:focus-visible only -- never plain :focus.
-- unless @rec_connect_styles_emitted
-  - @rec_connect_styles_emitted = true
-  :css
-    .rec-quickselect .btn.rec-select{color:var(--rec-tier);background-color:transparent;border-color:var(--rec-tier)}
-    .rec-quickselect .btn.rec-select:hover,.rec-quickselect .btn.rec-select:active,.rec-quickselect .btn.rec-select:focus-visible{color:#fff;background-color:var(--rec-tier);background-color:color-mix(in srgb,var(--rec-tier),#000 20%);border-color:var(--rec-tier);border-color:color-mix(in srgb,var(--rec-tier),#000 20%)}
-    .rec-quickselect .btn.rec-select:focus-visible{outline:none;box-shadow:0 0 0 .2rem color-mix(in srgb,var(--rec-tier),transparent 70%)}
+= render "fin/reconciliation/quickselect_styles"
 - stats = local_assigns.fetch(:stats)
 - noun = local_assigns.fetch(:noun, "Einträge")
 - auto = stats["auto"]

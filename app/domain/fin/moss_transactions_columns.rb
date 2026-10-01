@@ -33,7 +33,7 @@ module Fin::MossTransactionsColumns
       sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true
-    c.column key: "signed_total_base_amount", abbr: "amt", label: "Betrag", numeric: true,
+    c.column key: "signed_total_base_amount", abbr: "amt", label: "Betrag", numeric: true, sort_first: "desc",
       width: "7.5rem", sort: "moss_transactions.signed_total_base_amount", default: true
     c.column key: "description", abbr: "dsc", label: "Beschreibung", default: true
     c.column key: "cost_centers", abbr: "cc", label: "Kostenstellen", width: "12rem",

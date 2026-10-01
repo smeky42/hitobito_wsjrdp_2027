@@ -59,7 +59,8 @@ describe Fin::UnitBudgetOverview do
     expect(row("U1").unit_budget.budget).to eq(figures.budget)
   end
 
-  it "sums all spending, and the Unit-Budget spending of the units with a budget" do
+  it "sums all spending, and the Unit-Budget spending of all units" do
+    expect(overview.sum.sum_label).to eq("Alle Ausgaben")
     expect(overview.sum.expenses).to eq(660)
     expect(overview.sum.unit_budget).to have_attributes(budget: 1000, actual: 340)
   end

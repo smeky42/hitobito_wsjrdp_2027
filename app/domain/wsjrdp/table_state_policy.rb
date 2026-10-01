@@ -16,10 +16,12 @@
 #   wsjrdp_expandable_table_policy prefix: "bk",
 #     columns:  Fin::DatevBookingsColumns.codec,                # key => abbr codec
 #     sort:     {default: [["booking_date", "desc"]]},          # LONG names (D2b)
+#               # or {hidden: [["number", "asc"]]}, see below
 #     cols:     {default: %w[booking_date signed_base_amount],   # declared order = column order
 #                only:    %w[booking_date signed_base_amount posting_text],  # ... or the
 #                exclude: %w[kind],                     # columns THIS table lacks
-#                labels:  {"party" => "Karteninhaber"}},   # ... and its own names
+#                labels:  {"party" => "Karteninhaber"},   # ... its own names
+#                widths:  {"party" => "9rem"}},           # ... and widths
 #     per_page: {default: 50, max: 500},                    # or {default: :all}
 #     filter:   {policy: :url,
 #                schema: Fin::DatevBookingsFilterSchema,          # the dataset (mandatory)
@@ -30,7 +32,8 @@
 #                default: [[["konto", "in", "41030"]]],     # user tree, if nothing chosen
 #                presets: [{key: "with_bookings", label: "Nur mit Buchungen",
 #                           slots: [[["booking_count", "gt", 0]]]}]},
-#     pane:     {default: 1}
+#     pane:     {default: 1},
+#     view:     {default: "primary", values: %w[primary secondary]}
 #
 # Every field option takes either a bare policy symbol (`filter: :remember`) or a
 # Hash {policy:, default:, store:, ...}. Values that depend on the request (a
@@ -38,8 +41,17 @@
 # as lambdas and evaluated on the controller instance at resolve time.
 #
 # The FIELD-SPECIFIC options:
+#   sort:     default: the PRESELECTED sort -- shown in the header and in the
+#             "Sortiert nach" bar like a chosen one, and removable; removing it
+#             leaves an explicit empty ?s= behind, so the store does not bring
+#             it back. hidden: the order of the rows while NO sort is chosen
+#             (the default included) -- never shown, never in the URL; the
+#             header arrows stay neutral. Both take [[key, dir], ...] with
+#             column or sort-variant keys.
 #   cols:     only: the columns THIS table has, exclude: the ones it does not
-#             have, and labels: {key => "..."} the names it gives some of them --
+#             have, labels: {key => "..."} the names it gives some of them and
+#             widths: {key => "9rem"} the widths it gives some of them (a longer
+#             name may need more room in the header) --
 #             a dataset is described ONCE (Wsjrdp::ExpandableTableColumns) and
 #             each table shapes that description (D2b). `only:` is the same
 #             statement from the other side: every column of the codec outside
@@ -48,6 +60,11 @@
 #             the codec, or a default column that is also excluded, raises at
 #             declaration time -- or, for a lambda, when it is evaluated.
 #   per_page: max: the cap on a hand-written ?z=
+#   view:     values: the views THIS table offers (strings); the default must be
+#             one of them. A view is a variant of the WHOLE table the host reads
+#             from the state (e.g. which cost center the sums count by) -- not a
+#             filter, so it never enters the filter param. A table that
+#             declares no view resolves it to nil.
 #   filter:   schema: (mandatory), fixed:, only:, exclude:, default:, presets:
 #             (D2e). `only:` / `exclude:` shape the USER half's attributes the
 #             same way `cols:` shapes the columns, and are checked against the
@@ -87,6 +104,7 @@ class Wsjrdp::TableStatePolicy
   #   open      o                        comma list of row keys        :url  (never remembered, D4)
   #   level     expandable_table_level   integer (nesting depth)       :url  (shared, see below)
   #   pane      e                        "1" / "0"                     :remember, store :cookie
+  #   view      v                        one of the declared values    :remember
   FIELD_DEFINITIONS = {
     sort: {short: "s", policy: :remember},
     cols: {short: "c", policy: :remember},
@@ -95,7 +113,8 @@ class Wsjrdp::TableStatePolicy
     page: {short: "p", policy: :remember},
     open: {short: "o", policy: :url},
     level: {short: "expandable_table_level", policy: :url},
-    pane: {short: "e", policy: :remember, store: :cookie}
+    pane: {short: "e", policy: :remember, store: :cookie},
+    view: {short: "v", policy: :remember}
   }.freeze
 
   # The fields whose param is NOT namespaced by the prefix. Namespacing keeps
@@ -177,7 +196,7 @@ class Wsjrdp::TableStatePolicy
 
   def column_keys = @columns.keys
 
-  def abbr_for(key) = @columns[key.to_s] || key.to_s
+  def abbr_for(key) = @columns[key.to_s] || @sort_variants.dig(key.to_s, 0) || key.to_s
 
   # A wire token (an abbreviation, or the long key itself) -> the long column
   # key, or nil when the token is not a column of the dataset.
@@ -188,6 +207,30 @@ class Wsjrdp::TableStatePolicy
   end
 
   def column?(key) = @columns.key?(key.to_s)
+
+  # --- sort keys: the columns plus their sort variants -----------------------
+  #
+  # A sort variant (Wsjrdp::ExpandableTableColumn::SortVariant) is a token of the
+  # ?s= param but no column: it never appears in ?c=, the column picker or
+  # #column_keys. A policy knows variants only when it is given the whole column
+  # collection (`columns: Fin::BudgetColumns::COST_CENTERS`) instead of its codec.
+
+  # A wire token of the ?s= param -> the long sort key (a column key or a
+  # variant key), or nil.
+  def sort_key_for(token)
+    token = token.to_s
+    key_for(token) || (token if @sort_variants.key?(token)) || @variant_abbr_to_key[token]
+  end
+
+  # The column a sort key sorts by: the key itself for a column, the variant's
+  # column for a variant, nil for anything else. Variants of one column share
+  # that column's level of a multi-column sort.
+  def sort_column_for(key)
+    key = key.to_s
+    return key if @columns.key?(key)
+
+    @sort_variants.dig(key, 1)
+  end
 
   # --- the per-table column shaping (`cols: {only:, exclude:, labels:}`) ------
   #
@@ -219,6 +262,13 @@ class Wsjrdp::TableStatePolicy
     labels = (raw || {}).to_h { |key, label| [key.to_s, label.to_s] }
     validate_column_keys!(labels.keys, "cols: labels:")
     labels
+  end
+
+  # key => the width THIS table gives that column, overriding the description's.
+  def column_widths(raw)
+    widths = (raw || {}).to_h { |key, width| [key.to_s, width.to_s] }
+    validate_column_keys!(widths.keys, "cols: widths:")
+    widths
   end
 
   # A column this table does not have cannot be one of its default columns: the
@@ -254,6 +304,13 @@ class Wsjrdp::TableStatePolicy
   private
 
   def build_columns(columns)
+    @sort_variants = {}.freeze
+    @variant_abbr_to_key = {}.freeze
+    if columns.respond_to?(:sort_variant_codec)
+      @sort_variants = columns.sort_variant_codec
+      @variant_abbr_to_key = @sort_variants.to_h { |key, (abbr, _column)| [abbr, key] }.freeze
+      columns = columns.codec
+    end
     map = columns.is_a?(Hash) ? columns : Array(columns).to_h { |k| [k, k] }
     map = map.to_h { |key, abbr| [key.to_s, abbr.to_s] }.freeze
     map.each { |key, abbr| [key, abbr].each { |token| self.class.validate_token!(token) } }
@@ -278,6 +335,7 @@ class Wsjrdp::TableStatePolicy
   def validate_static_column_shaping!
     options = field(:cols).options
     column_labels(options[:labels]) unless options[:labels].is_a?(Proc)
+    column_widths(options[:widths]) unless options[:widths].is_a?(Proc)
     only = options[:only] unless options[:only].is_a?(Proc)
     exclude = options[:exclude] unless options[:exclude].is_a?(Proc)
     validate_column_keys!(Array(only).map(&:to_s), "cols: only:") unless only.nil?
@@ -307,9 +365,25 @@ class Wsjrdp::TableStatePolicy
       raise ArgumentError, "the #{name} field cannot be remembered (see D4)"
     end
 
+    default = options.delete(:default)
+    validate_view!(default, options) if name == :view
     Field.new(name: name, short: definition[:short], policy: policy,
-      default: options.delete(:default), store: (options.delete(:store) || definition[:store])&.to_sym,
+      default: default, store: (options.delete(:store) || definition[:store])&.to_sym,
       options: options.freeze)
+  end
+
+  # A view's values are wire tokens of their own, and its default one of them.
+  def validate_view!(default, options)
+    values = options[:values]
+    return if values.nil? && default.nil?
+
+    values = Array(values).map(&:to_s)
+    raise ArgumentError, "view: values: must name at least one view" if values.empty?
+    values.each { |value| self.class.validate_token!(value) }
+    options[:values] = values.freeze
+    return if default.nil? || default.is_a?(Proc) || values.include?(default.to_s)
+
+    raise ArgumentError, "view: default #{default.inspect} is not one of #{values.join(", ")}"
   end
 
   # The filter's dataset comes ONLY from this class-level declaration -- never

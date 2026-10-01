@@ -5,29 +5,16 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
--# One collapsible section of the page: its bar holds the head, which is the
--# heading and the trigger in one, with the chevron turning as it opens and, to
--# the right, what the closed section says in a line -- and, where a section
--# has one, an action of its own beside the head (a link, never inside the
--# button). Each section opens and closes on its own; @dereg_open_sections says
--# which stand open when the page is drawn.
+-# One collapsible section of the page, the shared collapsible section
+-# (shared/wsjrdp/_collapsible_section) with the page's key: its id is
+-# dereg-section-<key>, and @dereg_open_sections says which stand open when the
+-# page is drawn. Each section opens and closes on its own.
 -#
 -# A section that is edited in place names the turbo frame its body lives in
 -# (`frame`), so a link or a form inside that body swaps the body alone.
-- id = "dereg-section-#{key}"
-- open = @dereg_open_sections.include?(key)
-- action = local_assigns[:action]
 - frame = local_assigns[:frame]
-.dereg-section
-  .dereg-section-bar
-    %button.dereg-section-head{type: "button", "data-bs-toggle": "collapse", "data-bs-target": "##{id}", "aria-expanded": open.to_s, "aria-controls": id}
-      = icon(:"chevron-right")
-      %span= title
-      - if summary.present?
-        %span.dereg-section-summary= summary
-    - if action.present?
-      = action
-  %div{id: id, class: open ? "collapse show" : "collapse"}
-    .dereg-section-body
-      = turbo_frame_if frame.present?, frame do
-        = yield
+= render layout: "shared/wsjrdp/collapsible_section",
+  locals: {id: "dereg-section-#{key}", title: title, summary: summary, action: local_assigns[:action],
+           open: @dereg_open_sections.include?(key)} do
+  = turbo_frame_if frame.present?, frame do
+    = yield

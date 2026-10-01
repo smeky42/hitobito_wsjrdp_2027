@@ -435,6 +435,20 @@ describe Fin::BookingsController do
 
     # Filtered, both figures follow: the share is computed over what is left,
     # not over the whole table.
+    # "Kostenstelle (Budget-Zuordnung)": a unit's booking outside its
+    # Unit-Budget counts against its regular secondary cost center.
+    it "filters by the budget assignment" do
+      WsjrdpCostCenter.create!(number: "U9", name: "Unit", is_unit_cost_center: true)
+      WsjrdpCostCenter.create!(number: "K900", name: "Regulär")
+      unit = create_booking("Unit-Reise", 12)
+      unit.update!(cost_center_number: "U9", secondary_cost_center_number: "K900", is_unit_budget: false)
+      kept = create_booking("Unit-Budget", 13)
+      kept.update!(cost_center_number: "U9", secondary_cost_center_number: "K900", is_unit_budget: true)
+
+      get :index, params: {f: "!(!(!(bcc,in,K900)))"}
+      expect(rendered_ids).to eq([unit.id.to_s])
+    end
+
     it "computes the share over the filtered rows only" do
       booking.update!(is_unit_budget: true)
 

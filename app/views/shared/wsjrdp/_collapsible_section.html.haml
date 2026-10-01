@@ -1,0 +1,88 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A collapsible section, rendered as a layout around its body: a framed box
+-#  whose bar holds the head -- heading and trigger in one, the chevron turning
+-#  as it opens -- with, to the right, what the closed section says in a line,
+-#  and where a section has one an action of its own beside the head (a link,
+-#  never inside the button). Bootstrap's collapse opens and closes it. The
+-#  Abmeldung page's sections (person/deregistration/_section) and the
+-#  Unit-Buchungen page use it.
+-#
+-#  Locals: id (the collapsing element's id; the head targets it), title,
+-#  summary (optional), action (optional HTML, a link with the class
+-#  wsjrdp-section-action), open (default false)
+- open = local_assigns.fetch(:open, false)
+- summary = local_assigns[:summary]
+- action = local_assigns[:action]
+- unless @wsjrdp_collapsible_section_styles_emitted
+  - @wsjrdp_collapsible_section_styles_emitted = true
+  :css
+    .wsjrdp-section {
+      border: 1px solid var(--bs-border-color);
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .wsjrdp-section-bar {
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      background: var(--bs-light);
+    }
+    .wsjrdp-section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--bs-body-color);
+      font-weight: 600;
+      text-align: left;
+    }
+    .wsjrdp-section-action {
+      flex: 0 0 auto;
+      padding: 8px 14px;
+      font-size: .875rem;
+    }
+    .wsjrdp-section-head .fa-chevron-right {
+      transition: transform 0.15s ease-in-out;
+    }
+    .wsjrdp-section-head[aria-expanded="true"] .fa-chevron-right {
+      transform: rotate(90deg);
+    }
+    .wsjrdp-section-summary {
+      margin-left: auto;
+      font-weight: 400;
+      color: var(--bs-secondary-color, #6c757d);
+      font-size: .875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wsjrdp-section-body {
+      padding: 4px 14px 10px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wsjrdp-section-head .fa-chevron-right { transition: none; }
+    }
+.wsjrdp-section
+  .wsjrdp-section-bar
+    %button.wsjrdp-section-head{type: "button", "data-bs-toggle": "collapse", "data-bs-target": "##{id}",
+      "aria-expanded": open.to_s, "aria-controls": id}
+      = icon(:"chevron-right")
+      %span= title
+      - if summary.present?
+        %span.wsjrdp-section-summary= summary
+    - if action.present?
+      = action
+  %div{id: id, class: open ? "collapse show" : "collapse"}
+    .wsjrdp-section-body
+      = yield

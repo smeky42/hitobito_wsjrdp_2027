@@ -81,7 +81,7 @@ module Fin::PersonalAccountsHelper
   end
 
   def fin_format_wsjrdp_personal_account_moss_default_cost_center_number(account)
-    datev_code_cell(account.moss_default_cost_center_number, datev_cost_center_names)
+    datev_cost_center_cell(account.moss_default_cost_center_number)
   end
 
   # The DATEV code fields of a Kreditor whose meaning is documented

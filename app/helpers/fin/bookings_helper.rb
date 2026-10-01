@@ -82,7 +82,7 @@ module Fin::BookingsHelper
     when "account_number", "offsetting_account_number"
       datev_code_cell(booking.public_send(key), datev_account_names, condensed: condensed)
     when "cost_center_number", "secondary_cost_center_number"
-      datev_code_cell(booking.public_send(key), datev_cost_center_names, condensed: condensed)
+      datev_cost_center_cell(booking.public_send(key), condensed: condensed)
     when "unit_budget"
       booking_unit_budget_cell(booking, condensed: condensed)
     else
@@ -199,9 +199,28 @@ module Fin::BookingsHelper
     safe_join([code, content_tag(:span, name, class: "text-muted")], " ")
   end
 
-  # number => name, loaded once per request.
-  def datev_cost_center_names
-    @datev_cost_center_names ||= WsjrdpCostCenter.pluck(:number, :name).to_h
+  # A cost center as the bookings views show it: the number and, muted and
+  # light, the short name (the full name where there is no short one). A
+  # tooltip names number and full name (shared/wsjrdp/_html_tooltip_js). The
+  # condensed table shows the number alone, with the same tooltip.
+  def datev_cost_center_cell(number, condensed: false)
+    return nil if number.blank?
+    short_name, name = datev_cost_center_name_pairs[number]
+    content = if condensed || short_name.blank?
+      number
+    else
+      safe_join([number, content_tag(:span, short_name, class: "text-muted fw-light")], " ")
+    end
+    return content if name.blank?
+    tip = safe_join([number, content_tag(:span, name, class: "wsjrdp-tip-muted")], " ")
+    content_tag(:span, content, class: "wsjrdp-html-tip", title: "#{number} #{name}",
+      data: {bs_title: tip.to_str})
+  end
+
+  # number => [display short name, name], loaded once per request.
+  def datev_cost_center_name_pairs
+    @datev_cost_center_name_pairs ||= WsjrdpCostCenter.pluck(:number, :display_short_name, :name)
+      .to_h { |number, short_name, name| [number, [short_name, name]] }
   end
 
   # The booking detail grid, as explicit rows of cells. Each cell is
@@ -237,8 +256,8 @@ module Fin::BookingsHelper
     end
     rows.push(
       [
-        ["Kostenstelle", datev_code_cell(booking.cost_center_number, datev_cost_center_names)],
-        ["Sekundäre Kostenstelle", datev_code_cell(booking.secondary_cost_center_number, datev_cost_center_names)],
+        ["Kostenstelle", datev_cost_center_cell(booking.cost_center_number)],
+        ["Sekundäre Kostenstelle", datev_cost_center_cell(booking.secondary_cost_center_number)],
         ["Sphäre", booking.sphere_number],
         [nil, nil]
       ],
@@ -478,11 +497,11 @@ module Fin::BookingsHelper
   end
 
   def fin_format_datev_booking_cost_center_number(booking)
-    datev_code_cell(booking.cost_center_number, datev_cost_center_names)
+    datev_cost_center_cell(booking.cost_center_number)
   end
 
   def fin_format_datev_booking_secondary_cost_center_number(booking)
-    datev_code_cell(booking.secondary_cost_center_number, datev_cost_center_names)
+    datev_cost_center_cell(booking.secondary_cost_center_number)
   end
 
   # The RESOLVED answer, always: the value first, then where it comes from in

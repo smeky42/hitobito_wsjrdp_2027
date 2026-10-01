@@ -5,10 +5,13 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Host of the session bar, nothing else. The core layout renders this partial
--#  for every logged-in user, right where its own .info-bars sit, and offers no
--#  extension point there -- so the wagon overrides it and renders the core's
--#  version unchanged through render_core_partial. The download spinner is not
--#  touched; a core update to it flows through.
+-#  Host of the session bar and of the HTML tooltips
+-#  (shared/wsjrdp/_html_tooltip_js), which any page's cells may carry. The core
+-#  layout renders this partial for every logged-in user, right where its own
+-#  .info-bars sit, and offers no extension point there -- so the wagon
+-#  overrides it and renders the core's version unchanged through
+-#  render_core_partial. The download spinner is not touched; a core update to
+-#  it flows through.
 = render_core_partial('layouts/file_download')
 = render 'layouts/wsjrdp_session_bar'
+= render 'shared/wsjrdp/html_tooltip_js'

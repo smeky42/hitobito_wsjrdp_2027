@@ -41,7 +41,7 @@ class Fin::PersonalAccountsController < Fin::FinController
   SUMMARY_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::BookkeepingSummaryColumns::PERSONAL_ACCOUNTS.codec,
     # No sort by default: the rows arrive in their natural order, by number.
-    sort: {default: []},
+    sort: {hidden: [["number", "asc"]]},
     cols: {default: Fin::BookkeepingSummaryColumns::PERSONAL_ACCOUNTS.default_keys},
     per_page: {default: Fin::BookkeepingSummaries::SUMMARY_DEFAULT_PER},
     filter: {policy: :remember, schema: Fin::PersonalAccountsFilterSchema, presets: PRESETS},

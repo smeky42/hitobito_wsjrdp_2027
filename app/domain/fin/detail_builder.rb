@@ -192,11 +192,12 @@ class Fin::DetailBuilder
   # The embedded, paged bookings list of a Buchhaltung detail
   # (fin/bookings/_embedded). `key:` is the name a `only:` list addresses it by.
   # `filter:` is the table's filter display config (`t.filter`), e.g.
-  # `{panel: false}` for a Schnellauswahl without a pane.
-  def bookings(rows, show_all_path:, all_label:, key: nil, filter: nil)
+  # `{panel: false}` for a Schnellauswahl without a pane; `note:` a muted word
+  # after the "Buchungen" heading (what the list counts by).
+  def bookings(rows, show_all_path:, all_label:, key: nil, filter: nil, note: nil)
     add(Section.new(kind: :bookings,
       options: {rows: rows, show_all_path: show_all_path, all_label: all_label,
-                filter: filter}, key: key))
+                filter: filter, note: note}, key: key))
     nil
   end
 

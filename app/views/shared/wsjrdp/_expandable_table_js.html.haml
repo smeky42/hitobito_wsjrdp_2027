@@ -76,6 +76,74 @@
   })();
 
   (function () {
+    // The sort controls (Wsjrdp::ExpandableTableSortHelper): a shift-click on
+    // a sort link or a rank box follows its data-shift-href instead of the
+    // link (a browser would open a shift-clicked link in a new window), and
+    // dragging a level of the "Sortiert nach" bar reorders the sort. Both
+    // navigate through a throwaway link next to the control, so Turbo, a
+    // surrounding turbo frame and the scroll keeper below treat them exactly
+    // like the plain sort links.
+    if (window.__expSortControls) return;
+    window.__expSortControls = true;
+    function follow(origin, href) {
+      var link = document.createElement("a");
+      link.href = href;
+      link.className = "exp-sort";
+      link.hidden = true;
+      origin.parentNode.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    function shiftControl(e) {
+      return e.shiftKey && e.target.closest ? e.target.closest("[data-shift-href]") : null;
+    }
+    // Shift + mousedown would extend the text selection first.
+    document.addEventListener("mousedown", function (e) {
+      if (shiftControl(e)) e.preventDefault();
+    });
+    document.addEventListener("click", function (e) {
+      var control = shiftControl(e);
+      if (!control) return;
+      e.preventDefault();
+      follow(control, control.getAttribute("data-shift-href"));
+    });
+    var dragged = null;
+    document.addEventListener("dragstart", function (e) {
+      var level = e.target.closest && e.target.closest(".exp-sort-level[draggable]");
+      if (!level) return;
+      dragged = level;
+      level.classList.add("exp-sort-dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", level.getAttribute("data-sort-token"));
+    });
+    document.addEventListener("dragover", function (e) {
+      var level = dragged && e.target.closest && e.target.closest(".exp-sort-level");
+      if (!level || level.parentNode !== dragged.parentNode) return;
+      e.preventDefault();
+      if (level === dragged) return;
+      var box = level.getBoundingClientRect();
+      level.parentNode.insertBefore(dragged, e.clientX > box.left + box.width / 2 ? level.nextSibling : level);
+    });
+    document.addEventListener("drop", function (e) {
+      if (dragged) e.preventDefault();
+    });
+    document.addEventListener("dragend", function () {
+      if (!dragged) return;
+      var bar = dragged.closest(".exp-sort-bar");
+      dragged.classList.remove("exp-sort-dragging");
+      dragged = null;
+      var tokens = Array.prototype.map.call(bar.querySelectorAll(".exp-sort-level"), function (el) {
+        return el.getAttribute("data-sort-token");
+      });
+      var url = new URL(bar.getAttribute("data-sort-base-href"), window.location.href);
+      var param = bar.getAttribute("data-sort-param");
+      if (tokens.join(",") === url.searchParams.get(param)) return;
+      url.searchParams.set(param, tokens.join(","));
+      follow(bar, window.wsjrdpRelaxedQuery.href(url));
+    });
+  })();
+
+  (function () {
     // THE scroll-position keeper for the whole finance area: preserve the
     // vertical scroll position across a table's paging / sorting / page-size
     // navigation AND across the reload of any form that reloads the page in
@@ -88,14 +156,21 @@
     window.__expScrollKeep = true;
     var KEY = "wsjrdp.exptbl.scroll";
     function remember() { try { sessionStorage.setItem(KEY, String(window.scrollY || document.documentElement.scrollTop || 0)); } catch (e) {} }
+    // A control inside a turbo frame navigates the frame, not the page --
+    // unless it targets the page itself --, so there is nothing to keep.
+    function reloadsPage(el) {
+      return !el.closest("turbo-frame") || el.getAttribute("data-turbo-frame") === "_top";
+    }
     document.addEventListener("click", function (e) {
-      if (e.target.closest(".bk-pagination a, a.exp-sort")) remember();
+      var link = e.target.closest(".bk-pagination a, a.exp-sort");
+      if (link && reloadsPage(link)) remember();
     });
     document.addEventListener("change", function (e) {
-      if (e.target.closest && e.target.closest(".bk-per-select")) remember();
+      var select = e.target.closest && e.target.closest(".bk-per-select");
+      if (select && reloadsPage(select)) remember();
     });
     document.addEventListener("submit", function (e) {
-      if (e.target.matches && e.target.matches("form.booking-scroll-form")) remember();
+      if (e.target.matches && e.target.matches("form.booking-scroll-form") && reloadsPage(e.target)) remember();
     });
     function restore() {
       var y;

@@ -32,13 +32,13 @@
 # (fin/bookings/_condensed_styles).
 module Fin::DatevBookingsColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "bkcol") do |c|
-    # Wide enough for the longest label a host gives it: the group's Buchhaltung
-    # calls it "Buchungsdatum", which ran into the next header at 7rem.
-    c.column key: "booking_date", abbr: "bdt", label: "Datum", width: "9.5rem",
+    # Wide enough for the date and for the header with its sort caret and rank.
+    # A host with a longer name gives the column more room (`cols: {widths:}`).
+    c.column key: "booking_date", abbr: "bdt", label: "Datum", width: "6rem",
       sort: "booking_date", default: true
     c.column key: "service_date", abbr: "sdt", label: "Leistungsdatum", width: "7rem",
       sort: "service_date"
-    c.column key: "signed_base_amount", abbr: "amt", label: "Betrag", numeric: true,
+    c.column key: "signed_base_amount", abbr: "amt", label: "Betrag", numeric: true, sort_first: "desc",
       width: "8rem", sort: "signed_base_amount", default: true
     # Whether the booking belongs to a unit's budget -- the RESOLVED answer, not
     # the stored override, so it sorts by what the cell shows. The expression is
@@ -55,10 +55,13 @@ module Fin::DatevBookingsColumns
     # The condensed (in-detail) table abbreviates the headers of the code
     # columns, since only the bare code is shown there (no account /
     # cost-center / supplier name).
+    # Number and short name, the full name in a tooltip
+    # (Fin::BookingsHelper#datev_cost_center_cell): wide enough for that on one
+    # line.
     c.column key: "cost_center_number", abbr: "cc", label: "Kostenstelle",
-      condensed_label: "KSt", width: "9rem", sort: "cost_center_number", default: true
-    c.column key: "secondary_cost_center_number", abbr: "cc2", label: "Sekundäre Kostenstelle",
-      condensed_label: "KSt 2", width: "11rem", sort: "secondary_cost_center_number"
+      condensed_label: "KSt", width: "10rem", sort: "cost_center_number", default: true
+    c.column key: "secondary_cost_center_number", abbr: "cc2", label: "Sekundäre KSt.",
+      condensed_label: "KSt 2", width: "10rem", sort: "secondary_cost_center_number"
     c.column key: "account_number", abbr: "acc", label: "Konto", condensed_label: "Kto",
       width: "12rem", sort: "account_number", default: true
     c.column key: "offsetting_account_number", abbr: "oacc", label: "Gegenkonto",
