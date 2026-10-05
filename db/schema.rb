@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_02_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -957,6 +957,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_02_100000) do
     t.text "comment", default: "", null: false, comment: "App-side free text"
     t.jsonb "additional_info", default: {}, null: false, comment: "App-side annotations"
     t.integer "sub_row_number", null: false, comment: "CSV Sub-row Number of the defining export: split within the card transaction (card export) / within the expense (reimbursement export), line within the invoice (invoice export), 1 for a top-up"
+    t.jsonb "contribution_subject_link_meta", default: {}, null: false
     t.index ["account_number"], name: "index_moss_bookings_account_number"
     t.index ["base_amount"], name: "index_moss_bookings_base_amount"
     t.index ["contribution_subject_type", "contribution_subject_id"], name: "index_moss_bookings_contribution_subject"
@@ -1520,11 +1521,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_02_100000) do
     t.boolean "event_participations", default: false, null: false
     t.boolean "mailing_lists", default: false, null: false
     t.string "permission", default: "layer_read", null: false
-    t.jsonb "additional_info", default: {}, null: false
     t.integer "acting_person_id"
     t.string "scopes", default: [], null: false, array: true
     t.string "stage"
     t.string "hmac_secret_key_fingerprint"
+    t.jsonb "additional_info", default: {}, null: false
     t.index ["acting_person_id"], name: "index_service_tokens_on_acting_person_id"
   end
 

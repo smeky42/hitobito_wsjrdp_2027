@@ -43,6 +43,20 @@
     .booking-detail-label.text-muted.text-uppercase.mb-1 Verknüpfungen
     = render "shared/wsjrdp/kv_grid", rows: [links]
 
+  -# The person side of every booking that has one, read-only: the buttons sit
+  -# in the listing's row, and after one of them is used this detail reloads as
+  -# a whole (the `reload_frames` stream action).
+  - person_bookings = tx.bookings.select { |booking| booking.accounting_entries.any? || booking.subject.present? }
+  .mt-3.pt-2.border-top
+    .booking-detail-label.text-muted.text-uppercase.mb-1 Personen
+    - if person_bookings.empty?
+      .small.text-muted Keine Person verknüpft.
+    - person_bookings.each do |booking|
+      .small.mb-1
+        - if tx.bookings.size > 1
+          .text-muted= moss_transaction_booking_label(booking)
+        = render "fin/moss_bookings/subject_links", booking: booking, actions: false
+
   - if tx.comment.present?
     .mt-2
       .booking-detail-label.text-muted.text-uppercase.mb-1 Kommentar

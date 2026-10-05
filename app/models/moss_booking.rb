@@ -211,6 +211,42 @@ class MossBooking < ActiveRecord::Base
       moss_transaction&.payment_reference].compact.join(" ")
   end
 
+  # --- matching contribution bookings (the person-linking buttons) -----------
+  # One source for what the buttons offer and what the server re-checks; see
+  # doc/TODOs/TODO_moss_link_and_create_entry.md.
+
+  # How far a contribution booking may lie from the payment, either way, to
+  # count as an existing entry for it when a new one would be created.
+  MATCHING_ENTRY_WINDOW = 3.months
+
+  # The contribution bookings of `person` this booking could be linked to: not
+  # yet linked to a Moss or a camt transaction (a DATEV link does not count) and
+  # of this booking's amount, in cents, sign included. No time limit.
+  def unlinked_accounting_entries_with_matching_amount(person)
+    return AccountingEntry.none if person.nil?
+
+    AccountingEntry.where(subject: person, moss_booking_id: nil, camt_transaction_id: nil,
+      amount_cents: amount_cents).order(:booking_date, :id)
+  end
+
+  # Whether "link + create in one step" may still run: no person linked and no
+  # Beitragsbuchung yet. Without this a second click (or a stale page) would
+  # create a second entry -- the first one is linked to THIS booking, so it is
+  # not "unlinked" and the matching check below would not catch it.
+  def open_for_new_entry? = contribution_subject_id.nil? && accounting_entries.none?
+
+  # The same, within MATCHING_ENTRY_WINDOW of the payment's booking date: the
+  # entries that already exist for this payment, so none is created in one
+  # step. A payment without a booking date cannot be placed -- then every
+  # unlinked entry of the amount counts (the cautious side).
+  def accounting_entries_matching_new_entry(person)
+    scope = unlinked_accounting_entries_with_matching_amount(person)
+    date = moss_transaction&.booking_date
+    return scope if date.nil?
+
+    scope.where(booking_date: (date - MATCHING_ENTRY_WINDOW)..(date + MATCHING_ENTRY_WINDOW))
+  end
+
   def subject_input_field_options = {input_field_type: "Person"}
 
   # A booking has no date of its own; it is dated by its payment

@@ -828,4 +828,118 @@ describe Fin::MossTransactionsController do
       expect(response.body).not_to include("getmoss.com")
     end
   end
+
+  # The person side of a booking (fin/moss_bookings/_subject_links): one block
+  # per booking in the row's description cell, with the linking buttons for the
+  # write tier, and read-only in the lazy detail's "Personen" section.
+  describe "person links" do
+    let(:target) { people(:cmt_leader) }
+
+    let!(:invoice) do
+      create_transaction("MossInvoice", amount: -100, transaction_name: "Rechnung Muster")
+        .tap { |tx| tx.bookings.first.update!(booking_posting_text: "Rechnung CMT #{target.id}") }
+    end
+
+    let(:booking) { invoice.bookings.first }
+
+    it "offers the linking buttons in the row of the booking's transaction" do
+      get :index
+
+      doc = Nokogiri::HTML(response.body)
+      block = doc.at_css("[data-subject-links='moss_booking_#{booking.id}']")
+      expect(block).to be_present
+      expect(block.css("a[data-turbo-method='post']").pluck("href"))
+        .to include("/fin/moss_booking/#{booking.id}/link_subject/#{target.id}/Person")
+    end
+
+    it "loads the detail lazily, its frame marked with the transaction" do
+      get :index
+
+      frame = Nokogiri::HTML(response.body).at_css("turbo-frame[data-record='moss_transaction_#{invoice.id}']")
+      expect(frame).to be_present
+      expect(frame["src"]).to start_with("/fin/moss/transactions/#{invoice.id}")
+    end
+
+    it "offers no linking button to the read tier" do
+      sign_in(Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person)
+      get :index
+
+      expect(response).to be_successful
+      expect(response.body).not_to include("/link_subject/")
+    end
+
+    it "shows the linked person read-only in the detail frame" do
+      booking.update!(contribution_subject: target)
+      request.headers["Turbo-Frame"] = "bkframe-mtx-#{invoice.id}"
+      get :show, params: {id: invoice.id}
+
+      doc = Nokogiri::HTML(response.body)
+      frame = doc.at_css("turbo-frame#bkframe-mtx-#{invoice.id}")
+      expect(frame).to be_present
+      expect(frame.text).to include("Personen").and include("Person:")
+      expect(frame.css("a[data-turbo-method]")).to be_empty
+      expect(doc.at_css("#main")).to be_nil # no page shell inside a frame response
+    end
+
+    def block_doc
+      Nokogiri::HTML(response.body).at_css("[data-subject-links='moss_booking_#{booking.id}']")
+    end
+
+    def entry_for(person, booking_date: Date.new(2026, 5, 6), **links)
+      AccountingEntry.create!(subject: person, author: person, amount_cents: -10_000,
+        description: "Beitrag", value_date: booking_date, booking_date: booking_date, **links)
+    end
+
+    it "offers creating the Beitragsbuchung in one step FIRST, then the two-step buttons" do
+      get :index
+
+      labels = block_doc.css("a.btn").map { |a| a.text.strip }
+      expect(labels.first).to start_with("Buchung für").and end_with("erzeugen")
+      expect(labels.drop(1).map { |label| label.split.first(2).join(" ") })
+        .to eq ["Verknüpfe mit", "Keine Verknüpfung"]
+    end
+
+    it "names an existing matching Beitragsbuchung instead of the create button" do
+      existing = entry_for(target)
+      get :index
+
+      expect(block_doc.text).to include("1 passende Beitragsbuchung vorhanden").and include("##{existing.id}")
+      expect(block_doc.css("a[href*='link_subject_and_create_accounting_entry']")).to be_empty
+      expect(block_doc.css("a[href*='/link_subject/']")).to be_present
+    end
+
+    it "offers no create button without :create on AccountingEntry" do
+      allow(controller).to receive(:current_ability).and_wrap_original do |original|
+        original.call.tap do |ability|
+          allow(ability).to receive(:can?).and_call_original
+          allow(ability).to receive(:can?).with(:create, AccountingEntry).and_return(false)
+        end
+      end
+      get :index
+
+      expect(block_doc.css("a[href*='link_subject_and_create_accounting_entry']")).to be_empty
+      expect(block_doc.css("a[href*='/link_subject/']")).to be_present
+    end
+
+    it "offers one link button per unlinked Beitragsbuchung of the linked person's amount" do
+      booking.update!(contribution_subject: target)
+      first = entry_for(target)
+      second = entry_for(target, booking_date: Date.new(2025, 1, 10))
+      entry_for(target, moss_booking: create_transaction("MossCardTransaction", amount: -100).bookings.first)
+      get :index
+
+      hrefs = block_doc.css("a[href*='/link_accounting_entry/']").pluck("href")
+      expect(hrefs).to contain_exactly(
+        "/fin/moss_booking/#{booking.id}/link_accounting_entry/#{first.id}",
+        "/fin/moss_booking/#{booking.id}/link_accounting_entry/#{second.id}"
+      )
+    end
+
+    it "says so when no person is linked" do
+      request.headers["Turbo-Frame"] = "bkframe-mtx-#{invoice.id}"
+      get :show, params: {id: invoice.id}
+
+      expect(response.body).to include("Keine Person verknüpft.")
+    end
+  end
 end

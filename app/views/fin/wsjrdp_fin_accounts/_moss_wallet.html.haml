@@ -36,6 +36,10 @@
   .mw-balance-amount { font-variant-numeric: tabular-nums; }
 
 = render "shared/wsjrdp/moss_kind_styles"
+-# The `replace_all` / `reload_frames` answers of the person-linking buttons
+-# (Fin::MossBookingsController#respond_after_subject_link).
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
 
 #main.row
   %p

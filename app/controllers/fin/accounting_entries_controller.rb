@@ -87,7 +87,7 @@ class Fin::AccountingEntriesController < Fin::FinController
 
     unless params[:accounting_entry].blank?
       accounting_entry.attributes = params.require(:accounting_entry).permit(permitted_attrs)
-      unless accounting_entry.save
+      unless apply_moss_booking_link_change(accounting_entry) && accounting_entry.save
         render "person/accounting_entries/show", status: :bad_request
         return
       end
@@ -109,7 +109,7 @@ class Fin::AccountingEntriesController < Fin::FinController
     elsif (action_name == "new") || (action_name == "create")
       permitted_attrs_for_new_entry
     elsif can?(:admin_finance, AccountingEntry)
-      permitted_attrs_for_new_entry
+      permitted_attrs_for_new_entry + permitted_attrs_for_link_edit
     else
       [:comment]
     end
@@ -204,6 +204,38 @@ class Fin::AccountingEntriesController < Fin::FinController
       :excluded_from_fee_reconciliation,
       additional_info: [:excluded_from_fee_reconciliation]
     ]
+  end
+
+  # The Moss link of the edit form (finance manage only), handled here rather
+  # than in the model, which keeps only its real columns:
+  #   * "Verknüpfung lösen" is a plain request param (params[:unlink_moss_booking],
+  #     not an attribute) and wins over the number field;
+  #   * a new number must name an existing Moss booking -- a field error here,
+  #     not a foreign-key error from the database;
+  #   * a changed link gets its provenance (Fin::LinkMeta.manual), a removed one
+  #     loses it.
+  # Returns false, with the errors set and nothing saved, for an unknown number.
+  def apply_moss_booking_link_change(entry)
+    return true unless permitted_attrs.include?(:moss_booking_id)
+
+    entry.moss_booking_id = nil if ActiveModel::Type::Boolean.new.cast(params[:unlink_moss_booking])
+    return true unless entry.moss_booking_id_changed?
+
+    if entry.moss_booking_id.present? && !MossBooking.exists?(entry.moss_booking_id)
+      entry.valid? # the form shows the other fields' errors as well
+      entry.errors.add(:moss_booking_id, "##{entry.moss_booking_id} gibt es nicht")
+      return false
+    end
+
+    entry.moss_booking_link_meta =
+      entry.moss_booking_id.nil? ? {} : Fin::LinkMeta.manual(author_id: current_user.id)
+    true
+  end
+
+  # The links an existing entry's edit form may change (finance manage only):
+  # the Moss booking it settles (see #apply_moss_booking_link_change).
+  def permitted_attrs_for_link_edit
+    [:moss_booking_id]
   end
 
   def permitted_attrs_for_new_entry

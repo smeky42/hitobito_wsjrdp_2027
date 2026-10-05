@@ -5,19 +5,23 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Standalone, bookmarkable detail page of one Moss transaction. Reuses the
--#  shared _detail partial inside a plain page shell.
+-#  Standalone, bookmarkable detail page of one Moss transaction, and the lazy
+-#  detail the listing's rows load into their turbo frame (the frame then gets
+-#  the shared _detail partial alone). Both reuse the _detail partial.
+- if turbo_frame_request?
+  = wsjrdp_detail_frame("mtx", @transaction.id) do
+    = render "fin/moss_transactions/detail", transaction: @transaction
+- else
+  #main
+    = link_to moss_transactions_path, class: "btn btn-sm btn-link px-0 mb-2" do
+      = icon(:"arrow-left")
+      Zurück zur Liste
 
-#main
-  = link_to moss_transactions_path, class: "btn btn-sm btn-link px-0 mb-2" do
-    = icon(:"arrow-left")
-    Zurück zur Liste
+    -# Title on one line: the kind + id light + muted, then the transaction's
+    -# name in the normal heading weight.
+    %h1.mb-3
+      %span.text-muted.fw-light= "#{moss_kind_label(@transaction.type)} ##{@transaction.id}"
+      - if @transaction.display_name.present?
+        %span.ms-2= @transaction.display_name
 
-  -# Title on one line: the kind + id light + muted, then the transaction's
-  -# name in the normal heading weight.
-  %h1.mb-3
-    %span.text-muted.fw-light= "#{moss_kind_label(@transaction.type)} ##{@transaction.id}"
-    - if @transaction.display_name.present?
-      %span.ms-2= @transaction.display_name
-
-  = render "fin/moss_transactions/detail", transaction: @transaction
+    = render "fin/moss_transactions/detail", transaction: @transaction

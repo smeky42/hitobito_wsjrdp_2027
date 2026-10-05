@@ -1,0 +1,76 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The person side of ONE Moss booking: the linked contribution bookings, the
+-#  linked person and -- with `actions` -- the buttons that create or propose
+-#  such a link. Per candidate person the first button links them AND creates
+-#  their Beitragsbuchung in one step, unless one already exists for this
+-#  payment (then a hint names it); see
+-#  doc/TODOs/TODO_moss_link_and_create_entry.md for the rules. Rendered in the wallet's description cell, in the description
+-#  cell of the Moss transaction lists (one block per booking) and read-only in
+-#  the transaction detail's "Personen" section.
+-#
+-#  Locals:
+-#    booking  a MossBooking
+-#    actions  true (default): offer the buttons, and mark the block with
+-#             data-subject-links -- the target every link action of
+-#             Fin::MossBookingsController replaces (replace_all: the same
+-#             booking may be on a page more than once). false: the read-only
+-#             view, unmarked, refreshed with its detail frame instead.
+-#    candidates  optional: the people to offer, if the caller already looked
+-#             them up (Fin::SubjectLinkingHelper#subject_link_candidates)
+-#
+-#  The buttons post via Turbo (data-turbo-method -- NOT `method:`, whose
+-#  data-method jquery-ujs would submit as a plain form, bypassing Turbo). Each
+-#  needs :update on the booking AND on the person (Fin::SubjectLinkingHelper);
+-#  the read tier sees the links that exist, no actions.
+- actions = local_assigns.fetch(:actions, true)
+- candidates = actions ? local_assigns.fetch(:candidates) { subject_link_candidates(booking) } : []
+%div{data: (actions ? {subject_links: moss_booking_subject_links_key(booking)} : {})}
+  -# Both halves are links only for whoever may see the entry's person -- see
+  -# Fin::LinkedEntryHelper for the rule.
+  - booking.accounting_entries.each do |ae|
+    %div
+      %span.fw-light.muted Person:
+      %span= fin_subject_link(ae.subject)
+      %span.ae-linked
+        = " • Verknüpfte Buchung: #{fin_entry_link(ae)}"
+  - if (subject = booking.subject_without_accounting_entry).present?
+    %div
+      %span.fw-light.muted Person:
+      %span= fin_subject_link(subject)
+      - if (provenance = link_provenance(booking.contribution_subject_link_meta))
+        %span.small.text-muted= "· #{provenance}"
+    - if actions && may_create_accounting_entry?(MossBooking, subject)
+      %div
+        = action_button("Erzeuge Buchung", "#{url_for(booking)}/create_accounting_entry", :plus,
+                        data: { turbo_method: :post, turbo_confirm: "Neue Buchung anlegen?" })
+  -# One button per Beitragsbuchung of the linked person this booking could be
+  -# linked to: not yet linked to a Moss or camt transaction, same amount.
+  - if actions && booking.accounting_entries.blank? && may_link_subject?(MossBooking, booking.subject)
+    - booking.unlinked_accounting_entries_with_matching_amount(booking.subject).each do |entry|
+      %div
+        = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(booking)}/link_accounting_entry/#{entry.id}", :plus,
+                        data: { turbo_method: :post, turbo_confirm: "Transaktion #{booking.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?" })
+  -# Per candidate, first: link AND create the Beitragsbuchung in one step --
+  -# unless the person already has a matching one for this payment
+  -# (MossBooking#accounting_entries_matching_new_entry); then the hint names
+  -# them and the two-step way below stays.
+  - candidates.each do |candidate|
+    - existing = booking.accounting_entries_matching_new_entry(candidate).to_a
+    %div
+      - if existing.any?
+        %span.small.text-muted.me-2
+          = "#{existing.size} passende Beitragsbuchung#{"en" unless existing.size == 1} vorhanden:"
+          = matching_accounting_entry_links(existing)
+      - elsif booking.open_for_new_entry? && may_create_accounting_entry?(MossBooking, candidate)
+        = action_button("Buchung für #{candidate.link_name} erzeugen", link_subject_and_create_accounting_entry_path(booking, candidate), :plus,
+                        data: { turbo_method: :post, turbo_confirm: "Transaktion #{booking.id} mit Person #{candidate.link_name} verknüpfen und eine Beitragsbuchung über #{booking.amount_eur_display} € anlegen?" })
+      = action_button("Verknüpfe mit #{candidate.link_name}", link_subject_path(booking, candidate), :plus,
+                      data: { turbo_method: :post, turbo_confirm: "Transaktion #{booking.id} mit Person #{candidate.link_name} verknüpfen?" })
+      = action_button("Keine Verknüpfung mit #{candidate.link_name}", disallow_link_subject_path(booking, candidate), :trash,
+                      data: { turbo_method: :post, turbo_confirm: "Verknüpfung von Transaktion #{booking.id} mit Person #{candidate.link_name} nicht mehr anbieten?" })

@@ -139,8 +139,14 @@ class Fin::MossTransactionsController < Fin::FinController
     transactions # memoized; builds the filtered/sorted/paginated page
   end
 
+  # The page of one transaction, and the lazy detail the listing's rows load
+  # into their turbo frame (no layout then -- the frame is the view's own).
   def show
-    @transaction = MossTransaction.includes(:clearing_datev_booking, :fin_account).find(params[:id])
+    @transaction = MossTransaction
+      .includes(:clearing_datev_booking, :fin_account,
+        bookings: [:moss_expense, :contribution_subject, {accounting_entries: :subject}])
+      .find(params[:id])
+    render layout: false if turbo_frame_request?
   end
 
   # PRG target of the CNF filter builder; lands on the tab it was posted from.
@@ -167,20 +173,31 @@ class Fin::MossTransactionsController < Fin::FinController
   # (Fin::MossTransactionsHelper#moss_transaction_bookings).
   AGGREGATE_COLUMNS = %w[cost_centers account_numbers bookings_count datev].freeze
 
-  # What the page reaches for per row: the inline detail shows every row's
-  # wallet account, and the expenses with their bookings feed the aggregate
-  # columns AND the expense sub-rows of a reimbursement
-  # (Fin::MossExpenseRowsHelper). A tab on which a reimbursement can appear
-  # therefore always preloads them -- the sub-rows read them whatever the
-  # visible columns are; on the other kind tabs they are loaded only while an
-  # aggregate column is visible, so a slimmed-down column set does not load
-  # hundreds of bookings for nothing (Bullet flags both the missing and the
-  # unused preload).
+  # What the page reaches for per row: the expenses with their bookings feed the
+  # aggregate columns, the expense sub-rows of a reimbursement
+  # (Fin::MossExpenseRowsHelper) and the person side of the description cell
+  # (Fin::MossTransactionsHelper#moss_transaction_subject_links). A tab on which
+  # a reimbursement can appear therefore always preloads them -- the sub-rows
+  # read them whatever the visible columns are; on the other kind tabs they are
+  # loaded only while a column that reads them is visible, and the person side
+  # (person, contribution bookings) only with the description, so a
+  # slimmed-down column set does not load hundreds of bookings for nothing
+  # (Bullet flags both the missing and the unused preload). The detail is lazy
+  # and loads its own records (#show).
   def transaction_preloads
-    preloads = [:fin_account]
-    preloads << {expenses: :bookings} if expense_rows_possible? ||
+    return [] unless expense_rows_possible? || person_links_visible? ||
       transactions_table_state.visible_column_keys.intersect?(AGGREGATE_COLUMNS)
-    preloads
+
+    [{expenses: {bookings: person_links_visible? ? BOOKING_LINK_PRELOADS : []}}]
+  end
+
+  # What the description cell's linking blocks read per booking
+  # (fin/moss_bookings/_subject_links).
+  BOOKING_LINK_PRELOADS = [:contribution_subject, {accounting_entries: :subject}].freeze
+
+  # The description column carries the person side of every booking.
+  def person_links_visible?
+    transactions_table_state.visible_column_keys.include?("description")
   end
 
   # Can a reimbursement -- the one kind that brings expense sub-rows -- be on
