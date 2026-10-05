@@ -27,7 +27,23 @@
         = form_like_labeled_attr(f.object, :direct_debit_pre_notification)
       - if f.object.camt_transaction_id.present?
         = form_like_labeled_attr(f.object, :camt_transaction)
-      - if f.object.moss_booking_id.present?
+      -# Finance manage may move or remove the Moss link: the number of the Moss
+      -# booking plus "Verknüpfung lösen"; the help names the stored link.
+      - if permitted_attr?(:moss_booking_id)
+        -# A plain number field: the generic input would read the _id column as
+        -# an association and offer a select of every Moss booking.
+        = f.labeled(:moss_booking_id, "Moss-Buchung") do
+          = f.number_field :moss_booking_id, class: "form-control form-control-sm w-auto", min: 1, step: 1
+          %span.form-text.d-block= moss_booking_link_help(f.object)
+        -# A plain request param, not a model attribute: the controller applies it
+        -# (Fin::AccountingEntriesController#apply_moss_booking_link_change).
+        - if f.object.moss_booking_id_in_database.present?
+          .row.mb-2
+            .offset-md-3.offset-xl-2.col-md-9.col-lg-8.col-xl-8
+              .form-check
+                = check_box_tag "unlink_moss_booking", "1", params[:unlink_moss_booking] == "1", class: "form-check-input"
+                = label_tag "unlink_moss_booking", "Verknüpfung lösen", class: "form-check-label"
+      - elsif f.object.moss_booking_id.present?
         = form_like_labeled_attr(f.object, :moss_booking)
       = input_or_render_attrs(f, :new_sepa_status_display)
       %div.border-top.py-2

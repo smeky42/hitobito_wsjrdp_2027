@@ -19,6 +19,10 @@
 -# whose colours live in the shared kind stylesheet; that stylesheet also paints
 -# the kind rail along each row group.
 = render "shared/wsjrdp/moss_kind_styles"
+-# The `replace_all` / `reload_frames` answers of the person-linking buttons
+-# (Fin::MossBookingsController#respond_after_subject_link).
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
 -# The look of a reimbursement's expense sub-rows and the one interaction they
 -# bring (revealing the expenses beyond the cap).
 = render "shared/wsjrdp/moss_expense_rows"
@@ -44,7 +48,10 @@
     -# without a URL renders no group -- its line is "Detailseite" alone.
     - t.detail_link label: "In Moss", icon: :wallet, title: "Transaktion in Moss öffnen",
         title_new_tab: "Transaktion in Moss in neuem Tab öffnen", &:moss_record_url
-    - t.detail  { |tx, ctx| render "fin/moss_transactions/detail", transaction: tx, table_context: ctx }
+    -# Lazy (a turbo frame per row): the detail's "Personen" section must be
+    -# reloadable after a linking button in the row was used
+    -# (Fin::MossBookingsController#respond_after_subject_link).
+    - t.detail_src { |tx| moss_transaction_path(tx) }
     - t.paging
     - t.filter  filter_cfg
     - t.summary "#{transactions.total_count} Transaktionen · Summe (gefiltert): #{moss_amount_display(transactions.total_sum, "EUR")}"

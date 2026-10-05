@@ -34,8 +34,6 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
   helper_method :fin_account_path
-  helper_method :link_subject_path
-  helper_method :disallow_link_subject_path
 
   # The wallet statement's table (doc/wsjrdp/expandable_table.md). Declared on
   # the controller although only ONE of its accounts renders it -- a policy is a
@@ -174,14 +172,6 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
 
   def fin_account_path(entry = nil)
     url_for(entry.nil? ? fin_account : entry)
-  end
-
-  def link_subject_path(tx, subject)
-    "#{url_for(tx)}/link_subject/#{subject.id}/#{subject.class.name}"
-  end
-
-  def disallow_link_subject_path(tx, subject)
-    "#{url_for(tx)}/disallow_link_subject/#{subject.id}/#{subject.class.name}"
   end
 
   def model_params

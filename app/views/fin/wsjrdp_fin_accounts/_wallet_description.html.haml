@@ -12,18 +12,16 @@
 -#       (Fin::MossWalletHelper#moss_wallet_headline);
 -#    2. the Buchungstext of the row's levels, the transaction level without its
 -#       prefix (#moss_wallet_text_lines);
--#    3. everything BELOW the texts, copied UNCHANGED from the camt statement
--#       (_camt_statement): the parent levels' comments, the booking's own
--#       comment, the linked Beitragsbuchungen, and the buttons that create or
--#       propose such a link. Those are the actions this page exists for; they
--#       stay in the row rather than moving into a detail.
+-#    3. the parent levels' comments and the booking's own comment;
+-#    4. the person side -- the linked Beitragsbuchungen and the buttons that
+-#       create or propose such a link -- as the shared
+-#       fin/moss_bookings/_subject_links block. Those are the actions this page
+-#       exists for; they stay in the row rather than moving into a detail. The
+-#       linking actions of Fin::MossBookingsController replace exactly that
+-#       block (Turbo Stream), so the rest of the wallet -- open details, scroll
+-#       position, filters -- stays as it is.
 -#
 -#  Locals: booking (a MossBooking).
--#  Those buttons are the write tier's (SubjectLinking and
--#  #create_accounting_entry authorize :update). The read tier (:finance_read,
--#  e.g. an external auditor) reaches the wallet legitimately and keeps the row
--#  as a reading view -- texts, comments and existing links, no actions.
-- may_edit_booking = can?(:update, MossBooking)
 %div= moss_wallet_headline(booking)
 = moss_wallet_text_lines(booking)
 - booking.parent_comments.each do |level, text|
@@ -32,37 +30,4 @@
 - if booking.comment.present?
   %div
     %div.fw-light.fst-italic= auto_link_escaped_multiline(booking.comment)
--# Both halves are links only for whoever may see the entry's person -- see
--# Fin::LinkedEntryHelper for the rule.
-- booking.accounting_entries.each do |ae|
-  %div
-    %span.fw-light.muted Person:
-    %span= fin_subject_link(ae.subject)
-    %span.ae-linked
-      = " • Verknüpfte Buchung: #{fin_entry_link(ae)}"
-- if (subject = booking.subject_without_accounting_entry).present?
-  %div
-    %span.fw-light.muted Person:
-    %span= fin_subject_link(subject)
-  - if may_edit_booking
-    %div
-      = action_button("Erzeuge Buchung", "#{url_for(booking)}/create_accounting_entry",
-                      :plus, method: :post, remote: false,
-                      data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
-- if may_edit_booking && booking.accounting_entries.blank?
-  %div
-    - accounting_entries = booking.accounting_entries_for_subject_with_matching_amount
-    - if accounting_entries.size == 1
-      - entry = accounting_entries[0]
-      = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(booking)}/link_accounting_entry/#{entry.id}",
-                      :plus, method: :post, remote: false,
-                      data: { confirm: "Transaktion #{booking.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
-- if may_edit_booking && (subject_candidates = booking.subject_candidates).present?
-  - subject_candidates.each do |subject|
-    %div
-      = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(booking, subject),
-                      :plus, method: :post, remote: false,
-                      data: { confirm: "Transaktion #{booking.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
-      = action_button("Keine Verknüpfung mit #{subject.link_name}", disallow_link_subject_path(booking, subject),
-                      :trash, method: :post, remote: false,
-                      data: { confirm: "Verknüpfung von Transaktion #{booking.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })
+= render "fin/moss_bookings/subject_links", booking: booking

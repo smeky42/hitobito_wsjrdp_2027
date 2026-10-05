@@ -37,11 +37,71 @@ class Fin::MossBookingsController < Fin::FinController
     end
   end
 
+  # "Erzeuge Buchung": the Beitragsbuchung for the person already linked.
   def create_accounting_entry
+    authorize!(:update, moss_booking)
+    subject = moss_booking.contribution_subject
+    authorize!(:update, subject)
+    authorize!(:create, AccountingEntry)
+    create_accounting_entry_for(moss_booking, subject)
+    respond_after_subject_link
+  end
+
+  # "Buchung für <Person> erzeugen": link the person AND create their
+  # Beitragsbuchung, in one transaction. Refused (422, with the refreshed block)
+  # once the booking has a person or a Beitragsbuchung
+  # (MossBooking#open_for_new_entry?) or while the person already has a
+  # matching Beitragsbuchung for this payment
+  # (MossBooking#accounting_entries_matching_new_entry) -- the page may be
+  # stale or the button clicked twice, and a second entry for one payment is
+  # the mistake this button must not make. See doc/TODOs/TODO_moss_link_and_create_entry.md.
+  def link_subject_and_create_accounting_entry
+    authorize!(:update, moss_booking)
+    person = linkable_person
+    authorize!(:create, AccountingEntry)
+    if !moss_booking.open_for_new_entry? ||
+        moss_booking.accounting_entries_matching_new_entry(person).exists?
+      return respond_after_subject_link(status: :unprocessable_entity)
+    end
+
+    MossBooking.transaction do
+      assign_linked_subject(moss_booking, person)
+      moss_booking.save!
+      create_accounting_entry_for(moss_booking, person)
+    end
+    respond_after_subject_link
+  end
+
+  def link_accounting_entry
     authorize!(:update, moss_booking)
     tx = moss_booking
     subject = tx.contribution_subject
     authorize!(:update, subject)
+    accounting_entry = AccountingEntry.find(params[:accounting_entry_id])
+    accounting_entry.moss_booking_id = tx.id
+    accounting_entry.moss_booking_link_meta = Fin::LinkMeta.manual(author_id: current_user.id)
+    tx.accounting_entry_id = accounting_entry.id
+    tx.save!
+    accounting_entry.save!
+    respond_after_subject_link
+  end
+
+  private
+
+  def entry
+    moss_booking
+  end
+
+  # The person link of a Moss booking carries its provenance
+  # (contribution_subject_link_meta): who linked, when, by hand.
+  def assign_linked_subject(booking, person)
+    booking.subject = person
+    booking.contribution_subject_link_meta = Fin::LinkMeta.manual(author_id: current_user.id)
+  end
+
+  # The Beitragsbuchung of `subject` for the booking `tx`, linked to it, with the
+  # provenance of a hand-made link (who clicked, when).
+  def create_accounting_entry_for(tx, subject)
     entry = AccountingEntry.create!(
       subject: subject,
       author: current_user,
@@ -56,36 +116,38 @@ class Fin::MossBookingsController < Fin::FinController
       # cdtr_name:
       cdtr_iban: tx.moss_transaction.recipient_iban,
       cdtr_bic: tx.moss_transaction.recipient_bic,
-      moss_booking_id: tx.id
+      moss_booking_id: tx.id,
+      moss_booking_link_meta: Fin::LinkMeta.manual(author_id: current_user.id)
     )
     tx.accounting_entry_id = entry.id
     tx.save!
-    respond_to do |format|
-      format.turbo_stream { render turbo_stream: turbo_stream.action(:refresh, "") }
-      format.html { redirect_to tx.moss_transaction.fin_account }
-    end
   end
 
-  def link_accounting_entry
-    authorize!(:update, moss_booking)
-    tx = moss_booking
-    subject = tx.contribution_subject
-    authorize!(:update, subject)
-    accounting_entry = AccountingEntry.find(params[:accounting_entry_id])
-    accounting_entry.moss_booking_id = tx.id
-    tx.accounting_entry_id = accounting_entry.id
-    tx.save!
-    accounting_entry.save!
+  # Every link action of this controller changes only the booking's person side.
+  # A Turbo request gets back:
+  #   * every occurrence of the booking's linking block on the page, re-rendered
+  #     from a fresh record (fin/moss_bookings/_subject_links; replace_all, as
+  #     the booking may show in more than one table), and
+  #   * a `reload_frames` for every already loaded detail frame of its
+  #     transaction (the Moss lists' lazy detail shows the persons too) -- see
+  #     turbo_stream_actions.js.
+  # Without Turbo the browser goes back to the wallet as before.
+  def respond_after_subject_link(status: :ok)
+    booking = MossBooking.find(moss_booking.id)
     respond_to do |format|
-      format.turbo_stream { render turbo_stream: turbo_stream.action(:refresh, "") }
-      format.html { redirect_to tx.moss_transaction.fin_account }
+      format.turbo_stream do
+        render status: status, turbo_stream: helpers.safe_join([
+          turbo_stream.replace_all(helpers.moss_booking_subject_links_selector(booking),
+            partial: "fin/moss_bookings/subject_links", locals: {booking: booking}),
+          turbo_stream.action_all(:reload_frames,
+            helpers.loaded_detail_frames_selector(booking.moss_transaction))
+        ])
+      end
+      format.html do
+        alert = "Keine Beitragsbuchung angelegt: die Buchung ist bereits verknüpft, oder es gibt schon eine passende." unless status == :ok
+        redirect_to booking.moss_transaction.fin_account, alert: alert
+      end
     end
-  end
-
-  private
-
-  def entry
-    moss_booking
   end
 
   def map_id_to_moss_booking_id

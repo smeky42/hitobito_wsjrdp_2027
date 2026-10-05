@@ -39,7 +39,7 @@ module Fin::MossTransactionsHelper
     when "signed_total_base_amount"
       moss_transaction_amount_cell(tx)
     when "description"
-      tx.description(length: DESCRIPTION_LENGTH)
+      safe_join([tx.description(length: DESCRIPTION_LENGTH), moss_transaction_subject_links(tx)].compact_blank)
     when "party"
       moss_transaction_party(tx)
     when "cost_centers"
@@ -60,6 +60,35 @@ module Fin::MossTransactionsHelper
   # German label of a kind (STI type), e.g. "Kartenzahlung".
   def moss_kind_label(type)
     I18n.t("fin.moss.kinds.#{type}", default: type.to_s)
+  end
+
+  # The person side of the description cell: one linking block
+  # (fin/moss_bookings/_subject_links) per booking that has something to show --
+  # a linked person or contribution booking, or a person to offer. With several
+  # bookings each block gets its booking's text as a label, OUTSIDE the block:
+  # the link actions replace the block itself, the label stays.
+  def moss_transaction_subject_links(tx)
+    bookings = moss_transaction_bookings(tx)
+    shown = bookings.filter_map do |booking|
+      candidates = subject_link_candidates(booking)
+      [booking, candidates] if moss_booking_subject_links?(booking, candidates)
+    end
+    return if shown.empty?
+
+    safe_join(shown.map do |booking, candidates|
+      label = (moss_transaction_booking_label(booking).presence if bookings.size > 1)
+      content_tag(:div, class: "moss-subject-links mt-1") do
+        safe_join([(content_tag(:div, label, class: "small text-muted") if label),
+          render("fin/moss_bookings/subject_links", booking: booking, candidates: candidates)].compact)
+      end
+    end)
+  end
+
+  # A booking among several of one transaction, by its own text (else its
+  # expense's), shortened.
+  def moss_transaction_booking_label(booking)
+    text = booking.booking_posting_text.presence || booking.moss_expense&.expense_posting_text
+    truncate(text.to_s, length: 60, separator: " ")
   end
 
   # Every booking of a transaction through the eager-loaded expenses (one

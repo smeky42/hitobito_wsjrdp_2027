@@ -292,6 +292,7 @@ de:
         wsjrdp_camt_transaction: Kontobewegung
         camt_transaction: Kontobewegung
         moss_booking: Moss Buchung
+        moss_booking_id: Moss-Buchung
 
       # de.activerecord.attributes.wsjrdp_camt_transaction
       wsjrdp_camt_transaction:

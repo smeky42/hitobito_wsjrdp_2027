@@ -9,9 +9,15 @@ colour-coded confidence chip.
 The provenance half of the pattern (the `*_link_meta` column of §1) carries
 several finance links — the camt importer's `imported_subject_link_meta` /
 `subject_link_meta`, the Moss side's `clearing_datev_booking_link_meta`,
-`expense_datev_booking_link_meta` and `recipient_link_meta`, the entry's
-`moss_booking_link_meta` / `camt_transaction_link_meta` (their column comments
-point back here). The instance that carries a matcher and a rating chip on top
+`expense_datev_booking_link_meta`, `recipient_link_meta` and
+`contribution_subject_link_meta` (the person a Moss booking is linked to), the
+entry's `moss_booking_link_meta` / `camt_transaction_link_meta` (their column
+comments point back here). Every Moss link made in the UI -- the
+person-linking buttons (`Fin::MossBookingsController`: the person on the Moss
+booking, and the Beitragsbuchung they create or link) and the Moss-Buchung
+field of an entry's edit form -- writes `Fin::LinkMeta.manual` (`"manual"`, the
+clicking user, no score, no `classification_string`); removing the link empties
+it. The instance that carries a matcher and a rating chip on top
 is **`DatevBooking` ↔ `AccountingEntry`** (a DATEV booking ↔ its
 Beitragsbuchung), driven by `Fin::DatevBookingMatcher` and shown on the
 reconciliation page and the booking detail page. This document describes the

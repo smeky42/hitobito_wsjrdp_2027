@@ -18,3 +18,13 @@ Turbo.StreamActions.location_reload = function() {
     console.log("Turbo.StreamActions.location_reload")
     window.location.reload()
 }
+
+// Reload every turbo frame the stream's `targets` selector matches, e.g. the
+// already loaded detail frames of a record after a change in its row
+// (Fin::MossBookingsController#respond_after_subject_link). A frame reloads
+// its own src, so the detail stays its own request to its own controller.
+Turbo.StreamActions.reload_frames = function() {
+    this.targetElements.forEach((frame) => {
+        if (typeof frame.reload === "function") frame.reload()
+    })
+}

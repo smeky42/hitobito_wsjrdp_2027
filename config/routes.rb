@@ -147,6 +147,10 @@ Rails.application.routes.draw do
       resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]
       resources :moss_bookings, controller: "moss_bookings", path: "moss_booking", only: [:show, :update] do
         concerns :tx_actions, controller: "moss_bookings"
+        # Link a person AND create their Beitragsbuchung in one step (Moss only,
+        # hence not in :tx_actions, which the camt transactions share).
+        post "link_subject_and_create_accounting_entry/:subject_id/:subject_type",
+          to: "moss_bookings#link_subject_and_create_accounting_entry"
       end
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"
