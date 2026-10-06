@@ -10,7 +10,10 @@
 
 #main.row
   -# The sheet renders its parent (the Moss tabs), so the page names itself.
-  %h1.mb-3= "Moss Buchung ##{@moss_booking.id}"
+  -# The shared finance page header: the technical part light and muted, the
+  -# booking's own Buchungstext as the title where it has one.
+  = render "fin/shared/detail_header", back: nil, back_label: nil, toolbar: nil,
+    label: "Moss Buchung ##{@moss_booking.id}", title: @moss_booking.booking_posting_text.presence
   = standard_form(@moss_booking, {url: moss_booking_path, method: :put, data: {turbo: false}}) do |f|
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
@@ -22,30 +25,26 @@
     = field_set_tag do
       %div.border-top.py-2
       -# The booking is L3: its transaction and its expense carry the
-      -# context, the booking itself the split dimensions.
-      -# The payment has no page of its own here -- the FIN views act on the
-      -# booking. Its home is Moss, so the link goes there (the model derives
-      -# the URL from the stored uuid) -- except for a top-up, for which Moss
-      -# has no derivable record page and the line ends after the name.
-      - if (fin_account = @moss_booking.fin_account).present?
-        = form_like_labeled("Konto", link_to(fin_account.to_s, url_for(fin_account)))
-      -# The kind chip goes FIRST, before the name: it classifies what follows
-      -# (the label only says "Transaktion"), it is the same reading order as
-      -# the Art column of the wallet list, and at the end of the line it would
-      -# hide behind the Moss link.
+      -# context, the booking itself the split dimensions. Its amount first.
+      = input_or_render_attrs(f, :amount_with_currency)
+      - if @moss_booking.foreign_currency?
+        = input_or_render_attrs(f, :original_amount_with_currency)
+      = form_like_labeled("Art", moss_kind_chip(transaction.type))
+      -# The payment: "#<id>" as a double link with its Buchungstext (and its
+      -# amount where it differs from the booking's), below it the payment in
+      -# Moss -- except for a top-up, for which Moss has no derivable record page.
       = form_like_labeled("Transaktion") do
-        = moss_kind_chip(transaction.type)
-        %span= transaction.link_name
+        %div= moss_booking_transaction_line(@moss_booking)
         - if (moss_url = transaction.moss_record_url).present?
-          %span.muted= " • "
-          %span= link_to("in Moss öffnen", moss_url, target: "_blank", rel: "noopener")
-      -# Header facts of the payment that exist only for some kinds: the SEPA
-      -# reference of a balance payment, the card merchant, the top-up's
-      -# funding account, the invoice's workflow status. The names and texts
-      -# of the three levels are in the Buchungstext block below.
-      = moss_labeled_attr_if_present(transaction, :payment_reference)
-      = moss_labeled_attr_if_present(transaction, :merchant_name)
-      = moss_labeled_attr_if_present(transaction, :top_up_sender)
+          %div
+            = link_to("in Moss öffnen", moss_url)
+            = wsjrdp_newtab_link(moss_url)
+      -# Header facts of the payment that exist only for some kinds: the card
+      -# merchant, the top-up's funding account, the invoice's workflow status.
+      -# The names and texts of the three levels are in the Buchungstext block
+      -# below.
+      = moss_labeled_attr_if_present(transaction, :merchant_name, source: :transaction)
+      = moss_labeled_attr_if_present(transaction, :top_up_sender, source: :transaction)
       = moss_labeled_attr_if_present(transaction, :invoice_status)
       -# The expense of a reimbursement: its name, purchase date and, when
       -# Moss booked it against more than one account, the split.
@@ -56,23 +55,21 @@
             %span.muted= " • Kaufdatum #{l(expense.purchased_on)}"
           - if expense.split?
             %span.muted= " • aufgeteilt auf #{expense.bookings.size} Buchungen"
-      = input_or_render_attrs(f, :amount_with_currency)
-      - if @moss_booking.foreign_currency?
-        = input_or_render_attrs(f, :original_amount_with_currency)
+      -# The wallet the payment went through (the transaction's account).
+      - if (fin_account = @moss_booking.fin_account).present?
+        = form_like_labeled("Konto/Wallet", assoc_link_with_newtab(fin_account))
       %div.border-top.py-2
-      -# The dates of the payment, each only where the export carries it. Not
-      -# shown (decision of 2026-09-03; the columns stay): the card payment's
-      -# settlement and receipt dates, the creation date in Moss and the two
-      -# DATEV export dates.
-      - %i[payment_date booking_date service_date invoice_date delivery_date due_date submitted_date submitted_on approval_date].each do |attr|
-        = moss_labeled_attr_if_present(transaction, attr)
+      -# Three dates of the payment, each only where the export carries it:
+      -# booked in the wallet, submitted, approved.
+      - %i[booking_date submitted_date approval_date].each do |attr|
+        = moss_labeled_attr_if_present(transaction, attr, source: :transaction)
       %div.border-top.py-2
       = input_or_render_attrs(f, :account_number, :cost_center_number, :sphere_number)
       -# One line per level, top down: the transaction's, the expense's, the
-      -# split's -- each the level's name, then its Buchungstext (a split that
-      -# only repeats the expense's text is dropped).
+      -# booking's own -- each the level's name, then its Buchungstext; the
+      -# booking's line shows even where it repeats the text above.
       = form_like_labeled("Buchungstext") do
-        - @moss_booking.text_lines.each do |level, name, text|
+        - moss_booking_page_text_lines(@moss_booking).each do |level, name, text|
           %div= moss_text_line(level, name, text)
       -# Only the booking's own comment is editable; the parents' are shown.
       - @moss_booking.parent_comments.each do |level, text|
