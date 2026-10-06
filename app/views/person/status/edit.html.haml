@@ -18,9 +18,9 @@
       = f.labeled_date_field :deregistration_requested_date, label: @person.deregistration_requested_date_label
       = f.labeled_date_field :deregistration_effective_date
     = field_set_tag do
-      - if ((@person.active_total_fee_reduction || 0) != 0) || @person.active_total_fee_reduction_hint.present?
-        = render_attrs(@person, :active_total_fee_reduction, :active_total_fee_reduction_hint, :active_total_fee_reduction_comment)
-      = input_or_render_attrs(f, :planned_total_fee_reduction, :planned_total_fee_reduction_hint, :planned_total_fee_reduction_comment)
+      %p
+        Beitragsreduktion: #{@person.total_fee_reduction_text || "keine"}
+        = link_to(t("people.fee_reduction.status_link"), person_fee_path(@person), class: "ms-2")
     = field_set_tag do
       - if @person.active_custom_installments?
         = render_attrs(@person, :active_custom_installments_issue_display, :active_custom_installments_display, :active_custom_installments_comment)

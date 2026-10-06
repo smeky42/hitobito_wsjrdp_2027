@@ -205,9 +205,11 @@ describe Group::BookkeepingController do
     def chip_texts = doc.css(".flt-chip").map { |chip| chip.text.strip }
 
     # The Schnellauswahl toggle links by label, each as its raw <a> tag.
+    # Keyed by the link's text -- an icon-only button (the unrestricted
+    # asterisk) by its accessible name.
     def preset_links
       response.body.scan(%r{<a[^>]*\bflt-preset\b[^>]*>.*?</a>}m)
-        .to_h { |tag| [tag.gsub(/<[^>]+>/, "").strip, tag] }
+        .to_h { |tag| [tag.gsub(/<[^>]+>/, "").strip.presence || CGI.unescapeHTML(tag[/aria-label="([^"]*)"/, 1].to_s), tag] }
     end
 
     # The decoded `gbf` value a preset link points at ("" when it clears it).
@@ -421,11 +423,11 @@ describe Group::BookkeepingController do
         WsjrdpLedgerAccount.create!(number: "66500", name: "Testaufwand", is_unit_budget: false)
       end
 
-      it "offers Alle / Nur Unit-Budget / Ohne Unit-Budget, Alle pressed" do
+      it "offers ohne Einschränkung / Nur Unit-Budget / Ohne Unit-Budget, the first pressed" do
         show(groups(:unit_a))
 
-        expect(preset_links.keys).to eq(["Alle", "Nur Unit-Budget", "Ohne Unit-Budget"])
-        expect(preset_pressed("Alle")).to eq("true")
+        expect(preset_links.keys).to eq(["ohne Einschränkung", "Nur Unit-Budget", "Ohne Unit-Budget"])
+        expect(preset_pressed("ohne Einschränkung")).to eq("true")
         expect(preset_pressed("Nur Unit-Budget")).to eq("false")
       end
 
@@ -437,7 +439,7 @@ describe Group::BookkeepingController do
 
         expect(response).to be_successful
         expect(preset_pressed("Nur Unit-Budget")).to eq("true")
-        expect(preset_pressed("Alle")).to eq("false")
+        expect(preset_pressed("ohne Einschränkung")).to eq("false")
         expect(rendered_ids).to eq([own_booking.id.to_s])
 
         get :show, params: {group_id: groups(:unit_a).id, gbf: preset_filter("Ohne Unit-Budget")}

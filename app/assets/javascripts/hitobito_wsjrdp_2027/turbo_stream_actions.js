@@ -28,3 +28,13 @@ Turbo.StreamActions.reload_frames = function() {
         if (typeof frame.reload === "function") frame.reload()
     })
 }
+
+// Reload the whole page and come back to the same scroll position: the
+// position goes where the expandable tables' scroll keeper restores it from on
+// load (shared/wsjrdp/_expandable_table_js); open rows travel in the URL. For a
+// change whose page a morph cannot follow, e.g. a list whose rows move
+// (Person::FeeReductionController#leave_form from the Reduktionen list).
+Turbo.StreamActions.reload_keep_scroll = function() {
+    try { sessionStorage.setItem("wsjrdp.exptbl.scroll", String(window.scrollY || 0)) } catch (e) {}
+    window.location.reload()
+}

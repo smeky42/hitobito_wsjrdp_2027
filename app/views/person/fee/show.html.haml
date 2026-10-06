@@ -7,6 +7,9 @@
 
 - content_for :head do
   = javascript_include_tag 'hitobito_wsjrdp_2027/turbo_stream_actions', 'data-turbo-track': true
+-# Page refreshes (the "Beitragshöhe" section answers with one) morph the page
+-# and keep the scroll position.
+- turbo_refreshes_with(method: :morph, scroll: :preserve)
 
 :css
   .new-accounting-entry, .new-sepa-status {
@@ -43,3 +46,7 @@
     = action_button("Beitragszahlungen als PDF", statement_person_fee_path(@person),
                     :"file-pdf", target: "_blank")
     = render 'installments'
+
+  -# Outside the form above: the section carries buttons of its own.
+  - if can?(:log, @person)
+    = render 'fee_reduction', person: @person

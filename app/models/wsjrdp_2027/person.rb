@@ -51,7 +51,12 @@ module Wsjrdp2027::Person
     :cluster_code,  # note: Also in WSJRDP_PUBLIC_ATTRS
     :moss_email_created_at,
     :moss_email_updated_at,
+    :planned_total_fee_reduction,
+    :planned_total_fee_reduction_issue,
+    :planned_total_fee_reduction_hint,
+    :planned_total_fee_reduction_comment,
     :wsjrdp_email_created_at,
+    :wsjrdp_total_fee_reduction_comment,  # finance only, kept out of the person log
     :wsjrdp_email_updated_at,
     :zero_padded_id  # note: Also in WSJRDP_PUBLIC_ATTRS
   ].freeze
@@ -227,6 +232,9 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :planned_total_fee_reduction, strip: true
       attribute :planned_total_fee_reduction, :decimal
       cents_attribute :planned_total_fee_reduction, eur_attr: :planned_total_fee_reduction
+
+      jsonb_accessor :additional_info, :planned_total_fee_reduction_issue, strip: true
+      attribute :planned_total_fee_reduction_issue, :string
 
       jsonb_accessor :additional_info, :planned_total_fee_reduction_hint, strip: true
       attribute :planned_total_fee_reduction_hint, :string
@@ -646,6 +654,14 @@ module Wsjrdp2027::Person
 
       def active_total_fee_reduction=(value)
         self.wsjrdp_total_fee_reduction = value
+      end
+
+      def active_total_fee_reduction_issue
+        wsjrdp_total_fee_reduction_issue
+      end
+
+      def active_total_fee_reduction_issue=(value)
+        self.wsjrdp_total_fee_reduction_issue = value
       end
 
       def active_total_fee_reduction_hint

@@ -1124,13 +1124,15 @@ describe Wsjrdp::TableState do
             filter ? {"f" => JSON.generate(filter)} : {}).filter.presets.index_by(&:key)
         end
 
-        it "puts an all button first, pressed without a filter" do
+        it "puts the unrestricted button first, pressed without a filter, an asterisk named \"ohne Einschränkung\"" do
           presets = buttons
-          expect(presets.keys).to eq(%w[kind-all card invoice])
+          expect(presets.keys).to eq(%w[kind-unrestricted card invoice])
           expect(presets.values.map(&:exclusive?)).to all(be true)
           expect(presets.values.map(&:active?)).to eq([true, false, false])
-          expect(presets["kind-all"].label).to eq("Alle")
-          expect(presets["kind-all"].value).to be_nil
+          expect(presets["kind-unrestricted"].label).to eq("ohne Einschränkung")
+          expect(presets["kind-unrestricted"].icon).to eq("asterisk")
+          expect(presets["kind-unrestricted"].css_class).to eq("flt-preset-icon-only")
+          expect(presets["kind-unrestricted"].value).to be_nil
           expect(presets["card"].toggle_wire).to eq(JSON.generate([[["kind", "in", "card"]]]))
         end
 
@@ -1145,14 +1147,15 @@ describe Wsjrdp::TableState do
           presets = buttons(filter: [konto_slot, [["kind", "in", "card"]]])
           expect(presets["invoice"].toggle_wire)
             .to eq(JSON.generate([konto_slot, [["kind", "in", "invoice"]]]))
-          expect(presets["kind-all"].toggle_wire).to eq(JSON.generate([konto_slot]))
-          expect(buttons(filter: [[["kind", "in", "card"]]])["kind-all"].toggle_wire).to eq("")
+          expect(presets["kind-unrestricted"].toggle_wire).to eq(JSON.generate([konto_slot]))
+          expect(buttons(filter: [[["kind", "in", "card"]]])["kind-unrestricted"].toggle_wire).to eq("")
         end
 
-        it "takes its own all label, and refuses one on a group that is not exclusive" do
-          expect(buttons(choice.merge(all_label: "Jede Art"))["kind-all"].label).to eq("Jede Art")
-          expect { buttons(choice.merge(exclusive: false, all_label: "Jede Art")) }
-            .to raise_error(ArgumentError, /filter preset group kind: all_label is for an exclusive group only/)
+        it "takes its own unrestricted label as text, and refuses one on a group that is not exclusive" do
+          own = buttons(choice.merge(unrestricted_label: "Jede Art"))["kind-unrestricted"]
+          expect([own.label, own.icon, own.css_class]).to eq(["Jede Art", nil, nil])
+          expect { buttons(choice.merge(exclusive: false, unrestricted_label: "Jede Art")) }
+            .to raise_error(ArgumentError, /filter preset group kind: unrestricted_label is for an exclusive group only/)
         end
       end
 

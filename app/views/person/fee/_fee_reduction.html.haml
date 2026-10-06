@@ -1,0 +1,91 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# "Beitragshöhe": the regular fee, the active total fee reduction, a planned
+-# one and the history of the active one. Seen with :log on the person; the
+-# comments need :log on accounting entries (audit tier); planning, activating
+-# and discarding need :update_finance (Person::FeeReductionController).
+-#
+-# Saving, activating and discarding answer with a page refresh that morphs the
+-# page and keeps the scroll position (turbo_refreshes_with on the page), so the
+-# section stays where it is; their notice shows here, not at the top.
+-#
+-# context: :person (default) on the person's Beitrag page, with the heading;
+-# :fin inside a row of the Reduktionen list (fin/fee_reductions), without it.
+-# Both offer the buttons and the form: every section has its own place for them
+-# (fee_reduction_actions_id) and its own notice, and both pages morph their
+-# refresh.
+- context = local_assigns.fetch(:context, :person)
+- on_person_page = context == :person
+- show_comment = can?(:log, AccountingEntry)
+- may_change = can?(:update_finance, person)
+- active = person.active_total_fee_reduction
+-# The regular fee as the fee computation takes it (Person#total_fee_cents).
+- regular_cents = person.total_fee_cents + (active * 100).to_i
+- planned = person.planned_total_fee_reduction
+- versions = fee_reduction_versions(person).to_a
+
+%section.fee-reduction{class: on_person_page ? "mt-4" : "mt-1"}
+  - if on_person_page
+    %h2.mb-2 Beitragshöhe
+  - if (notice = fee_reduction_notice(person)).present?
+    .alert.alert-success.py-1.px-2.mb-2= notice
+  .d-flex.justify-content-between
+    %span= "Regulärer Beitrag (#{person.short_payment_role})"
+    %span= format_cents_de(regular_cents)
+  - if active != 0
+    -# Indented under the regular fee; the hint names the reduction, "Reduktion"
+    -# stands in where there is none.
+    .d-flex.justify-content-between.ps-3
+      %span
+        = person.active_total_fee_reduction_hint.presence || "Reduktion"
+        - if person.active_total_fee_reduction_issue.present?
+          %span.muted (#{auto_link_escaped_multiline(person.active_total_fee_reduction_issue)})
+      %span= "− #{format_eur_de(active)}"
+    - if show_comment && person.active_total_fee_reduction_comment.present?
+      -# Indented like the reduction's line it belongs to.
+      .fee-reduction-comment.fw-light.fst-italic.ps-3
+        = auto_link_escaped_multiline(person.active_total_fee_reduction_comment)
+    .d-flex.justify-content-between.border-top.fw-semibold
+      %span Reduzierter Beitrag
+      %span= format_cents_de(person.total_fee_cents)
+  -# The installments must bring in the fee: yellow when they bring in more,
+  -# red when they bring in less.
+  = fee_reduction_installments_alert(person)
+
+  - if planned.present?
+    .alert.alert-warning.mt-2.mb-2.py-2
+      .d-flex.justify-content-between
+        %span
+          Geplant: Reduktion #{format_eur_de(planned)}
+          - if person.planned_total_fee_reduction_hint.present?
+            = "· #{person.planned_total_fee_reduction_hint}"
+          - if person.planned_total_fee_reduction_issue.present?
+            (#{auto_link_escaped_multiline(person.planned_total_fee_reduction_issue)})
+        - planned_fee_cents = [regular_cents.to_i - (planned * 100).to_i, 0].max
+        %span= "→ #{format_cents_de(planned_fee_cents)}"
+      - if show_comment && person.planned_total_fee_reduction_comment.present?
+        .fee-reduction-comment.fw-light.fst-italic
+          = auto_link_escaped_multiline(person.planned_total_fee_reduction_comment)
+      = fee_reduction_planned_installments_note(person, planned_fee_cents)
+
+  -# The buttons, or the plan's form in their place (Turbo streams of
+  -# Person::FeeReductionController, targeting fee_reduction_actions_id). No
+  -# turbo frame: a frame that showed the
+  -# form keeps the form's URL as src, and a page refresh that morphs the page
+  -# would load it again.
+  - if may_change
+    %div{id: fee_reduction_actions_id(person)}
+      = render "person/fee_reduction/buttons", person: person, context: on_person_page ? "person" : "fin"
+
+  -# The changes of the active reduction; nothing at all without any.
+  - if versions.any?
+    %h4.mt-3 Änderungen am Beitrag
+    - versions.each do |version|
+      .mt-2
+        .muted.small= fee_reduction_version_header(version)
+        %div= fee_reduction_change_lines(version)

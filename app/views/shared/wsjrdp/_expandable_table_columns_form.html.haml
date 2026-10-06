@@ -30,6 +30,7 @@
     .exp-cols-handle { cursor: grab; color: var(--bs-secondary-color, #6c757d); user-select: none;
       font-size: 1.1rem; line-height: 1; }
     .exp-cols-item .form-check { margin: 0; min-height: auto; }
+    .exp-cols-group { align-items: flex-start; border-color: var(--bs-border-color); }
 = render "shared/wsjrdp/relaxed_query_js"
 = form_tag et_current_path, method: :get, class: "booking-scroll-form exp-cols-form", id: form_id do
   -# Carry every non-managed param through, including a host page param that is
@@ -37,13 +38,36 @@
   = et_hidden_params(et_carry_params(state, except: %i[cols page]))
   = hidden_field_tag cols_param, et_encode_cols(state, states), id: "#{form_id}-input", class: "exp-cols-input"
   %p.text-muted.small.mb-2 Ziehen zum Sortieren, Häkchen zum Ein-/Ausblenden.
+  -# The columns of one group (a column's `group:`) or of one merged cell (its
+  -# `merge:`) are ONE draggable block under the group's or merge key's name,
+  -# at the place of its first column; inside, a column is only shown or
+  -# hidden. The encoded order keeps them together.
+  - units = []
+  - states.each do |col, active|
+    - name = col[:group].presence || col[:merge].presence
+    - unit = name && units.find { |u| u[:group] == name }
+    - if unit
+      - unit[:cols] << [col, active]
+    - else
+      - units << {group: name, cols: [[col, active]]}
   .exp-cols-list{ data: { form: form_id } }
-    - states.each do |col, active|
-      .exp-cols-item{ draggable: "true", class: ("col-selected" if active), data: { key: col[:key], abbr: (col[:abbr].presence || col[:key]) } }
-        %span.exp-cols-handle{ title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
-        .form-check
-          %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
-          %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
+    - units.each do |unit|
+      - if unit[:group]
+        .exp-cols-item.exp-cols-group{ draggable: "true" }
+          %span.exp-cols-handle{ title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
+          %div
+            .small.text-muted= unit[:group]
+            - unit[:cols].each do |col, active|
+              .exp-cols-col.form-check{ class: ("col-selected" if active), data: { key: col[:key], abbr: (col[:abbr].presence || col[:key]) } }
+                %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
+                %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
+      - else
+        - col, active = unit[:cols].first
+        .exp-cols-item.exp-cols-col{ draggable: "true", class: ("col-selected" if active), data: { key: col[:key], abbr: (col[:abbr].presence || col[:key]) } }
+          %span.exp-cols-handle{ title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
+          .form-check
+            %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
+            %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
   .mt-2
     -# An explicitly EMPTY cols param, not a missing one: a blank value is the
     -# "back to the default columns" instruction that also beats a remembered
@@ -53,7 +77,7 @@
 :javascript
   (function () {
     function encode(list) {
-      return Array.prototype.map.call(list.querySelectorAll(".exp-cols-item"), function (el) {
+      return Array.prototype.map.call(list.querySelectorAll(".exp-cols-col"), function (el) {
         var chk = el.querySelector(".exp-cols-check");
         return (chk && chk.checked ? "" : "~") + el.dataset.abbr;
       }).join(",");
@@ -77,7 +101,7 @@
       }
       list.querySelectorAll(".exp-cols-check").forEach(function (chk) {
         chk.addEventListener("change", function () {
-          chk.closest(".exp-cols-item").classList.toggle("col-selected", chk.checked);
+          chk.closest(".exp-cols-col").classList.toggle("col-selected", chk.checked);
           submit();
         });
       });

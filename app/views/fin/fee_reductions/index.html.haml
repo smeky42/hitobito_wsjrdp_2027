@@ -1,0 +1,69 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Reduktionen: every person with an active or a planned total fee reduction
+-# (Fin::FeeReductionRow). A row opens into the "Beitragshöhe" view of the
+-# person (person/fee/_fee_reduction, context :fin), where the reduction can be
+-# planned, activated or discarded as on the person's Beitrag page, which the
+-# detail's header line links. The cells: Fin::FeeReductionsHelper.
+-# A change in a row's section reloads the page, keeping the scroll position
+-# and the open rows (Person::FeeReductionController#leave_form,
+-# reload_keep_scroll).
+- content_for :head do
+  = javascript_include_tag 'hitobito_wsjrdp_2027/turbo_stream_actions', 'data-turbo-track': true
+:css
+  /* The role centred: one badge sits in the middle, two stand out at once. */
+  #main th.frcol-role, #main td.frcol-role { text-align: center; }
+  /* Hint, issue and comment in one cell: the comment in at most three lines,
+     cut with "…", the whole in the tooltip. */
+  #main td.exp-merged .fee-reduction-comment, #main td.frcol-comment .fee-reduction-comment {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    font-size: .85em; line-height: 1.3; }
+  /* The status in colour: confirmed green, a noted deregistration orange, a
+     deregistration red -- set here, as the theme's "success" is a petrol. */
+  #main .fee-reduction-status-confirmed { color: #2b8a3e; }
+  #main .fee-reduction-status-noted { color: #e8590c; }
+  #main .fee-reduction-status-deregistered { color: #c92a2a; }
+  /* A row with a plan and the plan's sub-row read as one: the row's cells sit
+     at its bottom, the plan's at its top. The plan's notes in one line. */
+  #main tbody.exp-group:has(> tr.exp-sub-row) > tr.exp-row > td { vertical-align: bottom; }
+  #main tr.exp-sub-row > td { vertical-align: top; }
+  /* The thin line between the active reduction and the plan only where they
+     compare: the fee calculation and the notes. */
+  #main tbody.exp-group > tr.exp-row:has(+ tr.exp-sub-row) > td { border-bottom-color: transparent; }
+  #main tbody.exp-group > tr.exp-row:has(+ tr.exp-sub-row) > td:is(.frcol-regular_fee, .frcol-reduction,
+    .frcol-reduced_fee, .exp-merged, .frcol-hint, .frcol-comment, .frcol-issue) {
+    border-bottom-color: var(--bs-border-color); }
+  #main .fee-reduction-plan-notes { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The clock right next to the date. */
+  #main td.frcol-planned { text-align: right; padding-right: 0; }
+
+#main
+  %h1 Beitragsreduktionen
+  %p.text-muted
+    Alle aktiven Beitragsreduktionen und Personen mit geplanter Beitragsreduktion.
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows fee_reductions, id: "fr"
+    - t.columns fee_reduction_table_columns, menu: true
+    - t.row_key { |row| row.id }
+    -# A planned reduction as a sub-row: its values under the cells they would
+    -# replace.
+    - t.sub_rows { |row| row.plans }
+    - t.sub_cell { |plan, col| fee_reduction_plan_cell(plan, col) }
+    - t.detail_link(label: "Beitrags-Seite der Person", icon: :"money-bill",
+        title: "Beitrags-Seite der Person öffnen",
+        title_new_tab: "Beitrags-Seite der Person in neuem Tab öffnen") { |row| person_fee_path(row.person) }
+    - t.detail { |row| render "person/fee/fee_reduction", person: row.person, context: :fin }
+    -# On a wide screen every gap widens alike, up to the widget's default; the clock stays
+    -# next to its date and the fee calculation keeps together (a group).
+    - t.gaps except: [%w[planned activated_at]]
+    - t.paging per_options: [25, 50, 100, :all]
+    - t.filter apply_url: apply_fin_fee_reductions_path
+
+  %p.text-muted.small.mt-2
+    #{fee_reductions.total_count} Personen

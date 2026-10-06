@@ -92,7 +92,20 @@ end
 
 Everything a column *is* lives here: `key` (the long name used everywhere in
 code), `abbr` (the short wire token in `?c=` / `?s=`), `label`,
-`condensed_label`, `numeric` (right-align), `width` (for the fixed table
+`condensed_label`, `tabular_nums` (digits of one width in the same font, so
+figures line up; on by default for a numeric column), `grow` (see `t.gaps`),
+`merge` (neighbouring shown columns with one merge key keep a header each --
+sortable, listed one by one in the columns menu -- but share ONE cell per row,
+which `to_table_column(cell:, merged_cell: ->(row, shown_keys) { … })` renders;
+no growing gap between them; their width -- the sum of the shown merged
+columns' widths -- is split by `merge_share`, evenly by default, and their
+headers spread like space-between: first at the start, last at the end, the
+others centred), `header_align` (override a header's alignment: "start",
+"center", "end"), `header_tooltip` (the header's tooltip), `header_label` (what the header shows instead of the label,
+`""` for a header without title -- the label stays the column's name in the
+columns menu), `group` (a heading over the header: neighbouring shown columns of
+the same group share one cell of an extra header row, e.g. "Rolle" over "WSJ"
+and "Kontingent"), `numeric` (right-align), `width` (for the fixed table
 layout), `sort` (how it sorts — an SQL expression for a relation, a
 `->(row){ comparable }` extractor for an array), `sort_first` and
 `sort_variants` (§2, sortable headers), `default` (shown before the user picks
@@ -139,6 +152,20 @@ end
   - t.detail  { |thing| render "things/detail", thing: thing }
   - t.paging
 ```
+
+`t.gaps max: "1.5rem", except: [%w[a b]]` lets a table that has room to
+spare widen evenly: every pair of neighbouring shown columns gets a gap -- not
+two columns of one group, not the pairs in `except:` -- and all gaps grow alike
+from 0 up to `max:` (default 4rem); then the table stops widening. Columns with
+`grow: n` widen FIRST: the room goes to them, n units each, up to `grow_max:`
+(default 2rem) per unit, and only what is left goes to the gaps. The room is
+shared out in CSS against the size container around the table:
+`--exp-c = clamp(0px, round(down, room / Σgrow, 1px), grow_max)`, then
+`--exp-g = clamp(0px, round(down, (room - Σgrow * --exp-c) / gaps, 1px), max)`;
+a gap is extra right padding of the cell before it, and every column is
+`width + grow * var(--exp-c) [+ var(--exp-g)]` wide -- whole pixels, no extra
+cells, so a copied table stays clean. The filter and the toolbar stop at the
+table's maximum width. A condensed table has none of this.
 
 That renders a table with a clickable row per record; clicking a row expands an
 inline **detail** (Bootstrap collapse, several can be open at once). `row_key`
@@ -581,9 +608,11 @@ a preset — one link, tick, icon, class — with no group title and no segment
 around them. `group?` tells the two apart.
 
 **An exclusive group** (`exclusive: true`) is a set of alternatives of which
-exactly ONE is pressed, drawn as one segmented control. The state puts an "all"
-button in front (key `<group>-all`, value `nil`, label `all_label:`, default
-"Alle"):
+exactly ONE is pressed, drawn as one segmented control. The state puts an
+"unrestricted" button in front -- "no restriction by this attribute" (key
+`<group>-unrestricted`, value `nil`). By default it shows an asterisk, the
+wildcard for "any value", with "ohne Einschränkung" as its tooltip and
+accessible name; `unrestricted_label:` gives it a text instead:
 
 ```ruby
 {group: "unit_budget", attribute: "unit_budget", operator: "in", exclusive: true,
@@ -592,12 +621,13 @@ button in front (key `<group>-all`, value `nil`, label `all_label:`, default
 ```
 
 - A member is pressed when the group's slots exist and each says exactly
-  `attribute in (value)`; "all" is pressed when there is no slot of the group.
+  `attribute in (value)`; the unrestricted button is pressed when there is no
+  slot of the group.
   A slot holding two member values presses none of the buttons.
 - A member's toggle replaces the group's slots with `attribute in (value)`,
-  "all" removes them; every other slot stays. Clicking the pressed member keeps
+  the unrestricted button removes them; every other slot stays. Clicking the pressed member keeps
   it pressed.
-- `all_label:` on a group that is not exclusive raises.
+- `unrestricted_label:` on a group that is not exclusive raises.
 
 A cost center's detail bookings and a group's Buchhaltung carry this group
 (`Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP`).
