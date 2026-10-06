@@ -265,6 +265,9 @@ module Wsjrdp2027::Person
       # refuses every plan ("ist keine Zahl"). Its values come from a fee rule
       # (Wsjrdp2027::ParticipationFee), not from a form.
       remove_schema_validations :wsjrdp_raw_installments_eur, only: :numericality
+      # The payment method goes with the plan: present exactly when a plan is,
+      # direct debit unless chosen otherwise (the database checks the same).
+      before_validation :_normalize_installments_payment_method
 
       # The tokens of one finance_group_ids entry, e.g. " show , update " ->
       # ["show", "update"]. Shared with the person log, which renders a change
@@ -644,7 +647,8 @@ module Wsjrdp2027::Person
           installments
         else
           ensure_payment_role
-          WsjrdpPaymentPlan.find_by(wsjrdp_role: wsjrdp_role, single_payment: early_payer || false).yme_list
+          WsjrdpPaymentPlan.kept.find_by(wsjrdp_role: wsjrdp_role, single_payment: early_payer || false,
+            payment_method: Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD).yme_list
         end
       end
 
@@ -739,6 +743,10 @@ module Wsjrdp2027::Person
         active_fee_rule&.custom_installments_comment
       end
 
+      def active_custom_installments_payment_method_display
+        active_fee_rule&.custom_installments_payment_method_display
+      end
+
       #
       # planned fee rule
       #
@@ -816,6 +824,21 @@ module Wsjrdp2027::Person
 
       def planned_custom_installments_comment_changed?
         planned_fee_rule&.custom_installments_comment_changed?
+      end
+
+      # planned_custom_installments_payment_method: direct debit unless chosen
+      # otherwise; it goes with the plan (Wsj27RdpFeeRule).
+
+      def planned_custom_installments_payment_method
+        planned_fee_rule&.custom_installments_payment_method || Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD
+      end
+
+      def planned_custom_installments_payment_method=(value)
+        ensure_planned_fee_rule.custom_installments_payment_method = value.presence
+      end
+
+      def planned_custom_installments_payment_method_display
+        planned_fee_rule&.custom_installments_payment_method_display
       end
 
       def moss_invited_at
@@ -1107,7 +1130,11 @@ module Wsjrdp2027::Person
         if @planned_fee_rule.nil?
           false
         else
-          @planned_fee_rule.changes.keys.any? { |k| k != "people_id" && k != "status" }
+          # A payment method without a plan is no change: the form always
+          # sends one, and the rule drops it without a plan.
+          ignored = %w[people_id status]
+          ignored << "custom_installments_payment_method" unless @planned_fee_rule.custom_installments_plan?
+          (@planned_fee_rule.changes.keys - ignored).any?
         end
       end
 
@@ -1118,6 +1145,13 @@ module Wsjrdp2027::Person
           @planned_fee_rule ||= planned_fee_rule
           @fee_rules_fetched = true
         end
+      end
+
+      def _normalize_installments_payment_method
+        self.wsjrdp_installments_payment_method =
+          unless wsjrdp_raw_installments_eur.nil?
+            wsjrdp_installments_payment_method.presence || Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD
+          end
       end
 
       def _save_planned_fee_rule

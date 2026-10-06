@@ -83,6 +83,23 @@ describe Person::StatusController, type: :controller do
     end
   end
 
+  describe "the plans written out" do
+    render_views
+
+    before do
+      rule("active", activated_at: 1.day.ago)
+      rule("planned", custom_installments_cents: [0, 0, 5_000, 25_050])
+    end
+
+    it "shows each plan below its line, on the page and in the form" do
+      get :show, params: {group_id: person.primary_group_id, id: person.id}
+      expect(response.body).to include("2026-02: 100€").and include("2026-03: 50€, 2026-04: 250,50€")
+
+      get :edit, params: {group_id: person.primary_group_id, id: person.id}
+      expect(response.body).to include("2026-02: 100€").and include("2026-03: 50€, 2026-04: 250,50€")
+    end
+  end
+
   describe "total fee reduction" do
     render_views
 

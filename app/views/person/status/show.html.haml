@@ -1,16 +1,23 @@
 - content_for(:toolbar, render('actions_show'))
 
 #main.row
+  -# The plans, each written out below its line (installments_text).
   - extra_render_attrs = []
+  - installments = {}
   - if @person.active_custom_installments?
     - extra_render_attrs << :active_custom_installments_issue_display
     - extra_render_attrs << :active_custom_installments_display
+    - installments[:active_custom_installments_display] = @person.active_fee_rule.yme_list
+    - extra_render_attrs << :active_custom_installments_payment_method_display
     - extra_render_attrs << :active_custom_installments_comment
   - else
     - extra_render_attrs << :installments_string
+    - installments[:installments_string] = @person.yme_list
   - if @person.planned_custom_installments?
     - extra_render_attrs << :planned_custom_installments_issue_display
     - extra_render_attrs << :planned_custom_installments_display
+    - installments[:planned_custom_installments_display] = @person.planned_fee_rule.yme_list
+    - extra_render_attrs << :planned_custom_installments_payment_method_display
     - extra_render_attrs << :planned_custom_installments_comment
   = render_attrs_list do
     = labeled_attrs(@person, :birthday, :status_log_display, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role)
@@ -64,7 +71,7 @@
     = labeled("Beitragsreduktion") do
       = @person.total_fee_reduction_text || "keine"
       = link_to(t("people.fee_reduction.status_link"), person_fee_path(@person), class: "ms-2")
-  = render_attrs(@person, *extra_render_attrs)
+  = render_installment_attrs(@person, extra_render_attrs, installments)
 - if @person.status == 'upload'
   %br
   %br

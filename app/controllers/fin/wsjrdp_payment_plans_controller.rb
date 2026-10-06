@@ -18,13 +18,14 @@ class Fin::WsjrdpPaymentPlansController < ApplicationController
 
   def index
     authorize!(:show, WsjrdpPaymentPlan)
-    plans = WsjrdpPaymentPlan.all.to_a
+    plans = WsjrdpPaymentPlan.kept.to_a
     roles = ["CMT", "UL", "YP", "IST", "BMT", "EXT"]
     plans.sort_by! do |plan|
       [
         roles.find_index(plan.wsjrdp_role) || 1000,
         plan.wsjrdp_role,
-        plan.single_payment ? 1 : 0
+        plan.single_payment ? 1 : 0,
+        plan.payment_method
       ]
     end
     @payment_plans = plans
@@ -77,7 +78,8 @@ class Fin::WsjrdpPaymentPlansController < ApplicationController
       :status,
       :wsjrdp_role,
       :single_payment,
-      :installments_string
+      :installments_string,
+      :payment_method
     ]
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1368,6 +1368,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
     t.string "wsjrdp_installments_issue"
     t.text "wsjrdp_installments_comment"
     t.jsonb "wsjrdp_user_preferences", default: {}, null: false, comment: "Per-user preferences"
+    t.string "wsjrdp_installments_payment_method"
+    t.integer "wsjrdp_installments_payment_plan_id"
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true
@@ -1380,6 +1382,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
     t.index ["search_column"], name: "people_search_column_gin_idx", using: :gin
     t.index ["self_registration_reason_id"], name: "index_people_on_self_registration_reason_id"
     t.index ["unlock_token"], name: "index_people_on_unlock_token", unique: true
+    t.index ["wsjrdp_installments_payment_plan_id"], name: "index_people_on_wsjrdp_installments_payment_plan_id"
+    t.check_constraint "(wsjrdp_installments_payment_method IS NULL) = (wsjrdp_raw_installments_eur IS NULL)", name: "chk_people_wsjrdp_installments_payment_method_iff_plan"
   end
 
   create_table "people_filters", id: :serial, force: :cascade do |t|
@@ -1634,9 +1638,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
     t.integer "total_fee_reduction_cents", default: 0, comment: "Reduction of the total fee in cents"
     t.string "status", default: "planned", null: false
     t.datetime "activated_at"
+    t.string "custom_installments_payment_method"
+    t.integer "custom_installments_payment_plan_id"
+    t.jsonb "additional_info", default: {}, null: false
+    t.index ["custom_installments_payment_plan_id"], name: "index_wsj27_rdp_fee_rules_on_payment_plan_id"
     t.index ["people_id", "status"], name: "index_wsj27_rdp_fee_rules_on_people_id_and_status", unique: true, where: "(deleted_at IS NULL)"
     t.index ["people_id"], name: "index_wsj27_rdp_fee_rules_on_people_id"
     t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
+    t.check_constraint "(custom_installments_payment_method IS NULL) = (custom_installments_starting_year IS NULL OR custom_installments_cents IS NULL)", name: "chk_wsj27_rdp_fee_rules_payment_method_iff_plan"
   end
 
   create_table "wsjrdp_camt_transactions", id: :serial, force: :cascade do |t|
@@ -1932,11 +1941,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
     t.datetime "updated_at"
     t.text "comment", default: "", null: false
     t.string "status"
-    t.jsonb "additional_info", default: {}
+    t.jsonb "additional_info", default: {}, null: false
     t.string "wsjrdp_role", null: false
-    t.boolean "single_payment"
+    t.boolean "single_payment", null: false
     t.decimal "raw_installments_eur", precision: 20, scale: 3, array: true
-    t.index ["wsjrdp_role", "single_payment"], name: "index_wsjrdp_payment_plans_wsjrdp_role_single_payment", unique: true
+    t.string "payment_method", default: "direct_debit", null: false
+    t.datetime "deleted_at"
+    t.index ["wsjrdp_role", "single_payment", "payment_method"], name: "index_wsjrdp_payment_plans_role_single_payment_method", unique: true, where: "(deleted_at IS NULL)"
   end
 
   create_table "wsjrdp_personal_accounts", comment: "Personal accounts (Debitoren, Kreditoren)", force: :cascade do |t|
@@ -2051,10 +2062,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_05_100000) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade
   add_foreign_key "people", "self_registration_reasons"
+  add_foreign_key "people", "wsjrdp_payment_plans", column: "wsjrdp_installments_payment_plan_id"
   add_foreign_key "service_tokens", "people", column: "acting_person_id", on_delete: :nullify
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
   add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"
+  add_foreign_key "wsj27_rdp_fee_rules", "wsjrdp_payment_plans", column: "custom_installments_payment_plan_id"
   add_foreign_key "wsjrdp_camt_transactions", "datev_booking_batches"
   add_foreign_key "wsjrdp_camt_transactions", "datev_bookings", on_delete: :nullify
   add_foreign_key "wsjrdp_cost_centers", "people", column: "manager_person_id"

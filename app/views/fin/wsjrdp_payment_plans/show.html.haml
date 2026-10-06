@@ -17,6 +17,10 @@
           = input_or_render_attrs(f, :wsjrdp_role)
           = input_or_render_attrs(f, :single_payment)
           = input_or_render_attrs(f, :installments_string)
+          - if permitted_attrs.include?(:payment_method)
+            = f.labeled_collection_select(:payment_method, Wsjrdp2027::ParticipationFee.payment_method_options, :first, :last, {}, class: "span2")
+          - else
+            = input_or_render_attrs(f, :payment_method)
           = input_or_render_attrs(f, :comment)
           = input_or_render_attrs(f, :status)
 
