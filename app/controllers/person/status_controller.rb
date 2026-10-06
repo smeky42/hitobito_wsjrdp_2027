@@ -56,9 +56,12 @@ class Person::StatusController < ApplicationController
     authorize!(:log, person)
     Rails.logger.info "soft_delete #{person.active_fee_rule.inspect}"
     Rails.logger.info "activate #{person.planned_fee_rule.inspect}"
-    if !person.planned_fee_rule.nil?
-      person.active_fee_rule&.soft_delete!
-      person.planned_fee_rule.activate!(prev_rule_id: person.planned_fee_rule&.id)
+    planned = person.planned_fee_rule
+    if !planned.nil?
+      # The rule the planned one replaces becomes its prev_rule_id.
+      previous = person.active_fee_rule
+      previous&.soft_delete!
+      planned.activate!(previous&.id)
     end
     respond_with person, location: status_group_person_path
   end
