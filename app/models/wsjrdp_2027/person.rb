@@ -57,6 +57,7 @@ module Wsjrdp2027::Person
     :planned_total_fee_reduction_comment,
     :wsjrdp_email_created_at,
     :wsjrdp_total_fee_reduction_comment,  # finance only, kept out of the person log
+    :wsjrdp_installments_comment,  # finance only, kept out of the person log
     :wsjrdp_email_updated_at,
     :zero_padded_id  # note: Also in WSJRDP_PUBLIC_ATTRS
   ].freeze
@@ -259,6 +260,11 @@ module Wsjrdp2027::Person
       # a presence validator -- but its {} default is blank?, which would make
       # every Person invalid and break all creation. Drop it.
       remove_schema_validations :wsjrdp_user_preferences, only: :presence
+
+      # A decimal ARRAY column: validates_by_schema takes it for one number and
+      # refuses every plan ("ist keine Zahl"). Its values come from a fee rule
+      # (Wsjrdp2027::ParticipationFee), not from a form.
+      remove_schema_validations :wsjrdp_raw_installments_eur, only: :numericality
 
       # The tokens of one finance_group_ids entry, e.g. " show , update " ->
       # ["show", "update"]. Shared with the person log, which renders a change
@@ -693,6 +699,17 @@ module Wsjrdp2027::Person
         super(value.to_s)
       end
 
+      # The participation fee of the person (Wsjrdp2027::ParticipationFee),
+      # one object per loaded person, like the core's #household.
+      def participation_fee
+        @participation_fee ||= Wsjrdp2027::ParticipationFee.new(self)
+      end
+
+      def reload(*)
+        @participation_fee = nil
+        super
+      end
+
       #
       # active fee rule
       #
@@ -725,6 +742,14 @@ module Wsjrdp2027::Person
       #
       # planned fee rule
       #
+
+      # Forgets the fee rules fetched so far, after they changed
+      # (Wsjrdp2027::ParticipationFee): the next reader fetches them anew.
+      def forget_fee_rules
+        @active_fee_rule = nil
+        @planned_fee_rule = nil
+        @fee_rules_fetched = false
+      end
 
       def planned_fee_rule
         _maybe_fetch_fee_rules
