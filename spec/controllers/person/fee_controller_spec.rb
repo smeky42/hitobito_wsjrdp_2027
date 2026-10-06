@@ -99,4 +99,159 @@ describe Person::FeeController do
     expect(response.body).to include("Rücklastschriften")
     expect(response.body).not_to include("Abmeldung vorbereiten")
   end
+
+  # "Beitragshöhe" at the end of the page: seen with :log on the person, the
+  # comments with :log on accounting entries (audit tier), the buttons with
+  # :update_finance. The person themselves and the unit leader see the page but
+  # not the section.
+  describe "the Beitragshöhe section" do
+    let(:yp) { people(:yp_a_1) }
+
+    before do
+      ensure_payment_plan(yp)
+      yp.update!(wsjrdp_total_fee_reduction: 250, wsjrdp_total_fee_reduction_hint: "Härtefall",
+        wsjrdp_total_fee_reduction_issue: "HELP-123", wsjrdp_total_fee_reduction_comment: "Nachweis liegt vor",
+        planned_total_fee_reduction: "400", planned_total_fee_reduction_comment: "Erhöhung")
+    end
+
+    def page_as(viewer)
+      sign_in(viewer)
+      get :show, params: {person_id: yp.id}
+      expect(response).to be_successful
+      response.body
+    end
+
+    def section(body) = Nokogiri::HTML(body).at_css("section.fee-reduction")
+
+    it "is not shown to the person themselves or their unit leader" do
+      expect(section(page_as(yp))).to be_nil
+      expect(section(page_as(people(:ul_a_1)))).to be_nil
+    end
+
+    it "shows the reduction and the plan to a CMT leader, without comments or buttons" do
+      html = section(page_as(Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person))
+
+      expect(html.text).to include("Härtefall").and include("HELP-123").and include("Geplant: Reduktion 400")
+      expect(html.text).not_to include("Nachweis liegt vor")
+      expect(html.text).not_to include("Erhöhung")
+      expect(html.to_html).not_to include(activate_person_fee_reduction_path(yp))
+      expect(html.to_html).not_to include(edit_person_fee_reduction_path(yp))
+    end
+
+    it "shows comments and the plan's buttons to finance, and comes after the installments" do
+      body = page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person)
+      html = section(body)
+
+      expect(html.text).to include("Nachweis liegt vor").and include("Erhöhung")
+      expect(html.to_html).to include(activate_person_fee_reduction_path(yp))
+        .and include(discard_person_fee_reduction_path(yp))
+      expect(body.index("Ratenplan")).to be < body.index("Beitragshöhe")
+    end
+
+    it "lists the changes of the active reduction only, never the comment" do
+      yp.update!(planned_total_fee_reduction: nil)
+      with_versioning do
+        yp.update!(wsjrdp_total_fee_reduction: 300, wsjrdp_total_fee_reduction_comment: "Neu vereinbart")
+        yp.update!(wsjrdp_total_fee_reduction_comment: "Nur der Kommentar")
+        yp.update!(nickname: "Anderswo")
+      end
+
+      html = section(page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person))
+      expect(html.at_css("details")).to be_nil
+      heading = html.at_css("h4")
+      expect(heading.text).to eq "Änderungen am Beitrag"
+      history = heading.parent
+      expect(history.css("h4 ~ .mt-2").size).to eq 1
+      expect(history.text).to include("250€ → 300€")
+      expect(history.text).not_to include("Neu vereinbart")
+      expect(history.text).not_to include("Anderswo")
+      expect(html.text).to include("Neue Reduktion planen").and include("Aus aktueller Reduktion planen")
+    end
+
+    it "names the reduction by its hint, indented, above the reduced fee" do
+      html = section(page_as(Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person))
+
+      line = html.at_css(".ps-3")
+      expect(line.text.squish).to start_with("Härtefall (HELP-123)")
+      expect(line.text).not_to include("Reduktion")
+      expect(html.text).to include("Reduzierter Beitrag")
+    end
+
+    describe "installments against the fee" do
+      # A custom plan of installments, so their sum is known: the fee is the
+      # regular one less the active reduction of 250 €.
+      def installments(*euros)
+        Wsj27RdpFeeRule.create!(people_id: yp.id, status: "active", activated_at: 1.day.ago,
+          custom_installments_starting_year: 2026, custom_installments_cents: euros.map { |eur| eur * 100 })
+      end
+
+      def finance_section = section(page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person))
+
+      let(:fee_eur) { yp.total_fee_cents / 100 }
+
+      it "says nothing when they match" do
+        installments(fee_eur - 1000, 1000)
+
+        expect(finance_section.css(".alert-danger, .alert-warning").map(&:text).join)
+          .not_to include("Der Ratenplan")
+      end
+
+      it "warns in yellow when they bring in more" do
+        installments(fee_eur, 100)
+
+        expect(finance_section.at_css(".alert-warning:not(.mt-2.mb-2.py-2)").text)
+          .to include("100€ mehr")
+      end
+
+      it "reports in red when they bring in less" do
+        installments(fee_eur - 300)
+
+        alert = finance_section.at_css(".alert-danger")
+        expect(alert.text).to include("es fehlen 300€")
+        expect(alert.at_css("i.fa-exclamation-triangle")).to be_present
+      end
+
+      it "tells the planned reduction's panel how the installments would fit" do
+        installments(fee_eur)
+
+        panel = finance_section.css(".alert-warning").find { |el| el.text.include?("Geplant") }
+        expect(panel.text).to include("Nach Aktivierung bringt der Ratenplan 150€ mehr")
+      end
+
+      it "warns with a triangle in the planned reduction's panel when the installments would not cover the fee" do
+        installments(fee_eur - 300)
+
+        panel = finance_section.css(".alert-warning").find { |el| el.text.include?("Geplant") }
+        note = panel.at_css(".text-danger")
+        expect(note.text).to include("Nach Aktivierung deckt der Ratenplan den Beitrag nicht")
+        expect(note.at_css("i.fa-exclamation-triangle")).to be_present
+      end
+    end
+
+    it "leaves the changes out without any" do
+      html = section(page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person))
+
+      expect(html.text).not_to include("Änderungen am Beitrag")
+    end
+
+    it "heads the section and the installments as h2" do
+      body = page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person)
+
+      expect(Nokogiri::HTML(body).css("h2").map { |h| h.text.strip }).to include("Ratenplan", "Beitragshöhe")
+    end
+
+    it "sets the comment in italics, like the comments of the entries" do
+      html = section(page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person))
+
+      expect(html.css(".fee-reduction-comment.fst-italic").map(&:text).map(&:strip))
+        .to eq ["Nachweis liegt vor", "Erhöhung"]
+    end
+
+    it "morphs page refreshes and keeps the scroll position" do
+      body = page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person)
+
+      expect(body).to include('<meta name="turbo-refresh-method" content="morph">')
+        .and include('<meta name="turbo-refresh-scroll" content="preserve">')
+    end
+  end
 end

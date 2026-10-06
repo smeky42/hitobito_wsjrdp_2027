@@ -1,0 +1,41 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The plan of a total fee reduction, in place of the buttons of the
+-# "Beitragshöhe" section (fee_reduction_actions_id) -- on the person's Beitrag
+-# page or in a row of the Reduktionen list. Submitted through Turbo: a
+-# refused plan comes back into the same place with its errors, a saved,
+-# activated or discarded one refreshes the page in place
+-# (Person::FeeReductionController#leave_form). Abbrechen brings the buttons
+-# back.
+- label_class = "col-md-3 col-xl-2 pb-1"
+-# The colour of the planned reduction's panel: this is a plan, too.
+.fee-reduction-form.alert.alert-warning.mt-2.mb-2.py-2
+  %h4.h6.mb-1= t("people.fee_reduction.form_title.#{mode}")
+  - if mode == "from_active"
+    .muted.small.mb-2= t("people.fee_reduction.from_active_note")
+  = standard_form @person, url: person_fee_reduction_path(@person), method: :put do |f|
+    = f.error_messages
+    = hidden_field_tag :context, context
+    = f.labeled_input_field :planned_total_fee_reduction, label: "Betrag",
+        label_class: "#{label_class} required", value: amount_text, placeholder: "250,00"
+    = f.labeled_input_field :planned_total_fee_reduction_hint, label: "Kurzhinweis",
+        help: t("people.fee_reduction.hint_help")
+    = f.labeled_input_field :planned_total_fee_reduction_issue, label: "Vorgang"
+    = f.labeled_input_field :planned_total_fee_reduction_comment, label: "Kommentar",
+        help: t("people.fee_reduction.comment_help")
+    .btn-toolbar.gap-2.mt-2
+      = f.button("Geplante Reduktion speichern", name: :commit_action, value: :save,
+          class: "btn btn-sm btn-primary")
+      = f.button("Reduktion speichern und aktivieren", name: :commit_action, value: :activate,
+          class: "btn btn-sm btn-outline-primary",
+          data: {turbo_confirm: t("people.fee_reduction.activate_confirm")})
+      = f.button("Planung verwerfen", name: :commit_action, value: :discard,
+          class: "btn btn-sm btn-outline-danger", formnovalidate: true,
+          data: {turbo_confirm: t("people.fee_reduction.discard_confirm")})
+      = link_to("Abbrechen", buttons_person_fee_reduction_path(@person, context: context),
+          class: "btn btn-sm btn-link", data: {turbo_stream: true})

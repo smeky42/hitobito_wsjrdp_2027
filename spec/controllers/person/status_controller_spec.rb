@@ -11,6 +11,8 @@ require "spec_helper"
 
 # Activating a planned fee rule (custom installments) on the status tab: the
 # planned rule becomes active and records the rule it replaces as prev_rule_id.
+# The total fee reduction is maintained on the Beitrag page; the status tab
+# names it and links there.
 describe Person::StatusController, type: :controller do
   let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
   let(:person) { people(:yp_a_1) }
@@ -45,5 +47,26 @@ describe Person::StatusController, type: :controller do
     activate
 
     expect(planned.reload).to have_attributes(status: "active", prev_rule_id: nil)
+  end
+
+  describe "total fee reduction" do
+    render_views
+
+    # The pages show the installments, which the test database only has as a
+    # custom plan.
+    before do
+      rule("active", activated_at: 1.day.ago)
+      person.update!(wsjrdp_total_fee_reduction: 500, wsjrdp_total_fee_reduction_hint: "Härtefall")
+    end
+
+    it "names it and links to the Beitrag page, on the page and in the form" do
+      %i[show edit].each do |action|
+        get action, params: {group_id: person.primary_group_id, id: person.id}
+
+        expect(response.body).to include("Härtefall: reduziert um 500€")
+        expect(response.body).to include(person_fee_path(person))
+        expect(response.body).not_to include("planned_total_fee_reduction")
+      end
+    end
   end
 end

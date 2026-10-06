@@ -202,12 +202,15 @@ de:
         can_swim: Ich kann schwimmen
         diet: Essensgewohnheiten
         active_total_fee_reduction: Reduktion Beitrag
+        active_total_fee_reduction_issue: Vorgang Reduktion Beitrag
         active_total_fee_reduction_hint: Kurzhinweis Reduktion Beitrag
         active_total_fee_reduction_comment: Kommentar Reduktion Beitrag
         wsjrdp_total_fee_reduction: Reduktion Beitrag
+        wsjrdp_total_fee_reduction_issue: Vorgang Reduktion Beitrag
         wsjrdp_total_fee_reduction_hint: Kurzhinweis Reduktion Beitrag
         wsjrdp_total_fee_reduction_comment: Kommentar Reduktion Beitrag
         planned_total_fee_reduction: Reduktion Beitrag (in Vorbereitung)
+        planned_total_fee_reduction_issue: Vorgang Reduktion Beitrag (in Vorbereitung)
         planned_total_fee_reduction_hint: Kurzhinweis Reduktion Beitrag (in Vorbereitung)
         planned_total_fee_reduction_comment: Kommentar Reduktion Beitrag (in Vorbereitung)
         installments_string: Ratenplan
@@ -627,8 +630,6 @@ de:
       approve_documents: Ich habe alle Dokumente eingesehen und überprüft. TN in den Status "Dokumente vollständig überprüft" schalten.
       activate_planned_custom_installments: Vorbereiteten Ratenplan aktivieren
       delete_planned_custom_installments: Vorbereiteten Ratenplan löschen
-      activate_total_fee_reduction: Vorbereitete Reduktion Beitrag aktivieren
-      delete_total_fee_reduction: Vorbereitete Reduktion Beitrag löschen
 
     fields:
       upload_contract_pdf: Anmeldung hochladen
@@ -682,14 +683,22 @@ de:
         Achtung: Vor dem aktivieren des Ratenplans muss geprüft werden,
         dass die Angaben in Hitobito zum hochgeladenen Scan passen!
       no_active_custom_installments: Reguläre Einmal- oder Ratenzahlung / kein individueller Ratenplan
-      edit_total_fee_reduction_help: |
-        Hier kannst das Finance-Team eine individuelle Beitragsreduktion anlegen und editieren.<br/>
-        Achtung: Beim aktivieren der Reduktion muss geprüft werden, dass die Angaben in Hitobito zum hochgeladenen Scan passen!
-      activate_total_fee_reduction_help: |
-        Hier kannst das Finance-Team eine individuelle Beitragsreduktion aktivieren oder löschen.
-        Achtung: Vor dem aktivieren der Reduktion muss geprüft werden,
-        dass die Angaben in Hitobito zum hochgeladenen Scan passen!
       no_active_total_fee_reduction: Regulärer Teilnahmebeitrag / keine individuelle Beitragsreduktion
+
+    fee_reduction:
+      activate_confirm: >-
+        Soll die geplante Beitragsreduktion aktiviert werden?
+        Vorher prüfen, dass die Angaben zum hochgeladenen Scan passen.
+      activate_help: Vor dem Aktivieren prüfen, dass die Angaben zum hochgeladenen Scan passen.
+      form_title:
+        new: Beitragsreduktion planen
+        from_active: Beitragsreduktion planen
+        edit: Geplante Beitragsreduktion bearbeiten
+      from_active_note: Vorbelegt mit der aktiven Reduktion – gespeichert wird ein neuer Plan.
+      hint_help: Erscheint im Vertrag und wird der Person angezeigt.
+      comment_help: Nur sichtbar für Personen mit Buchhaltungs-Rechten
+      discard_confirm: Planung verwerfen? Eine gespeicherte geplante Reduktion wird gelöscht.
+      status_link: Beitragshöhe auf der Beitrags-Seite
 
     contact_fields:
       format_birthday: (dd.mm.yyyy)
@@ -1052,6 +1061,7 @@ de:
     tabs:
       accounts: "Konten"
       person_fees: "Personen"
+      fee_reductions: "Reduktionen"
       plans: "Ratenpläne"
       overview: "Übersicht"
       budget: "Budget"

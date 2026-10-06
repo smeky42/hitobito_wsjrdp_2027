@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The role badges' stylesheet (WsjrdpRoleBadgeHelper), from the colours of
+-#  Wsjrdp2027::RoleColors. Rendered with the first badge; the guard emits the
+-#  <style> only once per request.
+- return if @wsjrdp_role_styles_emitted
+- @wsjrdp_role_styles_emitted = true
+:css
+  .wsjrdp-role { display: inline-block; padding: 0 .4rem; border-radius: .35rem;
+    font-size: .875em; line-height: 1.45; white-space: nowrap; }
+  #{Wsjrdp2027::RoleColors.css}

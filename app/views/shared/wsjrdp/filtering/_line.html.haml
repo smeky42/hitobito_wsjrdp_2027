@@ -37,7 +37,8 @@
 -#                plain text rather than openers of a pane that does not exist
 -#
 -#  The members of an EXCLUSIVE group (FilterPreset#exclusive?) render as ONE
--#  segmented control -- "Alle" first, exactly one segment pressed -- the other
+-#  segmented control -- the unrestricted button (an asterisk, "ohne
+-#  Einschränkung") first, exactly one segment pressed -- the other
 -#  entries as toggle links with a tick.
 - state = local_assigns.fetch(:state)
 - presets = Array(local_assigns.fetch(:presets, nil))
@@ -65,13 +66,17 @@
           - if chunk.first.exclusive?
             .btn-group.btn-group-sm.flt-segment{role: "group", "aria-label": chunk.first.group}
               - chunk.each do |preset|
+                -# An icon-only button (the unrestricted one's asterisk): its
+                -# label is the tooltip and the accessible name.
+                - icon_only = preset.css_class.to_s.split.include?(Wsjrdp::TableState::Filter::ICON_ONLY_CLASS)
                 = link_to et_url(state, {filter: preset.toggle_wire}),
                   class: ["btn btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" "),
-                  role: "button", aria: {pressed: preset.active?.to_s},
-                  data: {title: preset.label} do
+                  role: "button", aria: {pressed: preset.active?.to_s, label: (preset.label if icon_only)},
+                  title: (preset.label if icon_only), data: {title: preset.label} do
                   - if preset.icon.present?
                     %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
-                  = preset.label
+                  - unless icon_only
+                    = preset.label
             - next
           - preset = chunk.first
           -# A LINK, not a button: a preset applies at once, so it is a GET to a

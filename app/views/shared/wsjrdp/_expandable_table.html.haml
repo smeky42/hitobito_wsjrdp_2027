@@ -18,7 +18,8 @@
 -#                 filter and nesting level. The widget reads the state, never
 -#                 params (D8.4 of doc/plans/2026-09_expandable-table-state.md).
 -#    columns   -- [{ key:, label:, cell: ->(row){..}, numeric:, width:,
--#                    sort_key:, css_class:, condensed_label:, abbr: }] (FULL set)
+-#                    sort_key:, css_class:, condensed_label:, header_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, abbr: }]
+-#                    (FULL set)
 -#    rows      -- the collection (a Kaminari page when paginating, else any list)
 -#    row_key   -- ->(row){ String } unique key (URL param + DOM id + selection)
 -#    detail     -- ->(row){ html }   server-rendered detail  (OR)
@@ -129,7 +130,63 @@
 - raise ArgumentError, "expandable_table declares sub_rows but no sub_cell -- a sub-row's cells are rendered by sub_cell(sub, col)" if sub_rows && sub_cell.nil?
 - lead_cols = (selection ? 1 : 0)
 - cols_count = lead_cols + columns.size
+-# Growing columns and gaps (a column's `grow:`, t.gaps): the room a table has
+-# beyond its columns' widths widens the growing columns first, then the gaps
+-# (see the two stages below). A gap sits at the right of the column before it
+-# (more padding, wider column), so the cells keep their content width. No gap
+-# between two columns of one group or of one merged cell, none in the pairs of
+-# `except:`; none in a condensed table.
+- gaps = local_assigns.fetch(:gaps, nil)
+- gap_keys = []
+- if gaps
+  - columns.each_with_index do |col, i|
+    - nxt = columns[i + 1]
+    - next unless nxt
+    - next if col[:group].present? && nxt[:group] == col[:group]
+    - next if col[:merge].present? && nxt[:merge] == col[:merge]
+    - next if gaps[:except].include?([col[:key], nxt[:key]])
+    - gap_keys << col[:key]
+-# Two stages: the room first widens the columns with `grow:` -- --exp-c per
+-# unit of weight, up to the gaps' grow_max --, only the rest the gaps
+-# (--exp-g, up to max). Both in whole pixels (round down), so the column
+-# widths stay whole pixels and their sum never outgrows the wrapper.
+- grow_weight = columns.sum { |col| col[:grow].to_f }
+- gap_count = gap_keys.size
+- growing = (grow_weight + gap_count).positive? && !condensed
+-# Merged columns (a column's `merge:`): neighbouring shown columns with one
+-# merge key share ONE body cell; the host's merged_cell renders it from the row
+-# and the keys of the run's shown columns (the first column's cell otherwise).
+- body_runs = columns.chunk_while { |a, b| a[:merge].present? && a[:merge] == b[:merge] }.to_a
+- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1)].compact }
+- run_cell = ->(run, row) { run.first[:merged_cell] ? run.first[:merged_cell].call(row, run.map { |c| c[:key] }) : run.first[:cell].call(row) }
+-# A merged run shares its width (the sum of its shown columns' widths) out by
+-# `merge_share` -- evenly by default --, so its headers spread regularly.
+- merged_widths = {}
+- body_runs.select { |run| run.size > 1 && run.all? { |c| c[:width].to_s =~ /\A[\d.]+rem\z/ } }.each do |run|
+  -# In whole pixels (1rem = 16px), the rest to the last column: the sum stays
+  -# exactly the run's width, and the columns stay whole pixels for t.gaps.
+  - total_px = (run.sum { |c| c[:width].to_f } * 16).round
+  - shares = run.sum { |c| (c[:merge_share] || 1).to_f }
+  - parts = run.map { |c| (total_px * (c[:merge_share] || 1).to_f / shares).floor }
+  - parts[-1] += total_px - parts.sum
+  - run.zip(parts).each { |c, px| merged_widths[c[:key]] = "#{(px / 16.0).round(4)}rem" }
+- base_width = ->(col) { merged_widths[col[:key]] || col[:width] }
+-# The headers of a merged run spread like space-between: the first at the
+-# start, the last at the end, the others centred; a column's `header_align`
+-# overrides that.
+- merged_align = {}
+- body_runs.select { |run| run.size > 1 }.each do |run|
+  - run.each_with_index { |c, i| merged_align[c[:key]] = (i.zero? ? "start" : ((i == run.size - 1) ? "end" : "center")) }
+- header_align = ->(col) { col[:header_align].presence || merged_align[col[:key]] }
+- col_extra = ->(col) { [(("var(--exp-g)" if gap_keys.include?(col[:key]))), (("#{col[:grow].to_f} * var(--exp-c)" if col[:grow].to_f.positive?))].compact }
+- col_width = ->(col) { (growing && col[:width] && col_extra.call(col).any?) ? "calc(#{([base_width.call(col)] + col_extra.call(col)).join(" + ")})" : base_width.call(col) }
+- gap_max = gaps ? gaps[:max] : "0px"
+- grow_max = gaps ? gaps[:grow_max] : "100cqw"
 - min_rem = columns.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 } + (selection ? 2.0 : 0)
+-# With capped gaps the table stops widening at a known width; the filter and
+-# the toolbar above it stop there too, so the column menu sits at the table's
+-# right edge and the filter pane is never wider than the table.
+- max_width_style = (growing && gaps) ? "max-width: calc(#{min_rem}rem + #{grow_weight} * #{grow_max} + #{gap_count} * #{gap_max})" : nil
 - paging_top_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :top) if per_options
 - paging_bottom_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :bottom) if per_options
 -# The filter has its OWN two lines above the toolbar (the filter line and the
@@ -159,19 +216,20 @@
   - filter_presets = declared_presets.any? ? declared_presets.flat_map { |p| Array(state.filter.preset(**p.to_h.symbolize_keys)) } : state.filter.presets
   -# `panel: false`: the Schnellauswahl alone -- no pane, no toggle to open one.
   - filter_panel = filter.fetch(:panel, true)
-  = render "shared/wsjrdp/filtering/line", state: state,
-    presets: filter_presets, disabled: filter_disabled, panel: filter_panel
-  - if filter_panel
-    = render "shared/wsjrdp/filtering/builder", state: state,
-      apply_url: filter[:apply_url],
-      presets: filter_presets,
-      condensed_locked: filter.fetch(:condensed_locked, false),
-      disabled: filter_disabled
+  .exp-filter-limit{ style: max_width_style }
+    = render "shared/wsjrdp/filtering/line", state: state,
+      presets: filter_presets, disabled: filter_disabled, panel: filter_panel
+    - if filter_panel
+      = render "shared/wsjrdp/filtering/builder", state: state,
+        apply_url: filter[:apply_url],
+        presets: filter_presets,
+        condensed_locked: filter.fetch(:condensed_locked, false),
+        disabled: filter_disabled
 
 -# The remembered selection is keyed per page AND per table, so two pages that
 -# happen to share a prefix / id_prefix never see each other's selection.
 - selection_key = selection && (selection[:remember_key] || "#{state.store_key}:#{prefix.presence || id_prefix}")
-.bk-select-scope{ data: (selection ? {select_key: selection_key, filter_sig: (selection[:filter_sig] || state.wire(:filter)), select_name: selection[:name], select_form: selection[:form], on_filter_change: selection.fetch(:on_filter_change, "clear").to_s} : {}) }
+.bk-select-scope{ style: max_width_style, data: (selection ? {select_key: selection_key, filter_sig: (selection[:filter_sig] || state.wire(:filter)), select_name: selection[:name], select_form: selection[:form], on_filter_change: selection.fetch(:on_filter_change, "clear").to_s} : {}) }
   - if has_toolbar
     -# Left: summary, paging and the (optional) select-all bar. Right: the column
     -# hamburger, bottom-aligned so it sits at the bottom of a tall left block.
@@ -215,38 +273,49 @@
           = render "shared/wsjrdp/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
 
   .table-responsive.exp-table-wrap{ class: ("bk-condensed-wrap" if condensed), data: { exptbl: id_prefix, open_param: param } }
-    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: ("bookings-table-condensed" if condensed), style: (condensed ? nil : "min-width: #{min_rem}rem") }
-      %thead
-        %tr
+    - table_style = condensed ? nil : "min-width: #{min_rem}rem"
+    - if growing
+      - room = "(100cqw - #{min_rem}rem)"
+      - c_expr = grow_weight.positive? ? "clamp(0px, round(down, #{room} / #{grow_weight}, 1px), #{grow_max})" : "0px"
+      - g_expr = gap_count.positive? ? "clamp(0px, round(down, (#{room} - #{grow_weight} * var(--exp-c)) / #{gap_count}, 1px), #{gap_max})" : "0px"
+      - table_style = "--exp-c: #{c_expr}; --exp-g: #{g_expr}; min-width: #{min_rem}rem; width: calc(#{min_rem}rem + #{grow_weight} * var(--exp-c) + #{gap_count} * var(--exp-g))"
+    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: ("bookings-table-condensed" if condensed), style: table_style }
+      -# Column groups (a column's `group:`): the group's name over a bracket
+      -# that spans exactly its columns, whose headers form a second row; every
+      -# other header spans both rows, bottom-aligned with them. The fixed table
+      -# layout takes its widths from the first row, which then holds the group
+      -# cells -- so the widths go into a colgroup.
+      - grouped = columns.any? { |col| col[:group].present? }
+      - th_locals = {state: state, condensed: condensed, sort_links: sort_links, sort_names: sort_names, multi_sort: multi_sort, show_ranks: show_ranks, sort_list: sort_list, gap_keys: gap_keys, col_width: col_width, header_align: header_align}
+      - if (grouped || growing) && !condensed
+        %colgroup
           - if selection
-            %th.bk-select-cell{ style: "width: 2rem" }
-              %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+            %col{ style: "width: 2rem" }
           - columns.each do |col|
-            - label = (condensed && col[:condensed_label]) || col[:label]
-            %th.text-nowrap.exp-col{ class: [col[:css_class], ("text-end" if col[:numeric])].compact, style: ("width: #{col[:width]}" if col[:width] && !condensed), data: { colkey: col[:key] } }
-              - variants = Array(col[:sort_variants])
-              - level = (et_sort_level_of_column(state, col[:key]) if show_ranks)
-              - if sort_links && col[:sort_key]
-                = et_sort_link(state, col[:sort_key], label, first: col[:sort_first] || "asc", names: sort_names, multi: multi_sort)
+            %col{ style: ("width: #{col_width.call(col)}" if col[:width]) }
+      %thead
+        - if grouped
+          %tr.exp-col-groups
+            - if selection
+              %th.bk-select-cell{ rowspan: 2 }
+                %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+            - columns.chunk_while { |a, b| a[:group].present? && a[:group] == b[:group] }.each do |run|
+              - if run.first[:group].present?
+                -# The gap after the group stays out of the bracket.
+                %th.exp-col-group.text-center.small.fw-normal.border-bottom-0.pb-0{ colspan: run.size, class: ("exp-gap" if gap_keys.include?(run.last[:key])) }
+                  .exp-col-group-bracket= run.first[:group]
               - else
-                -# A fixed sort (D8.8) is rendered without a link -- as a
-                -# courtesy, not as the protection: the ORDER BY comes from the
-                -# state either way.
-                = label
-                - if col[:sort_key] && (fixed_dir = Wsjrdp::ExpandableTableSort.dir_of(sort_list, col[:sort_key]))
-                  = et_sort_arrow(fixed_dir)
-              - if level
-                = et_sort_rank_box(state, level, names: sort_names, removable: sort_links)
-              - if variants.any?
-                -# The column's sort variants, one chip each ("ist ⇅").
-                .exp-sort-chips
-                  - variants.each do |variant|
-                    - if sort_links
-                      = et_sort_link(state, variant[:key], variant[:label], first: variant[:first], names: sort_names, multi: multi_sort, css_class: "exp-sort-chip")
-                    - elsif (fixed_dir = Wsjrdp::ExpandableTableSort.dir_of(sort_list, variant[:key]))
-                      %span.exp-sort-chip.exp-sort-active
-                        = variant[:label]
-                        = et_sort_arrow(fixed_dir)
+                = render "shared/wsjrdp/expandable_table_th", col: run.first, rowspan: 2, **th_locals
+          %tr
+            - columns.select { |col| col[:group].present? }.each do |col|
+              = render "shared/wsjrdp/expandable_table_th", col: col, **th_locals
+        - else
+          %tr
+            - if selection
+              %th.bk-select-cell{ style: "width: 2rem" }
+                %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+            - columns.each do |col|
+              = render "shared/wsjrdp/expandable_table_th", col: col, **th_locals
       - if rows.blank?
         %tbody
           %tr
@@ -276,8 +345,8 @@
                   %input.form-check-input.bk-select-check{ type: "checkbox", name: selection[:name],
                     value: selection[:id_field].call(row), form: selection[:form], "aria-label": "Zeile auswählen",
                     data: (selection[:row_data] ? selection[:row_data].call(row) : {}) }
-            - columns.each do |col|
-              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= col[:cell].call(row)
+            - body_runs.each do |run|
+              %td.exp-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), data: { colkey: run.first[:key] } }= run_cell.call(run, row)
           - Array(sub_rows && sub_rows.call(row)).each do |sub|
             -# A sub-row is a disclosure control like the row it belongs to: the
             -# SAME collapse target, so it opens and closes the group's one
@@ -289,8 +358,8 @@
               -# cell so the columns keep lining up, and nothing in it.
               - if selection
                 %td.bk-select-cell
-              - columns.each do |col|
-                %td.exp-col.exp-sub-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= sub_cell.call(sub, col)
+              - body_runs.each do |run|
+                %td.exp-col.exp-sub-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), data: { colkey: run.first[:key] } }= sub_cell.call(sub, run.first[:merge].present? ? run.first.merge(merged_keys: run.map { |c| c[:key] }) : run.first)
           - if row_expandable
             -# The detail is the group's LAST row: it opens under the whole
             -# group, sub-rows included. exp-open marks the open one for the CSS

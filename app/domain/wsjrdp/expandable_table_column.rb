@@ -42,7 +42,7 @@
 #   css_class       per-column class (responsive hiding); usually derived from
 #                   the collection's css_prefix
 class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condensed_label,
-  :numeric, :width, :sort, :sort_first, :sort_variants, :default, :css_class)
+  :header_label, :header_tooltip, :group, :grow, :tabular_nums, :merge, :merge_share, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :css_class)
   SORT_DIRECTIONS = %w[asc desc].freeze
 
   # One further way to sort by a column. It is a SORT KEY of its own (in the ?s=
@@ -59,8 +59,33 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #   first  like the column's `sort_first:`; defaults to the column's
   SortVariant = Data.define(:key, :abbr, :column_key, :label, :title, :sort, :first)
 
-  def initialize(key:, abbr: nil, label: nil, condensed_label: nil, numeric: false,
-    width: nil, sort: nil, sort_first: "asc", sort_variants: [], default: false, css_class: nil)
+  #   header_label  what the header shows instead of the label ("" for a header
+  #                 without title, "\n" for a line break); the label stays the
+  #                 column's name in the columns menu
+  #   header_tooltip the header's tooltip
+  #   tabular_nums  digits of one width (CSS font-variant-numeric: tabular-nums,
+  #                 the same font), so figures line up digit under digit; on by
+  #                 default for a numeric column, `true` for others (a date)
+  #   merge         neighbouring shown columns with the same merge key keep a
+  #                 header each (sortable, in the columns menu one by one) but
+  #                 share ONE cell per row, which the host renders with
+  #                 `merged_cell:` of #to_table_column (row, shown keys)
+  #   merge_share   a merged column's share of the merged width (the sum of
+  #                 the shown merged columns' widths), so their headers spread
+  #                 as wanted: 1 (the default) for all splits it evenly
+  #   header_align  "start", "center" or "end" for the header; nil keeps the
+  #                 default -- in a merged run the headers spread like
+  #                 space-between (first at the start, last at the end, the
+  #                 others centred), elsewhere the column's own alignment
+  #   grow          how much the column widens with a table that has room to
+  #                 spare (t.gaps) -- before any gap grows: a weight, 0 (the
+  #                 default) for a column that keeps its width; it widens by
+  #                 weight * the gaps' grow_max at most, 2 twice as much as 1
+  #   group         a heading over the header: neighbouring shown columns of the
+  #                 same group share one cell of an extra header row ("Rolle"
+  #                 over "WSJ" and "Kontingent")
+  def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, header_tooltip: nil,
+    group: nil, grow: 0, tabular_nums: nil, merge: nil, merge_share: 1, header_align: nil, numeric: false, width: nil, sort: nil, sort_first: "asc", sort_variants: [], default: false, css_class: nil)
     key = key.to_s
     abbr = (abbr || key).to_s
     sort_first = self.class.validate_direction!(sort_first)
@@ -74,7 +99,9 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
         sort: variant.fetch(:sort), first: self.class.validate_direction!(variant.fetch(:first, sort_first)))
     end
     super(key: key, abbr: abbr, label: label,
-          condensed_label: condensed_label, numeric: numeric, width: width,
+          condensed_label: condensed_label, header_label: header_label, header_tooltip: header_tooltip, group: group,
+          grow: grow, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
+          header_align: header_align&.to_s, numeric: numeric, width: width,
           sort: sort, sort_first: sort_first, sort_variants: variants.freeze,
           default: default, css_class: css_class)
   end
@@ -94,8 +121,11 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   # column's own key whenever it declares a sort -- that is what makes the header
   # clickable and what the state resolves a click back into. `sort_variants:`
   # are the header's chips, [{key:, label:, title:, first:}].
-  def to_table_column(cell:)
+  def to_table_column(cell:, merged_cell: nil)
     {key: key, abbr: abbr, label: label, condensed_label: condensed_label,
+     header_label: header_label, header_tooltip: header_tooltip, group: group, grow: grow,
+     tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, header_align: header_align,
+     merged_cell: merged_cell,
      numeric: numeric, width: width, css_class: css_class,
      sort_key: (key if sortable?), sort_first: sort_first,
      sort_variants: sort_variants.map { |v| {key: v.key, label: v.label, title: v.title, first: v.first} },

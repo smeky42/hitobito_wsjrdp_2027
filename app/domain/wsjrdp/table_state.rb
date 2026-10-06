@@ -80,15 +80,16 @@ class Wsjrdp::TableState
   #                one, and a slot left without a value goes altogether
   #
   # A member of an EXCLUSIVE group (`exclusive: true`, #exclusive? true) is one
-  # of several alternatives of which exactly one is pressed, the group's "all"
-  # member (value nil, label `all_label:`, default "Alle") standing for no
+  # of several alternatives of which exactly one is pressed, the group's
+  # "unrestricted" member (value nil) standing for no
   # condition at all:
   #
   #   active?      a member: the group's slots exist and each says exactly
-  #                `attribute in (value)`; the "all" member: there is no slot of
+  #                `attribute in (value)`; the unrestricted member: there is no slot of
   #                the group
   #   toggle_wire  the user filter without the group's slots, plus
-  #                `attribute in (value)` for a member, nothing for "all"
+  #                `attribute in (value)` for a member, nothing for the
+  #                unrestricted one
   #
   # icon and css_class are display only -- they never influence the slots, the
   # active state or the toggle URL, and a button that declares neither renders
@@ -151,8 +152,11 @@ class Wsjrdp::TableState
   # (`{group:, attribute:, operator:, members:}`), several buttons that share one
   # `attribute in (values)` slot -- one FilterPreset per member, so `#presets` is
   # one flat list of buttons in declaration order either way. A group declared
-  # `exclusive: true` is a set of alternatives with an "all" button in front
-  # (`all_label:`, default "Alle"), of which exactly one is pressed.
+  # `exclusive: true` is a set of alternatives with an "unrestricted" button in
+  # front, of which exactly one is pressed. That button stands for "no
+  # restriction by this attribute": by default an asterisk (the wildcard, "any
+  # value") with "ohne Einschränkung" as its tooltip and accessible name; with
+  # `unrestricted_label:` that text instead.
   class Filter
     EMPTY_CATALOG = {attributes: [].freeze}.freeze
 
@@ -160,8 +164,12 @@ class Wsjrdp::TableState
     # value of the set.
     GROUP_OPERATOR = "in"
     GROUP_KEYS = %i[group attribute operator members].freeze
-    GROUP_OPTIONAL_KEYS = %i[exclusive all_label].freeze
-    DEFAULT_ALL_LABEL = "Alle"
+    GROUP_OPTIONAL_KEYS = %i[exclusive unrestricted_label].freeze
+    UNRESTRICTED_NAME = "ohne Einschränkung"
+    UNRESTRICTED_ICON = "asterisk"
+    # The css class of a preset button that shows its icon only; its label is
+    # the tooltip and the accessible name (shared/wsjrdp/filtering/_line).
+    ICON_ONLY_CLASS = "flt-preset-icon-only"
     MEMBER_KEYS = %i[key label value icon css_class].freeze
     MEMBER_REQUIRED_KEYS = %i[key label value].freeze
 
@@ -310,8 +318,8 @@ class Wsjrdp::TableState
       raise ArgumentError, "#{what}: the table declares no filter schema" unless @schema
 
       check_keys!(what, declaration, GROUP_KEYS + GROUP_OPTIONAL_KEYS, GROUP_KEYS)
-      if declaration.key?(:all_label) && !declaration[:exclusive]
-        raise ArgumentError, "#{what}: all_label is for an exclusive group only"
+      if declaration.key?(:unrestricted_label) && !declaration[:exclusive]
+        raise ArgumentError, "#{what}: unrestricted_label is for an exclusive group only"
       end
       attribute = declaration[:attribute].to_s
       offered = attribute_values!(what, attribute, declaration[:operator])
@@ -322,17 +330,19 @@ class Wsjrdp::TableState
       members.map { |member| build_group_member(declaration[:group], attribute, member, values) }
     end
 
-    # An exclusive group: its "all" button first, then one button per member,
-    # exactly one of them pressed.
+    # An exclusive group: its unrestricted button first, then one button per
+    # member, exactly one of them pressed.
     def build_exclusive_group(declaration, attribute, members, values)
       group = declaration[:group].to_s
       without = user_slots.reject { |slot| group_slot?(slot, attribute) }
       slots = group_slots(attribute)
-      all = Wsjrdp::TableState::FilterPreset.new(key: "#{group}-all",
-        label: (declaration[:all_label] || DEFAULT_ALL_LABEL).to_s, slots: nil,
+      own_label = declaration[:unrestricted_label]
+      unrestricted = Wsjrdp::TableState::FilterPreset.new(key: "#{group}-unrestricted",
+        label: (own_label || UNRESTRICTED_NAME).to_s, slots: nil,
         active: slots.empty?, toggle_wire: encode_slots(without),
+        icon: (UNRESTRICTED_ICON unless own_label), css_class: (ICON_ONLY_CLASS unless own_label),
         group: group, attribute: attribute, value: nil, group_values: values, exclusive: true)
-      [all] + members.map do |member|
+      [unrestricted] + members.map do |member|
         value = member[:value].to_s
         Wsjrdp::TableState::FilterPreset.new(key: member[:key].to_s, label: member[:label].to_s,
           slots: nil, active: slots.any? && slots.all? { |slot| group_slot_values(slot) == [value] },

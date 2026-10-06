@@ -10,7 +10,8 @@
 module Sheet
   # "Beiträge" -- the second sub-item of the Finanzen main-nav section: its
   # overview page (/fin/fees), the people with a special finance situation
-  # (/fin/person_fees) and the installment plans (/fin/payment_plans).
+  # (/fin/person_fees), the installment plans (/fin/payment_plans) and the
+  # total fee reductions (/fin/fee_reductions).
   #
   # This sheet also serves the overview controller (Fin::FeesController ->
   # Sheet::Fin::Fees); the Übersicht tab is the area's link on /fin -- see
@@ -25,6 +26,9 @@ module Sheet
     tab "fin.tabs.person_fees", :fin_person_fees_path,
       if: ->(view, *) { view.can?(:log, WsjrdpFinAccount) }
     tab "fin.tabs.plans", :wsjrdp_payment_plans_path
+    # The active and planned total fee reductions: person-level fee data as well.
+    tab "fin.tabs.fee_reductions", :fin_fee_reductions_path,
+      if: ->(view, *) { view.can?(:log, WsjrdpFinAccount) }
 
     def left_nav?
       true

@@ -659,13 +659,15 @@ describe Fin::CostCentersController do
       end
 
       # The Schnellauswahl of the bookings: one segmented control, no filter pane.
-      it "offers Alle / Nur Unit-Budget / Ohne Unit-Budget over the bookings, without a filter pane" do
+      it "offers ∗ / Nur Unit-Budget / Ohne Unit-Budget over the bookings, without a filter pane" do
         get :show, params: {number: "K300"}
         bookings = doc.at_css(".fin-embedded-bookings")
 
         expect(bookings.css(".flt-segment a").map { |a| a.text.strip })
-          .to eq(["Alle", "Nur Unit-Budget", "Ohne Unit-Budget"])
-        expect(bookings.at_css(".flt-segment a[aria-pressed='true']").text.strip).to eq("Alle")
+          .to eq(["", "Nur Unit-Budget", "Ohne Unit-Budget"])
+        pressed = bookings.at_css(".flt-segment a[aria-pressed='true']")
+        expect([pressed["aria-label"], pressed["title"]]).to eq(["ohne Einschränkung", "ohne Einschränkung"])
+        expect(pressed.at_css("i.fa-asterisk")).to be_present
         expect(bookings.css(".pane-toggle, .flt-pane")).to be_empty
       end
 

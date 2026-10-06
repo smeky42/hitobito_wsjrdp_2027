@@ -1,0 +1,49 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The graphical tooltip (WsjrdpTipHelper#wsjrdp_tip): hovering a
+-#  .wsjrdp-tip-host shows its <template class="wsjrdp-tip"> in a floating box
+-#  on the body, so a scrolling table does not clip it. One delegated listener
+-#  on the document, installed once, so it survives Turbo visits and morphs.
+-#  Rendered with the first tooltip; the guard emits it only once per request.
+- return if @wsjrdp_tip_emitted
+- @wsjrdp_tip_emitted = true
+:css
+  .wsjrdp-tip-host { cursor: default; }
+  .wsjrdp-tip-box { position: fixed; z-index: 1080; pointer-events: none;
+    background: var(--bs-body-bg, #fff); border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: .4rem; box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .15); padding: .35rem .55rem;
+    font-size: .875rem; line-height: 1.7; max-width: min(32rem, 92vw); }
+  .wsjrdp-tip-label { color: var(--bs-secondary-color, #6c757d); margin-right: .4rem; }
+:javascript
+  (function () {
+    if (window.__wsjrdpTip) return;
+    window.__wsjrdpTip = true;
+    var box = null;
+    function hide() { if (box) { box.remove(); box = null; } }
+    document.addEventListener("mouseover", function (e) {
+      var pair = e.target.closest && e.target.closest(".wsjrdp-tip-host");
+      if (!pair) { hide(); return; }
+      if (box && box.dataset.for === pair.dataset.tipId) return;
+      hide();
+      var tpl = pair.querySelector("template.wsjrdp-tip");
+      if (!tpl) return;
+      pair.dataset.tipId = pair.dataset.tipId || String(Math.random());
+      box = document.createElement("div");
+      box.className = "wsjrdp-tip-box";
+      box.dataset.for = pair.dataset.tipId;
+      box.appendChild(tpl.content.cloneNode(true));
+      document.body.appendChild(box);
+      var r = pair.getBoundingClientRect(), b = box.getBoundingClientRect();
+      var top = r.bottom + 6;
+      if (top + b.height > window.innerHeight) top = r.top - b.height - 6;
+      box.style.top = top + "px";
+      box.style.left = Math.max(4, Math.min(r.left + r.width / 2 - b.width / 2, window.innerWidth - b.width - 4)) + "px";
+    });
+    document.addEventListener("scroll", hide, true);
+    document.addEventListener("turbo:before-render", hide);
+  })();

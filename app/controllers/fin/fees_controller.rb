@@ -8,8 +8,9 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 # "Beiträge" section overview at /fin/fees (the area's Übersicht tab). The page
-# names the area and links its two lists; the lists themselves are
-# Fin::WsjrdpFinPersonFeesController and Fin::WsjrdpPaymentPlansController.
+# names the area and links its lists; the lists themselves are
+# Fin::WsjrdpFinPersonFeesController, Fin::FeeReductionsController and
+# Fin::WsjrdpPaymentPlansController.
 # controller "fin/fees" -> Sheet::Fin::Fees (renders the left_nav + the tabs).
 class Fin::FeesController < Fin::FinController
   before_action :authorize_action
@@ -19,11 +20,12 @@ class Fin::FeesController < Fin::FinController
 
   private
 
-  # The page itself holds NO data -- it names the area and links its two lists
+  # The page itself holds NO data -- it names the area and links its lists
   # -- so it opens at :show, like every other section overview. The personal
-  # data sits in the lists, and Fin::WsjrdpFinPersonFeesController keeps its own
-  # :log gate; the link and the tab to it are hidden without :log (see the view
-  # and Sheet::Fin::Fees), so the read tier is left with the Ratenpläne.
+  # data sits in the lists, and Fin::WsjrdpFinPersonFeesController and
+  # Fin::FeeReductionsController keep their own :log gate; the links and the
+  # tabs to them are hidden without :log (see the view and Sheet::Fin::Fees), so
+  # the read tier is left with the Ratenpläne.
   def authorize_action
     authorize!(:show, WsjrdpFinAccount)
   end

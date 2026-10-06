@@ -65,8 +65,6 @@ Rails.application.routes.draw do
           put "status" => "person/status#update"
           post "status/activate_planned_custom_installments" => "person/status#activate_planned_custom_installments"
           post "status/delete_planned_custom_installments" => "person/status#delete_planned_custom_installments"
-          post "status/activate_total_fee_reduction" => "person/status#activate_total_fee_reduction"
-          post "status/delete_total_fee_reduction" => "person/status#delete_total_fee_reduction"
           post "status/review_documents" => "person/status#review_documents"
           post "status/approve_documents" => "person/status#approve_documents"
 
@@ -138,10 +136,21 @@ Rails.application.routes.draw do
         end
       end
       resource :debit_return, controller: "person/debit_return", only: [:edit, :update]
+      # The fee reduction section of the person finance page: plan, activate or discard
+      # a total fee reduction.
+      resource :fee_reduction, controller: "person/fee_reduction", only: [:edit, :update] do
+        get :buttons
+        post :activate
+        post :discard
+      end
     end
 
     scope "fin", module: "fin" do
       get :person_fees, as: "fin_person_fees", to: "wsjrdp_fin_person_fees#index"
+      # The people with an active total fee reduction (Reduktionen tab of the
+      # Beiträge area).
+      get :fee_reductions, as: "fin_fee_reductions", to: "fee_reductions#index"
+      post "fee_reductions/apply", as: "apply_fin_fee_reductions", to: "fee_reductions#apply"
       get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       post :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"
       resources :accounting_entries, path: "ae", only: [:new, :create, :index, :show, :edit, :update, :destroy]

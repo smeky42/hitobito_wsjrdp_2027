@@ -1,0 +1,33 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The buttons of the "Beitragshöhe" section (fee_reduction_actions_id): with a
+-# plan activate, discard or edit it, without one plan a reduction. All go
+-# through Turbo: the form comes as a stream in their place, activating and
+-# discarding come back as a page refresh.
+- planned = person.planned_total_fee_reduction
+-# Where the section is shown ("person" or "fin"); every request passes it on.
+- ctx = local_assigns.fetch(:context, "person")
+.mt-2
+  - if planned.present?
+    = action_button("Aktivieren", activate_person_fee_reduction_path(person, context: ctx), "check",
+        data: {turbo_method: :post, turbo_confirm: t("people.fee_reduction.activate_confirm")},
+        title: t("people.fee_reduction.activate_help"))
+    = action_button("Verwerfen", discard_person_fee_reduction_path(person, context: ctx), "trash-alt",
+        class: "btn-danger",
+        data: {turbo_method: :post, turbo_confirm: t("people.fee_reduction.discard_confirm")})
+    = action_button("Bearbeiten",
+        edit_person_fee_reduction_path(person, mode: "edit", context: ctx),
+        :edit, remote: false, data: {turbo_stream: true})
+  - else
+    = action_button("Neue Reduktion planen",
+        edit_person_fee_reduction_path(person, mode: "new", context: ctx),
+        :plus, remote: false, data: {turbo_stream: true})
+    - if person.active_total_fee_reduction != 0
+      = action_button("Aus aktueller Reduktion planen",
+          edit_person_fee_reduction_path(person, mode: "from_active", context: ctx),
+          :copy, remote: false, data: {turbo_stream: true})

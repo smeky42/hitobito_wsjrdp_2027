@@ -13,6 +13,17 @@
 - return if @wsjrdp_table_styles_emitted
 - @wsjrdp_table_styles_emitted = true
 :css
+  /* A column group's name over a bracket line that spans exactly its columns
+     (shared/wsjrdp/_expandable_table, a column's `group:`). */
+  .exp-col-groups th.exp-col-group { padding-top: 0; }
+  /* Growing gaps (t.gaps): a cell before a gap gets the gap as extra right
+     padding -- its column is that much wider (the widget's colgroup), so the
+     content keeps its width. --exp-g is set on the table: 0 at its minimum
+     width, growing alike for every gap up to the gaps' max. */
+  .bookings-table td.exp-gap, .bookings-table th.exp-gap { padding-right: calc(4px + var(--exp-g, 0px)); }
+  .bookings-table td.text-end.exp-gap, .bookings-table th.text-end.exp-gap { padding-right: calc(.75rem + var(--exp-g, 0px)); }
+  .exp-col-group-bracket { border-bottom: 1px solid var(--bs-secondary-color, #6c757d); margin: 0 .4rem;
+    padding-bottom: 1px; line-height: 1.2; }
   .bookings-table { table-layout: fixed; width: 100%; }
   .bookings-table td { overflow-wrap: anywhere; }
   .bookings-table td, .bookings-table th,
@@ -26,6 +37,13 @@
      their distance from what follows. The condensed table gets the same gesture,
      scaled to its tighter cells. */
   .bookings-table td.text-end, .bookings-table th.text-end { padding-right: .75rem; }
+  /* A merged run's last header ends where its shared cell's content ends, not
+     with the extra air of a numeric column. */
+  .bookings-table th.exp-merge-head.text-end { padding-right: 4px; }
+  .bookings-table th.exp-merge-head.text-end.exp-gap { padding-right: calc(4px + var(--exp-g, 0px)); }
+  /* Digits of one width in the same font (a column's `tabular_nums:`, on by
+     default for numeric columns): figures line up digit under digit. */
+  .bookings-table td.exp-tnum { font-variant-numeric: tabular-nums; }
   .bookings-table-condensed td.text-end,
   .bookings-table-condensed th.text-end { padding-right: .5rem; }
   /* Sortable column headers. Inactive sortable columns show a faint muted
@@ -68,6 +86,26 @@
      (fin/bookings/_condensed_styles) both measure the *visible* box, not the
      (possibly wider, scrolled) table. */
   .exp-table-wrap, .bk-table-wrap, .bk-condensed-wrap { container-type: inline-size; }
+  /* A table wider than the screen scrolls sideways: a clearly visible scroll
+     bar that is easy to grab -- not the thin overlay bar that macOS and mobile
+     browsers show only while scrolling. (iOS Safari keeps its own overlay bar;
+     it ignores these rules.) */
+  .exp-table-wrap { scrollbar-width: auto; scrollbar-color: #8a8f96 #e9ecef; padding-bottom: 2px; }
+  .exp-table-wrap::-webkit-scrollbar { height: 12px; }
+  .exp-table-wrap::-webkit-scrollbar-track { background: #e9ecef; border-radius: 6px; }
+  .exp-table-wrap::-webkit-scrollbar-thumb { background: #8a8f96; border-radius: 6px; border: 2px solid #e9ecef; }
+  .exp-table-wrap::-webkit-scrollbar-thumb:hover { background: #6c757d; }
+  /* The always-visible bar for overlay-scrollbar browsers (_expandable_table_js):
+     sticky to the bottom of the screen while the table is in view. */
+  .exp-hscroll { position: sticky; bottom: 0; z-index: 3; height: 16px; margin-top: 2px;
+    background: #e9ecef; border-radius: 8px; touch-action: none; cursor: pointer; }
+  .exp-hscroll[hidden] { display: none; }
+  /* A table that scrolls sideways ends at its scroll bar: no bottom line under
+     the last row (_expandable_table_js sets .exp-scrolls-x). */
+  .exp-table-wrap.exp-scrolls-x > table > tbody:last-of-type > tr > td { border-bottom-width: 0; }
+  .exp-hscroll-thumb { height: 100%; background: #8a8f96; border-radius: 8px; border: 3px solid #e9ecef;
+    cursor: grab; }
+  .exp-hscroll-thumb:active { cursor: grabbing; background: #6c757d; }
   /* A detail row's cell spans the full table width, which may be wider than the
      visible area when the table scrolls horizontally (min-width). Pin the detail
      content to the visible scrollport instead: exactly as wide as the wrapper

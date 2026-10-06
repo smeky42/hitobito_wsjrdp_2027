@@ -6,8 +6,8 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
 -#  Beiträge overview (Übersicht tab of the Beiträge section). The area holds
--#  no numbers of its own yet; the page names it and links its two lists, the
--#  same two the tabs above and the /fin card show -- each with the small
+-#  no numbers of its own yet; the page names it and links its lists, the
+-#  same ones the tabs above and the /fin card show -- each with the small
 -#  new-tab companion icon (Fin::LabeledRowsHelper#wsjrdp_newtab_link).
 
 #main
@@ -24,3 +24,7 @@
     %li
       = link_to t("fin.tabs.plans"), wsjrdp_payment_plans_path
       = wsjrdp_newtab_link(wsjrdp_payment_plans_path)
+    - if can?(:log, WsjrdpFinAccount)
+      %li
+        = link_to t("fin.tabs.fee_reductions"), fin_fee_reductions_path
+        = wsjrdp_newtab_link(fin_fee_reductions_path)

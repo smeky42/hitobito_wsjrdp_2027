@@ -76,6 +76,26 @@ class Wsjrdp::ExpandableTableBuilder
     @locals[:extra_columns] = extra if extra
   end
 
+  # Gaps that grow with a table that has room to spare -- AFTER the columns
+  # with `grow:` have widened by `grow_max` per unit of their weight: every pair of
+  # neighbouring shown columns gets one -- except two columns of one group and
+  # the pairs in `except:` ([["planned", "activated_at"]]) --, and all of them
+  # grow alike, together with the columns that declare `grow:`, until a gap
+  # reaches `max:` (DEFAULT_GAP_MAX unless given). Then the table stops
+  # widening, and the filter and the toolbar above it -- the column menu at its
+  # right -- stop at the same width. At the table's
+  # minimum width every gap is 0. See doc/wsjrdp/expandable_table.md.
+  def gaps(max: DEFAULT_GAP_MAX, grow_max: DEFAULT_GROW_MAX, except: [])
+    @locals[:gaps] = {max: max.to_s, grow_max: grow_max.to_s, except: Array(except).map { |pair| pair.map(&:to_s) }}
+  end
+
+  # How far a gap grows unless the table says otherwise: room enough to let a
+  # table breathe on a wide screen, not so much that its columns drift apart.
+  DEFAULT_GAP_MAX = "4rem"
+  # How far a growing column widens per unit of its `grow:` weight before the
+  # gaps get any room.
+  DEFAULT_GROW_MAX = "2rem"
+
   # Unique key per row (for DOM ids, open-state and selection).
   def row_key(&block)
     @locals[:row_key] = block
@@ -220,8 +240,9 @@ class Wsjrdp::ExpandableTableBuilder
 
   # The HTML of ONE sub-row cell. The block gets the sub-row and the column
   # description the head cells get (a Hash with :key, :numeric, :css_class, …),
-  # so the same sub-row renders differently per column. Required as soon as
-  # #sub_rows is declared.
+  # so the same sub-row renders differently per column; for a merged run (a
+  # column's `merge:`) the run's first column, with :merged_keys -- the keys of
+  # the run's shown columns. Required as soon as #sub_rows is declared.
   def sub_cell(&block)
     @locals[:sub_cell] = block
   end

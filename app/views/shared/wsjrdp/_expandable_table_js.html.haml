@@ -183,3 +183,70 @@
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", restore);
     else restore();
   })();
+
+  (function () {
+    // A horizontal scroll bar that is always visible and easy to grab, for a
+    // table wider than its wrapper where the browser shows only an overlay
+    // bar (mobile browsers, macOS) -- measured: the wrapper keeps no height for
+    // a bar. A track after the wrapper, sticky to the bottom of the screen
+    // while the table is in view: drag the thumb, or tap the track to jump.
+    // Classic desktop bars stay as they are (styled in _expandable_table_styles).
+    // Delegated + window-guarded; set up again after every Turbo render.
+    if (window.__expHScroll) return;
+    window.__expHScroll = true;
+    function setup(wrap) {
+      var bar = wrap.nextElementSibling;
+      if (!bar || !bar.classList.contains("exp-hscroll")) {
+        bar = document.createElement("div");
+        bar.className = "exp-hscroll";
+        bar.setAttribute("aria-hidden", "true");
+        bar.innerHTML = '<div class="exp-hscroll-thumb"></div>';
+        wrap.parentNode.insertBefore(bar, wrap.nextSibling);
+        wire(wrap, bar);
+      }
+      update(wrap, bar);
+    }
+    function update(wrap, bar) {
+      // More than rounding: a pixel or two over is no reason for a bar.
+      var overflow = wrap.scrollWidth > wrap.clientWidth + 2;
+      var overlay = wrap.offsetHeight - wrap.clientHeight < 2;
+      // A table that scrolls sideways ends at the scroll bar, not at a line.
+      wrap.classList.toggle("exp-scrolls-x", overflow);
+      bar.hidden = !(overflow && overlay);
+      if (bar.hidden) return;
+      var thumb = bar.firstChild, track = bar.clientWidth;
+      var w = Math.max(32, track * wrap.clientWidth / wrap.scrollWidth);
+      thumb.style.width = w + "px";
+      thumb.style.transform = "translateX(" + ((track - w) * wrap.scrollLeft / (wrap.scrollWidth - wrap.clientWidth)) + "px)";
+    }
+    function wire(wrap, bar) {
+      wrap.addEventListener("scroll", function () { update(wrap, bar); }, {passive: true});
+      var drag = null;
+      bar.addEventListener("pointerdown", function (e) {
+        var thumb = bar.firstChild, rect = thumb.getBoundingClientRect();
+        var range = wrap.scrollWidth - wrap.clientWidth, free = bar.clientWidth - thumb.offsetWidth;
+        if (e.target !== thumb) {
+          // A tap on the track: jump so the thumb centres there, then drag on.
+          var x = e.clientX - bar.getBoundingClientRect().left - thumb.offsetWidth / 2;
+          wrap.scrollLeft = range * Math.max(0, Math.min(free, x)) / free;
+        }
+        drag = {x: e.clientX, left: wrap.scrollLeft, perPx: range / Math.max(1, free)};
+        bar.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      bar.addEventListener("pointermove", function (e) {
+        if (drag) wrap.scrollLeft = drag.left + (e.clientX - drag.x) * drag.perPx;
+      });
+      ["pointerup", "pointercancel"].forEach(function (t) { bar.addEventListener(t, function () { drag = null; }); });
+      if (window.ResizeObserver) {
+        var ro = new ResizeObserver(function () { update(wrap, bar); });
+        ro.observe(wrap);
+        if (wrap.firstElementChild) ro.observe(wrap.firstElementChild);
+      }
+    }
+    function setupAll() { document.querySelectorAll(".exp-table-wrap").forEach(setup); }
+    ["turbo:load", "turbo:render", "turbo:frame-load"].forEach(function (t) { document.addEventListener(t, setupAll); });
+    window.addEventListener("resize", setupAll);
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setupAll);
+    else setupAll();
+  })();
