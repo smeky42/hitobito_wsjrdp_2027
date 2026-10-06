@@ -124,6 +124,9 @@ module HitobitoWsjrdp2027
       Event::ParticipationContactData.include Wsjrdp2027::Event::ParticipationContactData
 
       PaperTrail::Events::Base.include Wsjrdp2027::PaperTrail::Events::Base
+      # Writes the decimals of selected attributes as plain strings
+      # (Wsjrdp2027::PaperTrail::YamlSerializer).
+      PaperTrail.serializer = Wsjrdp2027::PaperTrail::YamlSerializer
 
       ActiveSupport.on_load(:action_view) { include Chartkick::Helper }
     end
