@@ -6,7 +6,14 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
 
   # rubocop:disable Rails/InverseOf
   belongs_to :person, foreign_key: :people_id, optional: true, class_name: "Person"
+  belongs_to :custom_installments_payment_plan, optional: true, class_name: "WsjrdpPaymentPlan"
   # rubocop:enable Rails/InverseOf
+
+  # The payment method goes with the plan: present exactly when a plan is,
+  # direct debit unless chosen otherwise (the database checks the same).
+  before_validation :_normalize_custom_installments_payment_method
+  # additional_info is never NULL (database default {}); nil stands for {}.
+  before_validation { self.additional_info ||= {} }
 
   def soft_delete!
     self.deleted_at = Time.zone.now
@@ -26,6 +33,15 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
   def custom_installments?
     ![custom_installments_starting_year.nil?, custom_installments_cents.nil?,
       custom_installments_comment.blank?, custom_installments_issue.blank?].all?
+  end
+
+  # A plan of its own: a starting year and the monthly amounts.
+  def custom_installments_plan?
+    !custom_installments_starting_year.nil? && !custom_installments_cents.nil?
+  end
+
+  def custom_installments_payment_method_display
+    Wsjrdp2027::ParticipationFee.payment_method_label(custom_installments_payment_method)
   end
 
   def custom_installments_display
@@ -75,5 +91,14 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
   # Returns nil if this fee ruls does not contain installment data.
   def yme_list
     Wsjrdp2027::PaymentPlanConversionHelper.year_and_cents_a_to_yme_list(custom_installments_starting_year, custom_installments_cents)
+  end
+
+  private
+
+  def _normalize_custom_installments_payment_method
+    self.custom_installments_payment_method =
+      if custom_installments_plan?
+        custom_installments_payment_method.presence || Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD
+      end
   end
 end

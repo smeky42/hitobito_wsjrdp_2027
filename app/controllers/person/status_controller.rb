@@ -23,6 +23,7 @@ class Person::StatusController < ApplicationController
     :planned_custom_installments_string,
     :planned_custom_installments_issue,
     :planned_custom_installments_comment,
+    :planned_custom_installments_payment_method,
     :deregistration_issue,
     :deregistration_requested_date,
     :deregistration_effective_date,

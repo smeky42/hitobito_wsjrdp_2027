@@ -25,6 +25,12 @@ module Wsjrdp2027
   #
   # Controllers check the permission (:update_finance) and answer.
   class ParticipationFee
+    # How an installment plan is paid: by SEPA direct debit, or by the
+    # person's own credit transfers to the contingent's account. A plan
+    # without one is paid by direct debit.
+    PAYMENT_METHODS = %w[direct_debit credit_transfer].freeze
+    DEFAULT_PAYMENT_METHOD = "direct_debit"
+
     # The planned reduction attributes, each with the active attribute
     # activating copies it to.
     PLANNED_TO_ACTIVE_REDUCTION = {
@@ -42,14 +48,25 @@ module Wsjrdp2027
       @person = person
     end
 
+    # The payment methods as [value, label] for a select.
+    def self.payment_method_options = PAYMENT_METHODS.map { |method| [method, payment_method_label(method)] }
+
+    # "Lastschrift" / "Überweisung"; nil for none.
+    def self.payment_method_label(method)
+      I18n.t("people.payment_methods.#{method}", default: method.to_s) if method.present?
+    end
+
     # The person's installment columns for a fee rule: the plan as
     # [starting year, euros per month from January] -- the format of
-    # wsjrdp_payment_plans.raw_installments_eur --, its issue and comment. A
-    # rule without custom installments clears them.
+    # wsjrdp_payment_plans.raw_installments_eur --, its issue, comment and
+    # payment method. A rule without custom installments clears them; the
+    # payment method goes with the plan only.
     def self.person_installments_attrs(rule)
-      {wsjrdp_raw_installments_eur: raw_installments_eur(rule),
+      raw = raw_installments_eur(rule)
+      {wsjrdp_raw_installments_eur: raw,
        wsjrdp_installments_issue: rule&.custom_installments_issue.presence,
-       wsjrdp_installments_comment: rule&.custom_installments_comment.presence}
+       wsjrdp_installments_comment: rule&.custom_installments_comment.presence,
+       wsjrdp_installments_payment_method: raw && (rule.custom_installments_payment_method || DEFAULT_PAYMENT_METHOD)}
     end
 
     def self.raw_installments_eur(rule)

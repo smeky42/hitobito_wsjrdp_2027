@@ -19,15 +19,35 @@ module WsjrdpPaymentPlansHelper
   end
 
   def format_wsjrdp_payment_plan_yme_list(di)
-    installments = di.yme_list
-    if installments.blank?
-      content_tag(:span, "(keine)", class: "muted")
-    else
-      installments.map do |installment|
-        month_year = I18n.l(installment.to_time_with_zone(day: 5), format: "%b") + " #{installment.year}"
-        eur = format_eur_de(installment.eur, zero_cents: "")
-        "#{month_year}: #{eur}"
-      end.join(", ")
+    installments_text(di.yme_list) || content_tag(:span, "(keine)", class: "muted")
+  end
+
+  # An installment plan written out, each month as ISO year-month, e.g.
+  # "2025-12: 300€, 2026-01: 500€, 2026-02: 312,50€"; months without an
+  # installment are left out. nil without any installment.
+  # The one place a plan is written this way: the payment plans list, the
+  # Ratenplan lines of the status page and its form, the person log.
+  def installments_text(yme_list)
+    return nil if yme_list.blank?
+
+    yme_list.map do |installment|
+      year_month = format("%04d-%02d", installment.year, installment.month)
+      "#{year_month}: #{format_eur_de(installment.eur, zero_cents: "", space: "")}"
+    end.join(", ")
+  end
+
+  # Like #render_attrs; an attribute named in installments is followed by its
+  # plan written out (#installments_text) as a muted line.
+  def render_installment_attrs(obj, attrs, installments = {})
+    content = safe_join(attrs) do |attr|
+      text = installments_text(installments[attr])
+      if text
+        labeled(captionize(attr, object_class(obj)),
+          safe_join([format_attr(obj, attr), content_tag(:div, text, class: "muted")]))
+      else
+        labeled_attr(obj, attr)
+      end
     end
+    content_tag(:dl, content, class: "dl-horizontal m-0 p-2 border-top") if content.present?
   end
 end

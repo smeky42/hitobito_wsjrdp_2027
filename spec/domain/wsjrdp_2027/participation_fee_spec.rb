@@ -44,9 +44,18 @@ describe Wsjrdp2027::ParticipationFee do
       expect(planned.reload).to have_attributes(status: "active", prev_rule_id: active.id)
       person.reload
       expect(person).to have_attributes(wsjrdp_raw_installments_eur: [2026, 0, 312.5, 500],
-        wsjrdp_installments_issue: "HELP-1", wsjrdp_installments_comment: "Vereinbarung")
+        wsjrdp_installments_issue: "HELP-1", wsjrdp_installments_comment: "Vereinbarung",
+        wsjrdp_installments_payment_method: "direct_debit")
       expect(person_yme_list(person)).to eq(planned.yme_list)
       expect(person.active_fee_rule).to eq(planned)
+    end
+
+    it "takes the plan's payment method along" do
+      rule("planned", custom_installments_payment_method: "credit_transfer")
+
+      person.participation_fee.activate_installments!
+
+      expect(person.reload.wsjrdp_installments_payment_method).to eq("credit_transfer")
     end
 
     it "logs the plan and its issue on the person, not its comment" do
@@ -57,7 +66,8 @@ describe Wsjrdp2027::ParticipationFee do
       }.to change { person.versions.count }.by(1)
 
       version = person.versions.reorder(:id).last
-      expect(version.changeset.keys).to include("wsjrdp_raw_installments_eur", "wsjrdp_installments_issue")
+      expect(version.changeset.keys).to include("wsjrdp_raw_installments_eur", "wsjrdp_installments_issue",
+        "wsjrdp_installments_payment_method")
       expect(version.changeset.keys).not_to include("wsjrdp_installments_comment")
       expect(version.object_changes).not_to include("Vereinbarung")
     end
@@ -123,6 +133,15 @@ describe Wsjrdp2027::ParticipationFee do
 
       expect(person).to have_attributes(planned_total_fee_reduction: 100, planned_total_fee_reduction_hint: "Härtefall")
       expect(person.reload.planned_total_fee_reduction).to be_nil
+    end
+  end
+
+  describe ".person_installments_attrs" do
+    it "gives no plan and no payment method for a rule without a plan" do
+      attrs = described_class.person_installments_attrs(Wsj27RdpFeeRule.new(custom_installments_issue: "HELP-2"))
+
+      expect(attrs).to eq(wsjrdp_raw_installments_eur: nil, wsjrdp_installments_issue: "HELP-2",
+        wsjrdp_installments_comment: nil, wsjrdp_installments_payment_method: nil)
     end
   end
 

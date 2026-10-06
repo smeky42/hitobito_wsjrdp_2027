@@ -7,7 +7,33 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+# A standard installment plan. Plans are soft-deleted only (deleted_at): fee
+# rules and people may refer to them, and a deleted plan stays as it was --
+# destroy sets deleted_at, delete refuses, a deleted plan is read-only. The
+# plans in effect are .kept; the database keeps one of them per role, single
+# payment and payment method.
 class WsjrdpPaymentPlan < ActiveRecord::Base
+  scope :kept, -> { where(deleted_at: nil) }
+
+  # additional_info is never NULL (database default {}); nil stands for {}.
+  before_validation { self.additional_info ||= {} }
+
+  def deleted? = deleted_at_in_database.present?
+
+  def readonly? = super || deleted?
+
+  # Soft-deletes the plan. Answers self, like ActiveRecord's destroy.
+  def destroy
+    update!(deleted_at: Time.zone.now) unless deleted?
+    self
+  end
+
+  def destroy! = destroy
+
+  def delete
+    raise ActiveRecord::ReadOnlyRecord, "#{self.class.name} is soft-deleted only (destroy)"
+  end
+
   def self.from_parts(wsjrdp_role:, single_payment:, installments:, readonly: true)
     new(wsjrdp_role: wsjrdp_role, single_payment: single_payment).tap do |plan|
       if installments.is_a?(String)
@@ -18,6 +44,8 @@ class WsjrdpPaymentPlan < ActiveRecord::Base
       plan.readonly! if readonly
     end
   end
+
+  def payment_method_display = Wsjrdp2027::ParticipationFee.payment_method_label(payment_method)
 
   def yme_list
     return [] if raw_installments_eur.blank? || raw_installments_eur.empty?

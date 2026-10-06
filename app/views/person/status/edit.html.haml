@@ -22,10 +22,15 @@
         Beitragsreduktion: #{@person.total_fee_reduction_text || "keine"}
         = link_to(t("people.fee_reduction.status_link"), person_fee_path(@person), class: "ms-2")
     = field_set_tag do
+      -# The plans, each written out below its line (installments_text).
       - if @person.active_custom_installments?
-        = render_attrs(@person, :active_custom_installments_issue_display, :active_custom_installments_display, :active_custom_installments_comment)
+        = render_installment_attrs(@person, %i[active_custom_installments_issue_display active_custom_installments_display active_custom_installments_payment_method_display active_custom_installments_comment],
+          {active_custom_installments_display: @person.active_fee_rule.yme_list})
       - else
-        = render_attrs(@person, :installments_string)
-      = f.labeled_input_fields :planned_custom_installments_issue, :planned_custom_installments_string, :planned_custom_installments_comment
+        = render_installment_attrs(@person, %i[installments_string], {installments_string: @person.yme_list})
+      = f.labeled_input_field :planned_custom_installments_issue
+      = f.labeled_input_field :planned_custom_installments_string, help_inline: installments_text(@person.planned_fee_rule&.yme_list)
+      = f.labeled_collection_select(:planned_custom_installments_payment_method, Wsjrdp2027::ParticipationFee.payment_method_options, :first, :last, {}, class: 'span2')
+      = f.labeled_input_fields :planned_custom_installments_comment
       = f.help_block(raw(t('people.check_status_help.edit_custom_installments_help')))
     = form_buttons(f, cancel_url: status_group_person_path)

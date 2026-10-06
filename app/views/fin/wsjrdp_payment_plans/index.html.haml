@@ -19,6 +19,7 @@
         %th WSJRDP
         %th Einmalzahlung
         %th Raten
+        %th Zahlungsart
         %th Gesamt
         %th
     %tbody
@@ -27,6 +28,7 @@
           %td= di.wsjrdp_role
           %td= format_attr(di, :single_payment)
           %td= format_attr(di, :yme_list)
+          %td= di.payment_method_display
           %td= format_attr(di, :total_eur)
           %td.info-col
             %a{href: url_for(di)}

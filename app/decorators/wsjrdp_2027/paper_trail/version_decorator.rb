@@ -42,10 +42,12 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # additional_info["cost_center_numbers"] on a group an Array of cost-center
   # numbers. Each is rendered per element instead. The person's active
   # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
-  # rendered as a line of numbers.
+  # written out like everywhere else (installments_text), its payment method
+  # by its label.
   def attribute_change(attr, from, to)
     case attr.to_s
     when "wsjrdp_raw_installments_eur" then raw_installments_eur_change(attr, from, to)
+    when "wsjrdp_installments_payment_method" then payment_method_change(attr, from, to)
     when "finance_group_ids" then finance_group_ids_change(from, to)
     when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
@@ -53,8 +55,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     end
   end
 
-  # The plan as "starting year: euros per month from January", e.g.
-  # "2025: 0; 312,50; 500".
+  # The plan written out, e.g. "2026-02: 312,50€, 2026-03: 500€".
   def raw_installments_eur_change(attr, from, to)
     from = raw_installments_eur_text(from)
     to = raw_installments_eur_text(to)
@@ -66,12 +67,26 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
       from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
   end
 
+  # "Lastschrift" / "Überweisung".
+  def payment_method_change(attr, from, to)
+    from = Wsjrdp2027::ParticipationFee.payment_method_label(from)
+    to = Wsjrdp2027::ParticipationFee.payment_method_label(to)
+    key = attribute_change_key(from, to)
+    return "" unless key
+
+    I18n.t("version.attribute_change.#{key}",
+      attr: item_class.human_attribute_name(attr),
+      from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
+  end
+
+  # The stored plan [starting year, euros per month from January] written
+  # out; nil for none, "keine Raten" for a plan of zeros only.
   def raw_installments_eur_text(value)
     year, *eur = Array(value)
     return nil if year.nil?
 
-    months = eur.map { |e| (e.to_d % 1).zero? ? e.to_i.to_s : format("%.2f", e).tr(".", ",") }
-    "#{year.to_i}: #{months.join("; ")}"
+    h.installments_text(Wsjrdp2027::PaymentPlanConversionHelper.year_and_eur_a_to_yme_list(year.to_i, eur)) ||
+      "keine Raten"
   end
 
   # One line per changed value of the record, in the order the record lists

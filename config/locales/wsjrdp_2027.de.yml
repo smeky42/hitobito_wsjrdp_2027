@@ -122,6 +122,9 @@ de:
         cost_center_numbers: Kostenstellen
         support_cmt_mail_addresses: E-Mail Adressen Support-CMT
         support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
+      wsjrdp_payment_plan:
+        payment_method: Zahlungsart
+        payment_method_display: Zahlungsart
       person:
         nickname: Spitzname / Fahrtenname
         status: Anmeldestatus
@@ -225,6 +228,10 @@ de:
         wsjrdp_raw_installments_eur: Ratenplan
         wsjrdp_installments_issue: Vorgang Ratenplan
         wsjrdp_installments_comment: Kommentar Ratenplan
+        wsjrdp_installments_payment_method: Zahlungsart Ratenplan
+        active_custom_installments_payment_method_display: Zahlungsart Ratenplan
+        planned_custom_installments_payment_method: Zahlungsart Ratenplan (in Vorbereitung)
+        planned_custom_installments_payment_method_display: Zahlungsart Ratenplan (in Vorbereitung)
         tag_list: Tags
         deregistration_kind: Art
         deregistration_issue: Ticket Abmeldung
@@ -798,6 +805,10 @@ de:
       other_long: Es ist außerdem auf Folgendes zu achten
     additional_info_fields:
        foto_permission_help: '<p>Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoeinwilligung</a>.</p><p>Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.</p>'
+    # How an installment plan is paid (Wsjrdp2027::ParticipationFee).
+    payment_methods:
+      direct_debit: Lastschrift
+      credit_transfer: Überweisung
     deregistration_kinds:
       withdrawal: Abmeldung (durch die Person)
       termination: Kündigung (durch das Kontingent)
