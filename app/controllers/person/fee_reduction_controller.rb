@@ -17,15 +17,6 @@ class Person::FeeReductionController < ApplicationController
   include ContractHelper
   include WsjrdpFormHelper
 
-  # The planned attributes in the order of the form, each with the active
-  # attribute activating copies it to.
-  PLANNED_TO_ACTIVE = {
-    planned_total_fee_reduction_issue: :active_total_fee_reduction_issue,
-    planned_total_fee_reduction: :active_total_fee_reduction,
-    planned_total_fee_reduction_hint: :active_total_fee_reduction_hint,
-    planned_total_fee_reduction_comment: :active_total_fee_reduction_comment
-  }.freeze
-
   # What the form starts from: a blank plan, the active reduction, or the
   # stored plan.
   MODES = %w[new from_active edit].freeze
@@ -38,8 +29,8 @@ class Person::FeeReductionController < ApplicationController
   helper_method :mode, :amount_text, :context
 
   def edit
-    prefill_from_active if mode == "from_active"
-    clear_planned if mode == "new"
+    person.participation_fee.plan_reduction_from_active if mode == "from_active"
+    person.participation_fee.clear_planned_reduction if mode == "new"
   end
 
   # Abbrechen in the form: the section's buttons, back in their place.
@@ -57,7 +48,7 @@ class Person::FeeReductionController < ApplicationController
   def update
     return leave_form(discard_plan) if params[:commit_action] == "discard"
 
-    attrs = params.require(:person).permit(PLANNED_TO_ACTIVE.keys)
+    attrs = params.require(:person).permit(Wsjrdp2027::ParticipationFee::PLANNED_REDUCTION_ATTRS)
     @amount_text = attrs.delete(:planned_total_fee_reduction)
     amount = parse_amount(@amount_text)
     person.attributes = attrs.merge(planned_total_fee_reduction: amount)
@@ -110,19 +101,15 @@ class Person::FeeReductionController < ApplicationController
     helpers.number_with_precision(eur, precision: 2, separator: ",", delimiter: "") if eur
   end
 
-  # The plan takes effect: its four values become the active ones. Answers
-  # the notice.
+  # The plan takes effect (Wsjrdp2027::ParticipationFee). Answers the notice.
   def activate_plan
-    PLANNED_TO_ACTIVE.each { |from, to| person.public_send(:"#{to}=", person.public_send(from)) }
-    clear_planned
-    person.save!
+    person.participation_fee.activate_reduction!
     "Beitragsreduktion aktiviert – Beitrag jetzt #{format_cents_de(person.total_fee_cents, space: "", zero_cents: "")}."
   end
 
   # Answers the notice.
   def discard_plan
-    clear_planned
-    person.save!
+    person.participation_fee.discard_reduction!
     "Geplante Beitragsreduktion verworfen."
   end
 
@@ -145,14 +132,6 @@ class Person::FeeReductionController < ApplicationController
   # Where the section is shown: "person" (the Beitrag page) or "fin" (a row of
   # the Reduktionen list); the buttons and the form pass it on.
   def context = (params[:context] == "fin") ? "fin" : "person"
-
-  def prefill_from_active
-    PLANNED_TO_ACTIVE.each { |planned, active| person.public_send(:"#{planned}=", person.public_send(active)) }
-  end
-
-  def clear_planned
-    PLANNED_TO_ACTIVE.each_key { |planned| person.public_send(:"#{planned}=", nil) }
-  end
 
   # The amount as typed, "250", "250,50", "1.700,00" or "250.50"; nil for
   # anything else.

@@ -171,7 +171,8 @@
                 rel: :tooltip,
                 title: t('activerecord.buttons.approve_documents'))
 
-- if @person.planned_custom_installments?
+-# Activating or discarding the plan changes the fee: :update_finance.
+- if @person.planned_custom_installments? && can?(:update_finance, @person)
   #main.row-fluid(style="margin-top: 25px")
     %div.muted(style="margin-bottom:5px;")
       = raw(t('people.check_status_help.activate_custom_installments_help'))

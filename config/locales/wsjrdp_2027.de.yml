@@ -222,6 +222,9 @@ de:
         planned_custom_installments_issue: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
+        wsjrdp_raw_installments_eur: Ratenplan
+        wsjrdp_installments_issue: Vorgang Ratenplan
+        wsjrdp_installments_comment: Kommentar Ratenplan
         tag_list: Tags
         deregistration_kind: Art
         deregistration_issue: Ticket Abmeldung

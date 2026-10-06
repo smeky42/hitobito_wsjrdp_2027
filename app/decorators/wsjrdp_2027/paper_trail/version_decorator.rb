@@ -40,14 +40,38 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # deregistration and what its documents carry
   # (Wsjrdp2027::DeregistrationRecord), and
   # additional_info["cost_center_numbers"] on a group an Array of cost-center
-  # numbers. Each is rendered per element instead.
+  # numbers. Each is rendered per element instead. The person's active
+  # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
+  # rendered as a line of numbers.
   def attribute_change(attr, from, to)
     case attr.to_s
+    when "wsjrdp_raw_installments_eur" then raw_installments_eur_change(attr, from, to)
     when "finance_group_ids" then finance_group_ids_change(from, to)
     when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
     else super
     end
+  end
+
+  # The plan as "starting year: euros per month from January", e.g.
+  # "2025: 0; 312,50; 500".
+  def raw_installments_eur_change(attr, from, to)
+    from = raw_installments_eur_text(from)
+    to = raw_installments_eur_text(to)
+    key = attribute_change_key(from, to)
+    return "" unless key
+
+    I18n.t("version.attribute_change.#{key}",
+      attr: item_class.human_attribute_name(attr),
+      from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
+  end
+
+  def raw_installments_eur_text(value)
+    year, *eur = Array(value)
+    return nil if year.nil?
+
+    months = eur.map { |e| (e.to_d % 1).zero? ? e.to_i.to_s : format("%.2f", e).tr(".", ",") }
+    "#{year.to_i}: #{months.join("; ")}"
   end
 
   # One line per changed value of the record, in the order the record lists

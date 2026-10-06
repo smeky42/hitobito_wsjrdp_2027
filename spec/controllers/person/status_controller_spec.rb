@@ -10,7 +10,9 @@
 require "spec_helper"
 
 # Activating a planned fee rule (custom installments) on the status tab: the
-# planned rule becomes active and records the rule it replaces as prev_rule_id.
+# planned rule becomes active and records the rule it replaces as prev_rule_id;
+# the person carries the same plan (Wsjrdp2027::ParticipationFee). Activating and
+# discarding need :update_finance.
 # The total fee reduction is maintained on the Beitrag page; the status tab
 # names it and links there.
 describe Person::StatusController, type: :controller do
@@ -47,6 +49,38 @@ describe Person::StatusController, type: :controller do
     activate
 
     expect(planned.reload).to have_attributes(status: "active", prev_rule_id: nil)
+    expect(person.reload).to have_attributes(wsjrdp_raw_installments_eur: [2026, 0, 100],
+      wsjrdp_installments_issue: "HELP-1", wsjrdp_installments_comment: "Vereinbarung")
+  end
+
+  describe "for a leader, who may see the person's log but not change the fee" do
+    let(:leader) { Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person }
+    let!(:planned) { rule("planned") }
+
+    before { sign_in(leader) }
+
+    it "refuses activating and discarding" do
+      expect { activate }.to raise_error(CanCan::AccessDenied)
+      expect {
+        post :delete_planned_custom_installments, params: {group_id: person.primary_group_id, id: person.id}
+      }.to raise_error(CanCan::AccessDenied)
+      expect(planned.reload.status).to eq("planned")
+    end
+
+    describe "on the page" do
+      render_views
+
+      # The page shows the installments, which the test database only has as
+      # a custom plan.
+      before { rule("active", activated_at: 1.day.ago) }
+
+      it "offers neither button" do
+        get :show, params: {group_id: person.primary_group_id, id: person.id}
+
+        expect(response.body).not_to include("activate_planned_custom_installments")
+        expect(response.body).not_to include("delete_planned_custom_installments")
+      end
+    end
   end
 
   describe "total fee reduction" do
