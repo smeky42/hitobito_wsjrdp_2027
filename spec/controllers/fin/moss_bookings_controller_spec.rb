@@ -153,6 +153,119 @@ describe Fin::MossBookingsController do
     end
   end
 
+  describe "GET show" do
+    before { sign_in(finance) }
+
+    def page = Nokogiri::HTML(response.body)
+
+    def row(label)
+      page.css("#main .row").find { |r| r.element_children.first&.text&.strip == label }
+    end
+
+    it "heads the page with the muted id and the booking's Buchungstext" do
+      get :show, params: {id: booking.id}
+
+      h1 = page.at_css("#main h1")
+      expect(h1.at_css("span.text-muted.fw-light").text).to eq "Moss Buchung ##{booking.id}"
+      expect(h1.text).to include("Erstattung CMT #{target.id}")
+    end
+
+    it "leaves the title out when the booking has no Buchungstext" do
+      booking.update!(booking_posting_text: "")
+      get :show, params: {id: booking.id}
+
+      expect(page.at_css("#main h1").css("span").size).to eq 1
+    end
+
+    it "shows the amount with two decimals" do
+      booking.update!(signed_base_amount: -60)
+      get :show, params: {id: booking.id}
+
+      expect(row("Betrag").text).to include("-60,00")
+      expect(row("Betrag").text).not_to include(",—")
+    end
+
+    it "links the account twice: here and in a new tab" do
+      get :show, params: {id: booking.id}
+
+      expect(row("Konto/Wallet").text).not_to include("aus der Transaktion")
+      hrefs = row("Konto/Wallet").css("a").map { |a| [a["href"], a["target"]] }
+      expect(hrefs).to eq [["/fin/acc/#{wallet.id}", nil], ["/fin/acc/#{wallet.id}", "_blank"]]
+    end
+
+    it "shows the kind on its own line, without a source hint" do
+      get :show, params: {id: booking.id}
+
+      expect(row("Art").text.squish).to include("Erstattung")
+      expect(row("Art").text).not_to include("aus der Transaktion")
+    end
+
+    it "shows only the booking, submission and approval dates of the transaction" do
+      booking.moss_transaction.update!(payment_date: Date.new(2026, 5, 30), due_date: Date.new(2026, 6, 15),
+        submitted_date: Date.new(2026, 5, 20), approval_date: Date.new(2026, 5, 25))
+      get :show, params: {id: booking.id}
+
+      labels = page.css("#main fieldset .row").map { |r| r.element_children.first&.text&.strip }
+      expect(labels).to include("Buchungsdatum", "Eingereicht am", "Freigegeben am")
+      expect(labels).not_to include("Zahlungsdatum", "Fälligkeitsdatum", "Verwendungszweck")
+    end
+
+    it "marks every date of the transaction as coming from it" do
+      get :show, params: {id: booking.id}
+
+      expect(row("Buchungsdatum").text.squish).to include("01.06.2026").and include("aus der Transaktion")
+    end
+
+    it "puts the amount first" do
+      get :show, params: {id: booking.id}
+
+      labels = page.css("#main fieldset .row").map { |r| r.element_children.first&.text&.strip }
+      expect(labels.first).to eq "Betrag"
+    end
+
+    it "lists the booking's own Buchungstext even where it repeats the text above" do
+      booking.moss_transaction.update!(transaction_name: booking.booking_posting_text)
+      get :show, params: {id: booking.id}
+
+      expect(row("Buchungstext").text.squish).to include("Buchung: Erstattung CMT #{target.id}")
+    end
+
+    it "links the payment in Moss twice, on a line of its own" do
+      booking.moss_transaction.update!(moss_reimbursement_uuid: SecureRandom.uuid)
+      get :show, params: {id: booking.id}
+
+      moss_line = row("Transaktion").css("div").find { |d| d.text.strip == "in Moss öffnen" }
+      expect(moss_line.css("a").pluck("target")).to eq [nil, "_blank"]
+    end
+
+    it "links the transaction as \"#<id>\" twice, then its text, without a repeated amount" do
+      booking.moss_transaction.update!(transaction_posting_text: "Fahrt Vortreffen")
+      get :show, params: {id: booking.id}
+
+      line = row("Transaktion").css("div").first
+      path = "/fin/moss/transactions/#{booking.moss_transaction_id}"
+      expect(line.css("a").map { |a| [a.text.strip, a["href"], a["target"]] })
+        .to eq [["##{booking.moss_transaction_id}", path, nil], ["", path, "_blank"]]
+      expect(line.text.squish).to eq "##{booking.moss_transaction_id} Fahrt Vortreffen"
+    end
+
+    it "adds the transaction's amount where it differs from the booking's" do
+      booking.moss_transaction.update!(signed_total_base_amount: -150)
+      get :show, params: {id: booking.id}
+
+      expect(row("Transaktion").css("div").first.text.squish).to include("(-150,00")
+    end
+
+    it "shows the transaction as text without :show on it" do
+      deny(:show, booking.moss_transaction)
+      get :show, params: {id: booking.id}
+
+      expect(row("Transaktion").css("a").pluck("href"))
+        .not_to include("/fin/moss/transactions/#{booking.moss_transaction_id}")
+      expect(row("Transaktion").text).to include("##{booking.moss_transaction_id}")
+    end
+  end
+
   describe "POST link_subject_and_create_accounting_entry" do
     before { sign_in(finance) }
 
@@ -169,6 +282,15 @@ describe Fin::MossBookingsController do
         booking_date: Date.new(2026, 6, 1), author: finance)
       expect(stream["targets"]).to eq block_selector
       expect(stream.text).to include("Verknüpfte Buchung")
+    end
+
+    it "takes the booking's Buchungstext and comment, not the transaction's text" do
+      booking.update!(comment: "Rückzahlung geprüft")
+      post :link_subject_and_create_accounting_entry, params: create_params, format: :turbo_stream
+
+      expect(AccountingEntry.last).to have_attributes(
+        description: "Erstattung CMT #{target.id}", comment: "Rückzahlung geprüft"
+      )
     end
 
     it "records who linked it, and when, as a manual link -- person and Beitragsbuchung" do
@@ -253,6 +375,22 @@ describe Fin::MossBookingsController do
         .to change(AccountingEntry, :count).by(1)
       expect(AccountingEntry.last.moss_booking_link_meta)
         .to include("author_id" => finance.id, "automatic_manual" => "manual")
+    end
+
+    it "takes the booking's Buchungstext and comment, not the transaction's text" do
+      booking.update!(comment: "Rückzahlung geprüft")
+      post :create_accounting_entry, params: {moss_booking_id: booking.id}, format: :turbo_stream
+
+      expect(AccountingEntry.last).to have_attributes(
+        description: "Erstattung CMT #{target.id}", comment: "Rückzahlung geprüft"
+      )
+    end
+
+    it "falls back to the booking's composed description when its Buchungstext is empty" do
+      booking.update!(booking_posting_text: "")
+      post :create_accounting_entry, params: {moss_booking_id: booking.id}, format: :turbo_stream
+
+      expect(AccountingEntry.last.description).to eq("Fahrtkosten Vortreffen")
     end
 
     it "refuses without :create on AccountingEntry" do

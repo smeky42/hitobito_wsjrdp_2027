@@ -99,15 +99,16 @@ class Fin::MossBookingsController < Fin::FinController
     booking.contribution_subject_link_meta = Fin::LinkMeta.manual(author_id: current_user.id)
   end
 
-  # The Beitragsbuchung of `subject` for the booking `tx`, linked to it, with the
-  # provenance of a hand-made link (who clicked, when).
+  # Create an accounting entry (contribution booking) of `subject` for
+  # the booking `tx`, linked to it, with the provenance of a hand-made
+  # link (who clicked, when).
   def create_accounting_entry_for(tx, subject)
     entry = AccountingEntry.create!(
       subject: subject,
       author: current_user,
       amount_cents: tx.amount_cents,
       amount_currency: tx.currency,
-      description: tx.description,
+      description: tx.booking_posting_text.presence || tx.description,
       comment: tx.comment,
       value_date: tx.value_date,
       booking_date: tx.moss_transaction.booking_date,
