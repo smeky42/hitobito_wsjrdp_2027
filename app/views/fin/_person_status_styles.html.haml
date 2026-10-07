@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The colours of a person's status in the lists of the Beiträge area
+-#  (Fin::PersonStatusHelper#fin_person_status): confirmed green, a noted
+-#  deregistration orange, a deregistration red -- set here, as the theme's
+-#  "success" is a petrol. Rendered with the first list; the guard emits it
+-#  only once per request.
+- return if @fin_person_status_styles_emitted
+- @fin_person_status_styles_emitted = true
+:css
+  #main .fin-status-confirmed { color: #2b8a3e; }
+  #main .fin-status-noted { color: #e8590c; }
+  #main .fin-status-deregistered { color: #c92a2a; }

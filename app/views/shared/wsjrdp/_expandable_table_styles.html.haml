@@ -13,6 +13,16 @@
 - return if @wsjrdp_table_styles_emitted
 - @wsjrdp_table_styles_emitted = true
 :css
+  /* A column a phone does without (a column's `mobile: false`): under the md
+     breakpoint (768px) its header, cells and footer collapse to nothing. The
+     cells stay, so the fixed layout keeps every column in its place -- only
+     their width, padding and content go. */
+  @media (max-width: 767.98px) {
+    .bookings-table col.exp-no-mobile { width: 0 !important; }
+    .bookings-table .exp-no-mobile { width: 0 !important; padding: 0 !important; font-size: 0; line-height: 0;
+      overflow: hidden; }
+    .bookings-table .exp-no-mobile > * { display: none; }
+  }
   /* A column group's name over a bracket line that spans exactly its columns
      (shared/wsjrdp/_expandable_table, a column's `group:`). */
   .exp-col-groups th.exp-col-group { padding-top: 0; }

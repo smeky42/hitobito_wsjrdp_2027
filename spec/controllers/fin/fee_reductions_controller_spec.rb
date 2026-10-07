@@ -120,7 +120,7 @@ describe Fin::FeeReductionsController do
     expect(response.body.scan(".wsjrdp-role-yp {").size).to eq 1
     expect(row_of(yp).at_css("td.frcol-regular_fee .muted").text).to eq "3.400 €"
     status = row_of(yp).at_css("td.frcol-status .wsjrdp-tip-host")
-    expect(status.at_css("> span.fee-reduction-status-confirmed").text).to eq "bestätigt"
+    expect(status.at_css("> span.fin-status-confirmed").text).to eq "bestätigt"
     expect(Nokogiri::HTML(status.at_css("template").inner_html).text.squish).to eq "Status: Bestätigt durch CMT"
   end
 
@@ -134,6 +134,17 @@ describe Fin::FeeReductionsController do
     tip = Nokogiri::HTML(pair.at_css("template.wsjrdp-tip").inner_html)
     expect(tip.css("div").map { |line| line.text.squish }).to eq(["Rolle im Kontingent: YP", "Rolle auf dem Jamboree: IST"])
     expect(tip.css(".wsjrdp-role").pluck("class")).to eq(["wsjrdp-role wsjrdp-role-yp", "wsjrdp-role wsjrdp-role-ist"])
+  end
+
+  it "shows a BMT, who is an IST on the Jamboree, as BMT alone, both named in the tooltip" do
+    yp.update!(raw_wsjrdp_role: "BMT", wsj_role: "IST")
+    sign_in(finance)
+    get :index
+
+    pair = row_of(yp).at_css("td.frcol-role .wsjrdp-role-pair .wsjrdp-tip-host")
+    expect(pair.css("> .wsjrdp-role").map(&:text)).to eq(%w[BMT])
+    tip = Nokogiri::HTML(pair.at_css("template.wsjrdp-tip").inner_html)
+    expect(tip.css("div").map { |line| line.text.squish }).to eq(["Rolle im Kontingent: BMT", "Rolle auf dem Jamboree: IST"])
   end
 
   it "dates the activation from the person log, with time and author as the tooltip" do
@@ -310,7 +321,7 @@ describe Fin::FeeReductionsController do
       sign_in(finance)
       get :index
 
-      expect(row_of(yp).at_css("td.frcol-status .fee-reduction-status-#{css}")).to be_present
+      expect(row_of(yp).at_css("td.frcol-status .fin-status-#{css}")).to be_present
     end
   end
 

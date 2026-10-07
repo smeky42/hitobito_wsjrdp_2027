@@ -105,7 +105,9 @@ others centred), `header_align` (override a header's alignment: "start",
 `""` for a header without title -- the label stays the column's name in the
 columns menu), `group` (a heading over the header: neighbouring shown columns of
 the same group share one cell of an extra header row, e.g. "Rolle" over "WSJ"
-and "Kontingent"), `numeric` (right-align), `width` (for the fixed table
+and "Kontingent"), `numeric` (right-align), `mobile` (`false` for a column a phone does
+without: under the md breakpoint, 768px, its header, cells and footer collapse
+to nothing; it stays in the columns menu), `width` (for the fixed table
 layout), `sort` (how it sorts — an SQL expression for a relation, a
 `->(row){ comparable }` extractor for an array), `sort_first` and
 `sort_variants` (§2, sortable headers), `default` (shown before the user picks

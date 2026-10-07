@@ -42,7 +42,7 @@
 #   css_class       per-column class (responsive hiding); usually derived from
 #                   the collection's css_prefix
 class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condensed_label,
-  :header_label, :header_tooltip, :group, :grow, :tabular_nums, :merge, :merge_share, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :css_class)
+  :header_label, :header_tooltip, :group, :grow, :tabular_nums, :merge, :merge_share, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile, :css_class)
   SORT_DIRECTIONS = %w[asc desc].freeze
 
   # One further way to sort by a column. It is a SORT KEY of its own (in the ?s=
@@ -84,8 +84,11 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #   group         a heading over the header: neighbouring shown columns of the
   #                 same group share one cell of an extra header row ("Rolle"
   #                 over "WSJ" and "Kontingent")
+  #   mobile        false for a column a phone does without: under the md
+  #                 breakpoint (768px) its header, cells and footer collapse to
+  #                 nothing (the styles' .exp-no-mobile); it stays in the menu
   def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, header_tooltip: nil,
-    group: nil, grow: 0, tabular_nums: nil, merge: nil, merge_share: 1, header_align: nil, numeric: false, width: nil, sort: nil, sort_first: "asc", sort_variants: [], default: false, css_class: nil)
+    group: nil, grow: 0, tabular_nums: nil, merge: nil, merge_share: 1, header_align: nil, numeric: false, width: nil, sort: nil, sort_first: "asc", sort_variants: [], default: false, mobile: true, css_class: nil)
     key = key.to_s
     abbr = (abbr || key).to_s
     sort_first = self.class.validate_direction!(sort_first)
@@ -103,7 +106,7 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
           grow: grow, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
           header_align: header_align&.to_s, numeric: numeric, width: width,
           sort: sort, sort_first: sort_first, sort_variants: variants.freeze,
-          default: default, css_class: css_class)
+          default: default, mobile: mobile, css_class: css_class)
   end
 
   def self.validate_direction!(dir)
@@ -126,7 +129,7 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
      header_label: header_label, header_tooltip: header_tooltip, group: group, grow: grow,
      tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, header_align: header_align,
      merged_cell: merged_cell,
-     numeric: numeric, width: width, css_class: css_class,
+     numeric: numeric, width: width, mobile: mobile, css_class: css_class,
      sort_key: (key if sortable?), sort_first: sort_first,
      sort_variants: sort_variants.map { |v| {key: v.key, label: v.label, title: v.title, first: v.first} },
      cell: cell}

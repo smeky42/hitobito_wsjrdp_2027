@@ -11,6 +11,10 @@
 # stylesheet (shared/wsjrdp/_role_styles) comes with the first badge of a
 # request, so a page needs nothing but the helper.
 module WsjrdpRoleBadgeHelper
+  # A contingent role that is another role on the Jamboree: a BMT member is an
+  # IST there. The pair shows such a person under the contingent's role alone.
+  JAMBOREE_ROLE_OF = {"BMT" => "IST"}.freeze
+
   def wsjrdp_role_badge(role, class: nil, title: nil)
     return "".html_safe if role.blank?
 
@@ -18,13 +22,15 @@ module WsjrdpRoleBadgeHelper
     safe_join([render("shared/wsjrdp/role_styles"), tag.span(role, class: css.compact, title: title)])
   end
 
-  # A person's two roles: the common one as one badge, both -- the contingent's
-  # first -- where they differ, with a graphical tooltip naming both in their
-  # colours (WsjrdpTipHelper#wsjrdp_tip).
+  # A person's two roles: the common one as one badge (a BMT, IST on the
+  # Jamboree, counts as one), both -- the contingent's first -- where they
+  # differ, with a graphical tooltip naming both in their colours
+  # (WsjrdpTipHelper#wsjrdp_tip).
   def wsjrdp_role_pair(contingent:, jamboree:)
     contingent = contingent.to_s
     jamboree = jamboree.to_s
-    roles = (contingent == jamboree) ? [contingent] : [contingent, jamboree]
+    same = contingent == jamboree || JAMBOREE_ROLE_OF[contingent] == jamboree
+    roles = same ? [contingent] : [contingent, jamboree]
     # The visible badges first: the first badge of a request brings the
     # stylesheet, which must not end up inside the tooltip's template.
     badges = safe_join(roles.map { |role| wsjrdp_role_badge(role) }, " ")

@@ -9,6 +9,10 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
   belongs_to :custom_installments_payment_plan, optional: true, class_name: "WsjrdpPaymentPlan"
   # rubocop:enable Rails/InverseOf
 
+  # The rules that carry a plan of their own (a starting year and the monthly
+  # amounts), as opposed to a reduction alone.
+  scope :with_plan, -> { where.not(custom_installments_starting_year: nil).where.not(custom_installments_cents: nil) }
+
   # The payment method goes with the plan: present exactly when a plan is,
   # direct debit unless chosen otherwise (the database checks the same).
   before_validation :_normalize_custom_installments_payment_method

@@ -7,6 +7,9 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+# The Ratenpläne tab of the Beiträge area (/fin/payment_plans): the standard
+# plans (WsjrdpPaymentPlan), one page each to edit. The individual plans of
+# people have a tab of their own (Fin::IndividualPaymentPlansController).
 class Fin::WsjrdpPaymentPlansController < ApplicationController
   include WsjrdpFormHelper
   include ContractHelper

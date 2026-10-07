@@ -155,7 +155,7 @@ describe Wsjrdp::ExpandableTableColumns do
         key: "amount", abbr: "amt", label: "Betrag", condensed_label: nil,
         header_label: nil, header_tooltip: nil, group: nil, grow: 0, tabular_nums: true, merge: nil, merge_share: 1,
         header_align: nil, merged_cell: nil,
-        numeric: true, width: nil, css_class: "tblcol-amount",
+        numeric: true, width: nil, mobile: true, css_class: "tblcol-amount",
         sort_key: "amount", sort_first: "asc", sort_variants: [], cell: cell
       )
     end
