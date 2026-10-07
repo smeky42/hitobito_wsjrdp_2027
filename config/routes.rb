@@ -149,6 +149,9 @@ Rails.application.routes.draw do
       get :person_fees, as: "fin_person_fees", to: "wsjrdp_fin_person_fees#index"
       # The people with an active total fee reduction (Reduktionen tab of the
       # Beiträge area).
+      get :individual_payment_plans, as: "fin_individual_payment_plans", to: "individual_payment_plans#index"
+      post "individual_payment_plans/apply", as: "apply_fin_individual_payment_plans",
+        to: "individual_payment_plans#apply"
       get :fee_reductions, as: "fin_fee_reductions", to: "fee_reductions#index"
       post "fee_reductions/apply", as: "apply_fin_fee_reductions", to: "fee_reductions#apply"
       get :new_sepa_status, path: "ae/new_sepa_status", to: "accounting_entries#new_sepa_status"

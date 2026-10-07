@@ -5,14 +5,13 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-:css
-  .thead-like {
-    background-color: var(--bs-body-bg) !important;
-    --bs-table-accent-bg: transparent !important;
-  }
-
-#main.row
-
+-# Ratenpläne: the standard plans (WsjrdpPaymentPlan), each opening its own
+-# page. The individual plans of people have the Individuelle Ratenpläne tab
+-# (Fin::IndividualPaymentPlansController).
+#main
+  %h1 Ratenpläne
+  %p.text-muted
+    Die Standard-Ratenpläne je Rolle, Einmalzahlung und Zahlungsart.
   %table.table.table-striped.table-hover
     %thead
       %tr

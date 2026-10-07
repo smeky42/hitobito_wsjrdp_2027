@@ -1,0 +1,104 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The styles of the Individuelle Ratenpläne list
+-#  (Fin::IndividualPaymentPlansHelper): the month strip, the payment method icons,
+-#  the notes, and the script that lets a hovered bar name its month in the
+-#  strip's tooltip (the box the shared tooltip opens, shared/wsjrdp/_tip).
+:css
+  /* The strip: a column per month, 9px wide (BAR_PITCH_PX) and the strip's
+     full height -- the hover zone of the month, whatever its bar's height --,
+     the 7px bar at its bottom; the year marks on a line of their own below. */
+  #main .ipl-strip { display: inline-flex; align-items: flex-end; height: 22px; position: relative;
+    vertical-align: bottom; }
+  #main .ipl-month { display: inline-flex; align-items: flex-end; width: 9px; height: 22px; padding-right: 2px;
+    box-sizing: border-box; }
+  #main .ipl-bar { display: inline-block; width: 7px; background: #0f6e56; border-radius: 1px 1px 0 0; }
+  #main .ipl-bar.ipl-planned { background: #8fd3bd; }
+  #main .ipl-bar.ipl-standard { background: var(--bs-body-bg, #fff); border: 1px solid #9aa4ad; box-sizing: border-box; }
+  #main .ipl-bar.ipl-zero { background: #d9d9d9; border: 0; }
+  #main .ipl-marks { position: absolute; left: 0; top: 23px; height: 9px; width: 100%; font-size: 8.5px;
+    color: #9aa4ad; }
+  #main .ipl-marks i { position: absolute; font-style: normal; border-left: 1px solid #d0d4d8; padding-left: 2px;
+    line-height: 9px; }
+  #main td.ipcol-plan { padding-bottom: 1rem; }
+  /* "Standard YP" in the strip's upper right corner, where the standard plan's
+     bars stay low. */
+  #main .ipl-standard-chip { position: absolute; right: 0; top: -2px; font-size: 10px; line-height: 13px;
+    color: var(--bs-secondary-color, #6c757d); border: 1px dashed #9aa4ad; border-radius: 7px; padding: 0 5px;
+    background: var(--bs-body-bg, #fff); }
+  /* The payment method: the mandate muted (the rule), the bank in brown (the
+     exception); light in the line of a plan. */
+  #main .ipl-direct-debit { color: #b5bcc4; }
+  #main .ipl-credit-transfer { color: #7c2d12; }
+  #main .ipl-light { opacity: .6; }
+  #main th.ipcol-payment_method, #main td.ipcol-payment_method { text-align: center; }
+  /* "bezahlt" in the colour of its state (Fin::PaymentProgress): the fee paid
+     green, more orange, less than due red; the hourglass for an entry dated
+     after the end of the month muted. */
+  #main .ipl-paid-paid { color: #2b8a3e; }
+  #main .ipl-paid-over { color: #e8590c; }
+  #main .ipl-paid-behind { color: #c92a2a; }
+  #main .ipl-late { color: var(--bs-secondary-color, #6c757d); margin-left: .25rem; }
+  /* "bezahlt" and "Gesamt": the amounts line up right, their flags (the
+     triangle, the hourglass) in a slot of their own beside them, left-aligned
+     like a column -- empty in most rows. */
+  #main .ipl-flag { display: inline-block; width: 1.35rem; padding-left: .3rem; box-sizing: border-box;
+    text-align: left; }
+  /* The role centred: one badge sits in the middle, two stand out at once. */
+  #main th.ipcol-role, #main td.ipcol-role { text-align: center; }
+  /* Issue and comment in one cell: the comment in at most three lines, cut
+     with "…", the whole in the tooltip. */
+  #main td.exp-merged .ipl-comment, #main td.ipcol-comment .ipl-comment {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    font-size: .85em; line-height: 1.3; }
+  #main .ipl-draft-notes { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A row with a plan and the plan's sub-row read as one: the row's cells sit
+     at its bottom, the plan's at its top. */
+  #main tbody.exp-group:has(> tr.exp-sub-row) > tr.exp-row > td { vertical-align: bottom; }
+  #main tr.exp-sub-row > td { vertical-align: top; }
+  /* The thin line between the active plan and the planned one only where they
+     compare: the plan and its figures, the notes. */
+  #main tbody.exp-group > tr.exp-row:has(+ tr.exp-sub-row) > td { border-bottom-color: transparent; }
+  #main tbody.exp-group > tr.exp-row:has(+ tr.exp-sub-row) > td:is(.ipcol-plan, .ipcol-begin, .ipcol-end,
+    .ipcol-count, .ipcol-total, .exp-merged, .ipcol-issue, .ipcol-comment) {
+    border-bottom-color: var(--bs-border-color); }
+  /* The clock right next to the date. */
+  #main td.ipcol-planned { text-align: right; padding-right: 0; }
+  #main td.ipcol-link { text-align: right; white-space: nowrap; }
+  /* The strip's tooltip: the plan's table as on the Beitrag page. */
+  .wsjrdp-tip-box .ipl-tip-head { white-space: nowrap; }
+  .wsjrdp-tip-box .ipl-tip-table { border-collapse: collapse; margin-top: .15rem; line-height: 1.4; }
+  .wsjrdp-tip-box .ipl-tip-table th { font-weight: 600; padding: .05rem .4rem; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+  .wsjrdp-tip-box .ipl-tip-table td { padding: .05rem .4rem; font-weight: 300; }
+  .wsjrdp-tip-box .ipl-tip-table tr.ipl-tip-hl td { background: #fff3cd; font-weight: 500; }
+  .wsjrdp-tip-box .ipl-tip-foot { margin-top: .2rem; font-size: .9em; }
+:javascript
+  // A month's column under the pointer names the month and its amount in the
+  // head of the strip's tooltip and marks its line in the table (none for a
+  // month without an installment). The box is the one the shared tooltip
+  // opened for the strip (data-for = the host's tip id); its pointer-events
+  // are off, so the months stay reachable under it. One listener on the
+  // document, installed once, so it survives Turbo visits and morphs.
+  (function () {
+    if (window.__wsjrdpInstallmentStrip) return;
+    window.__wsjrdpInstallmentStrip = true;
+    document.addEventListener("mousemove", function (e) {
+      var bar = e.target.closest && e.target.closest(".ipl-month");
+      if (!bar) return;
+      var host = bar.closest(".wsjrdp-tip-host");
+      if (!host || !host.dataset.tipId) return;
+      var box = document.querySelector('.wsjrdp-tip-box[data-for="' + host.dataset.tipId + '"]');
+      if (!box || box.dataset.ym === bar.dataset.ym) return;
+      box.dataset.ym = bar.dataset.ym;
+      var head = box.querySelector(".ipl-tip-month");
+      if (head) head.textContent = bar.dataset.label;
+      box.querySelectorAll("tr[data-ym]").forEach(function (tr) {
+        tr.classList.toggle("ipl-tip-hl", tr.dataset.ym === bar.dataset.ym);
+      });
+    });
+  })();

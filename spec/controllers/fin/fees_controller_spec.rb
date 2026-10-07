@@ -38,28 +38,30 @@ describe Fin::FeesController do
       .and include(I18n.t("fin.areas.fees.purpose"))
   end
 
-  # The three lists of the area, each with the small new-tab companion icon
+  # The four lists of the area, each with the small new-tab companion icon
   # behind it -- the same pairing the /fin card shows.
-  it "links the three lists, each also in a new tab" do
+  it "links the four lists, each also in a new tab" do
     get :index
 
     expect(main_links).to include(
       [I18n.t("fin.tabs.person_fees"), fin_person_fees_path],
       [I18n.t("fin.tabs.plans"), wsjrdp_payment_plans_path],
+      [I18n.t("fin.tabs.individual_payment_plans"), fin_individual_payment_plans_path],
       [I18n.t("fin.tabs.fee_reductions"), fin_fee_reductions_path]
     )
     newtabs = Nokogiri::HTML(response.body).css("#main ul.list-unstyled a[target='_blank']")
-    expect(newtabs.pluck("href")).to eq([fin_person_fees_path, wsjrdp_payment_plans_path, fin_fee_reductions_path])
+    expect(newtabs.pluck("href")).to eq([fin_person_fees_path, wsjrdp_payment_plans_path,
+      fin_individual_payment_plans_path, fin_fee_reductions_path])
   end
 
   # Übersicht is an exact-match tab: on this page it is the active one.
-  it "renders the four tabs of the area, Übersicht active" do
+  it "renders the five tabs of the area, Übersicht active" do
     get :index
 
     tabs = Nokogiri::HTML(response.body).css("ul.nav-sub > li")
     expect(tabs.map { |li| li.text.strip }).to eq(
       [I18n.t("fin.tabs.overview"), I18n.t("fin.tabs.person_fees"), I18n.t("fin.tabs.plans"),
-        I18n.t("fin.tabs.fee_reductions")]
+        I18n.t("fin.tabs.individual_payment_plans"), I18n.t("fin.tabs.fee_reductions")]
     )
     active = tabs.select { |li| li["class"].to_s.split.include?("active") }
     expect(active.map { |li| li.text.strip }).to eq([I18n.t("fin.tabs.overview")])

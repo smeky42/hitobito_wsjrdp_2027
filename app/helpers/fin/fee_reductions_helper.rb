@@ -31,7 +31,7 @@ module Fin::FeeReductionsHelper
     when "regular_fee" then tag.span(fee_reduction_eur(row.regular_fee_cents), class: "muted")
     when "reduction" then fee_reduction_operand("−", person.active_total_fee_reduction * 100)
     when "reduced_fee" then fee_reduction_operand("=", person.total_fee_cents)
-    when "status" then fee_reduction_status(person)
+    when "status" then fin_person_status(person)
     when "activated_at" then fee_reduction_activated_at(row)
     end
   end
@@ -47,24 +47,6 @@ module Fin::FeeReductionsHelper
   # An amount of the calculation, its operator at the left of the cell.
   def fee_reduction_operand(operator, cents)
     safe_join([tag.span(operator, class: "muted float-start"), fee_reduction_eur(cents)])
-  end
-
-  # The registration status in a word, coloured (STATUS_CLASSES); the full
-  # label of Settings.status in the graphical tooltip.
-  # The status in colour where it matters: confirmed green, a noted
-  # deregistration orange, a deregistration red.
-  STATUS_CLASSES = {"confirmed" => "fee-reduction-status-confirmed",
-                    "deregistration_noted" => "fee-reduction-status-noted",
-                    "deregistered" => "fee-reduction-status-deregistered"}.freeze
-
-  STATUS_WORDS = {"registered" => "registriert", "printed" => "gedruckt", "upload" => "hochgeladen",
-                  "in_review" => "in Prüfung", "reviewed" => "geprüft", "confirmed" => "bestätigt",
-                  "deregistration_noted" => "Abmeldung", "deregistered" => "abgemeldet"}.freeze
-
-  def fee_reduction_status(person)
-    status = person.status.to_s
-    word = tag.span(STATUS_WORDS.fetch(status, status), class: STATUS_CLASSES[status])
-    wsjrdp_tip(word, lines: [["Status", Settings.status[status].presence || status]])
   end
 
   def fee_reduction_planned_icon(row)

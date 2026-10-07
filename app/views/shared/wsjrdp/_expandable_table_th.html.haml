@@ -20,7 +20,7 @@
 - col_width = local_assigns.fetch(:col_width, ->(c) { c[:width] })
 - align = local_assigns.fetch(:header_align, ->(_c) {}).call(col)
 - align_class = align ? "text-#{align}" : ("text-end" if col[:numeric])
-%th.text-nowrap.exp-col{ class: [col[:css_class], align_class, ("exp-merge-head" if col[:merge].present?), ("exp-gap" if gap_keys.include?(col[:key]))].compact, style: ("width: #{col_width.call(col)}" if col[:width] && !condensed), rowspan: local_assigns[:rowspan], data: { colkey: col[:key] }, **(col[:header_tooltip] ? {title: col[:header_tooltip]} : {}) }
+%th.text-nowrap.exp-col{ class: [col[:css_class], align_class, ("exp-merge-head" if col[:merge].present?), ("exp-gap" if gap_keys.include?(col[:key])), ("exp-no-mobile" if col[:mobile] == false)].compact, style: ("width: #{col_width.call(col)}" if col[:width] && !condensed), rowspan: local_assigns[:rowspan], data: { colkey: col[:key] }, **(col[:header_tooltip] ? {title: col[:header_tooltip]} : {}) }
   - variants = Array(col[:sort_variants])
   - level = (et_sort_level_of_column(state, col[:key]) if show_ranks)
   - if sort_links && col[:sort_key]

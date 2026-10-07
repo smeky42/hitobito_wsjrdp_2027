@@ -26,5 +26,9 @@
       = wsjrdp_newtab_link(wsjrdp_payment_plans_path)
     - if can?(:log, WsjrdpFinAccount)
       %li
+        = link_to t("fin.tabs.individual_payment_plans"), fin_individual_payment_plans_path
+        = wsjrdp_newtab_link(fin_individual_payment_plans_path)
+    - if can?(:log, WsjrdpFinAccount)
+      %li
         = link_to t("fin.tabs.fee_reductions"), fin_fee_reductions_path
         = wsjrdp_newtab_link(fin_fee_reductions_path)

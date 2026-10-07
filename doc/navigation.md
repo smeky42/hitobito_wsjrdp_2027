@@ -57,7 +57,7 @@ Das Sheet rendert links ein Partial (siehe §4). Für Finanzen ist das
 %ul.nav-left-list
   = nav t("fin.nav.overview"), fin_path
   = nav t("fin.nav.accounts"), wsjrdp_fin_accounts_path, %w[fin/acc fin/tx]
-  = nav t("fin.nav.fees"),     fees_path,                %w[fin/fees fin/person_fees fin/payment_plans fin/fee_reductions]
+  = nav t("fin.nav.fees"),     fees_path,                %w[fin/fees fin/person_fees fin/payment_plans fin/individual_payment_plans fin/fee_reductions]
   = nav t("fin.nav.moss"),     moss_path,                %w[fin/moss]
   = nav t("fin.nav.accounting"), bookkeeping_path,       %w[fin/bookkeeping]
   = nav t("fin.nav.reconciliation"), reconciliation_path, %w[fin/reconciliation]
@@ -97,7 +97,7 @@ current_page?(url) ||
   bräuchte `fin$ fin/moss fin/bookkeeping fin/reconciliation …` als
   `inactive_for`. Regel in `fin/_left_nav`: **jeder Eintrag listet nur die
   Fragmente seiner eigenen Seiten** (`fin/acc fin/tx` für Konten & Wallets,
-  `fin/fees fin/person_fees fin/payment_plans fin/fee_reductions` für Beiträge, …), dann ist kein
+  `fin/fees fin/person_fees fin/payment_plans fin/individual_payment_plans fin/fee_reductions` für Beiträge, …), dann ist kein
   `inactive_for` nötig. Wer doch ein breiteres Fragment braucht, nimmt jeden
   Unterpfad mit eigenem Menüpunkt in dessen `inactive_for` auf.
 - **Neue Fragmente gegen die Nachbarn prüfen:** Es ist ein reiner

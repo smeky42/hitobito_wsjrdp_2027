@@ -145,8 +145,9 @@
 
   (function () {
     // THE scroll-position keeper for the whole finance area: preserve the
-    // vertical scroll position across a table's paging / sorting / page-size
-    // navigation AND across the reload of any form that reloads the page in
+    // vertical scroll position across a table's paging / sorting / page-size /
+    // quick-filter (the presets) / view navigation AND across the reload of
+    // any form that reloads the page in
     // place (form.booking-scroll-form -- the filter apply form, the column
     // picker, the reconciliation connect/assign forms). Turbo Drive otherwise
     // scrolls to the top, which on a long page feels like the position jumps.
@@ -162,7 +163,7 @@
       return !el.closest("turbo-frame") || el.getAttribute("data-turbo-frame") === "_top";
     }
     document.addEventListener("click", function (e) {
-      var link = e.target.closest(".bk-pagination a, a.exp-sort");
+      var link = e.target.closest(".bk-pagination a, a.exp-sort, .flt-presets a, .exp-view a");
       if (link && reloadsPage(link)) remember();
     });
     document.addEventListener("change", function (e) {
@@ -172,12 +173,18 @@
     document.addEventListener("submit", function (e) {
       if (e.target.matches && e.target.matches("form.booking-scroll-form") && reloadsPage(e.target)) remember();
     });
+    // Restored at once, before the page paints at the top, and once more two
+    // frames later for a layout that is still settling -- both instantly: the
+    // page's smooth scrolling would turn the restore into a visible jump.
     function restore() {
       var y;
       try { y = sessionStorage.getItem(KEY); } catch (e) { return; }
       if (y === null) return;
       try { sessionStorage.removeItem(KEY); } catch (e) {}
-      requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, parseInt(y, 10) || 0); }); });
+      var top = parseInt(y, 10) || 0;
+      function jump() { window.scrollTo({top: top, left: 0, behavior: "instant"}); }
+      jump();
+      requestAnimationFrame(function () { requestAnimationFrame(jump); });
     }
     document.addEventListener("turbo:load", restore);
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", restore);

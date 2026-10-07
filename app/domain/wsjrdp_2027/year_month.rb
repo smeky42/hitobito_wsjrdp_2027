@@ -31,6 +31,12 @@ module Wsjrdp2027
       [year, month] <=> [other.year, other.month]
     end
 
+    # The month `months` months later (earlier for a negative count).
+    def +(other)
+      total = year * 12 + (month - 1) + other
+      self.class.new(total / 12, total % 12 + 1)
+    end
+
     def distance_in_months_to(other)
       (other.month - month) + (other.year - year) * 12
     end

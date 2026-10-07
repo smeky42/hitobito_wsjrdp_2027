@@ -18,7 +18,7 @@
 -#                 filter and nesting level. The widget reads the state, never
 -#                 params (D8.4 of doc/plans/2026-09_expandable-table-state.md).
 -#    columns   -- [{ key:, label:, cell: ->(row){..}, numeric:, width:,
--#                    sort_key:, css_class:, condensed_label:, header_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, abbr: }]
+-#                    sort_key:, css_class:, condensed_label:, header_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, mobile:, abbr: }]
 -#                    (FULL set)
 -#    rows      -- the collection (a Kaminari page when paginating, else any list)
 -#    row_key   -- ->(row){ String } unique key (URL param + DOM id + selection)
@@ -157,7 +157,7 @@
 -# merge key share ONE body cell; the host's merged_cell renders it from the row
 -# and the keys of the run's shown columns (the first column's cell otherwise).
 - body_runs = columns.chunk_while { |a, b| a[:merge].present? && a[:merge] == b[:merge] }.to_a
-- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1)].compact }
+- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1), ("exp-no-mobile" if run.first[:mobile] == false)].compact }
 - run_cell = ->(run, row) { run.first[:merged_cell] ? run.first[:merged_cell].call(row, run.map { |c| c[:key] }) : run.first[:cell].call(row) }
 -# A merged run shares its width (the sum of its shown columns' widths) out by
 -# `merge_share` -- evenly by default --, so its headers spread regularly.
@@ -292,7 +292,7 @@
           - if selection
             %col{ style: "width: 2rem" }
           - columns.each do |col|
-            %col{ style: ("width: #{col_width.call(col)}" if col[:width]) }
+            %col{ class: ("exp-no-mobile" if col[:mobile] == false), style: ("width: #{col_width.call(col)}" if col[:width]) }
       %thead
         - if grouped
           %tr.exp-col-groups
@@ -410,7 +410,7 @@
             - if selection
               %td.bk-select-cell
             - columns.each do |col|
-              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric])].compact, data: { colkey: col[:key] } }= footer.call(col)
+              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-no-mobile" if col[:mobile] == false)].compact, data: { colkey: col[:key] } }= footer.call(col)
 
   - if paging_bottom_html.present?
     .mt-2= paging_bottom_html
