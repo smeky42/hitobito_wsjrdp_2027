@@ -143,8 +143,7 @@ class Person::FeeReductionController < ApplicationController
 
   # A plan takes something off the regular fee, at most all of it.
   def planned_amount_valid?(amount)
-    # The regular fee, as the fee computation takes it (Person#total_fee_eur).
-    max_eur = person.total_fee_eur + person.active_total_fee_reduction
+    max_eur = person.regular_full_fee_eur
     return true if amount.present? && amount.positive? && amount <= max_eur
 
     # On :base, so the message reads with the form's short label.

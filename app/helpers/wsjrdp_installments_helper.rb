@@ -93,14 +93,6 @@ module WsjrdpInstallmentsHelper
   PAYMENT_ROLE_TO_FULL_REGULAR_FEE_EUR = PAYMENT_ROLE_TO_FULL_REGULAR_FEE_CENTS.transform_values { |cents| BigDecimal(cents) / BIG_DECIMAL_100 }.freeze
 
   included do
-    def regular_full_fee_cents_for_role(role)
-      PAYMENT_ROLE_TO_FULL_REGULAR_FEE_CENTS[role]
-    end
-
-    def regular_full_fee_eur_for_role(role)
-      PAYMENT_ROLE_TO_FULL_REGULAR_FEE_EUR[role]
-    end
-
     def default_payment_plans(single_payment:)
       single_payment ? single_payment_plans : regular_payment_plans
     end

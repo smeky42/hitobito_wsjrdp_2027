@@ -15,8 +15,10 @@ require "spec_helper"
 #   wsjrdp_total_fee         wsjrdp_total_fee_override where set, else the
 #                            regular full fee minus wsjrdp_total_fee_reduction
 #                            and wsjrdp_extra_total_fee_reduction, not below 0
-# The regular full fee is the number Person#regular_full_fee_eur has in Ruby;
-# a missing or unknown role follows the scripts' rule.
+# The regular full fee is the tariff the payment plans are built from
+# (WsjrdpInstallmentsHelper::PAYMENT_ROLE_TO_FULL_REGULAR_FEE_EUR); a missing
+# or unknown role follows the scripts' rule. Ruby reads the columns
+# (Person#total_fee_cents and friends) and sees a change right after the save.
 describe Person, "fee columns" do
   let(:person) { people(:yp_a_1) }
 
@@ -35,7 +37,6 @@ describe Person, "fee columns" do
         .each do |role, eur|
           regular, = fees_for(payment_role: role)
           expect(regular).to eq(eur), "#{role}: expected #{eur}, got #{regular}"
-          expect(regular).to eq(person.regular_full_fee_eur)
         end
     end
 
@@ -82,10 +83,43 @@ describe Person, "fee columns" do
       expect(fees_for(wsjrdp_total_fee_override: 99.99, wsjrdp_total_fee_reduction: 1700).last).to eq(99.99)
       expect(fees_for(wsjrdp_total_fee_override: 0).last).to eq(0)
     end
+  end
 
-    it "is Ruby's total fee while no override or extra reduction is set" do
-      fees_for(wsjrdp_total_fee_reduction: 250.5)
-      expect(person.wsjrdp_total_fee).to eq(person.total_fee_eur)
+  describe "read by Ruby" do
+    it "gives the fee methods the columns, in euros and in cents rounded half up" do
+      fees_for(wsjrdp_total_fee_reduction: 12.345)
+
+      expect(person.regular_full_fee_eur).to eq(3400)
+      expect(person.regular_full_fee_cents).to eq(340_000)
+      expect(person.total_fee_eur).to eq(BigDecimal("3387.655"))
+      expect(person.total_fee_cents).to eq(338_766)
+    end
+
+    it "sees a change of an input right after the save, without a reload" do
+      fees_for
+      person.update!(wsjrdp_total_fee_reduction: 250)
+      expect(person.total_fee_eur).to eq(3150)
+
+      person.update!(payment_role: "RegularPayer::Group::Unit::Leader")
+      expect(person.regular_full_fee_eur).to eq(2400)
+      expect(person.total_fee_cents).to eq(215_000)
+      expect(person).not_to have_changes_to_save
+    end
+
+    it "has no fee before the first save" do
+      expect(Person.new.total_fee_cents).to be_nil
+      expect(Person.new.regular_full_fee_eur).to be_nil
+    end
+
+    it "previews another reduction with the database's formula" do
+      fees_for(wsjrdp_extra_total_fee_reduction: 100)
+      preview = person.total_fee_eur_with_reduction(250)
+      person.update!(wsjrdp_total_fee_reduction: 250)
+      expect(person.total_fee_eur).to eq(preview).and eq(3050)
+      expect(person.total_fee_cents_with_reduction(5000)).to eq(0)
+
+      fees_for(wsjrdp_total_fee_override: 99.99)
+      expect(person.total_fee_eur_with_reduction(250)).to eq(person.total_fee_eur).and eq(99.99)
     end
   end
 

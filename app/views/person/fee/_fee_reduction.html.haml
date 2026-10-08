@@ -25,8 +25,7 @@
 - show_comment = can?(:log, AccountingEntry)
 - may_change = can?(:update_finance, person)
 - active = person.active_total_fee_reduction
--# The regular fee as the fee computation takes it (Person#total_fee_cents).
-- regular_cents = person.total_fee_cents + (active * 100).to_i
+- regular_cents = person.regular_full_fee_cents
 - planned = person.planned_total_fee_reduction
 - versions = fee_reduction_versions(person).to_a
 
@@ -39,23 +38,26 @@
     .alert.alert-success.py-1.px-2.mb-2= notice
   .d-flex.justify-content-between
     %span= "Regulärer Beitrag (#{person.short_payment_role})"
-    %span= format_cents_de(regular_cents)
-  - if active != 0
+    %span= format_eur_de(person.regular_full_fee_cents)
+  -# Also when the fee differs from the regular one for another reason (the
+  -# extra reduction, an override): the total is the line that counts.
+  - if active != 0 || person.total_fee_cents != regular_cents
     -# Indented under the regular fee; the hint names the reduction, "Reduktion"
     -# stands in where there is none.
-    .d-flex.justify-content-between.ps-3
-      %span
-        = person.active_total_fee_reduction_hint.presence || "Reduktion"
-        - if person.active_total_fee_reduction_issue.present?
-          %span.muted (#{auto_link_escaped_multiline(person.active_total_fee_reduction_issue)})
-      %span= "− #{format_eur_de(active)}"
-    - if show_comment && person.active_total_fee_reduction_comment.present?
+    - if active != 0
+      .d-flex.justify-content-between.ps-3
+        %span
+          = person.active_total_fee_reduction_hint.presence || "Reduktion"
+          - if person.active_total_fee_reduction_issue.present?
+            %span.muted (#{auto_link_escaped_multiline(person.active_total_fee_reduction_issue)})
+        %span= "− #{format_eur_de(active)}"
+    - if show_comment && active != 0 && person.active_total_fee_reduction_comment.present?
       -# Indented like the reduction's line it belongs to.
       .fee-reduction-comment.fw-light.fst-italic.ps-3
         = auto_link_escaped_multiline(person.active_total_fee_reduction_comment)
     .d-flex.justify-content-between.border-top.fw-semibold
       %span Reduzierter Beitrag
-      %span= format_cents_de(person.total_fee_cents)
+      %span= format_eur_de(person.total_fee_eur)
   -# The installments must bring in the fee: yellow when they bring in more,
   -# red when they bring in less.
   = fee_reduction_installments_alert(person)
@@ -69,7 +71,7 @@
             = "· #{person.planned_total_fee_reduction_hint}"
           - if person.planned_total_fee_reduction_issue.present?
             (#{auto_link_escaped_multiline(person.planned_total_fee_reduction_issue)})
-        - planned_fee_cents = [regular_cents.to_i - (planned * 100).to_i, 0].max
+        - planned_fee_cents = person.total_fee_cents_with_reduction(planned)
         %span= "→ #{format_cents_de(planned_fee_cents)}"
       - if show_comment && person.planned_total_fee_reduction_comment.present?
         .fee-reduction-comment.fw-light.fst-italic

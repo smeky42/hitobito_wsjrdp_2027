@@ -35,6 +35,6 @@ Fin::FeeReductionRow = Data.define(:person, :activated_at, :activated_by) do
 
   def planned? = person.planned_total_fee_reduction.present?
 
-  # The regular fee as the fee computation takes it (Person#total_fee_cents).
-  def regular_fee_cents = person.total_fee_cents + (person.active_total_fee_reduction * 100).to_i
+  # The fee before any reduction (Person#regular_full_fee_cents).
+  def regular_fee_cents = person.regular_full_fee_cents
 end

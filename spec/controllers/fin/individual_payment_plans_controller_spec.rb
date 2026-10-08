@@ -231,10 +231,11 @@ describe Fin::IndividualPaymentPlansController do
       # behind; one collection announced for September.
       notification(yp, Date.new(2026, 9, 7))
       # other, credit transfer from November: nothing due yet, more than the
-      # fee came in -- overpaid. planner, a planned plan alone: the fee
-      # exactly, but not judged; one entry dated after the end of the month.
+      # fee came in -- overpaid. planner, a planned plan alone: the fee (the
+      # UL fee) exactly, but not judged; one entry dated after the end of the
+      # month.
       entry(other, 350_000)
-      entry(planner, 340_000)
+      entry(planner, 240_000)
       AccountingEntry.create!(subject: planner, author: finance, amount_cents: 10_000, description: "Beitrag",
         value_date: Date.new(2026, 11, 3), booking_date: Date.new(2026, 11, 3))
       sign_in(finance)
@@ -255,7 +256,7 @@ describe Fin::IndividualPaymentPlansController do
       expect(row_of(planner).at_css("td.ipcol-paid .wsjrdp-tip-host > span")["class"]).to be_nil
       expect(row_of(planner).css("td.ipcol-paid i").pluck("class")).to eq ["fas fa-hourglass-half ipl-late"]
       expect(Nokogiri::HTML(row_of(planner).at_css("td.ipcol-paid template").inner_html).css("div").map { |l| l.text.squish })
-        .to eq ["Bezahlt: 3.500 €", "Beitrag: 3.400 €", "Kein aktiver Ratenplan: kein Soll.",
+        .to eq ["Bezahlt: 2.500 €", "Beitrag: 2.400 €", "Kein aktiver Ratenplan: kein Soll.",
           "Valuta nach Monatsende: 03.11.2026: 100 € – Beitrag"]
     end
   end

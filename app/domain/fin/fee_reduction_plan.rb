@@ -14,5 +14,5 @@ Fin::FeeReductionPlan = Data.define(:row) do
   def person = row.person
 
   # The fee once the plan is active, as the fee computation takes it.
-  def fee_cents = [row.regular_fee_cents - (person.planned_total_fee_reduction * 100).to_i, 0].max
+  def fee_cents = person.total_fee_cents_with_reduction(person.planned_total_fee_reduction)
 end

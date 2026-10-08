@@ -76,16 +76,9 @@ module Fin::IndividualPaymentPlansFilterSchema
 
   def self.planned_rule(column) = Arel.sql("(SELECT r.#{column} #{PLANNED_RULE} LIMIT 1)")
 
-  # The person's fee in cents as Person#total_fee_cents computes it: the full
-  # fee of the payment role (3.400 € where the role is unknown), less the
-  # active reduction, never below zero.
-  def self.fee_cents
-    cases = WsjrdpInstallmentsHelper::PAYMENT_ROLE_TO_FULL_REGULAR_FEE_CENTS
-      .select { |role, _cents| role.include?("::") }
-      .map { |role, cents| "WHEN #{Person.connection.quote(role)} THEN #{cents.to_i}" }
-    "GREATEST((CASE people.payment_role #{cases.join(" ")} ELSE 340000 END) " \
-      "- round(people.wsjrdp_total_fee_reduction * 100), 0)"
-  end
+  # The person's fee in cents, as Person#total_fee_cents reads it: the
+  # generated column, rounded to cents.
+  def self.fee_cents = "round(people.wsjrdp_total_fee * 100)"
 
   SCHEMA = Wsjrdp::Filtering::Schema.define do |s|
     s.attribute key: :search, short_key: :q, label: "Suche (Name, Vorgang, Kommentar)",
