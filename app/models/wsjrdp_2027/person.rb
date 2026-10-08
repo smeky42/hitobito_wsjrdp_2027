@@ -149,6 +149,12 @@ module Wsjrdp2027::Person
       # Overwrite addition_emails to establish a default ordering
       has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy
 
+      # No dependent: the documents outlive the person and keep pointing at it.
+      # Deleting the person deletes them softly instead
+      # (#soft_delete_wsjrdp_documents).
+      has_many :wsjrdp_documents, as: :subject, inverse_of: :subject # rubocop:disable Rails/HasManyOrHasOneDependent
+      before_destroy :soft_delete_wsjrdp_documents
+
       before_save :maybe_update_payment_or_wsj_role
       before_save :geocode_full_address, if: :address_changed?
       before_save :tag_good_conduct_missing, if: :status_changed?
@@ -300,6 +306,19 @@ module Wsjrdp2027::Person
       # column; empty for somebody the field does not work for.
       def finance_group_candidate_roles
         roles.select { |role| FINANCE_GROUP_CANDIDATE_ROLE_TYPES.include?(role.type) }
+      end
+
+      # Marks every document of the person that is not deleted yet (current and
+      # superseded ones) as deleted, inside the transaction of the destroy. The
+      # rows keep their subject, superseded_at and replaces.
+      def soft_delete_wsjrdp_documents
+        now = Time.current
+        wsjrdp_documents.where.not(status: WsjrdpDocument::DELETED).update_all(
+          [
+            "status = ?, deleted_at = ?, updated_at = ?, additional_info = additional_info || ?::jsonb",
+            WsjrdpDocument::DELETED, now, now, {deleted_reason: "subject_destroyed"}.to_json
+          ]
+        )
       end
 
       def short_full_name

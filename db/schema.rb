@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_06_200001) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_06_200002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1838,7 +1838,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200001) do
     t.index ["subject_type", "subject_id"], name: "idx_on_subject_type_subject_id_89fd1c0005"
   end
 
-  create_table "wsjrdp_documents", id: :serial, force: :cascade do |t|
+  create_table "wsjrdp_documents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
     t.datetime "deleted_at"
@@ -1848,16 +1848,47 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200001) do
     t.string "author_type", default: "Person"
     t.string "key", null: false
     t.string "secondary_key", default: "", null: false
-    t.string "storage_file_path", null: false
+    t.string "relative_storage_file_path", null: false
     t.string "filename", null: false
     t.string "content_encoding"
     t.string "content_type", default: "application/octet-stream", null: false
     t.bigint "byte_size", null: false
-    t.text "comment"
-    t.jsonb "additional_info", default: {}
+    t.text "comment", default: "", null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.string "absolute_storage_file_path", null: false
+    t.string "status", default: "current", null: false
+    t.datetime "superseded_at"
+    t.bigint "replaces_id"
+    t.integer "key_number", default: 0, null: false
+    t.string "key_ref_type"
+    t.bigint "key_ref_id"
+    t.integer "secondary_key_number", default: 0, null: false
+    t.string "secondary_key_ref_type"
+    t.bigint "secondary_key_ref_id"
+    t.bigint "derived_from_id"
+    t.string "derivation_key"
+    t.date "document_date"
+    t.string "origin", default: "ui", null: false
+    t.integer "origin_service_token_id"
+    t.string "content_sha256"
+    t.string "readable_by", default: ["person", "log"], null: false, array: true
+    t.string "writable_by", default: ["person", "log"], null: false, array: true
+    t.string "deletable_by", default: ["log"], null: false, array: true
+    t.index ["absolute_storage_file_path"], name: "index_wsjrdp_documents_on_absolute_storage_file_path"
     t.index ["author_type", "author_id"], name: "index_wsjrdp_documents_on_author_type_and_author_id"
-    t.index ["subject_id", "subject_type", "deleted_at"], name: "idx_on_subject_id_subject_type_deleted_at_5207dd0233"
-    t.index ["subject_id", "subject_type", "key", "secondary_key"], name: "idx_on_subject_id_subject_type_key_secondary_key_390fd9927a", unique: true, where: "(deleted_at IS NULL)"
+    t.index ["content_sha256"], name: "index_wsjrdp_documents_on_content_sha256"
+    t.index ["derived_from_id"], name: "index_wsjrdp_documents_on_derived_from_id"
+    t.index ["key_ref_type", "key_ref_id"], name: "index_wsjrdp_documents_on_key_ref"
+    t.index ["origin_service_token_id"], name: "index_wsjrdp_documents_on_origin_service_token_id"
+    t.index ["relative_storage_file_path"], name: "index_wsjrdp_documents_on_relative_storage_file_path", unique: true
+    t.index ["replaces_id"], name: "index_wsjrdp_documents_on_replaces_id"
+    t.index ["secondary_key_ref_type", "secondary_key_ref_id"], name: "index_wsjrdp_documents_on_secondary_key_ref"
+    t.index ["subject_type", "subject_id", "key", "key_number", "secondary_key", "secondary_key_number", "derived_from_id", "derivation_key"], name: "index_wsjrdp_documents_current", unique: true, where: "((status)::text = 'current'::text)", nulls_not_distinct: true
+    t.index ["subject_type", "subject_id", "status"], name: "index_wsjrdp_documents_on_subject_and_status"
+    t.check_constraint "content_sha256 IS NULL OR content_sha256::text ~ '^[0-9a-f]{64}$'::text", name: "chk_wsjrdp_documents_content_sha256"
+    t.check_constraint "derived_from_id IS NULL OR derivation_key IS NOT NULL", name: "chk_wsjrdp_documents_derivation_key"
+    t.check_constraint "key_number >= 0", name: "chk_wsjrdp_documents_key_number"
+    t.check_constraint "secondary_key_number >= 0", name: "chk_wsjrdp_documents_secondary_key_number"
   end
 
   create_table "wsjrdp_fin_accounts", id: :serial, force: :cascade do |t|
@@ -2086,6 +2117,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200001) do
   add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_payment_initiations", column: "payment_initiation_id"
+  add_foreign_key "wsjrdp_documents", "service_tokens", column: "origin_service_token_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_documents", "wsjrdp_documents", column: "derived_from_id", on_delete: :cascade
+  add_foreign_key "wsjrdp_documents", "wsjrdp_documents", column: "replaces_id", on_delete: :nullify
   add_foreign_key "wsjrdp_personal_accounts", "people", column: "represented_person_id"
   add_foreign_key "wsjrdp_spheres", "people", column: "manager_person_id"
 end
