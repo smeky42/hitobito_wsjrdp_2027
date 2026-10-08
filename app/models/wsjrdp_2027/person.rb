@@ -89,6 +89,14 @@ module Wsjrdp2027::Person
     "Group::Unit::UnapprovedLeader" => "Group::Unit::Leader"
   }.freeze
 
+  # What the generated fee columns (wsjrdp_regular_full_fee, wsjrdp_total_fee)
+  # are computed from. A save that changes one of them leaves the loaded
+  # columns behind the database (#refresh_fee_columns).
+  WSJRDP_FEE_INPUT_ATTRS = %w[
+    payment_role status wsjrdp_total_fee_reduction
+    wsjrdp_regular_full_fee_override wsjrdp_extra_total_fee_reduction wsjrdp_total_fee_override
+  ].freeze
+
   WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
     "Group::Extern::Member" => "EXT",
     "Group::Ist::Leader" => "IST",
@@ -165,6 +173,7 @@ module Wsjrdp2027::Person
       before_save :geocode_full_address, if: :address_changed?
       before_save :tag_good_conduct_missing, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
+      after_save :refresh_fee_columns, if: -> { saved_changes.keys.intersect?(WSJRDP_FEE_INPUT_ATTRS) }
 
       jsonb_accessor :additional_info, :sepa_mandate_id, strip: true
       attribute :sepa_mandate_id, :string
@@ -619,30 +628,38 @@ module Wsjrdp2027::Person
         ensure_payment_role.to_s.start_with?("EarlyPayer")
       end
 
-      ##
-      # Regular full fee in cents based on payment role.
-      def regular_full_fee_cents
-        regular_full_fee_cents_for_role(payment_role)
+      # The fee, as the database computes it (migration 20261006200005) and as
+      # the scripts and plain SQL read it: the regular full fee of the payment
+      # role or its override; the total after both reductions or its override,
+      # not below 0. nil until the first save. Cents are rounded half up from
+      # the three decimals of the columns, as the scripts round them.
+      def regular_full_fee_eur = wsjrdp_regular_full_fee
+
+      def regular_full_fee_cents = eur_to_cents_or_nil(wsjrdp_regular_full_fee)
+
+      def total_fee_eur = wsjrdp_total_fee
+
+      def total_fee_cents = eur_to_cents_or_nil(wsjrdp_total_fee)
+
+      # The total fee with another reduction in place of the active one: the
+      # preview of a planned reduction. The database's formula, which the spec
+      # pins to the column.
+      def total_fee_eur_with_reduction(reduction_eur)
+        return wsjrdp_total_fee_override if wsjrdp_total_fee_override
+
+        [regular_full_fee_eur - reduction_eur - (wsjrdp_extra_total_fee_reduction || 0), 0].max
       end
 
-      ##
-      # Regular full fee in Euro based on payment role.
-      def regular_full_fee_eur
-        regular_full_fee_eur_for_role(payment_role)
-      end
+      def total_fee_cents_with_reduction(reduction_eur) = eur_to_cents_or_nil(total_fee_eur_with_reduction(reduction_eur))
 
-      ##
-      # Total fee (reduced by custom fee reduction) in cents.
-      def total_fee_cents
-        reduction_cents = (active_total_fee_reduction * BigDecimal(100)).to_i
-        [(regular_full_fee_cents || 340000) - reduction_cents, 0].max
-      end
-
-      ##
-      # Total fee (reduced by custom fee reduction) in Euro.
-      def total_fee_eur
-        reduction_eur = active_total_fee_reduction
-        [(regular_full_fee_eur || BigDecimal(3400)) - reduction_eur, 0].max
+      # Reads the generated fee columns again after a save that changed one of
+      # their inputs: the database computes them, the loaded record does not
+      # see that by itself.
+      def refresh_fee_columns
+        regular, total = ::Person.unscoped.where(id: id).pick(:wsjrdp_regular_full_fee, :wsjrdp_total_fee)
+        self[:wsjrdp_regular_full_fee] = regular
+        self[:wsjrdp_total_fee] = total
+        clear_attribute_changes(%w[wsjrdp_regular_full_fee wsjrdp_total_fee])
       end
 
       ##

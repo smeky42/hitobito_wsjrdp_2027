@@ -1,9 +1,13 @@
+# payment_role as Person#build_payment_role derives it from the role in the
+# primary group (roles.yml), so that the generated fee columns hold the fee
+# of the role from the start; um_a_1 (Group::Unit::Manager) has none.
 admin:
   first_name: Chief
   last_name: Admin
   email: admin@wsjrdp.example.com
   contact_data_visible: true
   primary_group: root
+  payment_role: RegularPayer::Group::Root::Member
 
 cmt_leader:
   first_name: Leader
@@ -11,18 +15,21 @@ cmt_leader:
   email: leader.cmt@wsjrdp.example.com
   contact_data_visible: true
   primary_group: root
+  payment_role: RegularPayer::Group::Root::Member
 
 cmt_member1:
   first_name: Member1
   last_name: CMT
   email: member1.cmt@wsjrdp.example.com
   primary_group: root
+  payment_role: RegularPayer::Group::Root::Member
 
 cmt_member2:
   first_name: Member2
   last_name: CMT
   email: member2.cmt@wsjrdp.example.com
   primary_group: root
+  payment_role: RegularPayer::Group::Root::Member
 
 
 
@@ -37,24 +44,28 @@ ul_a_1:
   last_name: UnitA
   email: ul1.unita@wsjrdp.example.com
   primary_group: unit_a
+  payment_role: RegularPayer::Group::Unit::Leader
 
 ul_a_2:
   first_name: UL2
   last_name: UnitA
   email: ul2.unita@wsjrdp.example.com
   primary_group: unit_a
+  payment_role: RegularPayer::Group::Unit::Leader
 
 yp_a_1:
   first_name: YP1
   last_name: UnitA
   email: yp1.unita@wsjrdp.example.com
   primary_group: unit_a
+  payment_role: RegularPayer::Group::Unit::Member
 
 yp_a_2:
   first_name: YP2
   last_name: UnitA
   email: yp2.unita@wsjrdp.example.com
   primary_group: unit_a
+  payment_role: RegularPayer::Group::Unit::Member
 
 
 
@@ -63,39 +74,46 @@ ul_b_1:
   last_name: UnitB
   email: ul1.unitb@wsjrdp.example.com
   primary_group: unit_b
+  payment_role: RegularPayer::Group::Unit::Leader
 
 yp_b_1:
   first_name: YP1
   last_name: UnitB
   email: yp1.unitb@wsjrdp.example.com
   primary_group: unit_b
+  payment_role: RegularPayer::Group::Unit::Member
 
 mist_a_1:
   first_name: MIST1
   last_name: IstA
   email: mist1.ista@wsjrdp.example.com
   primary_group: ist_a
+  payment_role: RegularPayer::Group::Ist::Member
 
 ist_a_1:
   first_name: IST1
   last_name: IstA
   email: ist1.ista@wsjrdp.example.com
   primary_group: ist_a
+  payment_role: RegularPayer::Group::Ist::Member
 
 ist_a_2:
   first_name: IST2
   last_name: IstA
   email: ist2.ista@wsjrdp.example.com
   primary_group: ist_a
+  payment_role: RegularPayer::Group::Ist::Member
 
 ist_b_1:
   first_name: IST1
   last_name: IstB
   email: ist1.istb@wsjrdp.example.com
   primary_group: ist_b
+  payment_role: RegularPayer::Group::Ist::Member
 
 ist_b_2:
   first_name: IST2
   last_name: IstB
   email: ist2.istb@wsjrdp.example.com
   primary_group: ist_b
+  payment_role: RegularPayer::Group::Ist::Member
