@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_06_200004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -55,12 +55,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
     t.bigint "moss_booking_id"
     t.jsonb "moss_booking_link_meta", default: {}, null: false
     t.jsonb "camt_transaction_link_meta", default: {}, null: false
+    t.bigint "payment_notice_id"
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
     t.index ["datev_booking_id"], name: "index_accounting_entries_on_datev_booking_id", unique: true
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
     t.index ["moss_booking_id"], name: "index_accounting_entries_on_moss_booking_id"
     t.index ["payment_initiation_id"], name: "index_accounting_entries_on_payment_initiation_id"
+    t.index ["payment_notice_id"], name: "index_accounting_entries_on_payment_notice_id"
     t.index ["reversed_by_id"], name: "index_accounting_entries_on_reversed_by_id"
     t.index ["reverses_id"], name: "index_accounting_entries_on_reverses_id"
     t.index ["subject_type", "subject_id"], name: "index_accounting_entries_on_subject_type_and_subject_id"
@@ -1884,9 +1886,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
     t.string "cdtr_bic", default: "GENODED1PAX", null: false
     t.string "cdtr_address", default: "Chausseestraße 128/129, 10115 Berlin", null: false
     t.jsonb "additional_info", default: {}, null: false
+    t.string "ref_type"
+    t.bigint "ref_id"
+    t.bigint "replaces_id"
+    t.bigint "receipt_document_id"
     t.index ["author_type", "author_id"], name: "idx_on_author_type_author_id_71103f7220"
     t.index ["direct_debit_payment_info_id"], name: "idx_on_direct_debit_payment_info_id_48e9587e08"
     t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_3f1ba63efb"
+    t.index ["receipt_document_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_receipt_document"
+    t.index ["ref_type", "ref_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_ref"
+    t.index ["replaces_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_replaces_id"
     t.index ["subject_type", "subject_id"], name: "idx_on_subject_type_subject_id_89fd1c0005"
   end
 
@@ -2027,6 +2036,54 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
     t.bigint "camt53_entry_id"
   end
 
+  create_table "wsjrdp_payment_notices", force: :cascade do |t|
+    t.string "subject_type", default: "Person", null: false
+    t.bigint "subject_id", null: false
+    t.string "author_type", default: "Person"
+    t.bigint "author_id"
+    t.string "ref_type"
+    t.bigint "ref_id"
+    t.string "status", default: "created", null: false
+    t.bigint "replaces_id"
+    t.decimal "amount", precision: 20, scale: 3, null: false
+    t.decimal "booked_amount", precision: 20, scale: 3, default: "0.0", null: false
+    t.string "amount_currency", default: "EUR", null: false
+    t.string "payment_code", null: false
+    t.string "description", null: false
+    t.date "value_date"
+    t.string "endtoend_id"
+    t.string "cdtr_name"
+    t.string "cdtr_iban"
+    t.string "cdtr_bic"
+    t.string "cdtr_address"
+    t.string "dbtr_name"
+    t.string "dbtr_iban"
+    t.string "dbtr_bic"
+    t.string "dbtr_address"
+    t.string "email_from"
+    t.string "email_to", array: true
+    t.string "email_cc", array: true
+    t.string "email_bcc", array: true
+    t.string "email_reply_to", array: true
+    t.bigint "receipt_document_id"
+    t.datetime "receipt_created_at"
+    t.jsonb "receipt_options", default: {}, null: false
+    t.jsonb "receipt_snapshot", default: {}, null: false
+    t.datetime "announced_at"
+    t.datetime "closed_at"
+    t.text "comment", default: "", null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.index ["author_type", "author_id"], name: "index_wsjrdp_payment_notices_on_author"
+    t.index ["payment_code"], name: "index_wsjrdp_payment_notices_on_payment_code"
+    t.index ["receipt_document_id"], name: "index_wsjrdp_payment_notices_on_receipt_document_id"
+    t.index ["ref_type", "ref_id"], name: "index_wsjrdp_payment_notices_on_ref"
+    t.index ["replaces_id"], name: "index_wsjrdp_payment_notices_on_replaces_id"
+    t.index ["status"], name: "index_wsjrdp_payment_notices_on_status"
+    t.index ["subject_type", "subject_id"], name: "index_wsjrdp_payment_notices_on_subject"
+  end
+
   create_table "wsjrdp_payment_plans", id: :serial, force: :cascade do |t|
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
@@ -2139,6 +2196,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id"
   add_foreign_key "accounting_entries", "wsjrdp_payment_initiations", column: "payment_initiation_id"
+  add_foreign_key "accounting_entries", "wsjrdp_payment_notices", column: "payment_notice_id", on_delete: :nullify
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "calendar_tags", "tags", on_delete: :cascade
@@ -2172,10 +2230,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
   add_foreign_key "wsjrdp_deregistrations", "wsjrdp_documents", column: "signed_form_document_id", on_delete: :nullify
   add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
+  add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_pre_notifications", column: "replaces_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_documents", column: "receipt_document_id", on_delete: :nullify
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_documents", "service_tokens", column: "origin_service_token_id", on_delete: :nullify
   add_foreign_key "wsjrdp_documents", "wsjrdp_documents", column: "derived_from_id", on_delete: :cascade
   add_foreign_key "wsjrdp_documents", "wsjrdp_documents", column: "replaces_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_payment_notices", "wsjrdp_documents", column: "receipt_document_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_payment_notices", "wsjrdp_payment_notices", column: "replaces_id", on_delete: :nullify
   add_foreign_key "wsjrdp_personal_accounts", "people", column: "represented_person_id"
   add_foreign_key "wsjrdp_spheres", "people", column: "manager_person_id"
 end
