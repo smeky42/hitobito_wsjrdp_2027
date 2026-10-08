@@ -1,9 +1,48 @@
-- if @person.early_payer && @person.active_custom_installments_string.blank?
-  %h2.mt-3.mb-3 Kein Ratenplan - Einmalzahler
-  - if can?(:update_finance, @person) || can?(:log, @person)
-    = render_attrs(@person, :installments_string)
-- else
-  %h2.mt-3.mb-3 Ratenplan
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# "Ratenplan": the installments of the plan in effect -- the person's
+-# individual plan, else the standard plan of the role -- and how they are
+-# paid, for everybody who sees the page (the person included). With the
+-# privileged view (fee_page_privileged?: :log on the person, or the finance
+-# audit tier) -- in the list, its own access -- also its issue, a planned plan
+-# and the plans that were active;
+-# the comments need :log on accounting entries (audit tier); planning,
+-# activating and discarding need :update_finance
+-# (Person::InstallmentsController).
+-#
+-# Saving, activating and discarding answer with a page refresh that morphs the
+-# page and keeps the scroll position, so the section stays where it is; their
+-# notice shows here, not at the top.
+-#
+-# context: :person (default) on the person's Beitrag page, with the heading;
+-# :fin inside a row of the Individuelle Ratenpläne list
+-# (fin/individual_payment_plans), without it. Both offer the buttons and the
+-# form: every section has its own place for them (installments_actions_id)
+-# and its own notice.
+- context = local_assigns.fetch(:context, :person)
+- on_person_page = context == :person
+- privileged = !on_person_page || fee_page_privileged?(person)
+- show_comment = can?(:log, AccountingEntry)
+- may_change = can?(:update_finance, person)
+- individual = person.wsjrdp_raw_installments_eur.present?
+- planned = person.planned_fee_rule
+- planned = nil unless planned&.custom_installments_plan?
+
+-# The anchor #payment_plan_<id> (payment_plan_anchor): unique also where the
+-# sections of several people share a page.
+%section.installments{id: payment_plan_anchor(person), class: on_person_page ? "mt-3" : "mt-1"}
+  - if on_person_page
+    - if person.early_payer && !individual
+      %h2.mt-3.mb-3 Kein Ratenplan - Einmalzahler
+    - else
+      %h2.mt-3.mb-3 Ratenplan
+  - if (notice = installments_notice(person)).present?
+    .alert.alert-success.py-1.px-2.mb-2= notice
   %table.table.table-striped.table-sm.table-custom
     %thead
       %tr
@@ -11,10 +50,48 @@
         %th.text-end Betrag
         %th.text-end Soll Kontostand
     %tbody
-      - get_installments_table_entries.each do |entry|
+      - installments_table_entries(person).each do |entry|
         %tr
           %td(style="text-align: right;")= entry[:date]
           %td.text-end= entry[:amount]
           %td.text-end= entry[:total]
-  - if can?(:update_finance, @person) || can?(:log, @person)
-    = render_attrs(@person, :installments_string)
+  %div
+    Zahlungsart: #{installments_payment_method_label(person)}
+  - if privileged && individual
+    - if person.wsjrdp_installments_issue.present?
+      %div
+        Vorgang:
+        = auto_link_escaped_multiline(person.wsjrdp_installments_issue)
+    - if show_comment && person.wsjrdp_installments_comment.present?
+      .installments-comment.fw-light.fst-italic
+        = auto_link_escaped_multiline(person.wsjrdp_installments_comment)
+
+  - if privileged && planned
+    .alert.alert-warning.mt-2.mb-2.py-2
+      %div
+        Geplant: #{installments_text(planned.yme_list) || "keine Raten"}
+      .small= installments_rule_facts(planned)
+      - if show_comment && planned.custom_installments_comment.present?
+        .installments-comment.fw-light.fst-italic
+          = auto_link_escaped_multiline(planned.custom_installments_comment)
+      = installments_planned_sum_note(person, planned)
+
+  -# The buttons, or the plan's form in their place (Turbo streams of
+  -# Person::InstallmentsController, targeting installments_actions_id). No
+  -# turbo frame: a frame that showed the form keeps the form's URL as src, and
+  -# a page refresh that morphs the page would load it again.
+  - if may_change
+    %div{id: installments_actions_id(person)}
+      = render "person/installments/buttons", person: person, context: on_person_page ? "person" : "fin"
+
+  -# The plans that were active, newest first; nothing at all without any.
+  - if privileged && (history = person.participation_fee.installments_history.to_a).any?
+    %h4.mt-3 Änderungen am Ratenplan
+    - history.each do |rule|
+      .mt-2
+        .muted.small= installments_history_header(rule)
+        %div= installments_text(rule.yme_list) || "keine Raten"
+        .small= installments_rule_facts(rule)
+        - if show_comment && rule.custom_installments_comment.present?
+          .installments-comment.fw-light.fst-italic
+            = auto_link_escaped_multiline(rule.custom_installments_comment)

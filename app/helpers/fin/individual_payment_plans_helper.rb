@@ -54,7 +54,7 @@ module Fin::IndividualPaymentPlansHelper
   def individual_plan_link_column
     {key: "link", label: "", width: "2.75rem", css_class: "ipcol-link", mobile: false,
      cell: ->(row) {
-       path = person_fee_path(row.person)
+       path = person_fee_path(row.person, anchor: payment_plan_anchor(row.person))
        safe_join([link_to(icon(:"money-bill"), path, class: "text-muted", title: "Beitrags-Seite der Person"),
          wsjrdp_newtab_link(path)])
      }}

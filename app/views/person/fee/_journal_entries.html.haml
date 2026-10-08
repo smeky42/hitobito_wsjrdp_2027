@@ -2,7 +2,7 @@
 %table.table.table-striped.table-sm.table-custom
   %tbody
     - entries.each do |entry|
-      - if entry.amount_cents != 0 || can?(:log, @person)
+      - if entry.amount_cents != 0 || fee_page_privileged?(@person)
         - created_at = entry.created_at
         - value_date = entry.value_date || created_at.to_date
         %tr

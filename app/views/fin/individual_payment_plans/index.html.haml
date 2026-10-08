@@ -8,7 +8,14 @@
 -# Individuelle Ratenpläne: every person with an active individual installment
 -# plan or a planned one (Fin::IndividualPaymentPlanRow), the planned plan as a
 -# sub-row under the active one. The cells: Fin::IndividualPaymentPlansHelper;
--# the strip's styles and script, which are also the list's: _list_styles.
+-# the strip's styles and script, which are also the list's: _list_styles. A
+-# row opens the "Ratenplan" section of the person (person/fee/_installments,
+-# context :fin), where the plan can be planned, activated or discarded -- a
+-# change reloads the list keeping the scroll position (reload_keep_scroll).
+-# The custom stream action a change in a row answers with
+-# (Person::InstallmentsController#leave_form, reload_keep_scroll).
+- content_for :head do
+  = javascript_include_tag 'hitobito_wsjrdp_2027/turbo_stream_actions', 'data-turbo-track': true
 = render "fin/person_status_styles"
 = render "list_styles"
 #main
@@ -24,6 +31,10 @@
     -# replace.
     - t.sub_rows { |row| row.plans }
     - t.sub_cell { |draft, col| individual_plan_draft_cell(draft, col) }
+    - t.detail_link(label: "Beitrags-Seite der Person", icon: :"money-bill",
+        title: "Beitrags-Seite der Person öffnen",
+        title_new_tab: "Beitrags-Seite der Person in neuem Tab öffnen") { |row| person_fee_path(row.person, anchor: payment_plan_anchor(row.person)) }
+    - t.detail { |row| render "person/fee/installments", person: row.person, context: :fin }
     -# On a wide screen every gap widens alike, up to the widget's default;
     -# the clock stays next to its date.
     - t.gaps except: [%w[planned activated_at]]

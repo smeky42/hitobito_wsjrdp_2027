@@ -135,7 +135,7 @@ describe Fin::IndividualPaymentPlansController do
     expect(row.at_css("td.ipcol-total i")).to be_nil
     expect(row.at_css("td.exp-merged .ipl-notes-head").text).to eq "HELP-830"
     links = row.css("td.ipcol-link a")
-    expect(links.pluck("href")).to eq [person_fee_path(yp)] * 2
+    expect(links.pluck("href")).to eq [person_fee_path(yp, anchor: "payment_plan_#{yp.id}")] * 2
     expect(links.first["class"]).to eq "text-muted"
     expect(links.first.at_css("i.fa-money-bill")).to be_present
     expect(links.last["target"]).to eq "_blank"
@@ -274,6 +274,46 @@ describe Fin::IndividualPaymentPlansController do
       .to eq ["12/25", "05/27", "8"]
     expect(row_of(planner).next_element.css("td.ipcol-begin, td.ipcol-end, td.ipcol-count").map { |td| td.text.squish })
       .to eq ["01/26", "05/27", "17"]
+  end
+
+  it "opens a row into the person's Ratenplan section, with comments and buttons but without heading" do
+    sign_in(finance)
+    get :index
+
+    section = doc.css("section.installments").find { |el| el.text.include?("HELP-1812") }
+    expect(section.at_css("h2")).to be_nil
+    # Each section with its person's anchor, unique on the page.
+    expect(section["id"]).to eq("payment_plan_#{other.id}")
+    ids = doc.css("section.installments").map { |el| el.attribute("id")&.value }
+    expect(ids.uniq.size).to eq(ids.size)
+    expect(section.text).to include("Zahlungsart: Überweisung").and include("Zahlt selbst per Überweisung")
+    expect(section.text).to include("Geplant:").and include("HELP-2001").and include("Ab 2027 Überweisung")
+    expect(section.text).to include("Änderungen am Ratenplan")
+    actions = doc.at_css("#installments_actions_#{other.id}")
+    expect(actions.text).to include("Aktivieren").and include("Verwerfen").and include("Bearbeiten")
+    expect(actions.to_html).to include(ERB::Util.html_escape(edit_person_installments_path(other, mode: "edit", context: "fin")))
+    expect(doc.css("[id^='installments_actions_']").size).to eq 3
+    # A change in a row reloads the page (reload_keep_scroll), the action ships
+    # with the page.
+    expect(response.body).to include("hitobito_wsjrdp_2027/turbo_stream_actions")
+    expect(doc.at_css(".exp-detail-links").text).to include("Beitrags-Seite der Person")
+    # The links -- the row's and the detail's -- lead to the person's Ratenplan
+    # section.
+    expect(row_of(other).at_css("td.ipcol-link a").attribute("href").value)
+      .to eq(person_fee_path(other, anchor: "payment_plan_#{other.id}"))
+    expect(doc.css(".exp-detail-links a").map { |link| link.attribute("href")&.value })
+      .to include(person_fee_path(other, anchor: "payment_plan_#{other.id}"))
+  end
+
+  it "shows the audit tier the issues and comments of a row, without buttons" do
+    auditor = Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
+      group: Fabricate(Group::Extern.name.to_sym, parent: groups(:root))).person
+    sign_in(auditor)
+    get :index
+
+    section = doc.css("section.installments").find { |el| el.text.include?("HELP-1812") }
+    expect(section.text).to include("Zahlt selbst per Überweisung").and include("HELP-2001")
+    expect(doc.css("[id^='installments_actions_']")).to be_empty
   end
 
   describe "the quick filters" do

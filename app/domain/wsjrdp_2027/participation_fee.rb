@@ -19,6 +19,12 @@ module Wsjrdp2027
   # the same. The person's columns are to become the source of the active plan;
   # until then both carry it.
   #
+  # Planning installments (the plan's form on the Beitrag page): the planned
+  # fee rule, started blank, from the active plan or from the standard plan of
+  # the person's role, then saved through the person (planned_custom_installments_*);
+  # discarding soft-deletes it. Activating and discarding record who did it
+  # (activated_by, deleted_by); the history lists the plans that were active.
+  #
   # Activating the planned total fee reduction: the planned values
   # (additional_info) become the active ones (wsjrdp_total_fee_reduction*), the
   # plan is cleared.
@@ -78,20 +84,69 @@ module Wsjrdp2027
     end
 
     # Activates the person's planned fee rule. Answers the activated rule, nil
-    # without a plan.
-    def activate_installments!
+    # without a plan. by: the person who activates it.
+    def activate_installments!(by: nil)
       planned = person.planned_fee_rule
       return if planned.nil? || planned.new_record?
 
       ActiveRecord::Base.transaction do
         previous = person.active_fee_rule
-        previous&.soft_delete!
-        planned.activate!(previous&.id)
+        previous&.soft_delete!(by: by)
+        planned.activate!(previous&.id, by: by)
         person.assign_attributes(self.class.person_installments_attrs(planned))
         person.save!
       end
       person.forget_fee_rules
       planned
+    end
+
+    # Drops the person's planned fee rule. Answers the dropped rule, nil
+    # without one. by: the person who drops it.
+    def discard_installments!(by: nil)
+      planned = person.planned_fee_rule
+      return if planned.nil? || planned.new_record?
+
+      planned.soft_delete!(by: by)
+      person.forget_fee_rules
+      planned
+    end
+
+    # A new planned plan from scratch, not saved: the planned fee rule without
+    # a plan, issue and comment, paid by direct debit.
+    def clear_planned_installments
+      plan_installments(year: nil, cents: nil, issue: nil, comment: nil, payment_method: nil)
+    end
+
+    # A new planned plan starting from the active plan, not saved.
+    def plan_installments_from_active
+      active = person.active_fee_rule
+      plan_installments(year: active&.custom_installments_starting_year, cents: active&.custom_installments_cents,
+        issue: active&.custom_installments_issue, comment: active&.custom_installments_comment,
+        payment_method: active&.custom_installments_payment_method)
+    end
+
+    # A new planned plan starting from the standard plan of the person's role
+    # (the plan Person#yme_list falls back to), not saved; no issue, no
+    # comment.
+    def plan_installments_from_standard
+      raw = standard_payment_plan&.raw_installments_eur
+      plan_installments(year: raw.presence && raw[0].to_i,
+        cents: raw.presence && raw[1..].map { |eur| (BigDecimal(eur.to_s) * 100).round.to_i },
+        issue: nil, comment: nil, payment_method: standard_payment_plan&.payment_method)
+    end
+
+    # The standard plan of the person's role, by direct debit.
+    def standard_payment_plan
+      @standard_payment_plan ||= WsjrdpPaymentPlan.kept.find_by(wsjrdp_role: person.wsjrdp_role,
+        single_payment: person.early_payer || false, payment_method: DEFAULT_PAYMENT_METHOD)
+    end
+
+    # The plans that were active, newest activation first: the active rule
+    # and the ones it replaced -- not the discarded plans, nor rules with a
+    # reduction alone.
+    def installments_history
+      Wsj27RdpFeeRule.with_plan.where(people_id: person.id).where.not(activated_at: nil)
+        .includes(:activated_by, :deleted_by).order(activated_at: :desc, id: :desc)
     end
 
     # Activates the person's planned total fee reduction. Answers false without
@@ -119,6 +174,18 @@ module Wsjrdp2027
     # A new plan starting from the active reduction, not saved.
     def plan_reduction_from_active
       PLANNED_TO_ACTIVE_REDUCTION.each { |planned, active| person.public_send(:"#{planned}=", person.public_send(active)) }
+    end
+
+    private
+
+    def plan_installments(year:, cents:, issue:, comment:, payment_method:)
+      rule = person.ensure_planned_fee_rule
+      rule.custom_installments_starting_year = year
+      rule.custom_installments_cents = cents
+      rule.custom_installments_issue = issue
+      rule.custom_installments_comment = comment
+      rule.custom_installments_payment_method = payment_method
+      rule
     end
   end
 end

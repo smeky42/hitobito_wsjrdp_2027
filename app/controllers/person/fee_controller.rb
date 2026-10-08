@@ -14,7 +14,6 @@ class Person::FeeController < Fin::FinController
   before_action :authorize_action
 
   helper_method :get_entry_path
-  helper_method :get_installments_table_entries
   helper_method :permitted_attrs
   helper_method :extra_entry_turbo_frame
 
@@ -116,10 +115,13 @@ class Person::FeeController < Fin::FinController
     end
   end
 
+  # Whoever may edit the person (the person included), and read-only the
+  # finance audit tier (:show_finance) -- as
+  # PersonFinancePagesHelper#person_fee_page_visible? shows the tab.
   def authorize_action
     @person ||= person
     @group ||= group
-    authorize!(:edit, person)
+    authorize!(can?(:edit, person) ? :edit : :show_finance, person)
   end
 
   def journal_entries
@@ -129,18 +131,6 @@ class Person::FeeController < Fin::FinController
     ).sort_by { |e|
       e.value_date || e.booking_date || e.created_at.to_date
     }.reverse
-  end
-
-  def get_installments_table_entries
-    total_eur = BigDecimal(0)
-    person.yme_list.map do |item|
-      total_eur += item.eur
-      {
-        date: I18n.l(item.to_time_with_zone(day: 5), format: "%b %Y"),
-        amount: format_eur_de(item.eur),
-        total: format_eur_de(total_eur)
-      }
-    end
   end
 
   def extra_entry_turbo_frame

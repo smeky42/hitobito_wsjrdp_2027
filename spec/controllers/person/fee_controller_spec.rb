@@ -104,6 +104,71 @@ describe Person::FeeController do
   # comments with :log on accounting entries (audit tier), the buttons with
   # :update_finance. The person themselves and the unit leader see the page but
   # not the section.
+  describe "the Ratenplan section" do
+    let(:yp) { people(:yp_a_1) }
+    let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+
+    before do
+      ensure_payment_plan(yp)
+      Wsj27RdpFeeRule.create!(people_id: yp.id, status: "deleted", activated_at: 3.days.ago, deleted_at: 1.day.ago,
+        custom_installments_starting_year: 2026, custom_installments_cents: [0, 5_000],
+        custom_installments_issue: "HELP-10", deleted_by: finance)
+      active = Wsj27RdpFeeRule.create!(people_id: yp.id, status: "active", activated_at: 1.day.ago,
+        custom_installments_starting_year: 2026, custom_installments_cents: [0, 10_000],
+        custom_installments_issue: "HELP-11", custom_installments_comment: "Vereinbarung aktiv",
+        custom_installments_payment_method: "credit_transfer", activated_by: finance)
+      Wsj27RdpFeeRule.create!(people_id: yp.id, status: "planned",
+        custom_installments_starting_year: 2026, custom_installments_cents: [0, 0, 7_000],
+        custom_installments_issue: "HELP-12", custom_installments_comment: "Vereinbarung geplant")
+      yp.update!(Wsjrdp2027::ParticipationFee.person_installments_attrs(active))
+    end
+
+    def page_as(viewer)
+      sign_in(viewer)
+      get :show, params: {person_id: yp.id}
+      expect(response).to be_successful
+      response.body
+    end
+
+    def section(body) = Nokogiri::HTML(body).at_css("section.installments")
+
+    it "shows the person themselves the installments and how they are paid, nothing else" do
+      html = section(page_as(yp))
+
+      expect(html.text).to include("Soll Kontostand").and include("Zahlungsart: Überweisung")
+      expect(html.text).not_to include("HELP-11")
+      expect(html.text).not_to include("Vereinbarung")
+      expect(html.text).not_to include("Geplant")
+      expect(html.text).not_to include("Änderungen am Ratenplan")
+      expect(html.to_html).not_to include(edit_person_installments_path(yp))
+    end
+
+    it "shows a CMT leader the issue, the planned plan and the history, without comments or buttons" do
+      html = section(page_as(Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person))
+
+      expect(html.text).to include("HELP-11").and include("Geplant: 2026-03: 70€").and include("HELP-12")
+      expect(html.text).to include("Änderungen am Ratenplan").and include("HELP-10")
+      expect(html.text).to include("Aktiviert").and include("abgelöst").and include("von #{finance}")
+      expect(html.text).not_to include("Vereinbarung")
+      expect(html.to_html).not_to include(edit_person_installments_path(yp))
+    end
+
+    it "carries the anchors the status page links to" do
+      doc = Nokogiri::HTML(page_as(finance))
+
+      expect(doc.at_css("section#payment_plan_#{yp.id}.installments")).to be_present
+      expect(doc.at_css("section#total_fee_#{yp.id}.fee-reduction")).to be_present
+    end
+
+    it "shows finance the comments and the buttons" do
+      html = section(page_as(finance))
+
+      expect(html.text).to include("Vereinbarung aktiv").and include("Vereinbarung geplant")
+      expect(html.to_html).to include(activate_person_installments_path(yp, context: "person"))
+      expect(html.to_html).to include(ERB::Util.html_escape(edit_person_installments_path(yp, mode: "edit", context: "person")))
+    end
+  end
+
   describe "the Beitragshöhe section" do
     let(:yp) { people(:yp_a_1) }
 

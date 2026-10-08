@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_06_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_06_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1641,10 +1641,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_120000) do
     t.string "custom_installments_payment_method"
     t.integer "custom_installments_payment_plan_id"
     t.jsonb "additional_info", default: {}, null: false
+    t.integer "created_by_id"
+    t.integer "updated_by_id"
+    t.integer "activated_by_id"
+    t.integer "deleted_by_id"
+    t.index ["activated_by_id"], name: "index_wsj27_rdp_fee_rules_on_activated_by_id"
+    t.index ["created_by_id"], name: "index_wsj27_rdp_fee_rules_on_created_by_id"
     t.index ["custom_installments_payment_plan_id"], name: "index_wsj27_rdp_fee_rules_on_payment_plan_id"
+    t.index ["deleted_by_id"], name: "index_wsj27_rdp_fee_rules_on_deleted_by_id"
     t.index ["people_id", "status"], name: "index_wsj27_rdp_fee_rules_on_people_id_and_status", unique: true, where: "(deleted_at IS NULL)"
     t.index ["people_id"], name: "index_wsj27_rdp_fee_rules_on_people_id"
     t.index ["prev_rule_id"], name: "index_wsj27_rdp_fee_rules_on_prev_rule_id"
+    t.index ["updated_by_id"], name: "index_wsj27_rdp_fee_rules_on_updated_by_id"
     t.check_constraint "(custom_installments_payment_method IS NULL) = (custom_installments_starting_year IS NULL OR custom_installments_cents IS NULL)", name: "chk_wsj27_rdp_fee_rules_payment_method_iff_plan"
   end
 
@@ -2066,6 +2074,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_120000) do
   add_foreign_key "service_tokens", "people", column: "acting_person_id", on_delete: :nullify
   add_foreign_key "subscription_tags", "subscriptions"
   add_foreign_key "subscription_tags", "tags"
+  add_foreign_key "wsj27_rdp_fee_rules", "people", column: "activated_by_id", on_delete: :nullify
+  add_foreign_key "wsj27_rdp_fee_rules", "people", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "wsj27_rdp_fee_rules", "people", column: "deleted_by_id", on_delete: :nullify
+  add_foreign_key "wsj27_rdp_fee_rules", "people", column: "updated_by_id", on_delete: :nullify
   add_foreign_key "wsj27_rdp_fee_rules", "wsj27_rdp_fee_rules", column: "prev_rule_id"
   add_foreign_key "wsj27_rdp_fee_rules", "wsjrdp_payment_plans", column: "custom_installments_payment_plan_id"
   add_foreign_key "wsjrdp_camt_transactions", "datev_booking_batches"

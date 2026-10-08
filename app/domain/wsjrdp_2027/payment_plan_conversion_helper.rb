@@ -49,12 +49,6 @@ module Wsjrdp2027::PaymentPlanConversionHelper
     end
   end
 
-  def installments_to_installments_string(installments, blank_year: 2025)
-    raw_installments_eur_to_installments_string(
-      installments_to_raw_installments_eur(installments)
-    )
-  end
-
   def raw_installments_eur_to_installments_string(installments)
     return nil if installments.blank? || installments.empty?
     year = installments[0].to_i

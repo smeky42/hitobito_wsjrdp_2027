@@ -652,10 +652,6 @@ module Wsjrdp2027::Person
         end
       end
 
-      def installments_string
-        Wsjrdp2027::PaymentPlanConversionHelper.installments_to_installments_string(yme_list, blank_year: 2025)
-      end
-
       # Active total fee reduction
 
       def active_total_fee_reduction
@@ -723,30 +719,6 @@ module Wsjrdp2027::Person
         @active_fee_rule
       end
 
-      def active_custom_installments?
-        active_fee_rule&.custom_installments?
-      end
-
-      def active_custom_installments_display
-        active_fee_rule&.custom_installments_display || ""
-      end
-
-      def active_custom_installments_string
-        active_fee_rule&.custom_installments_string
-      end
-
-      def active_custom_installments_issue_display
-        active_fee_rule&.custom_installments_issue_display || ""
-      end
-
-      def active_custom_installments_comment
-        active_fee_rule&.custom_installments_comment
-      end
-
-      def active_custom_installments_payment_method_display
-        active_fee_rule&.custom_installments_payment_method_display
-      end
-
       #
       # planned fee rule
       #
@@ -772,15 +744,9 @@ module Wsjrdp2027::Person
         @planned_fee_rule
       end
 
-      def planned_custom_installments?
-        planned_fee_rule&.custom_installments?
-      end
-
-      # planned_custom_installments_string
-
-      def planned_custom_installments_display
-        planned_fee_rule&.custom_installments_display || ""
-      end
+      # The planned plan as the plan's form on the Beitrag page edits it
+      # (Person::InstallmentsController): plan, issue, comment and payment
+      # method of the planned fee rule.
 
       def planned_custom_installments_string
         planned_fee_rule&.custom_installments_string
@@ -788,16 +754,6 @@ module Wsjrdp2027::Person
 
       def planned_custom_installments_string=(value)
         ensure_planned_fee_rule.custom_installments_string = value
-      end
-
-      def planned_custom_installments_string_changed?
-        planned_fee_rule&.custom_installments_string_changed?
-      end
-
-      # planned_custom_installments_issue
-
-      def planned_custom_installments_issue_display
-        planned_fee_rule&.custom_installments_issue_display || ""
       end
 
       def planned_custom_installments_issue
@@ -808,12 +764,6 @@ module Wsjrdp2027::Person
         ensure_planned_fee_rule.custom_installments_issue = value.presence
       end
 
-      def planned_custom_installments_issue_changed?
-        planned_fee_rule&.custom_installments_issue_changed?
-      end
-
-      # planned_custom_installments_comment
-
       def planned_custom_installments_comment
         planned_fee_rule&.custom_installments_comment
       end
@@ -822,23 +772,14 @@ module Wsjrdp2027::Person
         ensure_planned_fee_rule.custom_installments_comment = value.presence
       end
 
-      def planned_custom_installments_comment_changed?
-        planned_fee_rule&.custom_installments_comment_changed?
-      end
-
-      # planned_custom_installments_payment_method: direct debit unless chosen
-      # otherwise; it goes with the plan (Wsj27RdpFeeRule).
-
+      # Direct debit unless chosen otherwise; it goes with the plan
+      # (Wsj27RdpFeeRule).
       def planned_custom_installments_payment_method
         planned_fee_rule&.custom_installments_payment_method || Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD
       end
 
       def planned_custom_installments_payment_method=(value)
         ensure_planned_fee_rule.custom_installments_payment_method = value.presence
-      end
-
-      def planned_custom_installments_payment_method_display
-        planned_fee_rule&.custom_installments_payment_method_display
       end
 
       def moss_invited_at

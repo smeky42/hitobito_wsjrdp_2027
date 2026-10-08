@@ -45,8 +45,8 @@
     -# The same entries to file or hand on, in a tab of their own.
     = action_button("Beitragszahlungen als PDF", statement_person_fee_path(@person),
                     :"file-pdf", target: "_blank")
-    = render 'installments'
 
-  -# Outside the form above: the section carries buttons of its own.
-  - if can?(:log, @person)
+  -# Outside the form above: the sections carry buttons of their own.
+  = render 'installments', person: @person
+  - if fee_page_privileged?(@person)
     = render 'fee_reduction', person: @person

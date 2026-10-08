@@ -63,8 +63,6 @@ Rails.application.routes.draw do
           get "status" => "person/status#show"
           get "status/edit" => "person/status#edit"
           put "status" => "person/status#update"
-          post "status/activate_planned_custom_installments" => "person/status#activate_planned_custom_installments"
-          post "status/delete_planned_custom_installments" => "person/status#delete_planned_custom_installments"
           post "status/review_documents" => "person/status#review_documents"
           post "status/approve_documents" => "person/status#approve_documents"
 
@@ -139,6 +137,13 @@ Rails.application.routes.draw do
       # The fee reduction section of the person finance page: plan, activate or discard
       # a total fee reduction.
       resource :fee_reduction, controller: "person/fee_reduction", only: [:edit, :update] do
+        get :buttons
+        post :activate
+        post :discard
+      end
+      # The installment plan section of the person finance page: plan, activate or
+      # discard an individual installment plan.
+      resource :installments, controller: "person/installments", only: [:edit, :update] do
         get :buttons
         post :activate
         post :discard

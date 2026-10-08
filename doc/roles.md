@@ -74,9 +74,10 @@ and nothing else, in particular no access to the contingent's people.
 
 `FinanceAuditor` is the audit tier for external auditors, `FinanceAccountant`
 the write tier for external accountants. Neither holds a `layer_*`
-permission, so neither reaches a person's page: `finance_audit` opens the
-person-level finance views (Beitragsbuchungen, `fin/person_fees`), not the
-people.
+permission, so neither reaches a person's page but one: `finance_audit` opens
+the person-level finance views (Beitragsbuchungen, `fin/person_fees`) and,
+read-only, a person's Beitrag page (`show_finance` on the person, below) --
+no other page of the people.
 
 `layer_and_below_full` is always **relative to the layer
 the role sits in**. A `Group::Root::Leader` holds it on the root layer
@@ -279,7 +280,11 @@ covers it.
 
 `finance` is the core's own permission, reused as the write tier. The
 ability actions are named after what they do, on the finance models as on a
-person: `update_finance` from the write tier up, `admin_finance` and
+person: `show_finance` from the audit tier up -- a person's Beitrag page,
+read-only (`Person::FeeController` admits whoever may `edit` the person, and
+otherwise asks for `show_finance`), with the view of a person with `log`
+there: issues, planned plans and reductions, histories, comments --,
+`update_finance` from the write tier up, `admin_finance` and
 `destroy_finance` at the manage tier.
 
 `AccountingEntry` is not in the read tier. All the financial aspects are

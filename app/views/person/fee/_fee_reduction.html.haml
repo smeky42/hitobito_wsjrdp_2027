@@ -6,7 +6,8 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 -# "Beitragshöhe": the regular fee, the active total fee reduction, a planned
--# one and the history of the active one. Seen with :log on the person; the
+-# one and the history of the active one. Seen with the privileged view
+-# (fee_page_privileged?: :log on the person, or the finance audit tier); the
 -# comments need :log on accounting entries (audit tier); planning, activating
 -# and discarding need :update_finance (Person::FeeReductionController).
 -#
@@ -29,7 +30,9 @@
 - planned = person.planned_total_fee_reduction
 - versions = fee_reduction_versions(person).to_a
 
-%section.fee-reduction{class: on_person_page ? "mt-4" : "mt-1"}
+-# The anchor #total_fee_<id> (total_fee_anchor): unique also where the
+-# sections of several people share a page.
+%section.fee-reduction{id: total_fee_anchor(person), class: on_person_page ? "mt-4" : "mt-1"}
   - if on_person_page
     %h2.mb-2 Beitragshöhe
   - if (notice = fee_reduction_notice(person)).present?

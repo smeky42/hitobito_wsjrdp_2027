@@ -45,6 +45,11 @@ module Wsjrdp2027::PersonAbility
       # permission(:group_full).may(:update_email).if_permissions_in_all_capable_groups
       # permission(:group_full).may(:create).all # restrictions are on Roles
 
+      # The person's Beitrag page, read-only (Person::FeeController): from the
+      # audit tier up, which sees the people's fee data in the finance lists
+      # already. Nothing else on the person -- no :show, no :log, no other
+      # page.
+      permission(:finance_audit).may(:show_finance).if_finance_audit
       permission(:finance).may(:update_finance).if_finance_write
       permission(:finance_manage).may(:admin_finance, :update_finance, :destroy_finance).if_finance_manage
       permission(:admin).may(:update_finance).all

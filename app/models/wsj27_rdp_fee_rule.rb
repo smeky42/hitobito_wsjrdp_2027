@@ -7,6 +7,13 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
   # rubocop:disable Rails/InverseOf
   belongs_to :person, foreign_key: :people_id, optional: true, class_name: "Person"
   belongs_to :custom_installments_payment_plan, optional: true, class_name: "WsjrdpPaymentPlan"
+  # Who created the rule (planned), changed it last, activated it and deleted
+  # it (replaced by a newly activated rule, or a plan discarded); nil for the
+  # rules from before these were recorded.
+  belongs_to :created_by, optional: true, class_name: "Person"
+  belongs_to :updated_by, optional: true, class_name: "Person"
+  belongs_to :activated_by, optional: true, class_name: "Person"
+  belongs_to :deleted_by, optional: true, class_name: "Person"
   # rubocop:enable Rails/InverseOf
 
   # The rules that carry a plan of their own (a starting year and the monthly
@@ -19,37 +26,32 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
   # additional_info is never NULL (database default {}); nil stands for {}.
   before_validation { self.additional_info ||= {} }
 
-  def soft_delete!
+  def soft_delete!(by: nil)
     self.deleted_at = Time.zone.now
     self.status = "deleted"
+    self.deleted_by = by if by
     save!
   end
 
-  def activate!(prev_rule_id = nil)
+  def activate!(prev_rule_id = nil, by: nil)
     self.activated_at = Time.zone.now
     self.status = "active"
     if prev_rule_id
       self.prev_rule_id = prev_rule_id
     end
+    self.activated_by = by if by
     save!
   end
 
-  def custom_installments?
-    ![custom_installments_starting_year.nil?, custom_installments_cents.nil?,
-      custom_installments_comment.blank?, custom_installments_issue.blank?].all?
-  end
+  # The plan written as "starting year: amount; amount; ..." from January --
+  # what the plan's form takes (custom_installments_string=): the year, a
+  # colon, then the euros of each month, separated by semicolons; "," or "."
+  # before the cents.
+  CUSTOM_INSTALLMENTS_STRING_FORMAT = /\A\s*\d{4}\s*:\s*\d+([.,]\d{1,2})?(\s*;\s*\d+([.,]\d{1,2})?)*\s*\z/
 
   # A plan of its own: a starting year and the monthly amounts.
   def custom_installments_plan?
     !custom_installments_starting_year.nil? && !custom_installments_cents.nil?
-  end
-
-  def custom_installments_payment_method_display
-    Wsjrdp2027::ParticipationFee.payment_method_label(custom_installments_payment_method)
-  end
-
-  def custom_installments_display
-    custom_installments_string
   end
 
   def custom_installments_string
@@ -70,22 +72,9 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
     else
       year_str, cents_list_str = value.split(":", 2)
       year = year_str.to_i
-      cents_list = cents_list_str.split(";").map { |s| (s.strip.to_f * 100).round }
+      cents_list = cents_list_str.split(";").map { |s| (BigDecimal(s.strip.tr(",", ".")) * 100).round.to_i }
       self.custom_installments_starting_year = year
       self.custom_installments_cents = cents_list
-    end
-  end
-
-  def custom_installments_string_changed?
-    custom_installments_starting_year_changed? || custom_installments_cents_changed?
-  end
-
-  def custom_installments_issue_display
-    issue = custom_installments_issue
-    if issue.nil? || !(issue =~ /^(HELP|FIN)-[0-9]+$/)
-      issue
-    else
-      "<a href=\"https://helpdesk.worldscoutjamboree.de/browse/#{issue}\">#{issue}</a>".html_safe
     end
   end
 
