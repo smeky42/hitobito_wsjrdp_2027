@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_06_200002) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_06_200003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1776,6 +1776,58 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200002) do
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
   end
 
+  create_table "wsjrdp_deregistration_events", force: :cascade do |t|
+    t.bigint "deregistration_id", null: false
+    t.string "event", null: false
+    t.string "action"
+    t.string "from_status"
+    t.string "to_status"
+    t.datetime "occurred_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "actor_type", default: "Person"
+    t.bigint "actor_id"
+    t.text "comment", default: "", null: false
+    t.jsonb "field_changes", default: {}, null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.index ["action"], name: "index_wsjrdp_deregistration_events_on_action"
+    t.index ["actor_type", "actor_id"], name: "index_wsjrdp_deregistration_events_on_actor"
+    t.index ["deregistration_id", "occurred_at"], name: "index_wsjrdp_deregistration_events_on_deregistration"
+    t.index ["event"], name: "index_wsjrdp_deregistration_events_on_event"
+  end
+
+  create_table "wsjrdp_deregistrations", force: :cascade do |t|
+    t.integer "person_id", null: false
+    t.integer "number", null: false
+    t.string "status", default: "recorded", null: false
+    t.bigint "replaces_id"
+    t.string "kind", default: "withdrawal", null: false
+    t.string "issue"
+    t.date "requested_date"
+    t.date "effective_date"
+    t.date "reply_due_date"
+    t.decimal "actual_compensation", precision: 20, scale: 3
+    t.string "actual_compensation_currency", default: "EUR", null: false
+    t.boolean "show_contractual_compensation", default: true, null: false
+    t.jsonb "form_options", default: {}, null: false
+    t.datetime "form_sent_at"
+    t.jsonb "form_snapshot", default: {}, null: false
+    t.bigint "sent_form_document_id"
+    t.bigint "signed_form_document_id"
+    t.datetime "signed_form_received_at"
+    t.datetime "closed_at"
+    t.text "comment", default: "", null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.index ["person_id", "number"], name: "index_wsjrdp_deregistrations_on_person_id_and_number", unique: true
+    t.index ["replaces_id"], name: "index_wsjrdp_deregistrations_on_replaces_id"
+    t.index ["sent_form_document_id"], name: "index_wsjrdp_deregistrations_on_sent_form_document_id"
+    t.index ["signed_form_document_id"], name: "index_wsjrdp_deregistrations_on_signed_form_document_id"
+    t.index ["status"], name: "index_wsjrdp_deregistrations_on_status"
+    t.check_constraint "number >= 1", name: "chk_wsjrdp_deregistrations_number"
+  end
+
   create_table "wsjrdp_direct_debit_payment_infos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -2114,6 +2166,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_06_200002) do
   add_foreign_key "wsjrdp_camt_transactions", "datev_booking_batches"
   add_foreign_key "wsjrdp_camt_transactions", "datev_bookings", on_delete: :nullify
   add_foreign_key "wsjrdp_cost_centers", "people", column: "manager_person_id"
+  add_foreign_key "wsjrdp_deregistration_events", "wsjrdp_deregistrations", column: "deregistration_id", on_delete: :cascade
+  add_foreign_key "wsjrdp_deregistrations", "wsjrdp_deregistrations", column: "replaces_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_deregistrations", "wsjrdp_documents", column: "sent_form_document_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_deregistrations", "wsjrdp_documents", column: "signed_form_document_id", on_delete: :nullify
   add_foreign_key "wsjrdp_direct_debit_payment_infos", "wsjrdp_payment_initiations", column: "payment_initiation_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "wsjrdp_direct_debit_pre_notifications", "wsjrdp_payment_initiations", column: "payment_initiation_id"
