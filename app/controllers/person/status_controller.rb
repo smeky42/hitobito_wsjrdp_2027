@@ -20,10 +20,6 @@ class Person::StatusController < ApplicationController
     :complete_document_upload_at,
     :unit_code,
     :cluster_code,
-    :planned_custom_installments_string,
-    :planned_custom_installments_issue,
-    :planned_custom_installments_comment,
-    :planned_custom_installments_payment_method,
     :deregistration_issue,
     :deregistration_requested_date,
     :deregistration_effective_date,
@@ -47,21 +43,6 @@ class Person::StatusController < ApplicationController
     authorize!(:log, person)
     person.attributes = params.require(:person).permit(permitted_attrs)
     person.save
-    respond_with person, location: status_group_person_path
-  end
-
-  # Activating a fee plan changes the fee: :update_finance, like the fee
-  # reduction. What activating means: Wsjrdp2027::ParticipationFee.
-  def activate_planned_custom_installments
-    authorize!(:update_finance, person)
-    person.participation_fee.activate_installments!
-    respond_with person, location: status_group_person_path
-  end
-
-  def delete_planned_custom_installments
-    authorize!(:update_finance, person)
-    Rails.logger.info "soft_delete #{person.planned_fee_rule.inspect}"
-    person.planned_fee_rule&.soft_delete!
     respond_with person, location: status_group_person_path
   end
 

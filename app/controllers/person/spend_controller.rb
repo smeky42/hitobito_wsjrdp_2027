@@ -67,10 +67,20 @@ class Person::SpendController < ApplicationController
 
   private
 
+  # The person themselves (their own Moss login), whoever may :log the
+  # person, the finance write tier -- as
+  # PersonFinancePagesHelper#person_spend_visible? shows the tab. Not a unit
+  # leader, who may edit the people of the unit.
   def authorize_action
     @person ||= person
     @group ||= group
-    authorize!(:edit, @person)
+    authorize!(spend_access_action, @person)
+  end
+
+  def spend_access_action
+    return :show if @person == current_user
+
+    can?(:log, @person) ? :log : :update_finance
   end
 
   def entry

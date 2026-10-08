@@ -21,6 +21,7 @@ PERSON_ACTIONS = [
 
   :create_invoice,
   :index_invoices,
+  :show_finance,
   :update_finance,
   :admin_finance,
   :destroy_finance,

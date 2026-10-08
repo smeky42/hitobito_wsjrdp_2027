@@ -1,0 +1,43 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The planned installment plan, in place of the buttons of the "Ratenplan"
+-# section (installments_actions_id) -- on the person's Beitrag page or in a
+-# row of the Individuelle Ratenpläne list. Submitted through Turbo: a refused
+-# plan comes back into the same place with its errors, a saved, activated or
+-# discarded one refreshes the page in place
+-# (Person::InstallmentsController#leave_form). Abbrechen brings the buttons
+-# back.
+- label_class = "col-md-3 col-xl-2 pb-1"
+-# The colour of the planned plan's panel: this is a plan, too.
+.installments-form.alert.alert-warning.mt-2.mb-2.py-2
+  %h4.h6.mb-1= t("people.installments.form_title.#{mode}")
+  - if %w[from_active from_standard].include?(mode)
+    .muted.small.mb-2= t("people.installments.#{mode}_note")
+  = standard_form @person, url: person_installments_path(@person), method: :put do |f|
+    = f.error_messages
+    = hidden_field_tag :context, context
+    = f.labeled_input_field :planned_custom_installments_string, label: "Ratenplan",
+        label_class: "#{label_class} required", value: plan_text, placeholder: "2026: 0; 0; 500; 500",
+        help: t("people.installments.string_help")
+    = f.labeled(:planned_custom_installments_payment_method, "Zahlungsart", label_class: label_class) do
+      = f.select :planned_custom_installments_payment_method, Wsjrdp2027::ParticipationFee.payment_method_options.map(&:reverse),
+          {}, class: "form-select form-select-sm w-auto"
+    = f.labeled_input_field :planned_custom_installments_issue, label: "Vorgang"
+    = f.labeled_input_field :planned_custom_installments_comment, label: "Kommentar",
+        help: t("people.installments.comment_help")
+    .btn-toolbar.gap-2.mt-2
+      = f.button("Geplanten Ratenplan speichern", name: :commit_action, value: :save,
+          class: "btn btn-sm btn-primary")
+      = f.button("Ratenplan speichern und aktivieren", name: :commit_action, value: :activate,
+          class: "btn btn-sm btn-outline-primary",
+          data: {turbo_confirm: t("people.installments.activate_confirm")})
+      = f.button("Planung verwerfen", name: :commit_action, value: :discard,
+          class: "btn btn-sm btn-outline-danger", formnovalidate: true,
+          data: {turbo_confirm: t("people.installments.discard_confirm")})
+      = link_to("Abbrechen", buttons_person_installments_path(@person, context: context),
+          class: "btn btn-sm btn-link", data: {turbo_stream: true})

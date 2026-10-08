@@ -216,22 +216,14 @@ de:
         planned_total_fee_reduction_issue: Vorgang Reduktion Beitrag (in Vorbereitung)
         planned_total_fee_reduction_hint: Kurzhinweis Reduktion Beitrag (in Vorbereitung)
         planned_total_fee_reduction_comment: Kommentar Reduktion Beitrag (in Vorbereitung)
-        installments_string: Ratenplan
-        active_custom_installments_display: Ratenplan
-        active_custom_installments_issue_display: Vorgang Ratenplan
-        active_custom_installments_comment: Kommentar Ratenplan
-        planned_custom_installments_display: Ratenplan (in Vorbereitung)
         planned_custom_installments_string: Ratenplan (in Vorbereitung)
         planned_custom_installments_issue: Vorgang Ratenplan (in Vorbereitung)
-        planned_custom_installments_issue_display: Vorgang Ratenplan (in Vorbereitung)
         planned_custom_installments_comment: Kommentar Ratenplan (in Vorbereitung)
         wsjrdp_raw_installments_eur: Ratenplan
         wsjrdp_installments_issue: Vorgang Ratenplan
         wsjrdp_installments_comment: Kommentar Ratenplan
         wsjrdp_installments_payment_method: Zahlungsart Ratenplan
-        active_custom_installments_payment_method_display: Zahlungsart Ratenplan
         planned_custom_installments_payment_method: Zahlungsart Ratenplan (in Vorbereitung)
-        planned_custom_installments_payment_method_display: Zahlungsart Ratenplan (in Vorbereitung)
         tag_list: Tags
         deregistration_kind: Art
         deregistration_issue: Ticket Abmeldung
@@ -638,8 +630,6 @@ de:
       show_good_conduct: Nachweis über das Führungszeugnis einsehen
       review_documents: TN in den Status "Dokumente in Überprüfung durch CMT" schalten.
       approve_documents: Ich habe alle Dokumente eingesehen und überprüft. TN in den Status "Dokumente vollständig überprüft" schalten.
-      activate_planned_custom_installments: Vorbereiteten Ratenplan aktivieren
-      delete_planned_custom_installments: Vorbereiteten Ratenplan löschen
 
     fields:
       upload_contract_pdf: Anmeldung hochladen
@@ -685,13 +675,6 @@ de:
       sepa: Überprüfe für das SEPA, dass die ID zur Person passt, <br/> eine valide Unterschrift auf dem Dokument ist.
       external: Überprüfe für folgende Dokumente die Validität.
       upload_good_conduct_missing: Nachweis über das Führungszeugnis nicht hochgeladen!
-      edit_custom_installments_help: |
-        Hier kannst das Finance-Team einen individuellen Ratenplan anlegen und editieren.<br/>
-        Achtung: Beim aktivieren des Ratenplans muss geprüft werden, dass die Angaben in Hitobito zum hochgeladenen Scan passen!
-      activate_custom_installments_help: |
-        Hier kannst das Finance-Team einen individuellen Ratenplan aktivieren oder löschen.
-        Achtung: Vor dem aktivieren des Ratenplans muss geprüft werden,
-        dass die Angaben in Hitobito zum hochgeladenen Scan passen!
       no_active_custom_installments: Reguläre Einmal- oder Ratenzahlung / kein individueller Ratenplan
       no_active_total_fee_reduction: Regulärer Teilnahmebeitrag / keine individuelle Beitragsreduktion
 
@@ -709,6 +692,25 @@ de:
       comment_help: Nur sichtbar für Personen mit Buchhaltungs-Rechten
       discard_confirm: Planung verwerfen? Eine gespeicherte geplante Reduktion wird gelöscht.
       status_link: Beitragshöhe auf der Beitrags-Seite
+    # The "Ratenplan" section of the Beitrag page (Person::InstallmentsController).
+    installments:
+      activate_confirm: >-
+        Soll der geplante Ratenplan aktiviert werden?
+        Vorher prüfen, dass die Angaben zum hochgeladenen Scan passen.
+      activate_help: Vor dem Aktivieren prüfen, dass die Angaben zum hochgeladenen Scan passen.
+      form_title:
+        new: Ratenplan planen
+        from_active: Ratenplan planen
+        from_standard: Ratenplan planen
+        edit: Geplanten Ratenplan bearbeiten
+      from_active_note: Vorbelegt mit dem aktiven Ratenplan – gespeichert wird ein neuer Plan.
+      from_standard_note: Vorbelegt mit dem Standard-Ratenplan der Rolle – gespeichert wird ein neuer Plan.
+      string_help: >-
+        Jahr, Doppelpunkt, dann die Euro je Monat ab Januar, getrennt durch Semikolon,
+        z. B. „2026: 0; 0; 500; 500“.
+      comment_help: Nur sichtbar für Personen mit Buchhaltungs-Rechten
+      discard_confirm: Planung verwerfen? Ein gespeicherter geplanter Ratenplan wird gelöscht.
+      status_link: Ratenplan auf der Beitrags-Seite
 
     contact_fields:
       format_birthday: (dd.mm.yyyy)

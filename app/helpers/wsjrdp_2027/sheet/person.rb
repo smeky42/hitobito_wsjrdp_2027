@@ -40,7 +40,9 @@ module Wsjrdp2027::Sheet::Person
         :person_spend_path_with_group,
         :person_deregistration_path_with_group
       ],
-      if: :show
+      # Also the finance audit tier, which reads the Beitrag page only
+      # (PersonFinancePagesHelper).
+      if: ->(view, *path_args) { view.person_finance_tab_visible?(path_args.last) }
 
     tab "people.tabs.medical",
       :medical_group_person_path,

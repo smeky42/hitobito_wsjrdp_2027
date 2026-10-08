@@ -53,7 +53,7 @@
     - t.sub_cell { |plan, col| fee_reduction_plan_cell(plan, col) }
     - t.detail_link(label: "Beitrags-Seite der Person", icon: :"money-bill",
         title: "Beitrags-Seite der Person öffnen",
-        title_new_tab: "Beitrags-Seite der Person in neuem Tab öffnen") { |row| person_fee_path(row.person) }
+        title_new_tab: "Beitrags-Seite der Person in neuem Tab öffnen") { |row| person_fee_path(row.person, anchor: total_fee_anchor(row.person)) }
     - t.detail { |row| render "person/fee/fee_reduction", person: row.person, context: :fin }
     -# On a wide screen every gap widens alike, up to the widget's default; the clock stays
     -# next to its date and the fee calculation keeps together (a group).

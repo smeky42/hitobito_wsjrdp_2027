@@ -26,7 +26,7 @@ require "spec_helper"
 #     /fin/ae/:id is person-level in everything but its route;
 #   * the AUDIT tier is read-only just the same, but it does get :log and the
 #     person-level models -- that is what an external Kassenprüfer*in needs --
-#     and still nothing at all on Person.
+#     and on Person only :show_finance, the read-only Beitrag page.
 describe "finance abilities" do
   let(:fin_models) do
     [
@@ -86,6 +86,7 @@ describe "finance abilities" do
 
     it "may not reach the person-level fee pages (:log gate) nor a person's finance data" do
       is_expected.not_to be_able_to(:log, WsjrdpFinAccount)
+      is_expected.not_to be_able_to(:show_finance, people(:yp_a_1))
       is_expected.not_to be_able_to(:update_finance, people(:yp_a_1))
     end
   end
@@ -115,10 +116,11 @@ describe "finance abilities" do
       is_expected.not_to be_able_to(:destroy, AccountingEntry.new)
     end
 
-    it "gets nothing on people" do
-      is_expected.not_to be_able_to(:show, people(:yp_a_1))
-      is_expected.not_to be_able_to(:log, people(:yp_a_1))
-      is_expected.not_to be_able_to(:update_finance, people(:yp_a_1))
+    it "gets the read-only Beitrag page of people and nothing else on them" do
+      is_expected.to be_able_to(:show_finance, people(:yp_a_1))
+      %i[show show_details show_full edit update log history update_finance].each do |action|
+        is_expected.not_to be_able_to(action, people(:yp_a_1))
+      end
     end
   end
 
@@ -132,6 +134,7 @@ describe "finance abilities" do
 
     it "may reach the person-level fee pages and edit a person's finance data" do
       is_expected.to be_able_to(:log, WsjrdpFinAccount)
+      is_expected.to be_able_to(:show_finance, people(:yp_a_1))
       is_expected.to be_able_to(:update_finance, people(:yp_a_1))
     end
 

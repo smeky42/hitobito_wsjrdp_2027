@@ -169,6 +169,10 @@ describe Fin::FeeReductionsController do
     section = doc.css("section.fee-reduction").find { |el| el.text.include?("Härtefall") }
     expect(section.text).to include("Reduzierter Beitrag").and include("Nachweis liegt vor")
     expect(section.at_css("h2")).to be_nil
+    # Each section with its person's anchor, unique on the page.
+    ids = doc.css("section.fee-reduction").map { |el| el.attribute("id")&.value }
+    expect(ids).to all(match(/\Atotal_fee_\d+\z/))
+    expect(ids.uniq.size).to eq(ids.size)
     actions = doc.at_css("#fee_reduction_actions_#{yp.id}")
     expect(actions.text).to include("Neue Reduktion planen").and include("Aus aktueller Reduktion planen")
     expect(doc.css("[id^='fee_reduction_actions_']").size).to eq 2
@@ -176,7 +180,9 @@ describe Fin::FeeReductionsController do
     # with the page.
     expect(response.body).to include("hitobito_wsjrdp_2027/turbo_stream_actions")
     expect(doc.at_css(".exp-detail-links").text).to include("Beitrags-Seite der Person")
-    expect(response.body).to include(person_fee_path(yp))
+    # The link leads to the person's Beitragshöhe section.
+    expect(doc.css(".exp-detail-links a").map { |link| link.attribute("href")&.value })
+      .to include(person_fee_path(yp, anchor: "total_fee_#{yp.id}"))
   end
 
   it "shows the plan of a person without an active reduction in the row's view" do

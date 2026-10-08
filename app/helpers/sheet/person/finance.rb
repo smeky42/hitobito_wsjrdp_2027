@@ -9,8 +9,11 @@
 module Sheet
   class Person < Base
     class Finance < Base
-      tab "people.finance.tabs.fee", :person_fee_path_with_group, if: :edit
-      tab "people.finance.tabs.spend", :person_spend_path_with_group, if: :edit
+      # Who sees which page: PersonFinancePagesHelper.
+      tab "people.finance.tabs.fee", :person_fee_path_with_group,
+        if: ->(view, *path_args) { view.person_fee_page_visible?(path_args.last) }
+      tab "people.finance.tabs.spend", :person_spend_path_with_group,
+        if: ->(view, *path_args) { view.person_spend_visible?(path_args.last) }
       tab "people.finance.tabs.deregistration", :person_deregistration_path_with_group, if: :log
 
       self.parent_sheet = Sheet::Person
