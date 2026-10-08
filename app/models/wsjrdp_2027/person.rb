@@ -58,6 +58,8 @@ module Wsjrdp2027::Person
     :wsjrdp_email_created_at,
     :wsjrdp_total_fee_reduction_comment,  # finance only, kept out of the person log
     :wsjrdp_installments_comment,  # finance only, kept out of the person log
+    :wsjrdp_regular_full_fee,  # generated from payment_role and the override, which are logged
+    :wsjrdp_total_fee,  # generated from the columns above and the reductions, which are logged
     :wsjrdp_email_updated_at,
     :zero_padded_id  # note: Also in WSJRDP_PUBLIC_ATTRS
   ].freeze
@@ -78,7 +80,9 @@ module Wsjrdp2027::Person
 
   WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP = {
     "Group::Extern::Member" => "Group::Extern::Member",
+    "Group::Ist::Leader" => "Group::Ist::Member",
     "Group::Ist::Member" => "Group::Ist::Member",
+    "Group::Root::Leader" => "Group::Root::Member",
     "Group::Root::Member" => "Group::Root::Member",
     "Group::Unit::Leader" => "Group::Unit::Leader",
     "Group::Unit::Member" => "Group::Unit::Member",
@@ -87,7 +91,9 @@ module Wsjrdp2027::Person
 
   WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
     "Group::Extern::Member" => "EXT",
+    "Group::Ist::Leader" => "IST",
     "Group::Ist::Member" => "IST",
+    "Group::Root::Leader" => "CMT",
     "Group::Root::Member" => "CMT",
     "Group::Unit::Leader" => "UL",
     "Group::Unit::Member" => "YP",
@@ -442,25 +448,42 @@ module Wsjrdp2027::Person
           .pick(Arel.sql("groups.additional_info ->> 'group_code'")) || wsjrdp_role
       end
 
+      # The payment role type of the roles in the primary group, nil when none
+      # of them carries a fee. Not memoized: the roles change, and the
+      # association cache is enough.
       def default_role_type_for_payment_role
-        @default_role_type_for_payment_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP).compact.first
+        roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP).compact.first
       end
 
       def default_wsj_role
-        @default_wsj_role ||= roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP).compact.first
+        roles.select { |r| r.group_id == primary_group_id }.map(&:type).map(&WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP).compact.first
       end
 
+      # The payment role as the roles say it today: "EarlyPayer::" or
+      # "RegularPayer::" before the payment role type. nil when the primary
+      # group holds no role with a fee (no role yet, the root account, an
+      # admin-only role) -- never half a value.
       def build_payment_role
-        prefix = early_payer ? "EarlyPayer" : "RegularPayer"
-        "#{prefix}::#{default_role_type_for_payment_role}"
+        role_type = default_role_type_for_payment_role
+        return if role_type.nil?
+
+        "#{early_payer ? "EarlyPayer" : "RegularPayer"}::#{role_type}"
       end
 
+      # Sets payment_role from the roles when it is missing, and with
+      # rebuild: true in any case (every save while it is fluid, see
+      # #payment_role_fluid?; the print). When the roles say nothing, the
+      # stored value stays: nothing better is known, and it may have been set
+      # by hand.
       def ensure_payment_role(rebuild: false)
         if rebuild || payment_role.nil?
-          if build_payment_role == payment_role
+          built = build_payment_role
+          if built.nil?
+            Rails.logger.debug { "keep payment_role=#{payment_role.inspect} (no role with a fee in the primary group)" }
+          elsif built == payment_role
             Rails.logger.debug { "keep payment_role=#{payment_role.inspect}" }
           else
-            self.payment_role = build_payment_role
+            self.payment_role = built
             Rails.logger.debug { "set payment_role=#{payment_role.inspect} (was #{payment_role_was.inspect})" }
           end
           if wsj_role.present?
@@ -474,6 +497,13 @@ module Wsjrdp2027::Person
           end
         end
         payment_role
+      end
+
+      # payment_role follows the roles until the contract is printed: every
+      # save rebuilds it (#maybe_update_payment_or_wsj_role), and so does
+      # every change of a role (Wsjrdp2027::Role). The print freezes it.
+      def payment_role_fluid?
+        status.nil? || status == "registered"
       end
 
       def effective_wsj_role
@@ -498,19 +528,19 @@ module Wsjrdp2027::Person
       end
 
       def cmt?
-        ensure_payment_role.ends_with?("Root::Member")
+        ensure_payment_role.to_s.ends_with?("Root::Member")
       end
 
       def ul?
-        ensure_payment_role.ends_with?("Unit::Leader")
+        ensure_payment_role.to_s.ends_with?("Unit::Leader")
       end
 
       def yp?
-        ensure_payment_role.ends_with?("Unit::Member")
+        ensure_payment_role.to_s.ends_with?("Unit::Member")
       end
 
       def ist?
-        ensure_payment_role.ends_with?("Ist::Member")
+        ensure_payment_role.to_s.ends_with?("Ist::Member")
       end
 
       def has_tag?(tag_name)
@@ -586,7 +616,7 @@ module Wsjrdp2027::Person
       end
 
       def single_payment_contract?
-        ensure_payment_role.start_with?("EarlyPayer")
+        ensure_payment_role.to_s.start_with?("EarlyPayer")
       end
 
       ##
@@ -1033,7 +1063,7 @@ module Wsjrdp2027::Person
 
       def maybe_update_payment_or_wsj_role
         # payment_role is fluid until we print.
-        if status.nil? || status == "registered"
+        if payment_role_fluid?
           Rails.logger.tagged("#{id || "???"} #{short_full_name} (before_save :maybe_update_payment_or_wsj_role)") do
             Rails.logger.debug { "status=#{status.inspect}" }
             ensure_payment_role(rebuild: true)

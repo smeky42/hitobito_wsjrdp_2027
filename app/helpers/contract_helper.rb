@@ -36,7 +36,7 @@ module ContractHelper
 
     def person_payment_role_full_name(person)
       role = person.build_payment_role
-      role_full_name(role.split("::", 2)[1])
+      role_full_name(role.split("::", 2)[1]) if role
     end
 
     def select_person_for_buddy_id(buddy_id)
