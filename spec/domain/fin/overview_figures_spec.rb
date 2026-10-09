@@ -104,12 +104,6 @@ describe Fin::OverviewFigures do
     transaction
   end
 
-  it "counts the accounts and dates the bank statements" do
-    expect(figures.accounts_count).to eq total(WsjrdpFinAccount, 2)
-    expect(figures.camt_transactions_count).to eq total(WsjrdpCamtTransaction, 2)
-    expect(figures.camt_last_value_date).to eq Date.new(2026, 5, 20)
-  end
-
   it "counts the contribution bookings and the unreconciled ones" do
     expect(figures.accounting_entries_count).to eq total(AccountingEntry, 2)
     expect(figures.accounting_entries_unlinked_count).to eq total(AccountingEntry, 1)
@@ -145,16 +139,14 @@ describe Fin::OverviewFigures do
 
   # A card's "Stand" line has to survive a table nobody has imported into yet.
   it "reports no date for a table without rows" do
-    WsjrdpCamtTransaction.delete_all
     DatevBooking.delete_all
 
-    expect(figures.camt_last_value_date).to be_nil
     expect(figures.datev_last_booking_date).to be_nil
   end
 
   it "asks the database once per figure, however often the page reads it" do
-    expect(WsjrdpFinAccount).to receive(:count).once.and_call_original
-    2.times { figures.accounts_count }
+    expect(WsjrdpCostCenter).to receive(:count).once.and_call_original
+    2.times { figures.cost_centers_count }
 
     expect(figures.moss).to be_a(Fin::MossOverview).and equal(figures.moss)
   end
@@ -163,7 +155,6 @@ describe Fin::OverviewFigures do
   # Controlling has no figures at all, so neither adds a method here.
   it "exposes exactly the figures the entry page needs" do
     expect(described_class.public_instance_methods(false).sort).to eq(%i[
-      accounts_count camt_transactions_count camt_last_value_date
       accounting_entries_count accounting_entries_unlinked_count
       moss moss_transactions_count moss_bookings_count moss_last_booking_date
       moss_clearing_unlinked_count moss_expense_unlinked_count

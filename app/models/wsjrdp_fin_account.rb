@@ -67,6 +67,16 @@ class WsjrdpFinAccount < ActiveRecord::Base
       .order(:id)
   }
 
+  # The accounts with a tab of their own under "Konten" (Sheet::Fin::Accounts),
+  # in display order: visibility `visible`, or `auto` while the account is
+  # active; `hidden` never. The same rule as the Sachkonten list
+  # (Fin::LedgerAccountsController#visible_ledger_accounts).
+  scope :tab_visible, -> {
+    display_order.where(deleted_at: nil)
+      .where("wsjrdp_fin_accounts.visibility = 'visible' OR " \
+             "(wsjrdp_fin_accounts.visibility = 'auto' AND wsjrdp_fin_accounts.status = 'active')")
+  }
+
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 

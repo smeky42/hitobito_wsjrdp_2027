@@ -83,20 +83,28 @@
         - if area.tabs.any?
           %ul.fin-area-links.list-unstyled
             - area.tabs.each do |label, path|
+              - accounts_heading = area.key == :accounts && path == fin_accounts_tab_path
               %li
-                = link_to label, path
-                = wsjrdp_newtab_link(path)
+                -# "Konten" is a plain sub-heading: the accounts below it are
+                -# the links (the card's title leads to the Übersicht).
+                - if accounts_heading
+                  = label
+                - else
+                  = link_to label, path
+                  = wsjrdp_newtab_link(path)
                 -# Under "Konten", the accounts themselves: one link each, with
                 -# the balance the Konten list shows (Fin::OverviewHelper).
-                - if area.key == :accounts && path == wsjrdp_fin_accounts_path
+                - if accounts_heading
                   %ul.fin-area-accounts.list-unstyled
                     - fin_accounts_with_balance.each do |account, balance_cents|
                       - account_path = url_for(account)
                       %li
                         %span.fin-area-account-name
                           = link_to fin_account_label(account), account_path
+                          - if account.servicer_short_name.present?
+                            %span.text-muted.small= account.servicer_short_name
                           = wsjrdp_newtab_link(account_path)
-                        %span.fin-area-account-balance= format_cents_de(balance_cents)
+                        %span.fin-area-account-balance= fin_aligned_cents_de(balance_cents)
         .fin-area-figures
           - if area.figures.any?
             - area.figures.each do |label, value, warn|

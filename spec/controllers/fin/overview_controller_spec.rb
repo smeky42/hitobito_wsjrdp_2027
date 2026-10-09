@@ -13,8 +13,9 @@ require "spec_helper"
 # and the tab quick links -- are derived from the Sheet::Fin::* sheets
 # (Fin::OverviewHelper#fin_areas), so a tab declared on a sheet appears here
 # without any change to the page; its numbers come from Fin::OverviewFigures.
-# Under the "Konten" quick link the accounts themselves are listed with their
-# balance, and every quick link carries the small new-tab companion icon.
+# Under the "Konten" heading (no link of its own) the accounts themselves are
+# listed with their balance, and every quick link carries the small new-tab
+# companion icon. The Konten & Wallets card shows the total balance.
 # All rows this spec builds carry invented values.
 describe Fin::OverviewController do
   render_views
@@ -62,7 +63,7 @@ describe Fin::OverviewController do
     cards.css("ul.fin-area-links > li > a").reject { |a| a["target"] == "_blank" }
   end
 
-  # The accounts under the "Konten" quick link, as [label, href, balance]
+  # The accounts under the "Konten" heading, as [label, href, balance]
   # triples in document order.
   def account_links
     card("accounts").css(".fin-area-accounts li").map do |li|
@@ -85,7 +86,6 @@ describe Fin::OverviewController do
     expect(response).to have_http_status(:ok)
     expect(links).to include(
       [I18n.t("fin.nav.accounts"), wsjrdp_fin_accounts_path],
-      [I18n.t("fin.tabs.accounts"), wsjrdp_fin_accounts_path],
       [I18n.t("fin.nav.fees"), fees_path],
       [I18n.t("fin.tabs.person_fees"), fin_person_fees_path],
       [I18n.t("fin.tabs.plans"), wsjrdp_payment_plans_path],
@@ -111,6 +111,7 @@ describe Fin::OverviewController do
     overview_label = I18n.t(Fin::OverviewHelper::OVERVIEW_TAB_KEY)
     expect(links.map(&:first)).not_to include(overview_label)
     # The area link itself is the overview tab's path -- exactly once per area.
+    expect(links.count { |_label, href| href == wsjrdp_fin_accounts_path }).to eq(1)
     expect(links.count { |_label, href| href == fees_path }).to eq(1)
     expect(links.count { |_label, href| href == bookkeeping_path }).to eq(1)
     expect(links.count { |_label, href| href == moss_path }).to eq(1)
@@ -123,10 +124,10 @@ describe Fin::OverviewController do
     overview = tabs.find { |tab| tab.label_key == Fin::OverviewHelper::OVERVIEW_TAB_KEY }
     expect(overview).to be_present
     expect(tabs.map(&:label_key)).to all(be_a(String))
-    # Konten & Wallets has no overview tab; its area link is its first tab,
-    # which therefore also stays among the quick links.
+    # Konten & Wallets has an Übersicht tab as well: it is the area link, not
+    # a quick link.
     expect(Sheet::Fin::Accounts.tabs.map(&:label_key))
-      .not_to include(Fin::OverviewHelper::OVERVIEW_TAB_KEY)
+      .to include(Fin::OverviewHelper::OVERVIEW_TAB_KEY)
   end
 
   it "shows one card per area, in the order of the left sub-navigation" do
@@ -213,6 +214,25 @@ describe Fin::OverviewController do
         .to all(eq("In neuem Tab öffnen"))
     end
 
+    # "Konten" is a plain heading over the accounts, not a link.
+    it "shows Konten as a heading without a link" do
+      get :index
+
+      heading = card("accounts").at_css("ul.fin-area-links > li")
+      expect(heading.text.strip).to start_with(I18n.t("fin.tabs.accounts"))
+      expect(heading.css("> a")).to be_empty
+    end
+
+    # The card's single figure is the total of the balances it lists.
+    it "shows the total balance of the listed accounts on the Konten & Wallets card" do
+      get :index
+
+      euros = ->(text) { BigDecimal(text.delete(". €").tr(",", ".").sub("—", "0")) }
+      total = account_links.sum { |_label, _href, balance| euros.call(balance) }
+      label, value, warn = figures("accounts").sole
+      expect([label, euros.call(value), warn]).to eq(["Gesamtsaldo", total, false])
+    end
+
     # The heading of a card stays a heading: no icon behind it.
     it "leaves the card headings without a new-tab icon" do
       get :index
@@ -225,14 +245,8 @@ describe Fin::OverviewController do
     # The cards count the WHOLE database, so every number is asserted relative
     # to what the tables already hold when the example starts.
     let!(:before_counts) do
-      {accounts: WsjrdpFinAccount.count, entries: AccountingEntry.count,
+      {entries: AccountingEntry.count,
        unlinked: AccountingEntry.where(datev_booking_id: nil).count}
-    end
-
-    let!(:account) do
-      WsjrdpFinAccount.create!(short_name: "Vereinskonto", account_identification: "KTO-FIN",
-        opening_balance_cents: 0, opening_balance_currency: "EUR",
-        opening_balance_date: Date.new(2026, 1, 1))
     end
 
     # A contribution booking without its DATEV booking: the open work both the
@@ -251,7 +265,6 @@ describe Fin::OverviewController do
     it "puts the counts of an area on its card" do
       get :index
 
-      expect(figures("accounts")).to include(["Konten", one_more(:accounts), false])
       expect(figures("fees")).to include(["Beitragsbuchungen", one_more(:entries), false])
       # Two levels of the same import, in one row -- both empty here, so the
       # Stand of the Moss card is an em dash.
@@ -281,11 +294,9 @@ describe Fin::OverviewController do
     # A card's "Stand" line has to survive a table nobody has imported into yet.
     it "writes an em dash where there is no date" do
       DatevBooking.delete_all
-      WsjrdpCamtTransaction.delete_all
 
       get :index
 
-      expect(figures("accounts")).to include(["Letzter Umsatz", "—", false])
       expect(figures("accounting")).to include(["Letzter Beleg", "—", false])
     end
 

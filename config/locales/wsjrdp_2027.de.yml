@@ -1065,9 +1065,7 @@ de:
     # The key figures on the /fin cards (Fin::OverviewHelper#fin_area_figures).
     overview:
       figures:
-        accounts: "Konten"
-        camt_transactions: "Kontoauszug-Umsätze"
-        camt_last_value_date: "Letzter Umsatz"
+        total_balance: "Gesamtsaldo"
         accounting_entries: "Beitragsbuchungen"
         accounting_entries_unlinked: "ohne DATEV-Buchung"
         moss_transactions_bookings: "Transaktionen · Buchungen"

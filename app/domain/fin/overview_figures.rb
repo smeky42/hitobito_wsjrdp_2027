@@ -8,34 +8,17 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 # Key figures of the Finanzen entry page (/fin): the two or three numbers and
-# the "Stand" date each area's card shows -- Konten & Wallets, Beiträge, Moss,
-# Buchhaltung and Abstimmung (Controlling has no figures). Read-only; every
-# figure is ONE aggregate query, memoized per instance (one instance per
-# request).
+# the "Stand" date each area's card shows -- Beiträge, Moss, Buchhaltung and
+# Abstimmung (Konten & Wallets shows its total balance, which
+# Fin::OverviewHelper computes with the account list; Controlling has no
+# figures). Read-only; every figure is ONE aggregate query, memoized per
+# instance (one instance per request).
 #
 # Every figure is a COUNT or a DATE, never a personal datum: the card says how
 # much an area holds and how fresh it is, and links on from there for the rest.
 # No formatting, no I18n and no HTML live here -- numbers and Dates go out, the
 # page decides how they look.
 class Fin::OverviewFigures
-  # --- Konten & Wallets ---
-
-  def accounts_count
-    @accounts_count ||= WsjrdpFinAccount.count
-  end
-
-  def camt_transactions_count
-    @camt_transactions_count ||= WsjrdpCamtTransaction.count
-  end
-
-  # Newest Valuta of any bank transaction: how far the imported statements
-  # reach. An empty table has no date, and that nil is memoized as well.
-  def camt_last_value_date
-    return @camt_last_value_date if defined?(@camt_last_value_date)
-
-    @camt_last_value_date = WsjrdpCamtTransaction.maximum(:value_date)
-  end
-
   # --- Beiträge ---
 
   def accounting_entries_count
