@@ -69,6 +69,40 @@ body {
   color: $gray-light;
 }
 
+// The ",—" of a whole-euro amount in a right-aligned money column
+// (Fin::AccountsOverviewHelper#fin_aligned_cents_de). A hidden "00" (::before,
+// not copied) gives the span the width of two digits in the surrounding font
+// and figures (2ch would measure the proportional "0"); the dash -- real text,
+// so it is copied -- is centred over it. inline-block makes the span exactly
+// one line high, so the dash sits on the shared baseline.
+.fin-zero-cents {
+  display: inline-block;
+  position: relative;
+
+  &::before {
+    content: "00";
+    visibility: hidden;
+  }
+
+  & > span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+  }
+}
+
+// The account tabs below "Konten" (Sheet::Fin::Accounts): one tab per account,
+// set smaller and tighter than the tab bar above them.
+.nav-sub.fin-account-tabs {
+  font-size: 0.8em;
+  & > li a {
+    padding: 6px 0;
+    margin-right: 20px;
+  }
+}
+
 #page-header>a {
   color: $wsj_purple;
 }

@@ -79,9 +79,9 @@ module Fin::OverviewHelper
     end
   end
 
-  # [[account, balance_cents], …] -- the finance accounts in the order of the
-  # account list (WsjrdpFinAccount.display_order), each with the balance that
-  # list shows.
+  # [[account, balance_cents], …] -- the accounts with a tab of their own
+  # (WsjrdpFinAccount.tab_visible, in display order), each with the balance the
+  # account list shows.
   #
   # The balances are TWO grouped sums, one per kind of statement row: a bank
   # account's rows are camt transactions, the wallet's are Moss bookings, and
@@ -92,11 +92,16 @@ module Fin::OverviewHelper
   # every booking of every account into Ruby. The account's own balance is kept
   # in integer cents, hence the conversion at this edge -- the same one the
   # model makes.
-  def fin_accounts_with_balance
+  #
+  # The account list (/fin/acc) passes ALL accounts; the card keeps the default,
+  # which is computed once per request (the card's list and its total share it).
+  def fin_accounts_with_balance(accounts = nil)
+    return @fin_tab_accounts_with_balance ||= fin_accounts_with_balance(fin_tab_accounts) if accounts.nil?
+
     camt_sums = WsjrdpCamtTransaction.group(:fin_account_id).sum(:signed_base_amount)
     moss_sums = MossBooking.joins(:moss_transaction)
       .group("moss_transactions.fin_account_id").sum(:signed_base_amount)
-    WsjrdpFinAccount.display_order.map do |account|
+    accounts.map do |account|
       sums = (account.transaction_type == MOSS_WALLET_TYPE) ? moss_sums : camt_sums
       [account, account.opening_balance_cents + (sums.fetch(account.id, 0) * 100).round]
     end
@@ -105,6 +110,19 @@ module Fin::OverviewHelper
   # The name an account goes by in the quick links: its short name, and the
   # full identification (WsjrdpFinAccount#to_s) only where none is set.
   def fin_account_label(account) = account.short_name.presence || account.to_s
+
+  # The accounts with a tab of their own under "Konten", once per request.
+  def fin_tab_accounts
+    @fin_tab_accounts ||= WsjrdpFinAccount.tab_visible.to_a
+  end
+
+  # Target of the "Konten" tab (Sheet::Fin::Accounts): the first account with a
+  # tab of its own, the Übersicht when there is none. The splat takes the
+  # sheet's path arguments, which this path does not need.
+  def fin_accounts_tab_path(*)
+    first = fin_tab_accounts.first
+    first ? wsjrdp_fin_account_path(first) : wsjrdp_fin_accounts_path
+  end
 
   private
 
@@ -127,11 +145,11 @@ module Fin::OverviewHelper
   end
 
   # How much the area holds and how far the imported statements reach.
+  # The total balance of the accounts the card lists -- the same figure as the
+  # Gesamtsaldo tile on /fin/acc, over the card's accounts.
   def fin_accounts_figures
-    figures = fin_overview_figures
-    [fin_figure(fin_figure_label(:accounts), fin_figure_count(figures.accounts_count)),
-      fin_figure(fin_figure_label(:camt_transactions), fin_figure_count(figures.camt_transactions_count)),
-      fin_figure(fin_figure_label(:camt_last_value_date), fin_figure_date(figures.camt_last_value_date))]
+    [fin_figure(fin_figure_label(:total_balance),
+      fin_aligned_cents_de(fin_total_balance_cents(fin_accounts_with_balance)))]
   end
 
   def fin_fees_figures

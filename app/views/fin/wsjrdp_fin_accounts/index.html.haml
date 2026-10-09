@@ -5,19 +5,96 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-:css
-  .thead-like {
-    background-color: var(--bs-body-bg) !important;
-    --bs-table-accent-bg: transparent !important;
-  }
+-# Übersicht of Konten & Wallets: the monthly movements of the open accounts as
+-# a chart, then every account (also closed and hidden ones) in display order
+-# (WsjrdpFinAccount.display_order) with the balance the /fin card shows
+-# (Fin::OverviewHelper#fin_accounts_with_balance). Closed accounts are muted.
+- rows = fin_accounts_with_balance(@wsjrdp_fin_accounts)
 
-#main.row
-  %h1 Konten
-  %div
-  - @wsjrdp_fin_accounts.each do |acc|
-    %p
-      %a{ href: url_for(acc) }
-        = acc.to_s
-      %br/
-      Aktuelles Saldo:
-      = format_cents_de(acc.closing_balance_cents)
+:css
+  .fin-acc-tile { min-width: 13rem; font-variant-numeric: tabular-nums; }
+  .fin-accounts-table .fin-money { font-variant-numeric: tabular-nums; }
+  /* Bold figures are wider than regular ones and would not line up with the
+     rows above: the total keeps the regular weight (same advance widths) and
+     looks bold through a thin stroke instead. */
+  .fin-accounts-table tfoot .fin-money { font-weight: 400; -webkit-text-stroke: .8px currentColor; }
+
+#main
+  -# No heading of its own: the sheet already titles the page "Konten & Wallets".
+  -# The total balance of the open accounts -- the same figure as the
+  -# Gesamtsaldo of the /fin card (Fin::AccountsOverviewHelper).
+  .d-inline-block.border.rounded.p-3.mb-4.fin-acc-tile{title: "Summe der Salden aller nicht geschlossenen Konten"}
+    .fs-3.fw-semibold= fin_aligned_cents_de(fin_total_balance_cents(rows))
+    .text-muted.small Gesamtsaldo
+
+  -# Monthly in/out/net of the open accounts as columns, the month-end balance
+  -# as a line on its own axis (Fin::AccountsOverviewHelper), drawn by Chartkick
+  -# (wagon asset, as on the group statistics page). The data travels as JSON in
+  -# a data attribute; the nonced block below draws it.
+  - movements = fin_monthly_movements(rows)
+  - if movements.any?
+    %h2.h5 Gesamtsaldo und Bewegungen pro Monat
+    #fin-acc-movements-chart.mb-4{style: "height: 300px", data: {series: movements.to_json}}
+    = javascript_include_tag "hitobito_wsjrdp_2027/application"
+    :javascript
+      (function () {
+        var el = document.getElementById("fin-acc-movements-chart");
+        if (!el || !window.Chartkick) return;
+        var euro = function (value) {
+          return Number(value).toLocaleString("de-DE", {maximumFractionDigits: 0}) + " €";
+        };
+        var series = JSON.parse(el.dataset.series);
+        // One range for BOTH axes -- the columns' left one and the balance
+        // line's right one -- so they read the same and share the zero line:
+        // the extremes of all series (and 0), widened to a round step.
+        var values = [0];
+        series.forEach(function (s) { values = values.concat(Object.values(s.data)); });
+        var span = Math.max.apply(null, values) - Math.min.apply(null, values);
+        var step = Math.pow(10, Math.floor(Math.log10(span || 1)));
+        if (span / step < 4) step = step / 2;
+        var min = Math.floor(Math.min.apply(null, values) / step) * step;
+        var max = Math.ceil(Math.max.apply(null, values) / step) * step;
+        new Chartkick.ColumnChart(el, series, {
+          colors: ["#198754", "#dc3545", "#21697c", "#8a5a00"],
+          thousands: ".", decimal: ",", round: 0, suffix: " €",
+          min: min, max: max,
+          library: {
+            scales: {
+              y: {min: min, max: max},
+              y1: {position: "right", min: min, max: max, grid: {drawOnChartArea: false},
+                   ticks: {callback: euro}}
+            }
+          }
+        });
+      })();
+
+  .table-responsive
+    %table.table.table-hover.fin-accounts-table
+      %thead
+        %tr
+          %th Konto
+          %th Institut
+          %th Kontoart
+          %th IBAN / Kennung
+          %th Sachkonto
+          %th.text-end.fin-money Saldo
+      %tbody
+        - rows.each do |acc, balance_cents|
+          %tr{class: ("text-muted" if acc.status == "closed")}
+            %td
+              = link_to fin_account_label(acc), url_for(acc)
+              - if acc.status == "closed"
+                %span.badge.text-bg-secondary.ms-1 geschlossen
+            %td= acc.servicer_short_name
+            %td= acc.account_product_label
+            %td.text-nowrap= acc.iban.presence || acc.account_identification
+            %td
+              = acc.bookkeeping_account_number
+              - ledger_name = acc.bookkeeping_account&.short_name.presence || acc.bookkeeping_account&.name
+              - if ledger_name.present?
+                %span.text-muted.fw-light= ledger_name
+            %td.text-end.text-nowrap.fin-money= fin_aligned_cents_de(balance_cents)
+      %tfoot
+        %tr.fw-semibold
+          %td{colspan: 5} Summe
+          %td.text-end.text-nowrap.fin-money= fin_aligned_cents_de(rows.sum { |_acc, balance_cents| balance_cents })
