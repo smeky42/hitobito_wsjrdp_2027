@@ -80,7 +80,8 @@ module Fin::OverviewHelper
   end
 
   # [[account, balance_cents], …] -- the finance accounts in the order of the
-  # Konten list (WsjrdpFinAccount.all), each with the balance that list shows.
+  # account list (WsjrdpFinAccount.display_order), each with the balance that
+  # list shows.
   #
   # The balances are TWO grouped sums, one per kind of statement row: a bank
   # account's rows are camt transactions, the wallet's are Moss bookings, and
@@ -95,7 +96,7 @@ module Fin::OverviewHelper
     camt_sums = WsjrdpCamtTransaction.group(:fin_account_id).sum(:signed_base_amount)
     moss_sums = MossBooking.joins(:moss_transaction)
       .group("moss_transactions.fin_account_id").sum(:signed_base_amount)
-    WsjrdpFinAccount.all.map do |account|
+    WsjrdpFinAccount.display_order.map do |account|
       sums = (account.transaction_type == MOSS_WALLET_TYPE) ? moss_sums : camt_sums
       [account, account.opening_balance_cents + (sums.fetch(account.id, 0) * 100).round]
     end

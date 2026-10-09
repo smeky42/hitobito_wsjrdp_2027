@@ -40,6 +40,12 @@ module WsjrdpFormHelper
     type = column_type(obj, attr.to_sym) if type.nil?
     if type == "Person"
       form.person_field(attr, **opts)
+    elsif type == :i18n_enum
+      # Opt-in via `<attr>_input_field_options` returning
+      # {input_field_type: :i18n_enum}: a select over the i18n_enum's labels,
+      # in the order of the locale entries.
+      labels = obj.class.public_send(:"#{attr}_labels").map { |value, label| [value.to_s, label] }
+      form.i18n_enum_field(attr, labels, opts)
     elsif wsjrdp_association_kind?(attr, type, obj, :has_one)
       form.belongs_to_field(attr, **opts)
     else
