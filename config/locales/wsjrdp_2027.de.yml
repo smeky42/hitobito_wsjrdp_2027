@@ -213,6 +213,10 @@ de:
         wsjrdp_extra_total_fee_reduction: Zusätzliche Reduktion Beitrag
         wsjrdp_total_fee: Beitrag
         wsjrdp_total_fee_override: Beitrag (überschrieben)
+        contract_status: Vertrag
+        contract_confirmed_at: Vertrag bestätigt am
+        contract_ended_at: Vertrag beendet am
+        contract_confirmed_by: Vertrag bestätigt von
         wsjrdp_total_fee_reduction: Reduktion Beitrag
         wsjrdp_total_fee_reduction_issue: Vorgang Reduktion Beitrag
         wsjrdp_total_fee_reduction_hint: Kurzhinweis Reduktion Beitrag
