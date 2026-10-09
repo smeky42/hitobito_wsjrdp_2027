@@ -606,8 +606,19 @@ de:
         owner_name: Kontoinhaber Name
         owner_address: Kontoinhaber Adresse
         servicer_name: Bank Name
+        servicer_short_name: Institut (kurz)
         servicer_bic: Bank BIC
         servicer_address: Bank Adresse
+        account_product: Kontoart
+        account_products:
+          giro: Girokonto
+          overnight: Tagesgeld
+          notice: Kündigungsgeld
+          fixed_term: Festgeld
+          wallet: Wallet
+          cash: Kasse
+          unknown: Unbekannt
+        position: Reihenfolge
         # metadata
         created_at: Erstellt
         updated_at: Geändert

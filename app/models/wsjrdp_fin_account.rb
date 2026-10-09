@@ -8,6 +8,7 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 class WsjrdpFinAccount < ActiveRecord::Base
+  include I18nEnums
   include WsjrdpNumberHelper
 
   has_many :camt_transactions,
@@ -38,6 +39,33 @@ class WsjrdpFinAccount < ActiveRecord::Base
     primary_key: :number,
     foreign_key: :bookkeeping_account_number,
     optional: true
+
+  # The account product, one level only. The order of the list is also the
+  # rank used by .display_order for accounts without a manual position. The
+  # labels live in the locale (activerecord.attributes.wsjrdp_fin_account.
+  # account_products).
+  ACCOUNT_PRODUCTS = %w[giro overnight notice fixed_term wallet cash unknown].freeze
+
+  i18n_enum :account_product, ACCOUNT_PRODUCTS
+
+  def account_product_input_field_options = {input_field_type: :i18n_enum}
+
+  validates :position, numericality: {only_integer: true}, allow_nil: true
+
+  # The order of the accounts wherever they are listed (Konten list, overview
+  # card): closed accounts last, then the manual position (accounts without
+  # one after those with one), then the account product in the order of
+  # ACCOUNT_PRODUCTS, then the bookkeeping account number, then the id.
+  scope :display_order, -> {
+    product_rank = Arel.sql(sanitize_sql_array([
+      "array_position(ARRAY[?]::varchar[], wsjrdp_fin_accounts.account_product)", ACCOUNT_PRODUCTS
+    ]))
+    order(Arel.sql("(wsjrdp_fin_accounts.status = 'closed') ASC"))
+      .order(Arel.sql("wsjrdp_fin_accounts.position ASC NULLS LAST"))
+      .order(product_rank)
+      .order(Arel.sql("wsjrdp_fin_accounts.bookkeeping_account_number ASC NULLS LAST"))
+      .order(:id)
+  }
 
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents

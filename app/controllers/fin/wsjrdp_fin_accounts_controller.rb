@@ -64,7 +64,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
 
   def index
     authorize!(:show, WsjrdpFinAccount)
-    @wsjrdp_fin_accounts = WsjrdpFinAccount.all
+    @wsjrdp_fin_accounts = WsjrdpFinAccount.display_order
   end
 
   def show
@@ -187,10 +187,12 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
         :opening_balance_currency, :opening_balance_date,
         :iban,
         :owner_name, :owner_address,
-        :servicer_name, :servicer_bic, :servicer_address,
+        :servicer_name, :servicer_short_name, :servicer_bic, :servicer_address,
+        :account_product,
         :status,
         :bookkeeping_account_number, :bookkeeping_account_type,
-        :visibility
+        :visibility,
+        :position
       ]
     elsif can?(:update, fin_account)
       [:short_name, :description]
