@@ -31,14 +31,6 @@ module Wsjrdp2027::PeopleController
     :upload_passport_pdf,
     :upload_recommendation_pdf,
     :upload_medical_pdf,
-    :sepa_name,
-    :sepa_address,
-    :sepa_mail,
-    :sepa_iban,
-    :sepa_bic,
-    :sepa_status,
-    :early_payer,
-    :status,
     :foto_permission,
     :pronoun,
     :passport_germany,
@@ -49,13 +41,28 @@ module Wsjrdp2027::PeopleController
     :uniform_size,
     :can_swim,
     :diet,
-    :medical_eating_disorders,
-    :wsj_role
+    :medical_eating_disorders
   ]
+
+  # The payment choice and the account, which the form offers only while the
+  # person is registered (contactable/_finance_fields); afterwards they are
+  # part of the contract and only finance changes them. status, sepa_status
+  # and wsj_role are not taken here at all: the status page
+  # (Person::StatusController) and the finance actions change them, with
+  # their own permissions.
+  WSJRDP_REGISTERED_PERMITTED_ATTRS = [
+    :early_payer,
+    :sepa_name,
+    :sepa_address,
+    :sepa_mail,
+    :sepa_iban,
+    :sepa_bic
+  ].freeze
 
   def permitted_attrs
     attrs = super.dup
     attrs += WSJRDP_ALWAYS_PERMITTED_ATTRS
+    attrs += WSJRDP_REGISTERED_PERMITTED_ATTRS if entry.status == "registered" || can?(:update_finance, entry)
     attrs += [:sepa_mandate_id] if can?(:update_finance, entry)
     attrs += [:wsjrdp_email] if can?(:update_wsjrdp_email, entry)
     attrs += [:moss_email] if can?(:update_moss_email, entry)

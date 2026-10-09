@@ -8,6 +8,7 @@ class Person::StatusController < ApplicationController
   respond_to :html
 
   helper_method :wsj_role_options
+  helper_method :contract_question
   helper_method :permitted_attrs
 
   self.permitted_attrs = [
@@ -39,9 +40,20 @@ class Person::StatusController < ApplicationController
     render "edit"
   end
 
+  # A change of status that starts or ends the contract (Person#track_contract)
+  # is saved only once asked and confirmed: the form comes back with the
+  # question (contract_question) and its values, and saves with
+  # confirm_contract=1. The question is decided here, on the stored contract,
+  # not in the browser.
   def update
     authorize!(:log, person)
     person.attributes = params.require(:person).permit(permitted_attrs)
+    if contract_question && params[:confirm_contract] != "1"
+      render "edit", status: 422
+      return
+    end
+
+    person.contract_confirmed_by = current_user if contract_question.in?(%i[confirm confirm_again])
     person.save
     respond_with person, location: status_group_person_path
   end
@@ -72,6 +84,23 @@ class Person::StatusController < ApplicationController
 
   def group
     @group ||= Group.find(params[:group_id])
+  end
+
+  # What the status change about to be saved does to the contract: :confirm
+  # (the first contract), :confirm_again (a new contract after the end) or
+  # :end (the contract in force ends); nil when it leaves it as it is.
+  def contract_question
+    return unless person.status_changed?
+
+    case person.status
+    when "confirmed"
+      case person.contract_status
+      when "none" then :confirm
+      when "ended" then :confirm_again
+      end
+    when "deregistered"
+      :end if person.contract_status == "confirmed"
+    end
   end
 
   def wsj_role_options

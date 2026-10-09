@@ -1,6 +1,8 @@
 #main.row
   = standard_form @person, url: status_group_person_path,  method: :put, html: { class: 'form-striped' } do |f|
     = f.error_messages
+    - if (question = contract_question)
+      = render "person/status/contract_question", person: @person, question: question
     = form_buttons(f, cancel_url: status_group_person_path)
 
     .mt-3

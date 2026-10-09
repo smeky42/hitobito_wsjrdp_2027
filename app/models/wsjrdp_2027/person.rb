@@ -97,6 +97,11 @@ module Wsjrdp2027::Person
     wsjrdp_regular_full_fee_override wsjrdp_extra_total_fee_reduction wsjrdp_total_fee_override
   ].freeze
 
+  # The participation contract (contract_status): none until the first
+  # confirmation, confirmed while in force, ended by a deregistration after
+  # one. Apart from status, which follows the documents and may step back.
+  CONTRACT_STATUSES = %w[none confirmed ended].freeze
+
   WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
     "Group::Extern::Member" => "EXT",
     "Group::Ist::Leader" => "IST",
@@ -167,11 +172,17 @@ module Wsjrdp2027::Person
       # Deleting the person deletes them softly instead
       # (#soft_delete_wsjrdp_documents).
       has_many :wsjrdp_documents, as: :subject, inverse_of: :subject # rubocop:disable Rails/HasManyOrHasOneDependent
+
+      # Who confirmed the contract in force: a Person (the script's
+      # Administrator included) or a ServiceToken.
+      belongs_to :contract_confirmed_by, polymorphic: true, optional: true
+      validates :contract_status, inclusion: {in: CONTRACT_STATUSES}
       before_destroy :soft_delete_wsjrdp_documents
 
       before_save :maybe_update_payment_or_wsj_role
       before_save :geocode_full_address, if: :address_changed?
       before_save :tag_good_conduct_missing, if: :status_changed?
+      before_save :track_contract, if: :status_changed?
       after_save :_save_planned_fee_rule, if: :planned_fee_rule_changed?
       after_save :refresh_fee_columns, if: -> { saved_changes.keys.intersect?(WSJRDP_FEE_INPUT_ATTRS) }
 
@@ -1075,6 +1086,30 @@ module Wsjrdp2027::Person
 
         unless buddy.yp?
           errors.add(:buddy_id_yp, :buddy_no_yp)
+        end
+      end
+
+      # The contract follows status: a change to confirmed starts a contract
+      # unless one is in force (a re-confirmation after a step back keeps
+      # the first date), a change to deregistered ends the contract in force.
+      # Every other change -- back to upload, deregistration_noted -- leaves
+      # it as it is. Who confirmed is set by the caller with the status
+      # (Person::StatusController: current_user); without one, nobody -- not
+      # the one who confirmed an earlier contract.
+      def track_contract
+        case status
+        when "confirmed"
+          return if contract_status == "confirmed"
+
+          self.contract_status = "confirmed"
+          self.contract_confirmed_at = Time.current
+          self.contract_ended_at = nil
+          self.contract_confirmed_by = nil unless contract_confirmed_by_type_changed? || contract_confirmed_by_id_changed?
+        when "deregistered"
+          return unless contract_status == "confirmed"
+
+          self.contract_status = "ended"
+          self.contract_ended_at = Time.current
         end
       end
 

@@ -1,0 +1,49 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The question before a status change that starts or ends the contract
+-# (Person::StatusController#contract_question), over the form it belongs to:
+-# shown open, without JavaScript. "Ja" submits the form again with
+-# confirm_contract=1; "Abbrechen" leaves without saving.
+-#
+-# question: :confirm, :confirm_again or :end
+- status_label = Settings.status[person.status]
+- since = person.contract_confirmed_at && l(person.contract_confirmed_at, format: "%d.%m.%Y")
+- ended = person.contract_ended_at && l(person.contract_ended_at, format: "%d.%m.%Y")
+.modal.d-block#contract-question{tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-labelledby": "contract-question-title"}
+  .modal-dialog.modal-dialog-centered
+    .modal-content
+      .modal-header
+        %h5.modal-title#contract-question-title
+          - case question
+          - when :end
+            Vertrag beenden?
+          - when :confirm_again
+            Neuen Vertrag bestätigen?
+          - else
+            Vertrag bestätigen?
+      .modal-body
+        - case question
+        - when :end
+          %p
+            Der Vertrag von #{person} ist seit #{since} bestätigt.
+            Mit dem Status „#{status_label}“ wird er ab jetzt als beendet geführt.
+        - when :confirm_again
+          %p
+            Der Vertrag von #{person} (bestätigt am #{since}) wurde am #{ended} beendet.
+            Mit dem Status „#{status_label}“ beginnt ein neuer Vertrag ab jetzt;
+            das frühere Bestätigungsdatum wird ersetzt.
+        - else
+          %p
+            Mit dem Status „#{status_label}“ wird der Vertrag von #{person}
+            ab jetzt als bestätigt geführt, bestätigt von #{current_user}.
+        %p.mb-0 Die übrigen Änderungen im Formular werden mitgespeichert.
+      .modal-footer
+        = link_to "Abbrechen", status_group_person_path, class: "btn btn-outline-secondary"
+        = button_tag (question == :end) ? "Ja, Vertrag beenden" : "Ja, Vertrag bestätigen",
+          type: "submit", name: "confirm_contract", value: "1", class: "btn btn-primary"
+.modal-backdrop.show
