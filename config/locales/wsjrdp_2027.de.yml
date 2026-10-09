@@ -189,6 +189,96 @@ de:
         medical_situational_support: Unterstützung in belastenden Situationen
         medical_person_of_trust: Vertrauensperson
         medical_other: Weitere Informationen
+        known_as_name: Rufname / Namensschild
+        mothers_first_name: Vorname der Mutter
+        fathers_first_name: Vorname des Vaters
+        mothers_surname_at_birth: Geburtsname der Mutter
+        place_of_birth: Geburtsort
+        country_of_birth: Geburtsland
+        nationality: Staatsangehörigkeit
+        english_reading: Englisch lesen
+        english_writing: Englisch schreiben
+        english_speaking: Englisch sprechen
+        english_listening: Englisch hören
+        french_reading: Französisch lesen
+        french_writing: Französisch schreiben
+        french_speaking: Französisch sprechen
+        french_listening: Französisch hören
+        spanish_reading: Spanisch lesen
+        spanish_writing: Spanisch schreiben
+        spanish_speaking: Spanisch sprechen
+        spanish_listening: Spanisch hören
+        arabic_reading: Arabisch lesen
+        arabic_writing: Arabisch schreiben
+        arabic_speaking: Arabisch sprechen
+        arabic_listening: Arabisch hören
+        travel_document_type: Art des Reisedokuments
+        travel_document_number: Ausweisnummer / Reisedokumentnummer
+        travel_document_issue_date: Ausstellungsdatum
+        travel_document_expiration_date: Ablaufdatum
+        travel_document_country: Ausstellungsland
+        visa_needed: Visum benötigt
+        visa_information: Visainformationen
+        comfortable_on_water: Ich fühle mich bei Aktivitäten auf dem Wasser wohl
+        comfortable_in_water: Ich fühle mich beim Schwimmen wohl
+        comfortable_without_balance: Ich fühle mich bei Gleichgewichtsübungen wohl
+        comfortable_in_crowd: Ich fühle mich in Menschenmengen wohl
+        comfortable_flashing_lights: Ich fühle mich bei blinkenden Lichtern wohl
+        comfortable_loud_noise: Ich fühle mich bei lauten Geräuschen wohl
+        comfortable_confined_space: Ich fühle mich in engen Räumen wohl
+        prior_wsj_experience: Frühere Jamboree-Erfahrung
+        vehicle_registration_number: Fahrzeugkennzeichen
+        dietary_requirements: Ernährungsform
+        dietary_details: Details zur Ernährung
+        allergy_milk: Milch
+        allergy_casein: Kasein
+        allergy_egg: Ei
+        allergy_peanut: Erdnuss
+        allergy_tree_nuts: Schalenfrüchte
+        allergy_gluten: Gluten
+        allergy_soy: Soja
+        allergy_lupin: Lupine
+        allergy_mustard: Senf
+        allergy_crustaceans: Krebstiere
+        allergy_sesame: Sesam
+        allergy_molluscs: Weichtiere
+        allergy_sulfite: Sulfit
+        allergy_fruit: Obst
+        allergy_allium: Lauch / Alliaceae
+        allergy_fish: Fisch
+        allergy_seafood: Meeresfrüchte
+        allergy_milk_severity: Schwere der Milchallergie
+        allergy_casein_severity: Schwere der Kaseinallergie
+        allergy_egg_severity: Schwere der Eierallergie
+        allergy_peanut_severity: Schwere der Erdnussallergie
+        allergy_tree_nuts_severity: Schwere der Schalenfruchtallergie
+        allergy_gluten_severity: Schwere der Glutenallergie
+        allergy_soy_severity: Schwere der Sojaallergie
+        allergy_lupin_severity: Schwere der Lupinenallergie
+        allergy_mustard_severity: Schwere der Senfallergie
+        allergy_crustaceans_severity: Schwere der Krebstierallergie
+        allergy_sesame_severity: Schwere der Sesamallergie
+        allergy_molluscs_severity: Schwere der Weichtierallergie
+        allergy_sulfite_severity: Schwere der Sulfitallergie
+        allergy_fruit_severity: Schwere der Obstallergie
+        allergy_allium_severity: Schwere der Lauch-/Alliaceae-Allergie
+        allergy_fish_severity: Schwere der Fischallergie
+        allergy_seafood_severity: Schwere der Meeresfrüchteallergie
+        refrigerated_medication_needed: Medikamentenkühlung benötigt
+        religious_health_beliefs: Religiöse oder gesundheitliche Besonderheiten
+        medical_equipment_needs: Medizinische Ausrüstung / Strombedarf
+        medical_equipment_details: Details zur medizinischen Ausrüstung
+        mobility_restricted: Mobilität eingeschränkt
+        uses_wheelchair: Rollstuhl wird genutzt
+        wheelchair_type: Rollstuhltyp
+        uses_mobility_frame: Gehhilfe / Mobilitätsrahmen wird genutzt
+        other_mobility_needs: Andere Mobilitätsbedarfe vorhanden
+        other_mobility_details: Details zu anderen Mobilitätsbedarfen
+        sensory_sensitivities: Sensorische Empfindlichkeiten vorhanden
+        non_visible_disability: Nicht sichtbare Behinderung vorhanden
+        non_visible_disability_details: Details zur nicht sichtbaren Behinderung
+        gdpr_agreement: Datenschutzbestimmungen des Jamboree-Veranstalters akzeptiert
+        jamboree_data_confirmed: Angaben sind vollständig und wahrheitsgetreu
         contract_upload_at: Vertrag hochgeladen am
         print_at: Anmeldung gedruckt am
         complete_document_upload_at: Alle dokumente vollständig hochgeladen am
@@ -646,6 +736,7 @@ de:
       accounting: Finanzen
       finance: Finanzen
       info: Persönliche Informationen
+      jamboree_data: WSJ 2027 Zusatzdaten
       upload: Dokumente hochladen
       print: Dokumente drucken
       medical: Medizin
@@ -659,6 +750,17 @@ de:
       additional_contact_yp: Personensorgeberechtigte*r
       additional_info: Weitere Informationen
       finance: SEPA
+      jamboree_data: WSJ 2027 Zusatzdaten
+    jamboree_data:
+      personal: Persönliche Zusatzangaben & Namensschild
+      languages: Sprachkenntnisse
+      travel: Reisedokumente & Visa
+      activities: Aktivitäten & Komfort
+      diet: Ernährung & Allergien
+      health: Gesundheit, Mobilität & Besondere Bedarfe
+      legal: Rechtliche Bestätigung & Vollständigkeit
+      gdpr_agreement: Ja, ich habe die Datenschutzbestimmungen des Jamboree-Veranstalters gelesen und stimme diesen zu. <a href="https://www.jamboree2027.org/wp-content/uploads/2026/05/DP-Information-Notice-01-EN.pdf" target="_blank" rel="noopener noreferrer">Datenschutzinformationen als PDF</a>
+      confirmed: Ich versichere hiermit, alle obenstehenden Angaben nach bestem Wissen und Gewissen vollständig und wahrheitsgetreu gemacht zu haben.
     status: Anmeldestatus
     status_log_display: Anmeldestatus
     status_help:

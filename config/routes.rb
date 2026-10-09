@@ -60,6 +60,10 @@ Rails.application.routes.draw do
           get "medical/edit" => "person/medical#edit"
           put "medical" => "person/medical#update"
 
+          get "jamboree_data" => "person/jamboree_data#show"
+          get "jamboree_data/edit" => "person/jamboree_data#edit"
+          put "jamboree_data" => "person/jamboree_data#update"
+
           get "status" => "person/status#show"
           get "status/edit" => "person/status#edit"
           put "status" => "person/status#update"

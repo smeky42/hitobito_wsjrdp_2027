@@ -68,6 +68,168 @@ module Wsjrdp2027::Person
     :company
   ]
 
+  JAMBOREE_LANGUAGES = %i[english french spanish arabic].freeze
+  JAMBOREE_LANGUAGE_SKILLS = %i[reading writing speaking listening].freeze
+  JAMBOREE_LANGUAGE_LEVEL_OPTIONS = [
+    ["Keine Kenntnisse", "none"],
+    ["Grundkenntnisse", "basic"],
+    ["Konversationssicher", "conversational"],
+    ["Fließend", "proficient"],
+    ["Verhandlungssicher", "fluent"],
+    ["Muttersprache", "native"]
+  ].freeze
+  JAMBOREE_LANGUAGE_EXPORT_MAP = {
+    reading: {
+      "none" => "Not reading",
+      "basic" => "Basic",
+      "conversational" => "Conversational",
+      "proficient" => "Proficient",
+      "fluent" => "Fluent",
+      "native" => "Native"
+    },
+    writing: {
+      "none" => "Not writing",
+      "basic" => "Basic",
+      "conversational" => "Conversational",
+      "proficient" => "Proficient",
+      "fluent" => "Fluent",
+      "native" => "Native"
+    },
+    speaking: {
+      "none" => "Not speaking",
+      "basic" => "Basic",
+      "conversational" => "Conversational",
+      "proficient" => "Proficient",
+      "fluent" => "Fluent",
+      "native" => "Native"
+    },
+    listening: {
+      "none" => "Not listening",
+      "basic" => "Basic",
+      "conversational" => "Conversational",
+      "proficient" => "Proficient",
+      "fluent" => "Fluent",
+      "native" => "Native"
+    }
+  }.freeze
+  JAMBOREE_TRAVEL_DOCUMENT_TYPE_OPTIONS = [
+    ["Reisepass", "ordinary_passport"],
+    ["Diplomatenpass", "diplomatic_passport"],
+    ["Dienstpass", "service_passport"],
+    ["Amtlicher Pass", "official_passport"],
+    ["Sonderpass", "special_passport"],
+    ["Anderes Reisedokument", "other_travel_document"]
+  ].freeze
+  JAMBOREE_VISA_NEEDED_OPTIONS = [
+    ["Nein", "no"],
+    ["Ja, habe bereits eines", "yes_have_one"],
+    ["Ja, brauche Unterstützung/Beantragung", "yes_need_support"]
+  ].freeze
+  JAMBOREE_ALLERGIES = {
+    milk: "Milch",
+    casein: "Kasein",
+    egg: "Ei",
+    peanut: "Erdnuss",
+    tree_nuts: "Schalenfrüchte",
+    gluten: "Gluten",
+    soy: "Soja",
+    lupin: "Lupine",
+    mustard: "Senf",
+    crustaceans: "Krebstiere",
+    sesame: "Sesam",
+    molluscs: "Weichtiere",
+    sulfite: "Sulfit",
+    fruit: "Obst",
+    allium: "Lauch/Alliaceae",
+    fish: "Fisch",
+    seafood: "Meeresfrüchte"
+  }.freeze
+  JAMBOREE_ALLERGY_SEVERITY_OPTIONS = [
+    ["Schwere anaphylaktische Reaktion (lebensbedrohlich)", "severe"],
+    ["Mittlere Reaktion (ärztliche Hilfe erforderlich)", "medium"],
+    ["Milde Reaktion (selbst behandelbar)", "mild"]
+  ].freeze
+  JAMBOREE_MEDICAL_EQUIPMENT_OPTIONS = [
+    ["Akkuladestation", "battery_charging_station"],
+    ["Dauerstromversorgung", "continuous_power_supply"],
+    ["Kühlung für Medikamente", "medication_cooling"],
+    ["Sonstiges", "other"]
+  ].freeze
+  JAMBOREE_WHEELCHAIR_TYPE_OPTIONS = [
+    ["Manuell", "manual"],
+    ["Elektrisch", "electric"]
+  ].freeze
+
+  JAMBOREE_TEXT_ATTRS = %i[
+    known_as_name
+    mothers_first_name
+    fathers_first_name
+    mothers_surname_at_birth
+    place_of_birth
+    country_of_birth
+    nationality
+    travel_document_number
+    travel_document_country
+    visa_information
+    prior_wsj_experience
+    vehicle_registration_number
+    dietary_requirements
+    dietary_details
+    religious_health_beliefs
+    medical_equipment_details
+    other_mobility_details
+    non_visible_disability_details
+  ].freeze
+
+  JAMBOREE_SELECT_ATTRS = (
+    JAMBOREE_LANGUAGES.flat_map { |language| JAMBOREE_LANGUAGE_SKILLS.map { |skill| %I[#{language}_#{skill}].first } } +
+    %i[
+      travel_document_type
+      visa_needed
+      wheelchair_type
+    ] +
+    JAMBOREE_ALLERGIES.keys.map { |allergy| %I[allergy_#{allergy}_severity].first }
+  ).freeze
+
+  JAMBOREE_DATE_ATTRS = %i[
+    travel_document_issue_date
+    travel_document_expiration_date
+  ].freeze
+
+  JAMBOREE_BOOLEAN_ATTRS = (
+    %i[
+      comfortable_on_water
+      comfortable_in_water
+      comfortable_without_balance
+      comfortable_in_crowd
+      comfortable_flashing_lights
+      comfortable_loud_noise
+      comfortable_confined_space
+      refrigerated_medication_needed
+      mobility_restricted
+      uses_wheelchair
+      uses_mobility_frame
+      other_mobility_needs
+      sensory_sensitivities
+      non_visible_disability
+      gdpr_agreement
+    ] +
+    JAMBOREE_ALLERGIES.keys.map { |allergy| %I[allergy_#{allergy}].first }
+  ).freeze
+
+  JAMBOREE_ARRAY_ATTRS = %i[
+    medical_equipment_needs
+  ].freeze
+
+  JAMBOREE_ATTRS = (
+    JAMBOREE_TEXT_ATTRS +
+    JAMBOREE_SELECT_ATTRS +
+    JAMBOREE_DATE_ATTRS +
+    JAMBOREE_BOOLEAN_ATTRS +
+    JAMBOREE_ARRAY_ATTRS +
+    %i[jamboree_data_confirmed]
+  ).freeze
+
   WSJRDP_SEARCHABLE_ATTRS = [
     :id,
     :additional_contact_name_a, :additional_contact_adress_a, :additional_contact_email_a, :additional_contact_phone_a,
@@ -102,15 +264,17 @@ module Wsjrdp2027::Person
     Person::PUBLIC_ATTRS.concat(WSJRDP_PUBLIC_ATTRS)
     Person::INTERNAL_ATTRS.concat(WSJRDP_INTERNAL_ATTRS)
     Person::INTERNAL_ATTRS.concat(WSJRDP_INTERNAL_ATTRS_WITH_PAPER_TRAIL)
+    Person::INTERNAL_ATTRS.concat(JAMBOREE_ATTRS)
     Person.used_attributes.concat(WSJRDP_PUBLIC_ATTRS)
     Person.used_attributes.concat(WSJRDP_INTERNAL_ATTRS)
     Person.used_attributes.concat(WSJRDP_INTERNAL_ATTRS_WITH_PAPER_TRAIL)
+    Person.used_attributes.concat(JAMBOREE_ATTRS)
     Person.used_attributes.uniq!
     # Searching for birthdays interferes too much with searching for a
     # persons id, so we remove :birthday from SEARCHABLE_ATTRS.
     Person::SEARCHABLE_ATTRS.delete :birthday
     Person::SEARCHABLE_ATTRS.concat(WSJRDP_SEARCHABLE_ATTRS)
-    base.paper_trail_options[:skip].concat(WSJRDP_INTERNAL_ATTRS.map(&:to_s))
+    base.paper_trail_options[:skip].concat((WSJRDP_INTERNAL_ATTRS + JAMBOREE_ATTRS).map(&:to_s))
 
     base.extend Geocoder::Model::Base
 
@@ -248,6 +412,69 @@ module Wsjrdp2027::Person
 
       jsonb_accessor :additional_info, :planned_total_fee_reduction_comment, strip: true
       attribute :planned_total_fee_reduction_comment, :text
+
+      JAMBOREE_TEXT_ATTRS.each do |attr|
+        jsonb_accessor :jamboree_data, attr, strip: true
+        attribute attr, :string
+      end
+
+      JAMBOREE_SELECT_ATTRS.each do |attr|
+        jsonb_accessor :jamboree_data, attr, strip: true
+        attribute attr, :string
+      end
+
+      JAMBOREE_DATE_ATTRS.each do |attr|
+        jsonb_accessor :jamboree_data, attr
+        attribute attr, :date
+      end
+
+      JAMBOREE_BOOLEAN_ATTRS.each do |attr|
+        jsonb_accessor :jamboree_data, attr
+        attribute attr, :boolean
+      end
+
+      store_accessor :jamboree_data, :medical_equipment_needs
+
+      attribute :jamboree_data_confirmed, :boolean
+
+      validates :jamboree_data_confirmed, acceptance: {accept: true}
+      validates :gdpr_agreement, acceptance: {accept: true}
+
+      after_initialize :_initialize_jamboree_defaults
+
+      def known_as_name
+        super.presence || nickname.presence || first_name
+      end
+
+      def known_as_name=(value)
+        super(value.presence)
+      end
+
+      def medical_equipment_needs
+        Array(super).compact_blank
+      end
+
+      def medical_equipment_needs=(value)
+        super(Array(value).compact_blank)
+      end
+
+      def jamboree_data_medical_equipment_needs_options
+        JAMBOREE_MEDICAL_EQUIPMENT_OPTIONS
+      end
+
+      def jamboree_data_allergies
+        JAMBOREE_ALLERGIES
+      end
+
+      def jamboree_data_language_levels
+        JAMBOREE_LANGUAGE_LEVEL_OPTIONS
+      end
+
+      private def _initialize_jamboree_defaults
+        self.known_as_name = known_as_name if new_record? && known_as_name.blank?
+      end
+
+      public
 
       # additional_info["finance_group_ids"]: {"<group id>" => "show,update"} -- the
       # finance actions a person may take on that group's page without a role in

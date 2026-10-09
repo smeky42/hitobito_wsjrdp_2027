@@ -7,6 +7,7 @@ module Wsjrdp2027::Sheet::Person
   shown_tabs = [
     "global.tabs.info",
     "people.tabs.medical",
+    "people.tabs.jamboree_data",
     "people.tabs.finance",
     # "people.tabs.invoices",  # 2026-01-03 - no invoices in Hitobito at the moment
     # "people.tabs.subscriptions",
@@ -47,6 +48,11 @@ module Wsjrdp2027::Sheet::Person
     tab "people.tabs.medical",
       :medical_group_person_path,
       alt: [:medical_edit_group_person_path],
+      if: :show
+
+    tab "people.tabs.jamboree_data",
+      :jamboree_data_group_person_path,
+      alt: [:jamboree_data_edit_group_person_path],
       if: :show
 
     tab "people.tabs.status",

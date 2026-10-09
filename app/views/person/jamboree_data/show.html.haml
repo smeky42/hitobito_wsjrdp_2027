@@ -1,0 +1,67 @@
+- content_for(:toolbar, render('actions_show'))
+
+#main.row
+  %article.col-lg
+    %h3= t('people.jamboree_data.personal')
+    = render_attrs(@person,
+      :known_as_name,
+      :mothers_first_name,
+      :fathers_first_name,
+      :mothers_surname_at_birth,
+      :place_of_birth,
+      :country_of_birth,
+      :nationality)
+
+    %h3= t('people.jamboree_data.languages')
+    - language_attrs = Wsjrdp2027::Person::JAMBOREE_LANGUAGES.flat_map { |language| Wsjrdp2027::Person::JAMBOREE_LANGUAGE_SKILLS.map { |skill| :"#{language}_#{skill}" } }
+    = render_attrs(@person, *language_attrs)
+
+    %h3= t('people.jamboree_data.travel')
+    = render_attrs(@person,
+      :travel_document_type,
+      :travel_document_number,
+      :travel_document_issue_date,
+      :travel_document_expiration_date,
+      :travel_document_country,
+      :visa_needed,
+      :visa_information)
+
+    %h3= t('people.jamboree_data.activities')
+    = render_attrs(@person,
+      :comfortable_on_water,
+      :comfortable_in_water,
+      :comfortable_without_balance,
+      :comfortable_in_crowd,
+      :comfortable_flashing_lights,
+      :comfortable_loud_noise,
+      :comfortable_confined_space,
+      :prior_wsj_experience,
+      :vehicle_registration_number)
+
+    %h3= t('people.jamboree_data.diet')
+    - allergy_attrs = Wsjrdp2027::Person::JAMBOREE_ALLERGIES.keys.flat_map { |allergy| [:"allergy_#{allergy}", :"allergy_#{allergy}_severity"] }
+    = render_attrs(@person,
+      :dietary_requirements,
+      :dietary_details,
+      *allergy_attrs)
+
+    %h3= t('people.jamboree_data.health')
+    = render_attrs(@person,
+      :refrigerated_medication_needed,
+      :religious_health_beliefs,
+      :medical_equipment_needs,
+      :medical_equipment_details,
+      :mobility_restricted,
+      :uses_wheelchair,
+      :wheelchair_type,
+      :uses_mobility_frame,
+      :other_mobility_needs,
+      :other_mobility_details,
+      :sensory_sensitivities,
+      :non_visible_disability,
+      :non_visible_disability_details)
+
+    %h3= t('people.jamboree_data.legal')
+    = render_attrs(@person,
+      :gdpr_agreement,
+      :jamboree_data_confirmed)
