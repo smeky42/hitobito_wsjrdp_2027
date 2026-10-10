@@ -62,6 +62,27 @@ describe Person::StatusController, type: :controller do
       contract_confirmed_by: manager)
   end
 
+  it "asks before the new contract replaces the one waiting for it" do
+    person.update_columns(contract_status: "replacement_pending", contract_confirmed_at: Time.zone.local(2025, 12, 16),
+      contract_confirmed_by_type: "Person", contract_confirmed_by_id: people(:admin).id)
+    put_status("confirmed")
+
+    expect(question.text).to include("Neuen Vertrag bestätigen?", "ersetzt den bisherigen", "16.12.2025")
+    put_status("confirmed", confirm: "1")
+    expect(person.reload).to have_attributes(contract_status: "confirmed", contract_confirmed_by: manager)
+    expect(person.contract_confirmed_at).to be_within(1.minute).of(Time.current)
+  end
+
+  it "ends a contract waiting for its replacement with the deregistration" do
+    person.update_columns(status: "registered", contract_status: "replacement_pending",
+      contract_confirmed_at: Time.zone.local(2025, 12, 16))
+    put_status("deregistered")
+
+    expect(question.text).to include("Vertrag beenden?")
+    put_status("deregistered", confirm: "1")
+    expect(person.reload).to have_attributes(status: "deregistered", contract_status: "ended")
+  end
+
   it "keeps the author of the contract in force through a deregistration" do
     person.update_columns(status: "confirmed", contract_status: "confirmed",
       contract_confirmed_at: Time.zone.local(2025, 12, 16), contract_confirmed_by_type: "Person",

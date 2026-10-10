@@ -20,6 +20,13 @@ status:
   deregistration_noted: Abmeldung Vermerkt # Personen die sich abmelden wollen, bei denen es noch Klärungsbedarf gibt
   deregistered: Abgemeldet # Alle die nicht mehr am Jamboree Teilnehmen wollen
 
+# The participation contract (people.contract_status).
+contract_status:
+  none: Kein Vertrag # Noch nie bestätigt
+  confirmed: In Kraft # Bestätigt, nicht beendet
+  replacement_pending: Neuer Vertrag ausstehend # Alter Vertrag gilt bis zur Bestätigung des neuen, kein Einzug
+  ended: Beendet # Durch Abmeldung
+
 diets:
   omnivorous: "Allesesser"
   vegetarian: "Vegetarisch"

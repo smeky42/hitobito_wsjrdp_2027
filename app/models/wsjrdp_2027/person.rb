@@ -99,8 +99,11 @@ module Wsjrdp2027::Person
 
   # The participation contract (contract_status): none until the first
   # confirmation, confirmed while in force, ended by a deregistration after
-  # one. Apart from status, which follows the documents and may step back.
-  CONTRACT_STATUSES = %w[none confirmed ended].freeze
+  # one. replacement_pending: a change of the payment role type needs a new
+  # contract; the old one is still in force by law until the new one is
+  # confirmed, but nothing is collected meanwhile. Apart from status, which
+  # follows the documents and may step back.
+  CONTRACT_STATUSES = %w[none confirmed replacement_pending ended].freeze
 
   WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
     "Group::Extern::Member" => "EXT",
@@ -1093,7 +1096,9 @@ module Wsjrdp2027::Person
       # unless one is in force (a re-confirmation after a step back keeps
       # the first date), a change to deregistered ends the contract in force.
       # Every other change -- back to upload, deregistration_noted -- leaves
-      # it as it is. Who confirmed is set by the caller with the status
+      # it as it is. A contract waiting for its replacement is replaced by
+      # the confirmation and ends with a deregistration. Who confirmed is set
+      # by the caller with the status
       # (Person::StatusController: current_user); without one, nobody -- not
       # the one who confirmed an earlier contract.
       def track_contract
@@ -1106,7 +1111,7 @@ module Wsjrdp2027::Person
           self.contract_ended_at = nil
           self.contract_confirmed_by = nil unless contract_confirmed_by_type_changed? || contract_confirmed_by_id_changed?
         when "deregistered"
-          return unless contract_status == "confirmed"
+          return unless %w[confirmed replacement_pending].include?(contract_status)
 
           self.contract_status = "ended"
           self.contract_ended_at = Time.current
