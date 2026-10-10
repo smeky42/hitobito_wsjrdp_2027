@@ -67,6 +67,18 @@ describe PeopleController, type: :controller do
       early_payer: true, sepa_name: "Neu", sepa_iban: "DE02120300000000202051")
   end
 
+  it "never takes the paths of the uploaded documents, which only the upload page sets" do
+    yp.update_columns(upload_medical_pdf: nil, upload_contract_pdf: nil)
+    sign_in(yp)
+
+    put_person(yp, nickname: "Spitzname", upload_medical_pdf: "/etc/hosts", upload_contract_pdf: "/etc/hosts",
+      upload_data_agreement_pdf: "/etc/hosts", upload_passport_pdf: "/etc/hosts",
+      upload_recommendation_pdf: "/etc/hosts")
+
+    expect(yp.reload).to have_attributes(nickname: "Spitzname", upload_medical_pdf: nil, upload_contract_pdf: nil,
+      upload_data_agreement_pdf: nil, upload_passport_pdf: nil, upload_recommendation_pdf: nil)
+  end
+
   it "takes the payment fields from finance after the registration too, never status, sepa_status or wsj_role" do
     sign_in(finance)
 
