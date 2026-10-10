@@ -60,7 +60,7 @@ module Wsjrdp2027::Sheet::Person
       # Both URLs of the page and its edit form are this tab.
       alt: [:jamboree_data_group_person_path, :jamboree_data_person_path_with_group,
         :jamboree_data_edit_group_person_path],
-      if: :show
+      if: :log # for now only who may see the person's log
 
     tab "people.tabs.status",
       :status_tab_path,

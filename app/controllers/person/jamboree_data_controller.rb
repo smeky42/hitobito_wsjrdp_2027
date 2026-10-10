@@ -15,6 +15,7 @@ class Person::JamboreeDataController < ApplicationController
   respond_to :html
 
   before_action :group
+  before_action { authorize!(:log, person) } # for now only who may see the person's log
 
   self.permitted_attrs = [
     *Wsjrdp2027::Person::JamboreeData::TEXT_ATTRS,
