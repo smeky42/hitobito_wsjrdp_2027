@@ -23,6 +23,11 @@ module Wsjrdp2027::Sheet::Group
   ]
 
   included do
+    # A person's pages without a group (/people/:id/status, /people/:id/fee)
+    # belong to the Personen tab too, as /groups/:id/people/... does.
+    people_tab = tabs.find { |t| t.label_key == "activerecord.models.person.other" }
+    people_tab.options[:alt] = Array(people_tab.options[:alt]) | [:person_pages_without_group_path]
+
     tab "groups.tabs.map",
       :group_map_path,
       if: :show_statistics

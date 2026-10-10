@@ -39,6 +39,20 @@ describe Person::FeeController do
     expect(assigns(:group)).to eq(Group.root)
   end
 
+  # /groups/:group_id/people/:id/accounting draws the page in the group of
+  # the URL, /people/:id/fee in the primary group.
+  it "uses the group of the URL, without one the primary group" do
+    yp = people(:yp_a_1)
+    ensure_payment_plan(yp)
+    sign_in(people(:admin))
+
+    get :show, params: {group_id: groups(:ist_a).id, id: yp.id}
+    expect(assigns(:group)).to eq(groups(:ist_a))
+
+    get :show, params: {person_id: yp.id}
+    expect(assigns(:group)).to eq(yp.primary_group)
+  end
+
   # The entries of the page as a PDF. It sits behind the page's own
   # authorization, so everybody who may read the page may print it -- the
   # person themselves included.

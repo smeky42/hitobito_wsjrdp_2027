@@ -22,6 +22,18 @@ Rails.application.routes.draw do
     as: :wsjrdp_service_token_acting_people
 
   language_scope do
+    # The status page without a group: in the person's primary group
+    # (Person::StatusController#group).
+    get "people/:id/status" => "person/status#show", :as => :status_person
+    get "people/:id/status/edit" => "person/status#edit", :as => :status_edit_person
+    put "people/:id/status" => "person/status#update"
+    post "people/:id/status/review_documents" => "person/status#review_documents"
+    post "people/:id/status/approve_documents" => "person/status#approve_documents"
+    # The documents the status page links to.
+    %w[contract sepa medical data_agreement passport recommendation photo_permission good_conduct].each do |doc|
+      get "people/:id/upload/show_#{doc}" => "person/upload#show_#{doc}"
+    end
+
     resources :groups do
       # An API key's token is shown only as it is made
       # (Wsjrdp2027::ServiceTokensController), so a lost token is replaced.
@@ -42,6 +54,12 @@ Rails.application.routes.draw do
           get "print/submit" => "person/print#submit"
 
           get "accounting" => "person/fee#show"
+          # The finance pages in the group of the URL too, beside
+          # /people/:person_id/... (PersonInPrimaryGroup#group).
+          get "fee" => "person/fee#show"
+          get "finance" => "person/fee#show"
+          get "spend" => "person/spend#show"
+          get "deregistration" => "person/deregistration#show"
 
           get "upload" => "person/upload#index"
           put "upload" => "person/upload#index"

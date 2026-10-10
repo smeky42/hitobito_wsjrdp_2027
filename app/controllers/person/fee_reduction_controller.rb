@@ -15,6 +15,7 @@
 # :update_finance; seeing the section needs :log only.
 class Person::FeeReductionController < ApplicationController
   include ContractHelper
+  include PersonInPrimaryGroup
   include WsjrdpFormHelper
 
   # What the form starts from: a blank plan, the active reduction, or the
@@ -24,7 +25,6 @@ class Person::FeeReductionController < ApplicationController
   PLAN_SAVED = "Geplante Beitragsreduktion gespeichert – noch nicht wirksam."
 
   before_action :authorize_action
-  decorates :group, :person
 
   helper_method :mode, :amount_text, :context
 
@@ -78,14 +78,6 @@ class Person::FeeReductionController < ApplicationController
 
   def authorize_action
     authorize!(:update_finance, person)
-  end
-
-  def person
-    @person ||= Person.find(params[:person_id])
-  end
-
-  def group
-    @group ||= person.primary_group || Group.root
   end
 
   def mode

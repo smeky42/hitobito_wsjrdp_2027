@@ -45,7 +45,7 @@ describe Person::StatusController, type: :controller do
   it "confirms the contract on yes, with the user as the confirming person" do
     put_status("confirmed", confirm: "1", unit_code: "#ABCDEF")
 
-    expect(response).to redirect_to(status_group_person_path(person.primary_group_id, person.id))
+    expect(response).to redirect_to(status_person_path(person.id))
     expect(person.reload).to have_attributes(status: "confirmed", contract_status: "confirmed",
       contract_confirmed_by: manager, unit_code: "#ABCDEF")
   end

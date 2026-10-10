@@ -14,20 +14,64 @@ module Wsjrdp2027::PeopleHelper
     person_accounting_path(args[0], args[-1])
   end
 
-  def person_fee_path_with_group(group, *args)
-    person_fee_path(args[0], args[-1])
+  def status_person_path_with_group(group, *args)
+    status_person_path(args[0])
   end
 
-  def person_finance_path_with_group(group, *args)
-    person_finance_path(args[0], args[-1])
+  # Where a person's pages without a group live (/people/:id/...): the group
+  # sheet marks its Personen tab there (Wsjrdp2027::Sheet::Group).
+  def person_pages_without_group_path(*) = "/people/"
+
+  # The status tab: the short URL in the person's primary group (or without
+  # one), the group's own URL in any other group -- as person_page_path.
+  def status_tab_path(group, *args) = status_page_path(group, args[0])
+
+  # Where the person's pages start (other_than_primary_group?): /people/:id
+  # or /groups/:group_id/people/:id -- for the links the status page builds
+  # by hand (documents, review buttons).
+  def person_base_path(group, person)
+    if other_than_primary_group?(group, person)
+      "/groups/#{group.id}/people/#{person.id}"
+    else
+      "/people/#{person.id}"
+    end
   end
 
-  def person_spend_path_with_group(group, *args)
-    person_spend_path(args[0], args[-1])
+  # The status page (or its edit form, edit: true) by the same rule; also
+  # where the form posts to and the actions return to.
+  def status_page_path(group, person, edit: false)
+    if other_than_primary_group?(group, person)
+      edit ? status_edit_group_person_path(group, person) : status_group_person_path(group, person)
+    else
+      edit ? status_edit_person_path(person) : status_person_path(person)
+    end
   end
 
-  def person_deregistration_path_with_group(group, *args)
-    person_deregistration_path(args[0], args[-1])
+  def person_fee_path_with_group(group, *args) = person_page_path(:fee, group, *args)
+
+  def person_finance_path_with_group(group, *args) = person_page_path(:finance, group, *args)
+
+  def person_spend_path_with_group(group, *args) = person_page_path(:spend, group, *args)
+
+  def person_deregistration_path_with_group(group, *args) = person_page_path(:deregistration, group, *args)
+
+  # A finance page of the person (fee, finance, spend, deregistration) as the
+  # tabs link it: without a group in the person's primary group
+  # (/people/:id/fee), in the group's URL in any other group
+  # (/groups/:group_id/people/:id/fee), as the status tab does.
+  def person_page_path(page, group, person, *rest)
+    options = rest.last.is_a?(Hash) ? rest.last : {}
+    if other_than_primary_group?(group, person)
+      send(:"#{page}_group_person_path", group, person, options)
+    else
+      send(:"person_#{page}_path", person, options)
+    end
+  end
+
+  # The rule of the person's links: the short URL (/people/:id/...) in the
+  # primary group or without one, the group's URL in any other group.
+  def other_than_primary_group?(group, person)
+    person.primary_group_id.present? && group.present? && group.id != person.primary_group_id
   end
 
   def format_person_sepa_mail(person)

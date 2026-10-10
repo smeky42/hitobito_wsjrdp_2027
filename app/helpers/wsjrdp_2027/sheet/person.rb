@@ -38,7 +38,12 @@ module Wsjrdp2027::Sheet::Person
         :person_accounting_path_with_group,
         :person_finance_path_with_group,
         :person_spend_path_with_group,
-        :person_deregistration_path_with_group
+        :person_deregistration_path_with_group,
+        # The same pages in the URL of the primary group.
+        :fee_group_person_path,
+        :finance_group_person_path,
+        :spend_group_person_path,
+        :deregistration_group_person_path
       ],
       # Also the finance audit tier, which reads the Beitrag page only
       # (PersonFinancePagesHelper).
@@ -50,8 +55,9 @@ module Wsjrdp2027::Sheet::Person
       if: :show
 
     tab "people.tabs.status",
-      :status_group_person_path,
-      alt: [:status_edit_group_person_path],
+      :status_tab_path,
+      # Both URLs of the page and its edit form are this tab.
+      alt: [:status_group_person_path, :status_person_path_with_group, :status_edit_group_person_path],
       if: (lambda do |view, _group, person|
         view.can?(:log, person)
       end)
