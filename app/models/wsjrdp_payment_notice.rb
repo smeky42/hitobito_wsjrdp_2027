@@ -29,6 +29,21 @@ class WsjrdpPaymentNotice < ActiveRecord::Base
   STATUSES = %w[created announced booked canceled deleted].freeze
   FINAL_STATUSES = %w[booked canceled deleted].freeze
 
+  # The payment reference payment_code comes from, if any; several notices
+  # may share one, and a notice may carry a code without one.
+  belongs_to :payment_reference, class_name: "WsjrdpPaymentReference", inverse_of: :payment_notices,
+    optional: true
+
+  validate :payment_code_of_reference, if: :payment_reference
+
   # What is still due: positive from the person, negative to it.
   def open_amount = amount - booked_amount
+
+  private
+
+  def payment_code_of_reference
+    return if payment_code == payment_reference.payment_code
+
+    errors.add(:payment_code, :invalid)
+  end
 end
