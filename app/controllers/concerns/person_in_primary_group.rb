@@ -21,11 +21,12 @@ module PersonInPrimaryGroup
     @person ||= Person.find(params[:person_id])
   end
 
-  # The person's primary group -- the root group for a person without one (the
-  # root user has no role at all), so the person sheet and its left navigation
-  # always have a group to draw.
+  # The group of the URL (/groups/:group_id/people/:id/accounting), without
+  # one the person's primary group -- the root group for a person without one
+  # (the root user has no role at all), so the person sheet and its left
+  # navigation always have a group to draw.
   def group
-    @group ||= person.primary_group || Group.root
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
   end
 
   def map_id_to_person_id

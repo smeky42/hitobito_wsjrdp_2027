@@ -61,7 +61,7 @@
   %br
   %br
   = action_button(t('activerecord.buttons.review_documents'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/status/review_documents",
+                "#{person_base_path(@group, @person)}/status/review_documents",
                 :envelope,
                 remote: false,
                 method: :post,
@@ -74,7 +74,7 @@
   = raw(t("people.check_status_help.contract"))
   %br
   = action_button(t('activerecord.buttons.show_contract'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_contract",
+                "#{person_base_path(@group, @person)}/upload/show_contract",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -82,7 +82,7 @@
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_contract'))
   = action_button(t('activerecord.buttons.show_passport'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_passport",
+                "#{person_base_path(@group, @person)}/upload/show_passport",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -90,7 +90,7 @@
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_passport'))
   = action_button(t('activerecord.buttons.show_photo_permission'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_photo_permission",
+                "#{person_base_path(@group, @person)}/upload/show_photo_permission",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -98,7 +98,7 @@
                 rel: :tooltip,
                 title: t('activerecord.buttons.show_photo_permission'))
   = action_button(t('activerecord.buttons.show_medical'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_medical",
+                "#{person_base_path(@group, @person)}/upload/show_medical",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -110,7 +110,7 @@
   = raw(t("people.check_status_help.sepa"))
   %br
   = action_button(t('activerecord.buttons.show_sepa'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_sepa",
+                "#{person_base_path(@group, @person)}/upload/show_sepa",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -122,7 +122,7 @@
   %br
   - if @person.ul?
     = action_button(t('activerecord.buttons.show_recommendation'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_recommendation",
+                "#{person_base_path(@group, @person)}/upload/show_recommendation",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -131,7 +131,7 @@
                 title: t('activerecord.buttons.show_recommendation'))
   - if @person.ul? || @person.cmt?
     = action_button(t('activerecord.buttons.show_data_agreement'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_data_agreement",
+                "#{person_base_path(@group, @person)}/upload/show_data_agreement",
                 :envelope,
                 target: "_blank",
                 remote: false,
@@ -146,7 +146,7 @@
             = raw(t("people.check_status_help.upload_good_conduct_missing"))
     - else
       = action_button(t('activerecord.buttons.show_good_conduct'),
-                  "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/show_good_conduct",
+                  "#{person_base_path(@group, @person)}/upload/show_good_conduct",
                   :envelope,
                   target: "_blank",
                   remote: false,
@@ -156,7 +156,7 @@
   %br
   %br
   = action_button(t('activerecord.buttons.approve_documents'),
-                "/groups/#{params[:group_id]}/people/#{params[:id]}/status/approve_documents",
+                "#{person_base_path(@group, @person)}/status/approve_documents",
                 :envelope,
                 remote: false,
                 method: :post,

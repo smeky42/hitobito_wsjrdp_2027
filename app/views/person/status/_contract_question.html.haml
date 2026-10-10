@@ -43,7 +43,7 @@
             ab jetzt als bestätigt geführt, bestätigt von #{current_user}.
         %p.mb-0 Die übrigen Änderungen im Formular werden mitgespeichert.
       .modal-footer
-        = link_to "Abbrechen", status_group_person_path, class: "btn btn-outline-secondary"
+        = link_to "Abbrechen", status_page_path(@group, @person), class: "btn btn-outline-secondary"
         = button_tag (question == :end) ? "Ja, Vertrag beenden" : "Ja, Vertrag bestätigen",
           type: "submit", name: "confirm_contract", value: "1", class: "btn btn-primary"
 .modal-backdrop.show

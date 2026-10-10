@@ -7,6 +7,8 @@ class Person::StatusController < ApplicationController
 
   respond_to :html
 
+  before_action :group
+
   helper_method :wsj_role_options
   helper_method :contract_question
   helper_method :permitted_attrs
@@ -55,7 +57,7 @@ class Person::StatusController < ApplicationController
 
     person.contract_confirmed_by = current_user if contract_question.in?(%i[confirm confirm_again])
     person.save
-    respond_with person, location: status_group_person_path
+    respond_with person, location: helpers.status_page_path(group, person)
   end
 
   def review_documents
@@ -64,7 +66,7 @@ class Person::StatusController < ApplicationController
       @person.status = "in_review"
       person.save
     end
-    respond_with person, location: status_group_person_path
+    respond_with person, location: helpers.status_page_path(group, person)
   end
 
   def approve_documents
@@ -73,17 +75,23 @@ class Person::StatusController < ApplicationController
       @person.status = "reviewed"
       person.save
     end
-    respond_with person, location: status_group_person_path
+    respond_with person, location: helpers.status_page_path(group, person)
   end
 
   private
 
+  # The person is found by id alone, as on the finance pages
+  # (PersonInPrimaryGroup): what the page shows belongs to the person, and the
+  # actions check access on the person. So the page works in every group,
+  # also in a primary group without a role left.
   def person
-    @person ||= fetch_person
+    @person ||= Person.find(params[:id])
   end
 
+  # The group of the URL, without one (/people/:id/status) the primary group,
+  # for the person sheet and the links.
   def group
-    @group ||= Group.find(params[:group_id])
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
   end
 
   # What the status change about to be saved does to the contract: :confirm

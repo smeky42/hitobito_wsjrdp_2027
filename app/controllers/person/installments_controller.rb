@@ -17,6 +17,7 @@
 # plan is recorded on the fee rule.
 class Person::InstallmentsController < ApplicationController
   include ContractHelper
+  include PersonInPrimaryGroup
   include WsjrdpFormHelper
 
   # What the form starts from: a blank plan, the active plan, the standard
@@ -33,7 +34,6 @@ class Person::InstallmentsController < ApplicationController
   PLAN_SAVED = "Geplanter Ratenplan gespeichert – noch nicht wirksam."
 
   before_action :authorize_action
-  decorates :group, :person
 
   helper_method :mode, :context, :plan_text
 
@@ -89,14 +89,6 @@ class Person::InstallmentsController < ApplicationController
 
   def authorize_action
     authorize!(:update_finance, person)
-  end
-
-  def person
-    @person ||= Person.find(params[:person_id])
-  end
-
-  def group
-    @group ||= person.primary_group || Group.root
   end
 
   def mode

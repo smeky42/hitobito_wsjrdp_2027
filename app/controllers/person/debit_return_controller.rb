@@ -9,10 +9,10 @@
 
 class Person::DebitReturnController < ApplicationController
   include ContractHelper
+  include PersonInPrimaryGroup
   include WsjrdpFormHelper
 
   before_action :authorize_action
-  decorates :group, :person
 
   helper_method :target_turbo_frame
   helper_method :return_url
@@ -37,14 +37,6 @@ class Person::DebitReturnController < ApplicationController
 
   def authorize_action
     authorize!(:log, person)
-  end
-
-  def person
-    @person ||= Person.find(params[:person_id])
-  end
-
-  def group
-    @group ||= person.primary_group
   end
 
   def permitted_attrs
