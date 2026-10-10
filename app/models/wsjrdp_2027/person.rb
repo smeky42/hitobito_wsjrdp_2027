@@ -292,6 +292,8 @@ module Wsjrdp2027::Person
       # a presence validator -- but its {} default is blank?, which would make
       # every Person invalid and break all creation. Drop it.
       remove_schema_validations :wsjrdp_user_preferences, only: :presence
+      # The same for jamboree_data: NOT NULL with a {} default.
+      remove_schema_validations :jamboree_data, only: :presence
 
       # A decimal ARRAY column: validates_by_schema takes it for one number and
       # refuses every plan ("ist keine Zahl"). Its values come from a fee rule

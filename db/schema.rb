@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_09_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_10_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1382,6 +1382,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_09_100000) do
     t.datetime "contract_ended_at"
     t.string "contract_confirmed_by_type"
     t.bigint "contract_confirmed_by_id"
+    t.jsonb "jamboree_data", default: {}, null: false
+    t.boolean "jamboree_data_confirmed", default: false, null: false
     t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true
@@ -1390,6 +1392,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_09_100000) do
     t.index ["event_feed_token"], name: "index_people_on_event_feed_token", unique: true
     t.index ["first_name"], name: "index_people_on_first_name"
     t.index ["household_key"], name: "index_people_on_household_key"
+    t.index ["jamboree_data_confirmed"], name: "index_people_on_jamboree_data_confirmed"
     t.index ["last_name"], name: "index_people_on_last_name"
     t.index ["reset_password_token"], name: "index_people_on_reset_password_token", unique: true
     t.index ["search_column"], name: "people_search_column_gin_idx", using: :gin
