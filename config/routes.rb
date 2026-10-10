@@ -27,6 +27,9 @@ Rails.application.routes.draw do
     get "people/:id/status" => "person/status#show", :as => :status_person
     get "people/:id/status/edit" => "person/status#edit", :as => :status_edit_person
     put "people/:id/status" => "person/status#update"
+    get "people/:id/jamboree_data" => "person/jamboree_data#show", :as => :jamboree_data_person
+    get "people/:id/jamboree_data/edit" => "person/jamboree_data#edit", :as => :jamboree_data_edit_person
+    put "people/:id/jamboree_data" => "person/jamboree_data#update"
     post "people/:id/status/review_documents" => "person/status#review_documents"
     post "people/:id/status/approve_documents" => "person/status#approve_documents"
     # The documents the status page links to.
@@ -77,6 +80,10 @@ Rails.application.routes.draw do
           get "medical" => "person/medical#show"
           get "medical/edit" => "person/medical#edit"
           put "medical" => "person/medical#update"
+
+          get "jamboree_data" => "person/jamboree_data#show"
+          get "jamboree_data/edit" => "person/jamboree_data#edit"
+          put "jamboree_data" => "person/jamboree_data#update"
 
           get "status" => "person/status#show"
           get "status/edit" => "person/status#edit"

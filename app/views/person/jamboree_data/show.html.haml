@@ -1,0 +1,81 @@
+- content_for(:toolbar, render('actions_show'))
+
+#main.row
+  %article.col-lg
+    %h3= t('people.jamboree_data.personal')
+    -# The name tag: without a given name the default, grey, with where it
+    -# comes from (Wsjrdp2027::Person::JamboreeData#known_as_name_source).
+    %dl.dl-horizontal.m-0.p-2.border-top
+      = labeled(captionize(:known_as_name, Person)) do
+        - if @person.known_as_name_source == :given
+          = @person.known_as_name
+        - else
+          %span.text-muted
+            = @person.known_as_name_or_default
+            %span.small.fw-light (#{t("people.jamboree_data.known_as_name_default.#{@person.known_as_name_source}")})
+        .small.text-muted.fw-light= t('people.jamboree_data.known_as_name_help')
+    = render_attrs(@person,
+      :mothers_first_name,
+      :fathers_first_name,
+      :mothers_surname_at_birth,
+      :place_of_birth,
+      :country_of_birth,
+      :nationality)
+
+    -# As in the form: one block per language, the skills as labels.
+    %h3= t('people.jamboree_data.languages')
+    - Wsjrdp2027::Person::JamboreeData::LANGUAGES.each do |language|
+      .fw-semibold.mt-2= t("people.jamboree_data.language_names.#{language}")
+      %dl.dl-horizontal.m-0.p-2.border-top
+        - Wsjrdp2027::Person::JamboreeData::LANGUAGE_SKILLS.each do |skill|
+          = labeled(t("people.jamboree_data.language_skills.#{skill}"), format_attr(@person, :"#{language}_#{skill}"))
+
+    %h3= t('people.jamboree_data.travel')
+    = render_attrs(@person,
+      :travel_document_type,
+      :travel_document_number,
+      :travel_document_issue_date,
+      :travel_document_expiration_date,
+      :travel_document_country,
+      :visa_needed,
+      :visa_information)
+
+    %h3= t('people.jamboree_data.activities')
+    = render_attrs(@person,
+      :comfortable_on_water,
+      :comfortable_in_water,
+      :comfortable_without_balance,
+      :comfortable_in_crowd,
+      :comfortable_flashing_lights,
+      :comfortable_loud_noise,
+      :comfortable_confined_space,
+      :prior_wsj_experience,
+      :vehicle_registration_number)
+
+    %h3= t('people.jamboree_data.diet')
+    - allergy_attrs = Wsjrdp2027::Person::JamboreeData::ALLERGIES.flat_map { |allergy| [:"allergy_#{allergy}", :"allergy_#{allergy}_severity"] }
+    = render_attrs(@person,
+      :dietary_requirements,
+      :dietary_details,
+      *allergy_attrs)
+
+    %h3= t('people.jamboree_data.health')
+    = render_attrs(@person,
+      :refrigerated_medication_needed,
+      :religious_health_beliefs,
+      :medical_equipment_needs,
+      :medical_equipment_details,
+      :mobility_restricted,
+      :uses_wheelchair,
+      :wheelchair_type,
+      :uses_mobility_frame,
+      :other_mobility_needs,
+      :other_mobility_details,
+      :sensory_sensitivities,
+      :non_visible_disability,
+      :non_visible_disability_details)
+
+    %h3= t('people.jamboree_data.legal')
+    = render_attrs(@person,
+      :gdpr_agreement,
+      :jamboree_data_confirmed)

@@ -47,6 +47,19 @@ module Wsjrdp2027::PeopleHelper
     end
   end
 
+  # The Zusatzdaten page (or its edit form) by the same rule, and its tab.
+  def jamboree_data_page_path(group, person, edit: false)
+    if other_than_primary_group?(group, person)
+      edit ? jamboree_data_edit_group_person_path(group, person) : jamboree_data_group_person_path(group, person)
+    else
+      edit ? jamboree_data_edit_person_path(person) : jamboree_data_person_path(person)
+    end
+  end
+
+  def jamboree_data_tab_path(group, *args) = jamboree_data_page_path(group, args[0])
+
+  def jamboree_data_person_path_with_group(group, *args) = jamboree_data_person_path(args[0])
+
   def person_fee_path_with_group(group, *args) = person_page_path(:fee, group, *args)
 
   def person_finance_path_with_group(group, *args) = person_page_path(:finance, group, *args)
@@ -72,6 +85,11 @@ module Wsjrdp2027::PeopleHelper
   # primary group or without one, the group's URL in any other group.
   def other_than_primary_group?(group, person)
     person.primary_group_id.present? && group.present? && group.id != person.primary_group_id
+  end
+
+  # The chosen medical equipment by its labels (Zusatzdaten).
+  def format_person_medical_equipment_needs(person)
+    person.medical_equipment_needs_labels.join(", ")
   end
 
   def format_person_sepa_mail(person)

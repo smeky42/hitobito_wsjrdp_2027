@@ -64,6 +64,7 @@ module HitobitoWsjrdp2027
 
       Group.include Wsjrdp2027::Group
       Person.include Wsjrdp2027::Person
+      Person.include Wsjrdp2027::Person::JamboreeData
       Event.include Wsjrdp2027::Event
       AdditionalEmail.include Wsjrdp2027::AdditionalEmail
       ActsAsTaggableOn::Tagging.include Wsjrdp2027::ActsAsTaggableOn::Tagging
@@ -178,6 +179,7 @@ module HitobitoWsjrdp2027
       app.config.assets.precompile += %w[
         hitobito_wsjrdp_2027/application.js
         hitobito_wsjrdp_2027/turbo_stream_actions.js
+        hitobito_wsjrdp_2027/jamboree_data_form.js
       ]
     end
 

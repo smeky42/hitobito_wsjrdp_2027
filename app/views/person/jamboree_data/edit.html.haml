@@ -1,0 +1,155 @@
+#main.row
+  = standard_form @person, url: jamboree_data_page_path(@group, @person), method: :put, html: { class: 'form-striped', data: { jamboree_data_form: true } } do |f|
+    = f.error_messages
+    = form_buttons(f, cancel_url: jamboree_data_page_path(@group, @person))
+
+    .mt-3
+      %h3= t('people.tabs.jamboree_data')
+    .text-muted.mw-90ch.mb-2
+      %p= t('people.jamboree_data.intro')
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.personal')
+      -# Empty means the default (nickname, else first name), shown as placeholder.
+      = f.labeled_input_field :known_as_name, placeholder: @person.known_as_name_or_default,
+        help: t('people.jamboree_data.known_as_name_help')
+      = f.labeled_input_field :mothers_first_name
+      = f.labeled_input_field :fathers_first_name
+      = f.labeled_input_field :mothers_surname_at_birth
+      = f.labeled_input_field :place_of_birth
+      = f.labeled_input_field :country_of_birth
+      = f.labeled_input_field :nationality
+
+    -# One block per language, one row per skill: the level as numbered
+    -# single-choice buttons (radios styled as buttons) with the legend above
+    -# and the chosen level written out beside the buttons (below them on a
+    -# phone; kept up to date by jamboree_data_form.js). The blocks stand side
+    -# by side where the width allows.
+    - levels = @person.jamboree_data_language_levels
+    = field_set_tag do
+      %h3= t('people.jamboree_data.languages')
+      :css
+        /* At most two columns of at least 28rem, filled top to bottom: the
+           first column Englisch and Französisch, the second Spanisch and
+           Arabisch. Narrower, one column. A block never splits. */
+        .wsjrdp-languages { columns: 28rem 2; column-gap: 1.5rem; }
+        .wsjrdp-language-block { break-inside: avoid; padding-bottom: .75rem; }
+        /* A row: the skill (6rem, room for "Hörverstehen"), six buttons of
+           2.2rem, the level name (7.5rem, room for "Konversationssicher",
+           never wrapped). Together about 27.75rem; a narrower block puts the
+           name below the buttons, which then fill the row. The switch follows
+           the block's own width (container query), not the screen's. */
+        .wsjrdp-language-block { container-type: inline-size; }
+        .wsjrdp-level-row { display: grid; grid-template-columns: 6rem auto minmax(7.5rem, 1fr); align-items: center;
+          gap: .1rem .5rem; margin-bottom: .5rem; }
+        .wsjrdp-level-group { margin-bottom: 0; }
+        .wsjrdp-level-value { white-space: nowrap; }
+        .wsjrdp-level-group .btn { width: 2.2rem; padding: .15rem 0; }
+        @container (max-width: 27.75rem) {
+          .wsjrdp-level-row { grid-template-columns: 6rem 1fr; }
+          .wsjrdp-level-row .wsjrdp-level-value { grid-column: 2; }
+          .wsjrdp-level-row .wsjrdp-level-group { align-self: end; }
+          .wsjrdp-level-group { display: flex; }
+          .wsjrdp-level-group .btn { flex: 1 1 0; width: auto; }
+        }
+      .small.text-muted.mb-2
+        = safe_join(levels.each_with_index.map { |(label, _), i| "#{i} #{label}" }, " · ")
+      .wsjrdp-languages.mb-3
+        - Wsjrdp2027::Person::JamboreeData::LANGUAGES.each do |language|
+          .wsjrdp-language-block
+            .fw-semibold.mb-1= t("people.jamboree_data.language_names.#{language}")
+            - Wsjrdp2027::Person::JamboreeData::LANGUAGE_SKILLS.each do |skill|
+              - attr_name = :"#{language}_#{skill}"
+              -# Without an answer "Keine" is ticked, and saved with the form.
+              - level_value = @person.public_send(attr_name).presence || "none"
+              .wsjrdp-level-row
+                -# A break allowed after the slash of "hören/verstehen".
+                .wsjrdp-skill= safe_join(t("people.jamboree_data.language_skills.#{skill}").split("/"), "/".html_safe + tag(:wbr))
+                .btn-group.wsjrdp-level-group{role: "group", "aria-label": Person.human_attribute_name(attr_name)}
+                  - levels.each_with_index do |(label, level), number|
+                    - id = "person_#{attr_name}_#{level}"
+                    = f.radio_button attr_name, level, id: id, class: "btn-check", autocomplete: "off", checked: level == level_value
+                    %label.btn.btn-sm.btn-outline-primary{for: id, title: label, data: {level_label: label}}= number
+                .small.text-primary.wsjrdp-level-value= levels.to_h.invert[level_value]
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.travel')
+      = f.labeled_collection_select :travel_document_type, @person.jamboree_data_options(:travel_document_type), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_input_field :travel_document_number
+      = f.labeled_date_field :travel_document_issue_date
+      = f.labeled_date_field :travel_document_expiration_date
+      = f.labeled_input_field :travel_document_country
+      -# Without an answer "Nein" is chosen, and saved with the form.
+      = f.labeled_collection_select :visa_needed, @person.jamboree_data_options(:visa_needed), :last, :first, {selected: @person.visa_needed.presence || "no"}, class: 'span4'
+      = f.labeled_input_field :visa_information
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.activities')
+      = f.labeled_boolean_field :comfortable_on_water
+      = f.labeled_boolean_field :comfortable_in_water
+      = f.labeled_boolean_field :comfortable_without_balance
+      = f.labeled_boolean_field :comfortable_in_crowd
+      = f.labeled_boolean_field :comfortable_flashing_lights
+      = f.labeled_boolean_field :comfortable_loud_noise
+      = f.labeled_boolean_field :comfortable_confined_space
+      = f.labeled_input_field :prior_wsj_experience
+      = f.labeled_input_field :vehicle_registration_number
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.diet')
+      = f.labeled_input_field :dietary_requirements
+      = f.labeled_input_field :dietary_details
+      - Wsjrdp2027::Person::JamboreeData::ALLERGIES.each do |allergy_key|
+        - checkbox_id = "person_allergy_#{allergy_key}"
+        .mb-3
+          .form-check
+            -# The "0" before the box sends an unticked box too, so it can be cleared.
+            = hidden_field_tag "person[allergy_#{allergy_key}]", "0", id: nil
+            = check_box_tag "person[allergy_#{allergy_key}]", '1', @person.public_send("allergy_#{allergy_key}"), id: checkbox_id, class: 'form-check-input'
+            = label_tag checkbox_id, Person.human_attribute_name(:"allergy_#{allergy_key}"), class: 'form-check-label'
+          .mt-2{ data: { jamboree_dependent_on: checkbox_id }, hidden: !@person.public_send("allergy_#{allergy_key}") }
+            = f.labeled_collection_select :"allergy_#{allergy_key}_severity", @person.jamboree_data_options(:"allergy_#{allergy_key}_severity"), :last, :first, {include_blank: true}, class: 'span4'
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.health')
+      = f.labeled_boolean_field :refrigerated_medication_needed
+      = f.labeled_input_field :religious_health_beliefs
+      .mb-3
+        %label.form-label= Person.human_attribute_name(:medical_equipment_needs)
+        -# The empty value lets an untick of all boxes reach the model.
+        = hidden_field_tag 'person[medical_equipment_needs][]', '', id: nil
+        - @person.jamboree_data_medical_equipment_options.each do |label, value|
+          - checkbox_id = "person_medical_equipment_needs_#{value}"
+          .form-check
+            = check_box_tag 'person[medical_equipment_needs][]', value, Array(@person.medical_equipment_needs).include?(value), id: checkbox_id, class: 'form-check-input'
+            = label_tag checkbox_id, label, class: 'form-check-label'
+      .mt-2{ data: { jamboree_dependent_on: 'person_medical_equipment_needs_other' }, hidden: !Array(@person.medical_equipment_needs).include?('other') }
+        = f.labeled_input_field :medical_equipment_details
+      = f.labeled_boolean_field :mobility_restricted
+      = f.labeled_boolean_field :uses_wheelchair
+      .mt-2{ data: { jamboree_dependent_on: 'person_uses_wheelchair' }, hidden: !@person.uses_wheelchair }
+        = f.labeled_collection_select :wheelchair_type, @person.jamboree_data_options(:wheelchair_type), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_boolean_field :uses_mobility_frame
+      = f.labeled_boolean_field :other_mobility_needs
+      .mt-2{ data: { jamboree_dependent_on: 'person_other_mobility_needs' }, hidden: !@person.other_mobility_needs }
+        = f.labeled_input_field :other_mobility_details
+      = f.labeled_boolean_field :sensory_sensitivities
+      = f.labeled_boolean_field :non_visible_disability
+      .mt-2{ data: { jamboree_dependent_on: 'person_non_visible_disability' }, hidden: !@person.non_visible_disability }
+        = f.labeled_input_field :non_visible_disability_details
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.legal')
+      .form-check.mb-3
+        = f.check_box :gdpr_agreement, class: 'form-check-input', id: 'person_gdpr_agreement'
+        = f.label :gdpr_agreement, class: 'form-check-label' do
+          = raw(t('people.jamboree_data.gdpr_agreement'))
+      .form-check
+        = f.check_box :jamboree_data_confirmed, class: 'form-check-input', id: 'person_jamboree_data_confirmed'
+        = f.label :jamboree_data_confirmed, class: 'form-check-label' do
+          = t('people.jamboree_data.confirmed')
+
+    = form_buttons(f, cancel_url: jamboree_data_page_path(@group, @person))
+
+-# Shows and hides the blocks that depend on a box (allergy severity, ...).
+= javascript_include_tag "hitobito_wsjrdp_2027/jamboree_data_form", "data-turbo-track": true

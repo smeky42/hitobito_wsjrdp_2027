@@ -43,7 +43,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # numbers. Each is rendered per element instead. The person's active
   # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
   # written out like everywhere else (installments_text), its payment method
-  # by its label.
+  # by its label, and an i18n_enum attribute by its labels.
   def attribute_change(attr, from, to)
     case attr.to_s
     when "wsjrdp_raw_installments_eur" then raw_installments_eur_change(attr, from, to)
@@ -51,8 +51,40 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     when "finance_group_ids" then finance_group_ids_change(from, to)
     when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
-    else super
+    when "medical_equipment_needs" then medical_equipment_needs_change(attr, from, to)
+    else
+      i18n_enum_attr?(attr) ? i18n_enum_change(attr, from, to) : super
     end
+  end
+
+  # An attribute with labels from i18n_enum (the language levels of the
+  # Zusatzdaten, gender) is written out by its labels, "Grundkenntnisse"
+  # rather than "basic"; a value without a label as stored.
+  def i18n_enum_attr?(attr) = item_class.respond_to?(:"#{attr}_labels")
+
+  # The medical equipment of the Zusatzdaten by its labels, "Akkuladestation, Sonstiges".
+  def medical_equipment_needs_change(attr, from, to)
+    label = ->(values) { Array(values).map { |v| I18n.t("activerecord.attributes.person.jamboree_medical_equipment.#{v}", default: v) }.join(", ") }
+    from = label.call(from)
+    to = label.call(to)
+    key = attribute_change_key(from, to)
+    return "" unless key
+
+    I18n.t("version.attribute_change.#{key}",
+      attr: item_class.human_attribute_name(attr),
+      from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
+  end
+
+  def i18n_enum_change(attr, from, to)
+    labels = item_class.public_send(:"#{attr}_labels")
+    from = labels.fetch(from.to_s.to_sym, from) if from.present?
+    to = labels.fetch(to.to_s.to_sym, to) if to.present?
+    key = attribute_change_key(from, to)
+    return "" unless key
+
+    I18n.t("version.attribute_change.#{key}",
+      attr: item_class.human_attribute_name(attr),
+      from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
   end
 
   # The plan written out, e.g. "2026-02: 312,50€, 2026-03: 500€".
