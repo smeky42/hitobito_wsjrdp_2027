@@ -123,30 +123,18 @@ class Person::UploadController < ApplicationController
     authorize!(:edit, entry)
   end
 
-  # Sends a stored upload of the person, and only one that lies in the
-  # person's own upload folder: a path pointing anywhere else is refused, a
-  # file that is not there is not found.
+  # Sends a stored upload of the person as stored; only the upload page sets
+  # these paths. They are not checked against the person's upload folder:
+  # paths from production (/app-src/vendor/wagons/...) must also work in a
+  # development setup that mounts the same files elsewhere. A file that is
+  # not there is not found.
   def download_file(file)
     return unless file.present? && can?(:edit, @person)
+    return head(:not_found) unless File.file?(file)
 
-    path = contained_upload_path(file)
-    return head(:forbidden) if path == :outside
-    return head(:not_found) if path.nil?
-
-    send_data File.binread(path), filename: File.basename(path),
+    send_data File.binread(file), filename: File.basename(file),
       type: "application/pdf",
       disposition: "inline"
-  end
-
-  # The real path of file if it lies in the person's upload folder, nil if
-  # it does not exist, :outside otherwise. Symlinks are resolved first, so a
-  # link cannot lead out of the folder.
-  def contained_upload_path(file)
-    folder = File.realpath(generate_file_path)
-    path = File.realpath(file)
-    path.start_with?("#{folder}/") ? path : :outside
-  rescue Errno::ENOENT, Errno::ENOTDIR
-    nil
   end
 
   def upload_files
