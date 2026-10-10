@@ -31,6 +31,7 @@ describe Person::StatusController, type: :controller do
     expect(response).to have_http_status(:ok)
     expect(assigns(:group)).to eq(ul.primary_group)
     expect(page.at_css("a[href='#{status_edit_person_path(ul)}']")).to be_present
+    expect(page.at_css("a[href='#{status_primary_role_person_path(ul)}']")).to be_present
   end
 
   it "shows the page in the group of the URL" do

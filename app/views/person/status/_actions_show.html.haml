@@ -1,2 +1,7 @@
 - if can?(:edit, @person)
   = action_button ti(:"link.edit"), status_page_path(@group, @person, edit: true), :edit
+-# Set apart on the right of the toolbar: it changes roles, contract and
+-# status at once (Person::PrimaryRoleController).
+- if can?(:log, @person)
+  .btn-group.ms-auto
+    = button "Hauptgruppe/Rolle wechseln", primary_role_page_path(@group, @person), :"exchange-alt"

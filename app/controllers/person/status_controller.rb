@@ -55,7 +55,7 @@ class Person::StatusController < ApplicationController
       return
     end
 
-    person.contract_confirmed_by = current_user if contract_question.in?(%i[confirm confirm_again])
+    person.contract_confirmed_by = current_user if contract_question.in?(%i[confirm confirm_again confirm_replacement])
     person.save
     respond_with person, location: helpers.status_page_path(group, person)
   end
@@ -95,8 +95,9 @@ class Person::StatusController < ApplicationController
   end
 
   # What the status change about to be saved does to the contract: :confirm
-  # (the first contract), :confirm_again (a new contract after the end) or
-  # :end (the contract in force ends); nil when it leaves it as it is.
+  # (the first contract), :confirm_again (a new contract after the end),
+  # :confirm_replacement (the new contract replaces the one waiting for it)
+  # or :end (the contract in force ends); nil when it leaves it as it is.
   def contract_question
     return unless person.status_changed?
 
@@ -105,9 +106,10 @@ class Person::StatusController < ApplicationController
       case person.contract_status
       when "none" then :confirm
       when "ended" then :confirm_again
+      when "replacement_pending" then :confirm_replacement
       end
     when "deregistered"
-      :end if person.contract_status == "confirmed"
+      :end if %w[confirmed replacement_pending].include?(person.contract_status)
     end
   end
 

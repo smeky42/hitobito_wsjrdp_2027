@@ -32,6 +32,8 @@ Rails.application.routes.draw do
     put "people/:id/jamboree_data" => "person/jamboree_data#update"
     post "people/:id/status/review_documents" => "person/status#review_documents"
     post "people/:id/status/approve_documents" => "person/status#approve_documents"
+    get "people/:id/status/primary_role" => "person/primary_role#show", :as => :status_primary_role_person
+    post "people/:id/status/primary_role" => "person/primary_role#create"
     # The documents the status page links to.
     %w[contract sepa medical data_agreement passport recommendation photo_permission good_conduct].each do |doc|
       get "people/:id/upload/show_#{doc}" => "person/upload#show_#{doc}"
@@ -86,6 +88,8 @@ Rails.application.routes.draw do
           put "jamboree_data" => "person/jamboree_data#update"
 
           get "status" => "person/status#show"
+          get "status/primary_role" => "person/primary_role#show"
+          post "status/primary_role" => "person/primary_role#create"
           get "status/edit" => "person/status#edit"
           put "status" => "person/status#update"
           post "status/review_documents" => "person/status#review_documents"

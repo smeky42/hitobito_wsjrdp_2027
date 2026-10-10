@@ -1,0 +1,19 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Notices of the dialog (Wsjrdp2027::PrimaryRoleChange#notices), one box per
+-# level: red, yellow, grey. Nothing without notices.
+- styles = {danger: %w[alert-danger fa-exclamation-circle], warning: %w[alert-warning fa-exclamation-triangle],
+            info: %w[alert-secondary fa-info-circle]}
+- if notices.any?
+  .d-grid.gap-2{class: local_assigns[:css]}
+    - notices.group_by(&:level).each do |level, list|
+      .alert.py-2.mb-0{class: styles[level].first}
+        - list.each do |notice|
+          .d-flex.gap-2
+            %i.fas.mt-1{class: styles[level].last}
+            %span= notice.text

@@ -180,6 +180,7 @@ module HitobitoWsjrdp2027
         hitobito_wsjrdp_2027/application.js
         hitobito_wsjrdp_2027/turbo_stream_actions.js
         hitobito_wsjrdp_2027/jamboree_data_form.js
+        hitobito_wsjrdp_2027/primary_role_dialog.js
       ]
     end
 

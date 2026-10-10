@@ -60,6 +60,11 @@ module Wsjrdp2027::PeopleHelper
 
   def jamboree_data_person_path_with_group(group, *args) = jamboree_data_person_path(args[0])
 
+  # The page "Hauptgruppe/Rolle wechseln" by the same rule.
+  def primary_role_page_path(group, person)
+    other_than_primary_group?(group, person) ? status_primary_role_group_person_path(group, person) : status_primary_role_person_path(person)
+  end
+
   def person_fee_path_with_group(group, *args) = person_page_path(:fee, group, *args)
 
   def person_finance_path_with_group(group, *args) = person_page_path(:finance, group, *args)

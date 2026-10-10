@@ -1,0 +1,448 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# "Hauptgruppe/Rolle wechseln" (Person::PrimaryRoleController,
+-# Wsjrdp2027::PrimaryRoleChange): a page of its own below the status tab.
+-# Group and role are chosen with searchable selects that submit themselves
+-# (a GET of this page into its turbo frame), so that every further question
+-# can come back from the server; below them "bisher" and "neu" side by side,
+-# the roles by group, and the post of the change, with the last step to
+-# check it at the bottom of the page.
+- person = change.person
+- path = params[:group_id] ? status_primary_role_group_person_path(params[:group_id], person) : status_primary_role_person_path(person)
+- close_path = status_page_path(@group, person)
+- chip = ->(text, kind = "light") { tag.span(text, class: "badge rounded-pill ms-1 #{{"light" => "bg-light text-dark border", "quiet" => "wsjrdp-chip-quiet"}.fetch(kind, "text-bg-#{kind}")}") }
+- wsj_label = ->(value) { value.present? ? (Settings.wsj_role[value.to_sym] || value) : "nicht gesetzt" }
+-# The WSJ role ticked below, also shown in the "neu" box.
+- chosen = change.chosen_wsj_role
+-# The last step: "Hauptgruppe/Rolle wechseln" reloads with review=1, the choices
+-# above fade and a summary takes the footer's place, to go back or to save.
+- review = params[:review].present? && change.complete? && change.errors.empty?
+-# The unit code rows only where a code is or will be set.
+- show_unit_code = change.complete? && (person.unit_code.present? || change.new_unit_code.present?)
+-# Shown each by its topic below, all together in the last step.
+- notices = change.complete? ? change.notices : []
+- notices_on = ->(*topics) { notices.select { |notice| topics.include?(notice.topic) } }
+- derived = change.suggested_wsj_role ? " → #{change.suggested_wsj_role}" : ""
+-# A value with its raw form small and light beside it: the group id before
+-# the group's name, the status as stored after its label.
+- raw = ->(text) { tag.span(text, class: "small text-muted fw-light") }
+- group_cell = ->(group) { group ? safe_join([raw.call(group.id), " ", group.display_name]) : "keine" }
+-# The fee role short (UL, IST, ...), the role's own name small after it when
+-# it says something else ("Unit Leader (unbestätigt)", "IST Manager").
+- fee_cell = ->(short, long) { long.present? && long != short ? safe_join([short, " ", raw.call(long)]) : short }
+-# The contract as stored, with its date (in force since, ended on).
+- contract_date = ->(status) { (d = {"confirmed" => person.contract_confirmed_at, "ended" => person.contract_ended_at}[status]) && "#{status == "ended" ? "am" : "seit"} #{l(d, format: "%d.%m.%Y")}" }
+- contract_cell = ->(status) { safe_join([[Settings.contract_status[status] || status, contract_date.call(status)].compact.join(" "), " ", raw.call(status)]) }
+- status_cell = ->(status) { safe_join([Settings.status[status], " ", raw.call(status)]) }
+= javascript_include_tag "hitobito_wsjrdp_2027/primary_role_dialog", "data-turbo-track": true
+-# A save answers with the stream action redirect_top.
+= javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+= turbo_frame_tag frame_id, data: {wsjrdp_keep_scroll: "#primary-role-dialog"} do
+  -# The core fixes selects to 250px; here they fill their box, which is as
+  -# wide as the longest entry needs (the group with full name and chip about
+  -# 32rem, the role with chip about 20rem). Text in the size of the status
+  -# page (0.875rem), not the 1rem of a form control.
+  -#
+  -# The core sizes the box for 1rem text (padding 1px over 6px, a negative
+  -# margin on the input); for .875rem the text sits too high. Here even
+  -# padding in every state (chosen, placeholder, while typing): (31px box -
+  -# 2px border - 21px line) / 2 = 4px; left .75rem, as in the open list. The
+  -# "x" in the size of the text, centred like it.
+  :css
+    #primary-role-dialog .ts-wrapper.form-select { width: 100%; max-width: none; font-size: .875rem; }
+    #primary-role-dialog .ts-dropdown { font-size: .875rem; }
+    #primary-role-dialog .wsjrdp-group-choice { flex: 1 1 18rem; max-width: 32rem; }
+    #primary-role-dialog .wsjrdp-role-choice { flex: 1 1 14rem; max-width: 20rem; }
+    #primary-role-dialog .ts-wrapper.form-select.wsjrdp-chosen { background-color: rgba(var(--bs-primary-rgb), .08); border-color: rgba(var(--bs-primary-rgb), .55); }
+    #primary-role-dialog .ts-wrapper .wsjrdp-clear { right: 2.1rem; font-size: .875rem; line-height: 1; height: auto; top: 50%; transform: translateY(-50%); color: var(--bs-secondary-color, #6c757d); opacity: .7; }
+    #primary-role-dialog .ts-wrapper:not(.has-items) .wsjrdp-clear { display: none; }
+    #primary-role-dialog .ts-wrapper .wsjrdp-clear:hover { opacity: 1; }
+    #primary-role-dialog .wsjrdp-hint-changes { color: #b54708; font-weight: 600; }
+    #primary-role-dialog h6.wsjrdp-section { font-size: .875rem; font-weight: 600; }
+    #primary-role-dialog .wsjrdp-old-primary { color: #5a3fa0; }
+    #primary-role-dialog .wsjrdp-old-primary-chip { background: #ece8fb; color: #3c2a7a; }
+    #primary-role-dialog.wsjrdp-reviewing .modal-body { opacity: .45; pointer-events: none; }
+    #primary-role-dialog { --bs-modal-padding: 1rem; --bs-modal-footer-gap: .5rem; --bs-modal-footer-border-width: var(--bs-border-width); --bs-modal-footer-border-color: var(--bs-border-color-translucent); }
+    #primary-role-dialog .modal-footer.wsjrdp-form-buttons { justify-content: flex-start; border-top: 0; padding: .75rem var(--bs-modal-padding); gap: 1.8rem; }
+    #primary-role-dialog .modal-footer.wsjrdp-form-buttons > * { margin: 0; }
+    #primary-role-dialog .modal-footer.wsjrdp-form-buttons .btn-link.cancel { padding: 0; border: 0; text-decoration: none; color: var(--bs-link-color); }
+    #primary-role-dialog > .wsjrdp-page-title { padding: var(--bs-modal-padding) var(--bs-modal-padding) 0; }
+    #primary-role-dialog .wsjrdp-review { padding: .75rem 1rem; background: rgba(var(--bs-primary-rgb), .06); border-top: 1px solid var(--bs-border-color); }
+    #primary-role-dialog .wsjrdp-strike { text-decoration: line-through; color: var(--bs-danger); }
+    #primary-role-dialog .wsjrdp-faint-id { color: var(--bs-gray-500); font-size: 11px; font-weight: 300; }
+    #primary-role-dialog .wsjrdp-derived { opacity: .7; margin-left: .15rem; }
+    #primary-role-dialog .wsjrdp-chip-quiet { color: #6c757d; background: transparent; border: 1px solid var(--bs-border-color); font-weight: 400; }
+    #primary-role-dialog .wsjrdp-compare td:first-child { padding-left: .6rem; }
+    #primary-role-dialog .wsjrdp-compare tr.wsjrdp-changed > td:first-child { background: linear-gradient(var(--bs-primary), var(--bs-primary)) left / 3px 100% no-repeat; }
+    #primary-role-dialog .wsjrdp-compare tr.wsjrdp-changed > td:last-child { font-weight: 600; }
+    #primary-role-dialog .wsjrdp-compare, #primary-role-dialog .wsjrdp-compare td { border: 0 !important; box-shadow: none !important; }
+    #primary-role-dialog .wsjrdp-role-line { display: flex; align-items: center; gap: .5rem; padding: 1px 0 1px 1.5rem; }
+    #primary-role-dialog .wsjrdp-role-line label { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; margin: 0; }
+    #primary-role-dialog .wsjrdp-role-line .badge { margin-left: 0 !important; }
+    #primary-role-dialog .wsjrdp-sign { display: inline-block; width: .75rem; text-align: center; font-weight: 600; color: var(--bs-danger); }
+    #primary-role-dialog .wsjrdp-role-line .wsjrdp-when-ended { display: none; }
+    #primary-role-dialog .wsjrdp-role-line input:not(:checked) + label .wsjrdp-when-ended { display: inline; }
+    #primary-role-dialog .wsjrdp-role-line input:not(:checked) + label .wsjrdp-when-kept { display: none; }
+    #primary-role-dialog .wsjrdp-role-line input:not(:checked) + label .wsjrdp-role-name { text-decoration: line-through; color: var(--bs-danger); }
+    #primary-role-dialog select[data-wsjrdp-chip-select] { font-size: .875rem; min-height: 31px; }
+    #primary-role-dialog .ts-wrapper.form-select .ts-control,
+    #primary-role-dialog .ts-wrapper.form-select.single .ts-control,
+    #primary-role-dialog .ts-wrapper.form-select:not(.has-items) .ts-control { padding-top: 4px; padding-bottom: 4px; padding-left: .75rem; line-height: 21px; }
+    #primary-role-dialog .ts-wrapper.form-select .ts-control > input { margin-top: 0 !important; margin-bottom: 0 !important; line-height: 21px; min-height: 21px; }
+    #primary-role-dialog .ts-wrapper.form-select .ts-control > .item { line-height: 21px; height: 21px; align-items: baseline !important; }
+    #primary-role-dialog .ts-wrapper.form-select .ts-control > .item { max-width: calc(100% - 2.5rem); min-width: 0; white-space: nowrap; }
+    #primary-role-dialog .ts-wrapper.form-select .ts-control > .item > div { max-width: 100%; min-width: 0; }
+    #primary-role-dialog .ts-control .wsjrdp-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    #primary-role-dialog .ts-wrapper.form-select .ts-control > .item .ms-auto.text-nowrap { display: inline-flex; align-items: center; height: 21px; }
+    #primary-role-dialog select[data-wsjrdp-chip-select]:not(.tomselected) { visibility: hidden; }
+  -# The page content; the sections keep the classes of a modal's parts
+  -# (modal-body, modal-footer) for their spacing, whose variables Bootstrap
+  -# sets on .modal only: here on #primary-role-dialog (CSS above).
+  %div
+    %div
+      #primary-role-dialog{class: ("wsjrdp-reviewing" if review)}
+        .wsjrdp-page-title
+          %h4.mb-0 Hauptgruppe/Rolle wechseln
+
+        -# The choice of group and role: a GET of this dialog on every change.
+        .modal-body.pb-0
+          - if change.errors.any?
+            .alert.alert-danger.py-2
+              - change.errors.full_messages.each do |message|
+                %div= message
+          = render "notices", notices: change.status_notices, css: "mb-3"
+          = form_with url: path, method: :get, scope: :primary_role_change,
+            data: {turbo_frame: frame_id, controller: "autosubmit"} do |f|
+            .d-flex.flex-wrap.gap-3
+              .wsjrdp-group-choice
+                -# The hint shares the label's line, so that it never adds one:
+                -# where the person comes from, always (the way back is the
+                -# box's "x").
+                .d-flex.justify-content-between.align-items-baseline.gap-2.mb-1
+                  = f.label :group_id, "Neue Hauptgruppe", class: "form-label mb-0"
+                  -# The group id fainter than the name, as everywhere the id is shown.
+                  %span.small.text-muted.text-nowrap
+                    bisher
+                    - if change.primary_group
+                      %span.wsjrdp-faint-id= change.primary_group.id
+                    = change.primary_group&.display_name || "keine"
+                -# Empty means the current primary group (the placeholder says so);
+                -# another group is shown by its short name, the full one below.
+                = f.select :group_id, {}, {}, id: "primary_role_change_group_id", class: "form-select",
+                  data: {wsjrdp_chip_select: true, wsjrdp_clearable: "Zurück zur bisherigen Hauptgruppe",
+                         action: "change->autosubmit#save",
+                         placeholder: "bisherige Hauptgruppe: #{[change.primary_group&.id, change.primary_group&.display_name].compact.join(" ")}"} do
+                  %option{value: ""}
+                  - change.grouped_target_groups.each do |heading, groups|
+                    %optgroup{label: heading}
+                      - groups.each do |group, chips|
+                        %option{value: group.id, selected: change.primary_group_changes? && group.id == change.group_id,
+                          data: {number: group.id, chips: chips.to_json, full: (group.name if group.display_name != group.name), heading: heading}}= group.display_name
+              .wsjrdp-role-choice
+                -# As for the group: the current role always in the label's line,
+                -# marked when the new group has no role with the current fee.
+                .d-flex.justify-content-between.align-items-baseline.gap-2.mb-1
+                  = f.label :role_type, "Rolle", class: "form-label mb-0"
+                  - if change.old_payment_role_type_offered?
+                    %span.small.text-muted.text-nowrap bisher #{change.old_role_label}
+                  - else
+                    %span.small.text-nowrap.wsjrdp-hint-changes{title: "Diese Gruppe hat keine Rolle mit der bisherigen Beitragsrolle"}
+                      bisher #{change.old_role_label}
+                = f.hidden_field :role_group_id, value: change.group_id, id: nil
+                = f.select :role_type, {}, {}, id: "primary_role_change_role_type", class: "form-select",
+                  data: {wsjrdp_chip_select: true, wsjrdp_clearable: "Rolle löschen",
+                         action: "change->autosubmit#save", placeholder: "Rolle wählen"} do
+                  %option{value: ""}
+                  - change.selectable_role_types.each do |rt|
+                    %option{value: rt.sti_name, selected: rt.sti_name == change.role_type,
+                      data: {chips: change.role_type_chips(rt.sti_name).to_json, heading: change.payment_short(rt.sti_name)}}= rt.model_name.human
+            %noscript= f.submit "Weiter", class: "btn btn-sm btn-outline-primary mt-2"
+
+        = form_with url: path, method: :post, scope: :primary_role_change, data: {turbo_frame: frame_id} do |f|
+          = f.hidden_field :group_id, value: change.group_id, id: nil
+          = f.hidden_field :role_type, value: change.role_type, id: nil
+          = f.hidden_field :end_roles_chosen, value: "1", id: nil
+          .modal-body
+            - unless change.complete?
+              .alert.alert-secondary.d-flex.gap-2.mb-0
+                %i.fas.fa-info-circle.mt-1
+                %span
+                  Wähle neue Hauptgruppe und Rolle. Danach siehst du, was mit den bisherigen Rollen,
+                  dem Beitrag und dem Vertrag passiert.
+            - else
+              = render "notices", notices: notices_on.call(:roles), css: "mb-2"
+              -# The WSJ role, as the contract below: a row of buttons.
+              .d-flex.flex-wrap.align-items-center.gap-2.mb-2
+                %span.fw-semibold WSJ-Rolle
+                .btn-group.flex-wrap{role: "group", "aria-label": "WSJ-Rolle"}
+                  - change.wsj_role_options.each do |value, label|
+                    = radio_button_tag "primary_role_change[wsj_role]", value, chosen.to_s == value,
+                      id: "wsj_role_#{value.presence || "none"}", class: "btn-check", autocomplete: "off", data: {wsjrdp_reload: true}
+                    = label_tag "wsj_role_#{value.presence || "none"}", class: "btn btn-sm btn-outline-primary", title: label do
+                      - if value.present?
+                        = value
+                      - else
+                        nicht gesetzt
+                        - if change.suggested_wsj_role
+                          %span.wsjrdp-derived → #{change.suggested_wsj_role}
+                %span.small.text-muted.fw-light bisher #{wsj_label.call(person.wsj_role)}
+              = render "notices", notices: notices_on.call(:wsj_role), css: "mb-2"
+              -# The contract: what the payment role type says preselected (the
+              -# help text beside says why), the other way possible. A click here, on a role's
+              -# box or on a WSJ role reloads the dialog with everything chosen
+              -# so far (the script below), so that "neu" and the question
+              -# before saving follow.
+              .d-flex.flex-wrap.align-items-center.gap-2.mb-2
+                %span.fw-semibold Vertrag
+                -# Without a contract in force there is nothing to keep or end: one
+                -# fixed button says why.
+                - if change.contract_in_force?
+                  .btn-group{role: "group", "aria-label": "Vertrag"}
+                    - [["keep", "bleibt"], ["end", "endet, neu unterschreiben"]].each do |value, label|
+                      = radio_button_tag "primary_role_change[contract]", value, (value == "end") == change.new_contract?,
+                        id: "contract_#{value}", class: "btn-check", autocomplete: "off", data: {wsjrdp_reload: true}
+                      = label_tag "contract_#{value}", label, class: "btn btn-sm btn-outline-primary"
+                - else
+                  - fixed_label, fixed_help = {"ended" => ["Beendet", "Kein aktueller Vertrag"],
+                    "replacement_pending" => ["Ausstehend", "Neuer Vertrag ausstehend"]}.fetch(person.contract_status, ["Keiner", "Noch kein Vertrag"])
+                  .btn-group{role: "group", "aria-label": "Vertrag"}
+                    = radio_button_tag "contract_fixed", "1", true, id: "contract_fixed", class: "btn-check", disabled: true
+                    = label_tag "contract_fixed", fixed_label, class: "btn btn-sm btn-outline-primary"
+                %span.small.text-muted.fw-light
+                  - if !change.contract_in_force?
+                    #{fixed_help}.
+                  - elsif change.payment_role_changes?
+                    Beitragsrolle wechselt (#{change.old_payment_short} → #{change.new_payment_short}), neuer Vertrag nötig.
+                  - else
+                    Beitragsrolle bleibt (#{change.new_payment_short}), der Vertrag kann bleiben.
+              = render "notices", notices: notices_on.call(:contract), css: "mb-2"
+              -# "bisher" and "neu" side by side.
+              -# Side by side from a tablet on, one under the other on a phone.
+              .row.g-2.align-items-stretch
+                .col-12.col-md
+                  .border.rounded.p-2.h-100
+                    .small.text-muted.fw-semibold.mb-1 Bisher
+                    %table.table.table-sm.table-borderless.mb-0.wsjrdp-compare
+                      %tr
+                        %td.text-muted Hauptgruppe
+                        %td= group_cell.call(change.primary_group)
+                      - if show_unit_code
+                        %tr
+                          %td.text-muted Unit-Code
+                          %td= make_unit_code_display(person.unit_code, not_set_text: "keiner")
+                      %tr
+                        %td.text-muted Beitragsrolle
+                        %td= fee_cell.call(person.short_payment_role, change.primary_fee_roles.map { |r| r.class.model_name.human }.join(", "))
+                      %tr
+                        %td.text-muted Regulärer Beitrag
+                        %td= format_eur_de(change.old_regular_full_fee_eur || 0, zero_cents: "")
+                      %tr
+                        %td.text-muted Vertrag
+                        %td= contract_cell.call(person.contract_status)
+                      %tr
+                        %td.text-muted Status
+                        %td= status_cell.call(person.status)
+                      %tr
+                        %td.text-muted WSJ-Rolle
+                        %td= wsj_label.call(person.wsj_role)
+                .col-12.col-md-auto.d-flex.align-items-center.justify-content-center.text-muted
+                  %i.fas.fa-arrow-down.d-md-none
+                  %i.fas.fa-arrow-right.d-none.d-md-inline
+                .col-12.col-md
+                  .border.border-primary.rounded.p-2.h-100
+                    .small.text-muted.fw-semibold.mb-1 Neu
+                    -# A value that differs from "bisher": bold, with an accent
+                    -# line at the left (tr.wsjrdp-changed).
+                    - changed = ->(flag) { "wsjrdp-changed" if flag }
+                    %table.table.table-sm.table-borderless.mb-0.wsjrdp-compare
+                      %tr{class: changed.call(change.primary_group_changes?)}
+                        %td.text-muted Hauptgruppe
+                        %td
+                          = group_cell.call(change.group)
+                          - unless change.primary_group_changes?
+                            = chip.call("unverändert")
+                      - if show_unit_code
+                        %tr{class: changed.call(change.unit_code_changes?)}
+                          %td.text-muted Unit-Code
+                          %td= make_unit_code_display(change.unit_code_changes? ? change.new_unit_code : person.unit_code, not_set_text: "keiner")
+                      %tr{class: changed.call(change.payment_role_changes? || change.old_fee_roles.none? { |r| r.type == change.role_type })}
+                        %td.text-muted Beitragsrolle
+                        %td= fee_cell.call(Wsjrdp2027::PrimaryRoleChange::WSJ_ROLE_BY_PAYMENT_ROLE_TYPE.fetch(change.new_payment_role_type, change.new_payment_role_type), change.role_class&.model_name&.human)
+                      %tr{class: changed.call(change.new_regular_full_fee_eur != change.old_regular_full_fee_eur)}
+                        %td.text-muted Regulärer Beitrag
+                        %td= format_eur_de(change.new_regular_full_fee_eur || 0, zero_cents: "")
+                      %tr{class: changed.call(change.contract_replaced?)}
+                        %td.text-muted Vertrag
+                        %td
+                          - if change.contract_replaced?
+                            = chip.call("wird ersetzt", "danger")
+                            = raw.call("replacement_pending")
+                          - elsif change.new_contract? || !change.contract_in_force?
+                            = contract_cell.call(person.contract_status)
+                          - else
+                            bleibt
+                            - if change.contract_kept_unfit?
+                              %i.fas.fa-exclamation-circle.text-danger.ms-1{title: "passt nicht mehr zur Beitragsrolle #{change.new_payment_short}"}
+                      %tr{class: changed.call(change.status_to_registered?)}
+                        %td.text-muted Status
+                        %td= status_cell.call(change.status_to_registered? ? "registered" : person.status)
+                      %tr{class: changed.call(change.wsj_role_changes?)}
+                        %td.text-muted WSJ-Rolle
+                        %td
+                          %span#wsjrdp-new-wsj-role
+                            - if chosen.present?
+                              = chosen
+                            - else
+                              nicht gesetzt
+                              %span.text-muted= derived
+                          - if change.wsj_role_unfit?
+                            %i.fas.fa-exclamation-triangle.text-warning.ms-1{title: "passt nicht zur Beitragsrolle #{change.new_payment_short}"}
+
+              -# What happens to every role, by group. A ticked role stays; the
+              -# roles with a fee in the primary group are the only ones to
+              -# choose (the others stay, their box ticked and disabled). An
+              -# unticked one ends: "−", struck through, "endet" -- switched by
+              -# CSS alone (.wsjrdp-role-line), no reload. The new role: "+",
+              -# "neu". The role that carries the fee from now on in bold with
+              -# "Beitragsrolle", the one it came from with "bisherige
+              -# Beitragsrolle".
+              %h6.mt-3.wsjrdp-section Gruppen und Rollen
+              - groups = (person.roles.map(&:group) + [change.group]).uniq.sort_by { |g| [g.id == person.primary_group_id ? 0 : (g.id == change.group.id ? 1 : 2), g.to_s] }
+              - groups.each do |group|
+                .mt-2
+                  - old_primary = group.id == person.primary_group_id
+                  - new_primary = group.id == change.group.id
+                  .d-flex.align-items-center.gap-1
+                    %i.fas.fa-users.text-muted.me-1
+                    = raw.call(group.id)
+                    %span{class: ("fw-semibold" if new_primary) || ("wsjrdp-old-primary" if old_primary)}= group.display_name
+                    - if old_primary && new_primary
+                      = chip.call("bleibt Hauptgruppe")
+                    - elsif old_primary
+                      %span.badge.rounded-pill.wsjrdp-old-primary-chip bisherige Hauptgruppe
+                    - elsif new_primary
+                      = chip.call("neue Hauptgruppe", "primary")
+                  - person.roles.select { |r| r.group_id == group.id }.sort_by(&:id).each do |role|
+                    - becomes_primary = role == change.existing_target_role
+                    - editable = change.primary_fee_roles.include?(role) && !becomes_primary
+                    .wsjrdp-role-line
+                      = check_box_tag "primary_role_change[keep_role_ids][]", role.id, becomes_primary || !change.end_role_ids.include?(role.id),
+                        id: "keep_role_#{role.id}", class: "form-check-input mt-0", disabled: !editable, data: {wsjrdp_reload: true}
+                      %label{for: "keep_role_#{role.id}"}
+                        %span.wsjrdp-sign
+                          %span.wsjrdp-when-ended −
+                        %span.wsjrdp-role-name{class: ("fw-semibold" if becomes_primary)}= role.class.model_name.human
+                        - unless Wsjrdp2027::PrimaryRoleChange.fee_role_type?(role.type)
+                          %span.text-muted (ohne Beitrag)
+                        - if editable
+                          %span.wsjrdp-when-ended= chip.call("endet", "danger")
+                          %span.wsjrdp-when-kept= chip.call("bleibt", "quiet")
+                        - elsif !becomes_primary || !change.unchanged?
+                          = chip.call("bleibt", "quiet")
+                        - if becomes_primary
+                          -# "neue" unless it is the fee role already (no change at all).
+                          = chip.call(change.old_fee_roles.include?(role) ? "Beitragsrolle" : "neue Beitragsrolle", "primary")
+                        - elsif change.old_fee_roles.include?(role)
+                          = chip.call("bisherige Beitragsrolle")
+                  - if group.id == change.group.id && change.existing_target_role.nil?
+                    .wsjrdp-role-line
+                      = check_box_tag "new_role", "1", true, id: "new_role", class: "form-check-input mt-0", disabled: true
+                      %label{for: "new_role"}
+                        %span.wsjrdp-sign.text-success +
+                        %span.wsjrdp-role-name.fw-semibold= change.role_class.model_name.human
+                        = chip.call("neu", "success")
+                        = chip.call("neue Beitragsrolle", "primary")
+
+              = render "notices", notices: notices_on.call(:finance), css: "mt-3"
+
+
+          - if review
+            .wsjrdp-review#wsjrdp-review
+              .fw-semibold.mb-1 Prüfen und wechseln
+              - if change.primary_group_changes?
+                %div
+                  Hauptgruppe
+                  = raw.call(change.primary_group&.id)
+                  %span.wsjrdp-old-primary= change.primary_group&.display_name || "keine"
+                  →
+                  = raw.call(change.group.id)
+                  %b= change.group.display_name
+              %div
+                Neue Rolle
+                %b= change.role_class.model_name.human
+                = change.existing_target_role ? chip.call("vorhandene Rolle") : chip.call("neu", "success")
+              - if change.payment_role_changes?
+                %div
+                  Beitragsrolle
+                  %b #{change.old_payment_short || "keine"} → #{change.new_payment_short}
+                  - if change.old_regular_full_fee_eur != change.new_regular_full_fee_eur
+                    · regulärer Beitrag #{format_eur_de(change.old_regular_full_fee_eur || 0, zero_cents: "")} →
+                    %b= format_eur_de(change.new_regular_full_fee_eur || 0, zero_cents: "")
+              - if change.contract_replaced? || change.status_to_registered?
+                %div
+                  - if change.contract_replaced?
+                    Vertrag
+                    %b wird ersetzt,
+                  Status →
+                  %b registered:
+                  neu drucken, unterschreiben und hochladen
+              - if change.end_roles.any?
+                %div
+                  Endet:
+                  = safe_join(change.end_roles.map { |role| safe_join([tag.span(role.class.model_name.human, class: "wsjrdp-strike"), " ", raw.call(role.group.display_name)]) }, ", ")
+              - if change.wsj_role_changes?
+                %div
+                  WSJ-Rolle #{wsj_label.call(person.wsj_role)} →
+                  %b= wsj_label.call(change.new_wsj_role)
+              = render "notices", notices: notices, css: "mt-2"
+          -# As on an edit page (FormHelper#form_buttons): on the left the
+          -# button, then the way back as a link.
+          .modal-footer.wsjrdp-form-buttons
+            - if review
+              = f.submit change.contract_kept_unfit? ? "Trotzdem wechseln" : "Jetzt wechseln",
+                class: "btn btn-sm #{change.contract_kept_unfit? ? "btn-danger" : "btn-primary"}"
+              = button_tag "Zurück", type: "button", class: "btn btn-sm btn-link link cancel", data: {wsjrdp_back: true}
+            - else
+              = button_tag "Hauptgruppe/Rolle wechseln", type: "button", class: "btn btn-sm btn-primary", disabled: !change.complete?,
+                data: {wsjrdp_review: true}
+              = link_to "Abbrechen", close_path, class: "link cancel", data: {turbo_frame: "_top"}
+  :javascript
+    // After a visit, Turbo loads the page's script while this one runs: wait
+    // for it.
+    (function activate() {
+      if (window.WsjrdpChipSelect) window.WsjrdpChipSelect.activate(document.getElementById("#{frame_id}"));
+      else setTimeout(activate, 25);
+    })();
+    (function () {
+      // Reloads the dialog with everything chosen so far (and review=1 for
+      // the last step).
+      function reload(form, review) {
+        var query = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+          if (key !== "authenticity_token" && key !== "_method") query.append(key, value);
+        });
+        if (review) query.append("review", "1");
+        document.getElementById("#{frame_id}").src = "#{path}?" + query.toString();
+      }
+      var dialog = document.getElementById("primary-role-dialog");
+      dialog.querySelectorAll("input[data-wsjrdp-reload]").forEach(function (input) {
+        input.addEventListener("change", function () { reload(input.form, false); });
+      });
+      dialog.querySelectorAll("button[data-wsjrdp-review], button[data-wsjrdp-back]").forEach(function (button) {
+        button.addEventListener("click", function () { reload(button.form, button.hasAttribute("data-wsjrdp-review")); });
+      });
+      // The last step shows summary and buttons at once; errors (a save
+      // refused) are shown at the top, so that they are seen.
+      var errors = dialog.querySelector(".alert-danger");
+      if (errors) {
+        requestAnimationFrame(function () { errors.scrollIntoView({block: "start"}); });
+      } else if (document.getElementById("wsjrdp-review")) {
+        var footer = dialog.querySelector(".modal-footer");
+        requestAnimationFrame(function () { footer.scrollIntoView({block: "end"}); });
+      }
+    })();

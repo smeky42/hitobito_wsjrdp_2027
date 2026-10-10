@@ -10,7 +10,7 @@
 -# shown open, without JavaScript. "Ja" submits the form again with
 -# confirm_contract=1; "Abbrechen" leaves without saving.
 -#
--# question: :confirm, :confirm_again or :end
+-# question: :confirm, :confirm_again, :confirm_replacement or :end
 - status_label = Settings.status[person.status]
 - since = person.contract_confirmed_at && l(person.contract_confirmed_at, format: "%d.%m.%Y")
 - ended = person.contract_ended_at && l(person.contract_ended_at, format: "%d.%m.%Y")
@@ -22,7 +22,7 @@
           - case question
           - when :end
             Vertrag beenden?
-          - when :confirm_again
+          - when :confirm_again, :confirm_replacement
             Neuen Vertrag bestätigen?
           - else
             Vertrag bestätigen?
@@ -37,6 +37,10 @@
             Der Vertrag von #{person} (bestätigt am #{since}) wurde am #{ended} beendet.
             Mit dem Status „#{status_label}“ beginnt ein neuer Vertrag ab jetzt;
             das frühere Bestätigungsdatum wird ersetzt.
+        - when :confirm_replacement
+          %p
+            Für #{person} steht ein neuer Vertrag aus (bisheriger Vertrag bestätigt am #{since}).
+            Mit dem Status „#{status_label}“ gilt ab jetzt der neue Vertrag; er ersetzt den bisherigen.
         - else
           %p
             Mit dem Status „#{status_label}“ wird der Vertrag von #{person}
