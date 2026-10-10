@@ -189,6 +189,126 @@ de:
         medical_situational_support: Unterstützung in belastenden Situationen
         medical_person_of_trust: Vertrauensperson
         medical_other: Weitere Informationen
+        known_as_name: Rufname / Namensschild
+        jamboree_travel_document_types:
+          ordinary_passport: Reisepass
+          diplomatic_passport: Diplomatenpass
+          service_passport: Dienstpass
+          official_passport: Amtlicher Pass
+          special_passport: Sonderpass
+          other_travel_document: Anderes Reisedokument
+        jamboree_visa_needed:
+          "no": Nein
+          yes_have_one: "Ja, habe bereits eines"
+          yes_need_support: "Ja, brauche Unterstützung/Beantragung"
+        jamboree_wheelchair_types:
+          manual: Manuell
+          electric: Elektrisch
+        jamboree_allergy_severities:
+          severe: Schwere anaphylaktische Reaktion (lebensbedrohlich)
+          medium: Mittlere Reaktion (ärztliche Hilfe erforderlich)
+          mild: Milde Reaktion (selbst behandelbar)
+        jamboree_medical_equipment:
+          battery_charging_station: Akkuladestation
+          continuous_power_supply: Dauerstromversorgung
+          medication_cooling: Kühlung für Medikamente
+          other: Sonstiges
+        jamboree_language_levels:
+          none: Keine
+          basic: Grundkenntnisse
+          conversational: Konversationssicher
+          proficient: Fortgeschritten
+          fluent: Fließend
+          native: Muttersprache
+        mothers_first_name: Vorname der Mutter
+        fathers_first_name: Vorname des Vaters
+        mothers_surname_at_birth: Geburtsname der Mutter
+        place_of_birth: Geburtsort
+        country_of_birth: Geburtsland
+        nationality: Staatsangehörigkeit
+        english_reading: "Englisch: Lesen"
+        english_writing: "Englisch: Schreiben"
+        english_speaking: "Englisch: Sprechen"
+        english_listening: "Englisch: Hörverstehen"
+        french_reading: "Französisch: Lesen"
+        french_writing: "Französisch: Schreiben"
+        french_speaking: "Französisch: Sprechen"
+        french_listening: "Französisch: Hörverstehen"
+        spanish_reading: "Spanisch: Lesen"
+        spanish_writing: "Spanisch: Schreiben"
+        spanish_speaking: "Spanisch: Sprechen"
+        spanish_listening: "Spanisch: Hörverstehen"
+        arabic_reading: "Arabisch: Lesen"
+        arabic_writing: "Arabisch: Schreiben"
+        arabic_speaking: "Arabisch: Sprechen"
+        arabic_listening: "Arabisch: Hörverstehen"
+        travel_document_type: Art des Reisedokuments
+        travel_document_number: Ausweisnummer / Reisedokumentnummer
+        travel_document_issue_date: Ausstellungsdatum
+        travel_document_expiration_date: Ablaufdatum
+        travel_document_country: Ausstellungsland
+        visa_needed: Visum benötigt
+        visa_information: Visainformationen
+        comfortable_on_water: Ich fühle mich bei Aktivitäten auf dem Wasser wohl
+        comfortable_in_water: Ich fühle mich beim Schwimmen wohl
+        comfortable_without_balance: Ich fühle mich bei Gleichgewichtsübungen wohl
+        comfortable_in_crowd: Ich fühle mich in Menschenmengen wohl
+        comfortable_flashing_lights: Ich fühle mich bei blinkenden Lichtern wohl
+        comfortable_loud_noise: Ich fühle mich bei lauten Geräuschen wohl
+        comfortable_confined_space: Ich fühle mich in engen Räumen wohl
+        prior_wsj_experience: Frühere Jamboree-Erfahrung
+        vehicle_registration_number: Fahrzeugkennzeichen
+        dietary_requirements: Ernährungsform
+        dietary_details: Details zur Ernährung
+        allergy_milk: Milch
+        allergy_casein: Kasein
+        allergy_egg: Ei
+        allergy_peanut: Erdnuss
+        allergy_tree_nuts: Schalenfrüchte
+        allergy_gluten: Gluten
+        allergy_soy: Soja
+        allergy_lupin: Lupine
+        allergy_mustard: Senf
+        allergy_crustaceans: Krebstiere
+        allergy_sesame: Sesam
+        allergy_molluscs: Weichtiere
+        allergy_sulfite: Sulfit
+        allergy_fruit: Obst
+        allergy_allium: Lauch / Alliaceae
+        allergy_fish: Fisch
+        allergy_seafood: Meeresfrüchte
+        allergy_milk_severity: Schwere der Milchallergie
+        allergy_casein_severity: Schwere der Kaseinallergie
+        allergy_egg_severity: Schwere der Eierallergie
+        allergy_peanut_severity: Schwere der Erdnussallergie
+        allergy_tree_nuts_severity: Schwere der Schalenfruchtallergie
+        allergy_gluten_severity: Schwere der Glutenallergie
+        allergy_soy_severity: Schwere der Sojaallergie
+        allergy_lupin_severity: Schwere der Lupinenallergie
+        allergy_mustard_severity: Schwere der Senfallergie
+        allergy_crustaceans_severity: Schwere der Krebstierallergie
+        allergy_sesame_severity: Schwere der Sesamallergie
+        allergy_molluscs_severity: Schwere der Weichtierallergie
+        allergy_sulfite_severity: Schwere der Sulfitallergie
+        allergy_fruit_severity: Schwere der Obstallergie
+        allergy_allium_severity: Schwere der Lauch-/Alliaceae-Allergie
+        allergy_fish_severity: Schwere der Fischallergie
+        allergy_seafood_severity: Schwere der Meeresfrüchteallergie
+        refrigerated_medication_needed: Medikamentenkühlung benötigt
+        religious_health_beliefs: Religiöse oder gesundheitliche Besonderheiten
+        medical_equipment_needs: Medizinische Ausrüstung / Strombedarf
+        medical_equipment_details: Details zur medizinischen Ausrüstung
+        mobility_restricted: Mobilität eingeschränkt
+        uses_wheelchair: Rollstuhl wird genutzt
+        wheelchair_type: Rollstuhltyp
+        uses_mobility_frame: Gehhilfe / Mobilitätsrahmen wird genutzt
+        other_mobility_needs: Andere Mobilitätsbedarfe vorhanden
+        other_mobility_details: Details zu anderen Mobilitätsbedarfen
+        sensory_sensitivities: Sensorische Empfindlichkeiten vorhanden
+        non_visible_disability: Nicht sichtbare Behinderung vorhanden
+        non_visible_disability_details: Details zur nicht sichtbaren Behinderung
+        gdpr_agreement: Datenschutzbestimmungen des Jamboree-Veranstalters akzeptiert
+        jamboree_data_confirmed: Angaben sind vollständig und wahrheitsgetreu
         contract_upload_at: Vertrag hochgeladen am
         print_at: Anmeldung gedruckt am
         complete_document_upload_at: Alle dokumente vollständig hochgeladen am
@@ -666,6 +786,7 @@ de:
       accounting: Finanzen
       finance: Finanzen
       info: Persönliche Informationen
+      jamboree_data: WSJ 2027 Zusatzdaten
       upload: Dokumente hochladen
       print: Dokumente drucken
       medical: Medizin
@@ -679,6 +800,31 @@ de:
       additional_contact_yp: Personensorgeberechtigte*r
       additional_info: Weitere Informationen
       finance: SEPA
+    jamboree_data:
+      personal: Persönliche Zusatzangaben & Namensschild
+      languages: Sprachkenntnisse
+      travel: Reisedokumente & Visa
+      activities: Aktivitäten & Komfort
+      diet: Ernährung & Allergien
+      health: Gesundheit, Mobilität & Besondere Bedarfe
+      legal: Rechtliche Bestätigung & Vollständigkeit
+      intro: Bitte fülle die Zusatzdaten so vollständig wie möglich aus. Die Angaben werden für Reise, Visa, Gesundheit und Notfallplanung verwendet.
+      known_as_name_help: Leer lassen für Spitzname bzw. Vorname.
+      language_skills:
+        reading: Lesen
+        writing: Schreiben
+        speaking: Sprechen
+        listening: Hörverstehen
+      language_names:
+        english: Englisch
+        french: Französisch
+        spanish: Spanisch
+        arabic: Arabisch
+      known_as_name_default:
+        nickname: Spitzname
+        first_name: Vorname
+      gdpr_agreement: Ja, ich habe die Datenschutzbestimmungen des Jamboree-Veranstalters gelesen und stimme diesen zu. <a href="https://www.jamboree2027.org/wp-content/uploads/2026/05/DP-Information-Notice-01-EN.pdf" target="_blank" rel="noopener noreferrer">Datenschutzinformationen als PDF</a>
+      confirmed: Ich versichere hiermit, alle obenstehenden Angaben nach bestem Wissen und Gewissen vollständig und wahrheitsgetreu gemacht zu haben.
     status: Anmeldestatus
     status_log_display: Anmeldestatus
     status_help:

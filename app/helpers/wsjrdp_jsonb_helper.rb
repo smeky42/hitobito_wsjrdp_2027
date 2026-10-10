@@ -17,6 +17,10 @@ module WsjrdpJsonbHelper
     # booleans. Combined with delete_on_blank (false.blank? is true), clearing
     # a boolean flag REMOVES the key from the JSONB: absent == false == the
     # default. Also defines a `<key>?` predicate.
+    #
+    # cast: :date -- values are cast with ActiveModel::Type::Date (a Date, an
+    # ISO string or a form's "dd.mm.yyyy") and stored as an ISO string; the
+    # reader answers a Date, nil for an absent key or one that is no date.
     def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil, cast: nil)
       accessor_prefix =
         case prefix
@@ -42,6 +46,7 @@ module WsjrdpJsonbHelper
       store_accessor_module.module_eval do
         define_method(:"#{accessor_key}=") do |value|
           value = ActiveModel::Type::Boolean.new.cast(value) if cast == :boolean
+          value = ActiveModel::Type::Date.new.cast(value)&.iso8601 if cast == :date
           value = value&.strip if strip
           if delete_on_blank && value.blank?
             # Delete the STORE key, not the accessor name: with prefix/suffix the
@@ -76,6 +81,11 @@ module WsjrdpJsonbHelper
           end
           define_method(:"#{accessor_key}") { read_as_boolean.call(self) }
           define_method(:"#{accessor_key}?") { read_as_boolean.call(self) }
+        end
+        if cast == :date
+          define_method(:"#{accessor_key}") do
+            ActiveModel::Type::Date.new.cast(read_store_attribute(store_attribute, key))
+          end
         end
       end
     end
