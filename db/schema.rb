@@ -2089,8 +2089,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_09_100000) do
     t.jsonb "additional_info", default: {}, null: false
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
+    t.bigint "payment_reference_id"
     t.index ["author_type", "author_id"], name: "index_wsjrdp_payment_notices_on_author"
     t.index ["payment_code"], name: "index_wsjrdp_payment_notices_on_payment_code"
+    t.index ["payment_reference_id"], name: "index_wsjrdp_payment_notices_on_payment_reference_id"
     t.index ["receipt_document_id"], name: "index_wsjrdp_payment_notices_on_receipt_document_id"
     t.index ["ref_type", "ref_id"], name: "index_wsjrdp_payment_notices_on_ref"
     t.index ["replaces_id"], name: "index_wsjrdp_payment_notices_on_replaces_id"
@@ -2110,6 +2112,30 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_09_100000) do
     t.string "payment_method", default: "direct_debit", null: false
     t.datetime "deleted_at"
     t.index ["wsjrdp_role", "single_payment", "payment_method"], name: "index_wsjrdp_payment_plans_role_single_payment_method", unique: true, where: "(deleted_at IS NULL)"
+  end
+
+  create_table "wsjrdp_payment_references", force: :cascade do |t|
+    t.string "payment_code_type", default: "rf", null: false
+    t.string "payment_code", null: false
+    t.string "codeword", null: false
+    t.string "codeword_scheme", default: "crockford_rs", null: false
+    t.integer "data_length", default: 8, null: false
+    t.integer "parity_length", default: 4, null: false
+    t.integer "rs_field_exponent", default: 5, null: false
+    t.integer "rs_primitive_polynomial", default: 37, null: false
+    t.integer "rs_generator", default: 2, null: false
+    t.integer "rs_fcr", default: 1, null: false
+    t.string "status", default: "available", null: false
+    t.datetime "assigned_at"
+    t.string "origin", default: "script", null: false
+    t.text "comment", default: "", null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at"
+    t.index ["codeword"], name: "index_wsjrdp_payment_references_on_codeword", unique: true
+    t.index ["payment_code"], name: "index_wsjrdp_payment_references_on_payment_code", unique: true
+    t.index ["status", "id"], name: "index_wsjrdp_payment_references_on_status_and_id"
+    t.check_constraint "payment_code_type::text <> 'rf'::text OR \"left\"(payment_code::text, 2) = 'RF'::text AND substr(payment_code::text, 3, 2) ~ '^[0-9]{2}$'::text AND substr(payment_code::text, 5) = codeword::text", name: "chk_wsjrdp_payment_references_rf_form"
   end
 
   create_table "wsjrdp_personal_accounts", comment: "Personal accounts (Debitoren, Kreditoren)", force: :cascade do |t|
@@ -2252,6 +2278,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_09_100000) do
   add_foreign_key "wsjrdp_documents", "wsjrdp_documents", column: "replaces_id", on_delete: :nullify
   add_foreign_key "wsjrdp_payment_notices", "wsjrdp_documents", column: "receipt_document_id", on_delete: :nullify
   add_foreign_key "wsjrdp_payment_notices", "wsjrdp_payment_notices", column: "replaces_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_payment_notices", "wsjrdp_payment_references", column: "payment_reference_id", on_delete: :restrict
   add_foreign_key "wsjrdp_personal_accounts", "people", column: "represented_person_id"
   add_foreign_key "wsjrdp_spheres", "people", column: "manager_person_id"
 end

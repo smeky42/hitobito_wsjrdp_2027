@@ -11,9 +11,10 @@ require "spec_helper"
 
 describe WsjrdpPaymentNotice do
   let(:person) { people(:yp_a_1) }
+  let(:reference) { WsjrdpPaymentReference.create!(payment_code: "RF75K7M3QX9PNFK3", codeword: "K7M3QX9PNFK3") }
 
   def notice(**attrs)
-    described_class.create!(subject_id: person.id, amount: "-100", payment_code: "RF00AAAABBBBCCCC",
+    described_class.create!(subject_id: person.id, amount: "-100", payment_code: "RF04000000000000",
       description: "Rückzahlung", **attrs)
   end
 
@@ -40,10 +41,10 @@ describe WsjrdpPaymentNotice do
     end
 
     it "set created_at in the database" do
-      described_class.insert_all([{subject_id: person.id, amount: 1, payment_code: "RF00", description: "x"}],
-        record_timestamps: false)
+      described_class.insert_all([{subject_id: person.id, amount: 1, payment_code: "RF04000000000000",
+                                   description: "x"}], record_timestamps: false)
 
-      expect(described_class.find_by!(payment_code: "RF00").created_at).to be_present
+      expect(described_class.find_by!(payment_code: "RF04000000000000").created_at).to be_present
     end
   end
 
@@ -56,6 +57,32 @@ describe WsjrdpPaymentNotice do
       expect(notice(amount: "-100", booked_amount: "-40").open_amount).to eq(BigDecimal("-60"))
       expect(notice(amount: "250", booked_amount: "300").open_amount).to eq(BigDecimal("-50"))
       expect(notice(amount: "250", booked_amount: "250").open_amount).to be_zero
+    end
+  end
+
+  describe "payment reference" do
+    it "is not needed for a payment code" do
+      expect(notice.payment_reference).to be_nil
+    end
+
+    it "may be shared by several notices with its code" do
+      first = notice(payment_reference: reference, payment_code: reference.payment_code)
+      second = notice(payment_reference: reference, payment_code: reference.payment_code)
+
+      expect(reference.payment_notices).to contain_exactly(first, second)
+    end
+
+    it "wants the notice to carry its code" do
+      expect(described_class.new(subject_id: person.id, amount: 1, payment_code: "RF04000000000000",
+        description: "x", payment_reference: reference)).not_to be_valid
+    end
+
+    it "stays while in use, in Rails and outside" do
+      notice(payment_reference: reference, payment_code: reference.payment_code)
+
+      expect(reference.destroy).to be(false)
+      expect { WsjrdpPaymentReference.where(id: reference.id).delete_all }
+        .to raise_error(ActiveRecord::InvalidForeignKey)
     end
   end
 
@@ -93,7 +120,8 @@ describe WsjrdpPaymentNotice do
 
     it "of the person keeps the notice" do
       fabricated = Fabricate(:person)
-      created = described_class.create!(subject_id: fabricated.id, amount: 1, payment_code: "RF00", description: "x")
+      created = described_class.create!(subject_id: fabricated.id, amount: 1, payment_code: "RF04000000000000",
+        description: "x")
 
       fabricated.destroy!
       expect(created.reload.subject_id).to eq(fabricated.id)
