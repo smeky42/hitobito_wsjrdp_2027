@@ -630,6 +630,11 @@ accessible name; `unrestricted_label:` gives it a text instead:
   the unrestricted button removes them; every other slot stays. Clicking the pressed member keeps
   it pressed.
 - `unrestricted_label:` on a group that is not exclusive raises.
+- A member of an exclusive group may stand for several values, `value:
+  %w[none ended]`: its toggle sets `attribute in (none, ended)`, and it is
+  pressed when the group's slots hold exactly those values, in any order. Its
+  `value` is then the Array. Several values on a member of a group that is not
+  exclusive raise, as does a value another member has already.
 
 A cost center's detail bookings and a group's Buchhaltung carry this group
 (`Fin::DatevBookingsFilterSchema::UNIT_BUDGET_PRESET_GROUP`).
@@ -652,7 +657,7 @@ filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema, presets: UNIT_BUD
 | `toggle_wire` | the wire form of the user filter after clicking the toggle |
 | `icon` / `css_class` | optional display extras, `nil` by default (below) |
 | `group?` | is this button one member of a group rather than a preset of its own? |
-| `group` / `attribute` / `value` | a member's group name, the group's attribute and the one value this button stands for (`nil` on a preset) |
+| `group` / `attribute` / `value` | a member's group name, the group's attribute and the value this button stands for -- an Array for a member of several values (`nil` on a preset) |
 | `exclusive?` | is this button one alternative of an exclusive group (exactly one pressed)? |
 | `group_values` | every member value of the button's group, in declaration order — what the chip and the builder rules read (`nil` on a preset) |
 

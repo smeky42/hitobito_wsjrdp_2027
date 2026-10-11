@@ -43,7 +43,7 @@ describe Fin::FeeReductionsController do
 
     expect(response).to be_successful
     headers = doc.css("#main thead th.exp-col").map { |th| th.text.gsub(/[↑↓⇅]/, "").strip }
-    expect(headers).to eq(["", "Aktiviert", "Person", "Rolle", "Status", "Hinweis", "Kommentar", "Vorgang",
+    expect(headers).to eq(["", "Aktiviert", "Person", "Rolle", "Vertrag", "Hinweis", "Kommentar", "Vorgang",
       "regulär", "Reduktion", "reduziert"])
     expect(doc.at_css("#main thead th.frcol-planned i.fa-clock")).to be_present
     expect(doc.at_css(".exp-cols-list .exp-cols-col label").to_html).to include("fa-clock").and include("Geplant")
@@ -57,24 +57,25 @@ describe Fin::FeeReductionsController do
     # members of the fee group and the last column; up to the widget's default
     # each, and filter and toolbar stop where the table stops.
     gapped = row_of(yp).css("td.exp-gap").map { |td| td["class"][/frcol-(\w+)/, 1] }
-    expect(gapped).to eq(%w[activated_at name role status reduced_fee])
+    expect(gapped).to eq(%w[activated_at name role contract reduced_fee])
     table_style = doc.at_css("#main table.bookings-table")["style"]
     # Person and notes widen first (--exp-c, up to 2rem per unit of `grow:`),
     # only then the gaps (--exp-g, up to 4rem).
-    expect(table_style).to include("--exp-c: clamp(0px, round(down, (100cqw - 62.25rem) / 5.0, 1px), 2rem)")
-      .and include("--exp-g: clamp(0px, round(down, ((100cqw - 62.25rem) - 5.0 * var(--exp-c)) / 5, 1px), 4rem)")
+    expect(table_style).to include("--exp-c: clamp(0px, round(down, (100cqw - 62.0rem) / 5.0, 1px), 2rem)")
+      .and include("--exp-g: clamp(0px, round(down, ((100cqw - 62.0rem) - 5.0 * var(--exp-c)) / 5, 1px), 4rem)")
     expect(doc.css("#main table colgroup col")[2]["style"])
       .to eq "width: calc(10.25rem + var(--exp-g) + 2.0 * var(--exp-c))"
     expect(doc.css("#main table colgroup col")[1]["style"]).to eq "width: calc(5.25rem + var(--exp-g))"
     expect(doc.css("#main table colgroup col")[5]["style"]).to eq "width: 4.75rem"
-    expect(doc.at_css(".bk-select-scope")["style"]).to eq "max-width: calc(62.25rem + 5.0 * 2rem + 5 * 4rem)"
-    expect(doc.at_css(".exp-filter-limit")["style"]).to eq "max-width: calc(62.25rem + 5.0 * 2rem + 5 * 4rem)"
+    expect(doc.at_css(".bk-select-scope")["style"]).to eq "max-width: calc(62.0rem + 5.0 * 2rem + 5 * 4rem)"
+    expect(doc.at_css(".exp-filter-limit")["style"]).to eq "max-width: calc(62.0rem + 5.0 * 2rem + 5 * 4rem)"
     expect(row_of(yp).css("td.exp-tnum").map { |td| td["class"][/frcol-(\w+)/, 1] })
       .to eq(%w[activated_at regular_fee reduction reduced_fee])
     expect(row_of(yp).css("td.frcol-regular_fee, td.frcol-reduction, td.frcol-reduced_fee").map { |td| td.text.squish })
       .to eq(["3.400 €", "−250 €", "=3.150 €"])
     titles = doc.css("#main thead th[title]").to_h { |th| [th.text.gsub(/[↑↓⇅]/, "").strip, th["title"]] }
-    expect(titles).to eq("Hinweis" => "Kurzhinweis, wird im Vertrag angezeigt", "Vorgang" => "Helpdesk-Vorgang",
+    expect(titles).to eq("Vertrag" => "Status vom Teilnahmevertrag",
+      "Hinweis" => "Kurzhinweis, wird im Vertrag angezeigt", "Vorgang" => "Helpdesk-Vorgang",
       "Kommentar" => "Nur für Personen mit Buchhaltungs-Rechten")
     # The fixed layout takes its widths from the colgroup, not from the group row.
     expect(doc.css("#main table colgroup col").first["style"]).to eq "width: 1.25rem"
@@ -112,7 +113,8 @@ describe Fin::FeeReductionsController do
   it "shows the roles as badges in their colours, the regular fee and the usual status muted" do
     yp.update!(status: "confirmed")
     sign_in(finance)
-    get :index
+    # The status is hidden by default.
+    get :index, params: {c: "pl,at,nm,ro,ctrct,st,rf"}
 
     badges = row_of(yp).css("td.frcol-role .wsjrdp-tip-host > .wsjrdp-role")
     expect(badges.map(&:text)).to eq(%w[YP])
@@ -217,9 +219,10 @@ describe Fin::FeeReductionsController do
       get :index
 
       groups = doc.css(".flt-presets .flt-segment").map { |g| g.css("a").map { |a| a.text.strip } }
-      expect(groups).to eq([["", "geplant", "ohne Plan"], ["", "bestätigt", "nicht bestätigt"]])
+      expect(groups).to eq([["", "geplant", "ohne Plan"],
+        ["", "Vertrag besteht", "ausstehend", "ohne Vertrag oder beendet"]])
       expect(doc.css(".flt-presets .flt-segment a.flt-preset-icon-only").pluck("title"))
-        .to eq(["ohne Einschränkung", "ohne Einschränkung"])
+        .to eq(["ohne Einschränkung"] * 2)
       expect(doc.at_css(".flt-presets .flt-segment a i.fa-clock")).to be_present
     end
 
@@ -239,6 +242,34 @@ describe Fin::FeeReductionsController do
     it "narrows to confirmed or other people" do
       expect(shown("!(!(!(bs,in,'ja')))")).to eq [yp]
       expect(shown("!(!(!(bs,in,'nein')))")).to eq [planner]
+    end
+
+    it "narrows by the contract as stored" do
+      yp.update_columns(contract_status: "confirmed", contract_confirmed_at: 1.month.ago)
+      planner.update_columns(contract_status: "replacement_pending", contract_confirmed_at: 1.month.ago)
+
+      expect(shown("!(!(!(ctst,in,'confirmed')))")).to eq [yp]
+      expect(shown("!(!(!(ctst,in,'replacement_pending')))")).to eq [planner]
+      planner.update_columns(contract_status: "ended", contract_ended_at: 1.day.ago)
+      expect(shown("!(!(!(ctst,in,'ended')))")).to eq [planner]
+      expect(shown("!(!(!(ctst,in,'none')))")).to eq []
+    end
+
+    it "narrows by the contract's quick filter on the contract as stored, ended counting as none" do
+      yp.update_columns(contract_status: "ended", contract_ended_at: 1.day.ago)
+      button = ->(label) { doc.css(".flt-presets .flt-segment a").find { |a| a.text.strip == label } }
+      get :index
+
+      query = Rack::Utils.parse_nested_query(URI.parse(button.call("ohne Vertrag oder beendet")["href"]).query)
+      expect(query.values.join).to include("ctst", "none", "ended")
+      get :index, params: query
+      expect(button.call("ohne Vertrag oder beendet")["aria-pressed"]).to eq "true"
+      expect([yp, planner].select { |person| row_of(person) }).to eq [yp, planner]
+
+      query = Rack::Utils.parse_nested_query(URI.parse(button.call("Vertrag besteht")["href"]).query)
+      get :index, params: query
+      expect(button.call("Vertrag besteht")["aria-pressed"]).to eq "true"
+      expect([yp, planner].select { |person| row_of(person) }).to eq []
     end
   end
 
@@ -321,11 +352,67 @@ describe Fin::FeeReductionsController do
     expect(row_of(yp).next_element&.matches?("tr.exp-sub-row")).to be_falsey
   end
 
+  it "shows the contract in a word, coloured as it matters for the payments, the label and dates as the tooltip" do
+    sign_in(finance)
+    {"confirmed" => ["in Kraft", "fin-status-confirmed"], "replacement_pending" => ["ausstehend", "fin-status-noted"],
+     "ended" => ["beendet", "fin-status-deregistered"]}.each do |status, (word, css)|
+      yp.update_columns(contract_status: status, contract_confirmed_at: Time.zone.local(2025, 12, 16),
+        contract_ended_at: (Time.zone.local(2026, 3, 1) if status == "ended"))
+      get :index
+
+      cell = row_of(yp).at_css("td.frcol-contract .wsjrdp-tip-host")
+      expect(cell.at_css("> span.#{css}").text).to eq word
+      expect(Nokogiri::HTML(cell.at_css("template").inner_html).text.squish).to include(Settings.contract_status[status], "16.12.2025")
+    end
+  end
+
+  describe "contract and status where only one of them is shown" do
+    def cell(key, params = {})
+      get :index, params: params
+      row_of(yp).at_css("td.frcol-#{key} .wsjrdp-tip-host")
+    end
+
+    def second_word(host) = host.at_css(".fin-status-other")&.text
+
+    def tip(host) = Nokogiri::HTML(host.at_css("template").inner_html).text.squish
+
+    before { sign_in(finance) }
+
+    it "names the other one, small and muted, where the two do not go together" do
+      {%w[confirmed printed] => %w[gedruckt in\ Kraft], %w[confirmed deregistration_noted] => %w[Abmeldung in\ Kraft],
+       %w[replacement_pending reviewed] => %w[geprüft ausstehend], %w[ended reviewed] => %w[geprüft beendet],
+       %w[none deregistered] => %w[abgemeldet keiner]}.each do |(contract, status), (status_word, contract_word)|
+        yp.update_columns(contract_status: contract, status: status)
+
+        expect(second_word(cell("contract", c: "pl,at,nm,ctrct"))).to eq status_word
+        expect(second_word(cell("status", c: "pl,at,nm,st"))).to eq contract_word
+        expect(second_word(cell("status", c: "pl,at,nm,ctrct,st"))).to be_nil
+      end
+    end
+
+    it "shows the one word where the two go together" do
+      {"none" => "reviewed", "confirmed" => "confirmed", "ended" => "deregistered"}.each do |contract, status|
+        yp.update_columns(contract_status: contract, status: status)
+
+        expect(second_word(cell("contract", c: "pl,at,nm,ctrct"))).to be_nil
+        expect(second_word(cell("status", c: "pl,at,nm,st"))).to be_nil
+      end
+    end
+
+    it "names both in the tooltip" do
+      yp.update_columns(contract_status: "confirmed", status: "confirmed", contract_confirmed_at: Time.zone.local(2025, 12, 16))
+
+      expect(tip(cell("status", c: "pl,at,nm,st"))).to include(Settings.status["confirmed"], "Vertrag:", "16.12.2025")
+      expect(tip(cell("contract", c: "pl,at,nm,ctrct"))).to include("Status:", Settings.contract_status["confirmed"])
+      expect(tip(cell("status", c: "pl,at,nm,ctrct,st"))).not_to include("Vertrag:")
+    end
+  end
+
   it "colours the status: confirmed green, a noted deregistration orange, a deregistration red" do
     {"confirmed" => "confirmed", "deregistration_noted" => "noted", "deregistered" => "deregistered"}.each do |status, css|
       yp.update!(status: status)
       sign_in(finance)
-      get :index
+      get :index, params: {c: "pl,at,nm,ctrct,st"}
 
       expect(row_of(yp).at_css("td.frcol-status .fin-status-#{css}")).to be_present
     end

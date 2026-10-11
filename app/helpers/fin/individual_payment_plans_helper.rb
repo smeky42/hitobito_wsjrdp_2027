@@ -34,10 +34,12 @@ module Fin::IndividualPaymentPlansHelper
 
   # The columns; the strip's column as wide as the longest strip of the whole
   # list (strip_length months), so it does not change with the filter.
-  def individual_plan_table_columns(strip_length)
+  # +visible_keys+: the columns shown (Wsjrdp::TableState#visible_column_keys)
+  # -- contract and status each name the other where it is hidden.
+  def individual_plan_table_columns(strip_length, visible_keys)
     notes = ->(row, keys) { individual_plan_notes(row.active_plan, keys) }
     Fin::IndividualPaymentPlansColumns::COLUMNS.map do |col|
-      column = col.to_table_column(cell: ->(row) { individual_plan_cell(col.key, row) },
+      column = col.to_table_column(cell: ->(row) { individual_plan_cell(col.key, row, visible_keys) },
         merged_cell: (notes if col.merge == Fin::IndividualPaymentPlansColumns::NOTES))
       column[:width] = individual_plan_strip_width(strip_length) if col.key == "plan"
       column
@@ -85,14 +87,14 @@ module Fin::IndividualPaymentPlansHelper
   # The cells of the single columns; issue and comment share one
   # (#individual_plan_notes). The plan's figures are those of the plan the row
   # shows (Fin::IndividualPaymentPlanRow#shown_plan), muted for a standard plan.
-  def individual_plan_cell(key, row) # rubocop:disable Metrics/CyclomaticComplexity
+  def individual_plan_cell(key, row, visible_keys) # rubocop:disable Metrics/CyclomaticComplexity
     person = row.person
     plan = row.shown_plan
     case key
     when "id" then row.id
     when "name" then fin_subject_link(person)
     when "role" then wsjrdp_role_pair(contingent: person.wsjrdp_role, jamboree: person.effective_wsj_role)
-    when "status" then fin_person_status(person)
+    when *Fin::PersonStatusColumns::KEYS then fin_person_cell(key, person, visible_keys)
     when "activated_at" then individual_plan_activated_at(row)
     when "payment_method" then individual_plan_payment_method(plan)
     when "plan" then individual_plan_strip(plan, role: person.wsjrdp_role)

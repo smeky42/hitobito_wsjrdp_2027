@@ -323,8 +323,8 @@ class Wsjrdp::TableState
       end
       attribute = declaration[:attribute].to_s
       offered = attribute_values!(what, attribute, declaration[:operator])
-      members = group_members(what, declaration[:members], offered)
-      values = members.map { |member| member[:value].to_s }.freeze
+      members = group_members(what, declaration[:members], offered, exclusive: declaration[:exclusive])
+      values = members.flat_map { |member| member_values(member) }.freeze
       return build_exclusive_group(declaration, attribute, members, values) if declaration[:exclusive]
 
       members.map { |member| build_group_member(declaration[:group], attribute, member, values) }
@@ -343,14 +343,19 @@ class Wsjrdp::TableState
         icon: (UNRESTRICTED_ICON unless own_label), css_class: (ICON_ONLY_CLASS unless own_label),
         group: group, attribute: attribute, value: nil, group_values: values, exclusive: true)
       [unrestricted] + members.map do |member|
-        value = member[:value].to_s
+        own = member_values(member)
         Wsjrdp::TableState::FilterPreset.new(key: member[:key].to_s, label: member[:label].to_s,
-          slots: nil, active: slots.any? && slots.all? { |slot| group_slot_values(slot) == [value] },
-          toggle_wire: encode_slots(without + [[[attribute, GROUP_OPERATOR, value]]]),
+          slots: nil, active: slots.any? && slots.all? { |slot| group_slot_values(slot).sort == own.sort },
+          toggle_wire: encode_slots(without + [[[attribute, GROUP_OPERATOR, *own]]]),
           icon: member[:icon]&.to_s, css_class: member[:css_class]&.to_s,
-          group: group, attribute: attribute, value: value, group_values: values, exclusive: true)
+          group: group, attribute: attribute, value: (own.one? ? own.first : own.freeze), group_values: values,
+          exclusive: true)
       end
     end
+
+    # The values a member stands for, as Strings: one, or -- in an exclusive
+    # group -- several (`value: [...]`).
+    def member_values(member) = Array(member[:value]).map(&:to_s)
 
     def encode_slots(tree) = @schema.encode_tree(tree, schema: @user_bound).to_s
 
@@ -372,17 +377,25 @@ class Wsjrdp::TableState
     end
 
     # The members as symbol-keyed Hashes, each checked against the declaration's
-    # contract: its keys, its value, and both its key and its value unique within
-    # the group -- two buttons standing for the same thing is a mistake, and the
-    # two would toggle each other.
-    def group_members(what, members, offered)
+    # contract: its keys, its values, and both its key and each of its values
+    # unique within the group -- two buttons standing for the same thing is a
+    # mistake, and the two would toggle each other. Several values for one
+    # member only in an exclusive group, whose member replaces the slot as a
+    # whole.
+    def group_members(what, members, offered, exclusive:)
       parsed = Array(members).map { |member| member.transform_keys(&:to_sym) }
       parsed.each do |member|
         check_keys!(what, member, MEMBER_KEYS, MEMBER_REQUIRED_KEYS)
-        next if offered.include?(member[:value].to_s)
+        values = member_values(member)
+        if values.empty? || (values.size > 1 && !exclusive)
+          raise ArgumentError, "#{what}: member #{member[:key]} has #{values.size} values -- " \
+                               "one, or several in an exclusive group"
+        end
+        stray = values.find { |value| !offered.include?(value) }
+        next unless stray
 
         raise ArgumentError, "#{what}: member #{member[:key]} has the value " \
-                             "#{member[:value].to_s.inspect}, which the attribute does not offer"
+                             "#{stray.inspect}, which the attribute does not offer"
       end
       check_unique!(what, parsed)
       parsed
@@ -398,7 +411,7 @@ class Wsjrdp::TableState
 
     def check_unique!(what, members)
       %i[key value].each do |field|
-        taken = members.map { |member| member[field].to_s }
+        taken = members.flat_map { |member| (field == :value) ? member_values(member) : [member[field].to_s] }
         duplicate = taken.find { |value| taken.count(value) > 1 }
         next unless duplicate
 

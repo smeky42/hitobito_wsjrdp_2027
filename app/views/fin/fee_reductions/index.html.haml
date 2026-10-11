@@ -45,7 +45,7 @@
 
   = wsjrdp_expandable_table do |t|
     - t.rows fee_reductions, id: "fr"
-    - t.columns fee_reduction_table_columns, menu: true
+    - t.columns fee_reduction_table_columns(fee_reductions.state.visible_column_keys), menu: true
     - t.row_key { |row| row.id }
     -# A planned reduction as a sub-row: its values under the cells they would
     -# replace.

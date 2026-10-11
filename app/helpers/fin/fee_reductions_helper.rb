@@ -10,10 +10,12 @@
 # The cells of the Reduktionen list (fin/fee_reductions, Fin::FeeReductionRow).
 # Amounts are whole euros in practice, so they go without cents.
 module Fin::FeeReductionsHelper
-  def fee_reduction_table_columns
+  # +visible_keys+: the columns shown (Wsjrdp::TableState#visible_column_keys)
+  # -- contract and status each name the other where it is hidden.
+  def fee_reduction_table_columns(visible_keys)
     notes = ->(row, keys) { fee_reduction_notes(row.person, keys) }
     Fin::FeeReductionsColumns::COLUMNS.map do |col|
-      col.to_table_column(cell: ->(row) { fee_reduction_cell(col.key, row) },
+      col.to_table_column(cell: ->(row) { fee_reduction_cell(col.key, row, visible_keys) },
         merged_cell: (notes if col.merge == Fin::FeeReductionsColumns::NOTES))
     end
   end
@@ -22,7 +24,7 @@ module Fin::FeeReductionsHelper
 
   # The cells of the single columns; hint, issue and comment share one
   # (#fee_reduction_notes).
-  def fee_reduction_cell(key, row) # rubocop:disable Metrics/CyclomaticComplexity
+  def fee_reduction_cell(key, row, visible_keys) # rubocop:disable Metrics/CyclomaticComplexity
     person = row.person
     case key
     when "id" then row.id
@@ -31,7 +33,7 @@ module Fin::FeeReductionsHelper
     when "regular_fee" then tag.span(fee_reduction_eur(row.regular_fee_cents), class: "muted")
     when "reduction" then fee_reduction_operand("−", person.active_total_fee_reduction * 100)
     when "reduced_fee" then fee_reduction_operand("=", person.total_fee_cents)
-    when "status" then fin_person_status(person)
+    when *Fin::PersonStatusColumns::KEYS then fin_person_cell(key, person, visible_keys)
     when "activated_at" then fee_reduction_activated_at(row)
     end
   end

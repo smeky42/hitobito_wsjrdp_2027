@@ -485,7 +485,10 @@
         var attr = String(preset.attribute);
         groupValues[attr] = (groupValues[attr] || [])
           .concat((preset.group_values || []).map(String));
-        (groupLabels[attr] = groupLabels[attr] || {})[String(preset.value)] = preset.label;
+        // A member of an exclusive group may stand for several values.
+        [].concat(preset.value).forEach(function (value) {
+          (groupLabels[attr] = groupLabels[attr] || {})[String(value)] = preset.label;
+        });
       });
       function groupSlotLabel(slot) {
         if (slot.length !== 1) return null;
@@ -495,7 +498,8 @@
         for (var i = 2; i < cond.length; i++) {
           var value = String(cond[i]);
           if (values.indexOf(value) < 0) return null;
-          named.push(groupLabels[attr][value] || value);
+          var label = groupLabels[attr][value] || value;
+          if (named.indexOf(label) < 0) named.push(label);
         }
         return named.join(", ");
       }
