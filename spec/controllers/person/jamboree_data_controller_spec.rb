@@ -44,11 +44,32 @@ describe Person::JamboreeDataController, type: :controller do
     expect(ul.reload.nationality).to eq("deutsch")
   end
 
+  it "shows and updates journey fields for a user with log access" do
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("select#person_arrival_location")).to be_present
+    expect(page.at_css("select#person_departure_type")).to be_present
+
+    put :update, params: {id: ul.id, person: {arrival_location: "amber_expo", departure_type: "train"}}
+    expect(ul.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train")
+
+    get :show, params: {id: ul.id}
+    expect(page.text).to include("AmberExpo", "Zug")
+  end
+
+  it "denies reading and writing journey fields without log access" do
+    sign_in(ul)
+    expect { get :show, params: {id: ul.id} }.to raise_error(CanCan::AccessDenied)
+    expect { get :edit, params: {id: ul.id} }.to raise_error(CanCan::AccessDenied)
+    expect { put :update, params: {id: ul.id, person: {arrival_location: "amber_expo"}} }
+      .to raise_error(CanCan::AccessDenied)
+    expect(ul.reload.arrival_location).to be_nil
+  end
+
   it "offers the selects with an empty choice and German labels" do
     get :edit, params: {id: ul.id}
 
     select = page.at_css("select#person_travel_document_type")
-    expect(select.css("option").map(&:text)).to start_with("", "Reisepass")
+    expect(select.css("option").map(&:text)).to start_with("", "Personalausweis")
     expect(page.at_css("input[type=hidden][name='person[medical_equipment_needs][]'][value='']")).to be_present
   end
 

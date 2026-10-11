@@ -59,9 +59,13 @@ module Wsjrdp2027::Person::JamboreeData
   # The values of the selects; their labels come from the locale under
   # ENUM_I18N (i18n_enum), as for the language levels.
   ENUM_I18N = "activerecord.attributes.person"
-  TRAVEL_DOCUMENT_TYPES = %w[ordinary_passport diplomatic_passport service_passport official_passport
+  TRAVEL_DOCUMENT_TYPES = %w[official_passport ordinary_passport diplomatic_passport service_passport
     special_passport other_travel_document].freeze
   VISA_NEEDED_VALUES = %w[no yes_have_one yes_need_support].freeze
+  ARRIVAL_LOCATIONS = %w[amber_expo gdansk_ferry_terminal gdansk_glowny_trainstation
+    gdynia_ferry_terminal lech_walesa_airport].freeze
+  DEPARTURE_LOCATIONS = (ARRIVAL_LOCATIONS - %w[amber_expo] + %w[jamboree_site_pick_up_point]).freeze
+  TRAVEL_TYPES = %w[bicycle bus car coach ferry flight train].freeze
   VISA_DETAIL_ATTRS = %i[
     visa_nationality_at_birth
     visa_other_nationalities
@@ -101,6 +105,10 @@ module Wsjrdp2027::Person::JamboreeData
     travel_document_number
     travel_document_country
     visa_information
+    arrival_time
+    arrival_number
+    departure_time
+    departure_number
     prior_wsj_experience
     vehicle_registration_number
     dietary_requirements
@@ -117,6 +125,10 @@ module Wsjrdp2027::Person::JamboreeData
       travel_document_type
       visa_needed
       wheelchair_type
+      arrival_location
+      arrival_type
+      departure_location
+      departure_type
     ] +
     ALLERGIES.map { |allergy| :"allergy_#{allergy}_severity" }
   ).freeze
@@ -125,6 +137,8 @@ module Wsjrdp2027::Person::JamboreeData
     travel_document_issue_date
     travel_document_expiration_date
     visa_fingerprints_date
+    arrival_date
+    departure_date
   ].freeze
 
   BOOLEAN_ATTRS = (
@@ -194,6 +208,10 @@ module Wsjrdp2027::Person::JamboreeData
     i18n_enum :travel_document_type, TRAVEL_DOCUMENT_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_document_types"
     i18n_enum :visa_needed, VISA_NEEDED_VALUES, i18n_prefix: "#{ENUM_I18N}.jamboree_visa_needed"
     i18n_enum :wheelchair_type, WHEELCHAIR_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_wheelchair_types"
+    i18n_enum :arrival_location, ARRIVAL_LOCATIONS, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_locations"
+    i18n_enum :departure_location, DEPARTURE_LOCATIONS, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_locations"
+    i18n_enum :arrival_type, TRAVEL_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_types"
+    i18n_enum :departure_type, TRAVEL_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_types"
     ALLERGIES.each do |allergy|
       i18n_enum :"allergy_#{allergy}_severity", ALLERGY_SEVERITIES, i18n_prefix: "#{ENUM_I18N}.jamboree_allergy_severities"
     end
