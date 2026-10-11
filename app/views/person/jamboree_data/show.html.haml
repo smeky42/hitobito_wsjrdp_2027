@@ -14,21 +14,19 @@
             = @person.known_as_name_or_default
             %span.small.fw-light (#{t("people.jamboree_data.known_as_name_default.#{@person.known_as_name_source}")})
         .small.text-muted.fw-light= t('people.jamboree_data.known_as_name_help')
-    = render_attrs(@person,
-      :mothers_first_name,
-      :fathers_first_name,
-      :mothers_surname_at_birth,
-      :place_of_birth,
-      :country_of_birth,
-      :nationality)
+    - personal_attrs = [:country_of_birth, :nationality]
+    - personal_attrs.unshift(:place_of_birth) if @person.jamboree_data_adult? || @person.visa_needed == 'yes_need_support'
+    - personal_attrs.unshift(:mothers_first_name, :fathers_first_name, :mothers_surname_at_birth) if @person.jamboree_data_adult?
+    = render_attrs(@person, *personal_attrs)
 
     -# As in the form: one block per language, the skills as labels.
     %h3= t('people.jamboree_data.languages')
     - Wsjrdp2027::Person::JamboreeData::LANGUAGES.each do |language|
-      .fw-semibold.mt-2= t("people.jamboree_data.language_names.#{language}")
-      %dl.dl-horizontal.m-0.p-2.border-top
-        - Wsjrdp2027::Person::JamboreeData::LANGUAGE_SKILLS.each do |skill|
-          = labeled(t("people.jamboree_data.language_skills.#{skill}"), format_attr(@person, :"#{language}_#{skill}"))
+      - if language == :english || @person.jamboree_data_adult?
+        .fw-semibold.mt-2= t("people.jamboree_data.language_names.#{language}")
+        %dl.dl-horizontal.m-0.p-2.border-top
+          - Wsjrdp2027::Person::JamboreeData::LANGUAGE_SKILLS.each do |skill|
+            = labeled(t("people.jamboree_data.language_skills.#{skill}"), format_attr(@person, :"#{language}_#{skill}"))
 
     %h3= t('people.jamboree_data.travel')
     = render_attrs(@person,
@@ -37,12 +35,14 @@
       :travel_document_issue_date,
       :travel_document_expiration_date,
       :travel_document_country,
-      :visa_needed,
-      :visa_information,
-      *Wsjrdp2027::Person::JamboreeData::VISA_DETAIL_ATTRS,
-      :visa_residence_other_than_nationality,
-      :visa_fingerprints_collected,
-      :visa_fingerprints_date)
+      :visa_needed)
+    - if @person.visa_needed == 'yes_need_support'
+      = render_attrs(@person,
+        :visa_information,
+        *Wsjrdp2027::Person::JamboreeData::VISA_DETAIL_ATTRS,
+        :visa_residence_other_than_nationality,
+        :visa_fingerprints_collected,
+        :visa_fingerprints_date)
 
     %h3= t('people.jamboree_data.journey')
     = render_attrs(@person,
@@ -65,9 +65,9 @@
       :comfortable_in_crowd,
       :comfortable_flashing_lights,
       :comfortable_loud_noise,
-      :comfortable_confined_space,
-      :prior_wsj_experience,
-      :vehicle_registration_number)
+      :comfortable_confined_space)
+    - if @person.jamboree_data_adult?
+      = render_attrs(@person, :prior_wsj_experience, :vehicle_registration_number)
 
     %h3= t('people.jamboree_data.diet')
     - allergy_attrs = Wsjrdp2027::Person::JamboreeData::ALLERGIES.flat_map { |allergy| [:"allergy_#{allergy}", :"allergy_#{allergy}_severity"] }
