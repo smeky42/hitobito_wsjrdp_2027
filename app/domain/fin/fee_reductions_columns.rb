@@ -41,10 +41,7 @@ module Fin::FeeReductionsColumns
     # on the Jamboree differ (contingent first); the tooltip names both.
     c.column key: "role", abbr: "ro", label: "Rolle", width: "6.25rem",
       sort: ->(row) { [row.person.wsjrdp_role.to_s, row.person.effective_wsj_role.to_s] }, default: true
-    # The registration status (people.status), in a word; the full label is the
-    # cell's tooltip.
-    c.column key: "status", abbr: "st", label: "Status", width: "5.5rem",
-      sort: ->(row) { Settings.status.keys.map(&:to_s).index(row.person.status.to_s) || -1 }, default: true
+    Fin::PersonStatusColumns.define(c)
     # The fee as a calculation under the bracket "Beitrag": regulär − Reduktion
     # = reduziert, the operators at the left of their cells.
     c.column key: "regular_fee", abbr: "rf", label: "Beitrag regulär", header_label: "regulär",

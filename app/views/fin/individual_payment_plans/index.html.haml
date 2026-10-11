@@ -25,7 +25,7 @@
 
   = wsjrdp_expandable_table do |t|
     - t.rows individual_payment_plans, id: "ip"
-    - t.columns individual_plan_table_columns(strip_length), menu: true, extra: [individual_plan_link_column]
+    - t.columns individual_plan_table_columns(strip_length, individual_payment_plans.state.visible_column_keys), menu: true, extra: [individual_plan_link_column]
     - t.row_key { |row| row.id }
     -# A planned plan as a sub-row: its values under the cells they would
     -# replace.

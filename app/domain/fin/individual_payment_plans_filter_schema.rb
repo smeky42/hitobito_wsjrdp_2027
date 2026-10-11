@@ -13,15 +13,14 @@
 # the planned plan sits in wsj27_rdp_fee_rules and is reached by a subquery.
 #
 # A text search runs over names, issue and comment, of the active plan and of
-# the planned one. Five attributes carry the quick filters (PRESETS): whether
-# a plan is planned, whether the person is confirmed, the payment method of
-# the active plan, whether the active plan's sum differs from the fee, and
-# whether the person is behind (Fin::PaymentProgress, in SQL).
+# the planned one. The quick filters (PRESETS): whether a plan is planned,
+# the contract (Fin::PersonStatusFilter), the payment method of the active
+# plan, whether the active plan's sum differs from the fee, and whether the
+# person is behind (Fin::PaymentProgress, in SQL).
 module Fin::IndividualPaymentPlansFilterSchema
   extend Wsjrdp::Filtering::FilterSchema
 
   YES_NO = Fin::FeeReductionsFilterSchema::YES_NO
-  STATUS_OPTIONS = Fin::FeeReductionsFilterSchema::STATUS_OPTIONS
   PAYMENT_METHOD_OPTIONS = Wsjrdp::Filtering::Options.values(-> { Wsjrdp2027::ParticipationFee.payment_method_options })
 
   # The planned fee rule of the person, where it carries a plan.
@@ -96,9 +95,7 @@ module Fin::IndividualPaymentPlansFilterSchema
       type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
       column: ->(_t) { yes_no("people.status = 'confirmed'") },
       options: YES_NO
-    s.attribute key: :status, short_key: :st, label: "Status",
-      type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
-      column: :status, options: STATUS_OPTIONS
+    Fin::PersonStatusFilter.attributes(s)
     s.attribute key: :payment_method, short_key: :pm, label: "Zahlungsart",
       type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
       column: :wsjrdp_installments_payment_method, options: PAYMENT_METHOD_OPTIONS
@@ -118,9 +115,7 @@ module Fin::IndividualPaymentPlansFilterSchema
     {group: "planned", attribute: "planned", operator: "in", exclusive: true,
      members: [{key: "planned", label: "geplant", value: "ja", icon: "clock"},
        {key: "not_planned", label: "ohne Plan", value: "nein"}]},
-    {group: "confirmed", attribute: "confirmed", operator: "in", exclusive: true,
-     members: [{key: "confirmed", label: "bestätigt", value: "ja"},
-       {key: "not_confirmed", label: "nicht bestätigt", value: "nein"}]},
+    Fin::PersonStatusFilter::CONTRACT_PRESET,
     {group: "payment_method", attribute: "payment_method", operator: "in", exclusive: true,
      members: [{key: "direct_debit", label: "Lastschrift", value: "direct_debit", icon: "file-signature"},
        {key: "credit_transfer", label: "Überweisung", value: "credit_transfer", icon: "landmark"}]},

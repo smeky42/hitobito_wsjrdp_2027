@@ -1157,6 +1157,35 @@ describe Wsjrdp::TableState do
           expect { buttons(choice.merge(exclusive: false, unrestricted_label: "Jede Art")) }
             .to raise_error(ArgumentError, /filter preset group kind: unrestricted_label is for an exclusive group only/)
         end
+
+        # A member may stand for several values: its slot holds them all.
+        describe "with a member of several values" do
+          let(:other_kinds) do
+            {group: "kind", attribute: "kind", operator: "in", exclusive: true,
+             members: [{key: "card", label: "Karte", value: "card"},
+               {key: "other", label: "Rechnung oder Erstattung", value: %w[invoice refund]}]}
+          end
+
+          it "sets all its values, is pressed by exactly those in any order, and names them all as its values" do
+            presets = buttons(other_kinds)
+            expect(presets["other"].toggle_wire).to eq(JSON.generate([[["kind", "in", "invoice", "refund"]]]))
+            expect(presets["other"].value).to eq(%w[invoice refund])
+            expect(presets["other"].group_values).to eq(%w[card invoice refund])
+            expect(buttons(other_kinds, filter: [[["kind", "in", "refund", "invoice"]]]).values.map(&:active?))
+              .to eq([false, false, true])
+            expect(buttons(other_kinds, filter: [[["kind", "in", "invoice"]]]).values.map(&:active?))
+              .to eq([false, false, false])
+          end
+
+          it "is refused in a group that is not exclusive, and with a value taken or not offered" do
+            expect { buttons(other_kinds.merge(exclusive: false)) }
+              .to raise_error(ArgumentError, /filter preset group kind: member other has 2 values/)
+            taken = other_kinds.merge(members: other_kinds[:members] + [{key: "x", label: "X", value: "refund"}])
+            expect { buttons(taken) }.to raise_error(ArgumentError, /duplicate member value "refund"/)
+            stray = other_kinds.merge(members: [{key: "other", label: "O", value: %w[invoice nope]}])
+            expect { buttons(stray) }.to raise_error(ArgumentError, /member other has the value "nope"/)
+          end
+        end
       end
 
       describe "a group" do

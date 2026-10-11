@@ -11,16 +11,14 @@
 # filter (doc/wsjrdp/generic_filter_builder.md). It filters the PEOPLE before
 # their rows are built, so every condition is SQL on `people`.
 #
-# A text search runs over names, hint and comment. Two yes/no attributes carry
-# the quick filters (PRESETS): whether a reduction
-# is planned (the planned values sit in additional_info -- jsonb_exists, as `?`
-# would read as a bind placeholder) and whether the person is confirmed.
+# A text search runs over names, hint and comment. The quick filters (PRESETS):
+# whether a reduction is planned (the planned values sit in additional_info --
+# jsonb_exists, as `?` would read as a bind placeholder) and the contract
+# (Fin::PersonStatusFilter).
 module Fin::FeeReductionsFilterSchema
   extend Wsjrdp::Filtering::FilterSchema
 
   YES_NO = Wsjrdp::Filtering::Options.values(-> { [%w[ja ja], %w[nein nein]] })
-
-  STATUS_OPTIONS = Wsjrdp::Filtering::Options.values(-> { Settings.status.to_h.map { |key, label| [key.to_s, label] } })
 
   def self.yes_no(condition) = Arel.sql("CASE WHEN #{condition} THEN 'ja' ELSE 'nein' END")
 
@@ -44,9 +42,7 @@ module Fin::FeeReductionsFilterSchema
       type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
       column: ->(_t) { yes_no("people.status = 'confirmed'") },
       options: YES_NO
-    s.attribute key: :status, short_key: :st, label: "Status",
-      type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
-      column: :status, options: STATUS_OPTIONS
+    Fin::PersonStatusFilter.attributes(s)
   end
 
   # The quick filters: two exclusive groups, the unrestricted button (an
@@ -55,9 +51,7 @@ module Fin::FeeReductionsFilterSchema
     {group: "planned", attribute: "planned", operator: "in", exclusive: true,
      members: [{key: "planned", label: "geplant", value: "ja", icon: "clock"},
        {key: "not_planned", label: "ohne Plan", value: "nein"}]},
-    {group: "confirmed", attribute: "confirmed", operator: "in", exclusive: true,
-     members: [{key: "confirmed", label: "bestätigt", value: "ja"},
-       {key: "not_confirmed", label: "nicht bestätigt", value: "nein"}]}
+    Fin::PersonStatusFilter::CONTRACT_PRESET
   ].freeze
 
   def self.bound(except: nil)

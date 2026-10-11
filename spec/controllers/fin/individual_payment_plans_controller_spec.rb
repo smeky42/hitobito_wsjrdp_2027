@@ -84,14 +84,14 @@ describe Fin::IndividualPaymentPlansController do
     expect(response).to be_successful
     expect(doc.at_css("#main h1").text).to eq "Individuelle Ratenpläne"
     expect(doc.css("#main thead th.exp-col").map { |th| th["class"][/ipcol-(\w+)/, 1] })
-      .to eq(%w[planned activated_at name role status paid total plan payment_method issue comment link])
+      .to eq(%w[planned activated_at name role contract paid total plan payment_method issue comment link])
     expect(doc.at_css("#main thead th.ipcol-planned i.fa-clock")).to be_present
     expect(doc.at_css("#main thead th.ipcol-payment_method i.fa-file-signature")["aria-label"]).to eq "Zahlungsart"
     expect(doc.at_css("#main thead th.ipcol-payment_method")["title"]).to eq "Zahlungsart"
     # The menu: the shown columns, then the hidden ones.
     expect(doc.css(".exp-cols-list .exp-cols-col label").map { |label| label.text.squish })
-      .to eq(["Geplant", "Aktiviert", "Person", "Rolle", "Status", "bezahlt", "Gesamt", "Ratenplan", "Zahlungsart",
-        "Vorgang", "Kommentar", "Person-id", "Beginn", "Ende", "Anzahl Raten", "Beitrag", "offen"])
+      .to eq(["Geplant", "Aktiviert", "Person", "Rolle", "Vertrag", "bezahlt", "Gesamt", "Ratenplan", "Zahlungsart",
+        "Vorgang", "Kommentar", "Status", "Person-id", "Beginn", "Ende", "Anzahl Raten", "Beitrag", "offen"])
     # The link to the Beitrag page: the last column, not in the menu, not on a
     # phone (the widget's `mobile: false`).
     expect(doc.at_css("#main thead th.ipcol-link")["class"]).to include("exp-no-mobile")
@@ -317,6 +317,20 @@ describe Fin::IndividualPaymentPlansController do
     expect(doc.css("[id^='installments_actions_']")).to be_empty
   end
 
+  it "shows the contract, the status after it where the two do not go together and the status is hidden" do
+    sign_in(finance)
+    yp.update_columns(contract_status: "confirmed", status: "deregistration_noted")
+    word = ->(params) {
+      get :index, params: params
+      row_of(yp).at_css(".fin-status-other")&.text
+    }
+
+    expect(word.call({})).to eq "Abmeldung"
+    expect(row_of(yp).at_css("td.ipcol-contract .fin-status-confirmed").text).to eq "in Kraft"
+    expect(word.call(c: "pl,at,nm,st")).to eq "in Kraft"
+    expect(word.call(c: "pl,at,nm,ctrct,st")).to be_nil
+  end
+
   describe "the quick filters" do
     before { sign_in(finance) }
 
@@ -325,12 +339,13 @@ describe Fin::IndividualPaymentPlansController do
       [yp, other, planner].select { |person| row_of(person) }
     end
 
-    it "offers four exclusive groups, the unrestricted asterisk in front of each" do
+    it "offers five exclusive groups, the unrestricted asterisk in front of each" do
       get :index
 
       groups = doc.css(".flt-presets .flt-segment").map { |g| g.css("a").map { |a| a.text.strip } }
-      expect(groups).to eq([["", "geplant", "ohne Plan"], ["", "bestätigt", "nicht bestätigt"],
-        ["", "Lastschrift", "Überweisung"], ["", "Plan ≠ Beitrag"], ["", "in Verzug"]])
+      expect(groups).to eq([["", "geplant", "ohne Plan"],
+        ["", "Vertrag besteht", "ausstehend", "ohne Vertrag oder beendet"], ["", "Lastschrift", "Überweisung"],
+        ["", "Plan ≠ Beitrag"], ["", "in Verzug"]])
       expect(doc.css(".flt-presets .flt-segment a i").pluck("class").reject { |css| css.include?("asterisk") })
         .to eq ["fas fa-clock", "fas fa-file-signature", "fas fa-landmark", "fas fa-exclamation-triangle"]
     end
@@ -341,6 +356,16 @@ describe Fin::IndividualPaymentPlansController do
       expect(shown("!(!(!(pm,in,'credit_transfer')))")).to eq [other]
       expect(shown("!(!(!(pm,in,'direct_debit')))")).to eq [yp]
       expect(shown("!(!(!(mm,in,'ja')))")).to eq [other]
+    end
+
+    it "narrows by the contract: in force, waiting for its replacement, none (never or ended)" do
+      yp.update_columns(contract_status: "confirmed", contract_confirmed_at: 1.month.ago)
+      other.update_columns(contract_status: "replacement_pending", contract_confirmed_at: 1.month.ago)
+      planner.update_columns(contract_status: "ended", contract_ended_at: 1.day.ago)
+
+      expect(shown("!(!(!(ctst,in,'confirmed')))")).to eq [yp]
+      expect(shown("!(!(!(ctst,in,'replacement_pending')))")).to eq [other]
+      expect(shown("!(!(!(ctst,in,'none','ended')))")).to eq [planner]
     end
 
     it "narrows to the people behind, as of today" do
