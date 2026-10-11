@@ -861,6 +861,8 @@ de:
       legal: Rechtliche Bestätigung & Vollständigkeit
       intro: Die folgenden Angaben sind für die Anmeldung beim Jamboree Veranstalter in Polen notwendig. Damit wir die Anmeldung für dich durchführen können musst du diese bis zum 15.11. möglichst vollständig ausfüllen. Die Angaben werden für Reise, Visa, Gesundheit und Notfallplanung verwendet.
       known_as_name_help: Leer lassen für Spitzname bzw. Vorname.
+      clothing: Kleidung & Kopfbedeckung
+      clothing_help: Bevor wir gemeinsam nach Polen fahren, wollen wir dich auch gut ausstatten, gib uns daher noch ein paar Infos zu deiner Kleidergröße und gewünschten Kopfbedeckung.
       language_skills:
         reading: Lesen
         writing: Schreiben

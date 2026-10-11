@@ -24,6 +24,11 @@ class Person::JamboreeDataController < ApplicationController
     *Wsjrdp2027::Person::JamboreeData::BOOLEAN_ATTRS,
     {medical_equipment_needs: []},
     :diet,
+    :shirt_size,
+    :uniform_size,
+    :uniform_long_sleeve,
+    :uniform_order,
+    :headgear,
     :jamboree_data_confirmed
   ]
 
