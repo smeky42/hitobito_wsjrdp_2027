@@ -191,12 +191,27 @@ de:
         medical_other: Weitere Informationen
         known_as_name: Rufname / Namensschild
         jamboree_travel_document_types:
+          official_passport: Personalausweis
           ordinary_passport: Reisepass
           diplomatic_passport: Diplomatenpass
           service_passport: Dienstpass
-          official_passport: Amtlicher Pass
           special_passport: Sonderpass
           other_travel_document: Anderes Reisedokument
+        jamboree_travel_locations:
+          amber_expo: AmberExpo
+          gdansk_ferry_terminal: Fährterminal Gdańsk
+          gdansk_glowny_trainstation: Bahnhof Gdańsk Główny
+          gdynia_ferry_terminal: Fährterminal Gdynia
+          lech_walesa_airport: Flughafen Lech Wałęsa
+          jamboree_site_pick_up_point: Abholpunkt Jamboree-Gelände
+        jamboree_travel_types:
+          bicycle: Fahrrad
+          bus: Linienbus
+          car: Auto
+          coach: Reisebus
+          ferry: Fähre
+          flight: Flugzeug
+          train: Zug
         jamboree_visa_needed:
           "no": Nein
           yes_have_one: "Ja, habe bereits eines"
@@ -247,6 +262,16 @@ de:
         travel_document_issue_date: Ausstellungsdatum
         travel_document_expiration_date: Ablaufdatum
         travel_document_country: Ausstellungsland
+        arrival_location: Ankunftsort
+        arrival_date: Ankunftsdatum
+        arrival_time: Ankunftszeit
+        arrival_type: Verkehrsmittel bei Ankunft
+        arrival_number: Flug-/Zug-/Fährnummer bei Ankunft
+        departure_location: Abreiseort
+        departure_date: Abreisedatum
+        departure_time: Abreisezeit
+        departure_type: Verkehrsmittel bei Abreise
+        departure_number: Flug-/Zug-/Fährnummer bei Abreise
         visa_needed: Visum benötigt
         visa_information: Visainformationen
         visa_nationality_at_birth: Staatsangehörigkeit bei Geburt
@@ -828,6 +853,7 @@ de:
       personal: Persönliche Zusatzangaben & Namensschild
       languages: Sprachkenntnisse
       travel: Reisedokumente & Visa
+      journey: An- und Abreise
       activities: Aktivitäten & Komfort
       diet: Ernährung & Allergien
       health: Gesundheit, Mobilität & Besondere Bedarfe

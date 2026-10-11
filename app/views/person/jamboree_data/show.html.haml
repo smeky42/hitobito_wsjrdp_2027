@@ -44,6 +44,19 @@
       :visa_fingerprints_collected,
       :visa_fingerprints_date)
 
+    %h3= t('people.jamboree_data.journey')
+    = render_attrs(@person,
+      :arrival_location,
+      :arrival_date,
+      :arrival_time,
+      :arrival_type,
+      :arrival_number,
+      :departure_location,
+      :departure_date,
+      :departure_time,
+      :departure_type,
+      :departure_number)
+
     %h3= t('people.jamboree_data.activities')
     = render_attrs(@person,
       :comfortable_on_water,

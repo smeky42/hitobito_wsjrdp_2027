@@ -40,6 +40,21 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(Person.where(id: person.id).pick(:jamboree_data)).to include("travel_document_issue_date" => "2025-01-02")
   end
 
+  it "stores journey choices, times and dates in jamboree_data" do
+    person.update!(arrival_location: "amber_expo", arrival_date: "28.07.2027", arrival_time: "14:30",
+      arrival_type: "train", arrival_number: "ICE 123", departure_location: "jamboree_site_pick_up_point",
+      departure_date: "08.08.2027", departure_time: "09:15", departure_type: "coach", departure_number: "Bus 4")
+
+    expect(person.reload).to have_attributes(arrival_date: Date.new(2027, 7, 28), departure_date: Date.new(2027, 8, 8))
+    expect(Person.where(id: person.id).pick(:jamboree_data)).to include(
+      "arrival_location" => "amber_expo", "arrival_time" => "14:30", "arrival_type" => "train",
+      "arrival_number" => "ICE 123", "departure_location" => "jamboree_site_pick_up_point",
+      "departure_time" => "09:15", "departure_type" => "coach", "departure_number" => "Bus 4")
+
+    person.departure_location = "amber_expo"
+    expect(person).not_to be_valid
+  end
+
   it "stores visa application details only while visa support is needed" do
     person.update!(visa_needed: "yes_need_support", visa_nationality_at_birth: "deutsch",
       visa_fingerprints_collected: "1", visa_fingerprints_date: "2025-01-02", visa_fingerprints_visa_number: "123")
@@ -93,6 +108,7 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person).to have_attributes(travel_document_type_label: "Reisepass", visa_needed_label: "Nein",
       allergy_milk_severity_label: "Schwere anaphylaktische Reaktion (lebensbedrohlich)")
     expect(person.jamboree_data_options(:wheelchair_type)).to eq([["Manuell", "manual"], ["Elektrisch", "electric"]])
+    expect(person.jamboree_data_options(:travel_document_type).first).to eq(["Personalausweis", "official_passport"])
 
     person.visa_needed = "maybe"
     expect(person).not_to be_valid

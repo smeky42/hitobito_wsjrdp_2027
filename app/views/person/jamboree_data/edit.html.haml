@@ -108,6 +108,19 @@
           = f.labeled_input_field :visa_fingerprints_visa_number
 
     = field_set_tag do
+      %h3= t('people.jamboree_data.journey')
+      = f.labeled_collection_select :arrival_location, @person.jamboree_data_options(:arrival_location), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_date_field :arrival_date
+      = f.labeled_input_field :arrival_time, type: :time
+      = f.labeled_collection_select :arrival_type, @person.jamboree_data_options(:arrival_type), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_input_field :arrival_number
+      = f.labeled_collection_select :departure_location, @person.jamboree_data_options(:departure_location), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_date_field :departure_date
+      = f.labeled_input_field :departure_time, type: :time
+      = f.labeled_collection_select :departure_type, @person.jamboree_data_options(:departure_type), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_input_field :departure_number
+
+    = field_set_tag do
       %h3= t('people.jamboree_data.activities')
       = f.labeled_boolean_field :comfortable_on_water
       = f.labeled_boolean_field :comfortable_in_water
