@@ -191,6 +191,7 @@ de:
         medical_other: Weitere Informationen
         known_as_name: Rufname / Namensschild
         jamboree_travel_document_types:
+          _nil: Keine Angabe
           official_passport: Personalausweis
           ordinary_passport: Reisepass
           diplomatic_passport: Diplomatenpass
@@ -198,6 +199,7 @@ de:
           special_passport: Sonderpass
           other_travel_document: Anderes Reisedokument
         jamboree_travel_locations:
+          _nil: Keine Angabe
           amber_expo: AmberExpo
           gdansk_ferry_terminal: Fährterminal Gdańsk
           gdansk_glowny_trainstation: Bahnhof Gdańsk Główny
@@ -205,6 +207,7 @@ de:
           lech_walesa_airport: Flughafen Lech Wałęsa
           jamboree_site_pick_up_point: Abholpunkt Jamboree-Gelände
         jamboree_travel_types:
+          _nil: Keine Angabe
           bicycle: Fahrrad
           bus: Linienbus
           car: Auto
@@ -213,13 +216,16 @@ de:
           flight: Flugzeug
           train: Zug
         jamboree_visa_needed:
+          _nil: Keine Angabe
           "no": Nein
           yes_have_one: "Ja, habe bereits eines"
           yes_need_support: "Ja, brauche Unterstützung/Beantragung"
         jamboree_wheelchair_types:
+          _nil: Keine Angabe
           manual: Manuell
           electric: Elektrisch
         jamboree_allergy_severities:
+          _nil: Keine Angabe
           severe: Schwere anaphylaktische Reaktion (lebensbedrohlich)
           medium: Mittlere Reaktion (ärztliche Hilfe erforderlich)
           mild: Milde Reaktion (selbst behandelbar)
@@ -229,6 +235,7 @@ de:
           medication_cooling: Kühlung für Medikamente
           other: Sonstiges
         jamboree_language_levels:
+          _nil: Keine Angabe
           none: Keine
           basic: Grundkenntnisse
           conversational: Konversationssicher
