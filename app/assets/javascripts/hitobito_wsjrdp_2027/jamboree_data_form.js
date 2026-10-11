@@ -14,7 +14,10 @@
 
   function syncDependent(wrapper) {
     const dependency = document.getElementById(wrapper.getAttribute("data-jamboree-dependent-on"))
-    const visible = !!(dependency && dependency.checked)
+    const expectedValue = wrapper.getAttribute("data-jamboree-dependent-value")
+    const parent = wrapper.parentElement.closest("[data-jamboree-dependent-on]")
+    const parentVisible = !parent || !parent.hidden
+    const visible = parentVisible && !!(dependency && (expectedValue ? dependency.value === expectedValue : dependency.checked))
     wrapper.hidden = !visible
     wrapper.querySelectorAll("input, select, textarea").forEach(function (field) {
       field.disabled = !visible

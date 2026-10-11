@@ -81,7 +81,31 @@
       = f.labeled_input_field :travel_document_country
       -# Without an answer "Nein" is chosen, and saved with the form.
       = f.labeled_collection_select :visa_needed, @person.jamboree_data_options(:visa_needed), :last, :first, {selected: @person.visa_needed.presence || "no"}, class: 'span4'
-      = f.labeled_input_field :visa_information
+      .mt-3{ data: { jamboree_dependent_on: 'person_visa_needed', jamboree_dependent_value: 'yes_need_support' }, hidden: @person.visa_needed != 'yes_need_support' }
+        = f.labeled_input_field :visa_information
+        = f.labeled_input_field :visa_nationality_at_birth
+        = f.labeled_input_field :visa_other_nationalities
+        = f.labeled_input_field :visa_gender_as_in_travel_document
+        = f.labeled_input_field :visa_civil_status
+        = f.labeled_input_field :visa_civil_status_other
+        = f.labeled_input_field :visa_current_student_status
+        = f.labeled_input_field :visa_employer_name
+        = f.labeled_input_field :visa_employer_address_1
+        = f.labeled_input_field :visa_employer_address_2
+        = f.labeled_input_field :visa_employer_city
+        = f.labeled_input_field :visa_employer_postcode
+        = f.labeled_input_field :visa_employer_state
+        = f.labeled_input_field :visa_employer_country
+        = f.labeled_input_field :visa_family_eu_citizen_relationship
+        = f.labeled_input_field :visa_family_eu_citizen_relation
+        = f.labeled_boolean_field :visa_residence_other_than_nationality
+        .ms-3{ data: { jamboree_dependent_on: 'person_visa_residence_other_than_nationality' }, hidden: !@person.visa_residence_other_than_nationality }
+          = f.labeled_input_field :visa_residence_country
+        = f.labeled_input_field :visa_schengen_first_entry
+        = f.labeled_boolean_field :visa_fingerprints_collected
+        .ms-3{ data: { jamboree_dependent_on: 'person_visa_fingerprints_collected' }, hidden: !@person.visa_fingerprints_collected }
+          = f.labeled_date_field :visa_fingerprints_date
+          = f.labeled_input_field :visa_fingerprints_visa_number
 
     = field_set_tag do
       %h3= t('people.jamboree_data.activities')

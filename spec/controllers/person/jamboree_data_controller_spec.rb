@@ -62,6 +62,18 @@ describe Person::JamboreeDataController, type: :controller do
     expect(page.css("input[type=radio][name^='person['][checked]").size).to eq(16)
   end
 
+  it "shows visa application fields only when visa support is needed" do
+    get :edit, params: {id: ul.id}
+    visa_fields = page.at_css('[data-jamboree-dependent-value="yes_need_support"]')
+    expect(visa_fields["hidden"]).to eq("hidden")
+
+    ul.update!(visa_needed: "yes_need_support")
+    get :edit, params: {id: ul.id}
+    visa_fields = page.at_css('[data-jamboree-dependent-value="yes_need_support"]')
+    expect(visa_fields["hidden"]).to be_nil
+    expect(visa_fields.at_css("#person_visa_employer_name")).to be_present
+  end
+
   it "routes the short URLs" do
     expect(get: "/people/#{ul.id}/jamboree_data").to route_to("person/jamboree_data#show", id: ul.id.to_s)
     expect(get: "/people/#{ul.id}/jamboree_data/edit").to route_to("person/jamboree_data#edit", id: ul.id.to_s)

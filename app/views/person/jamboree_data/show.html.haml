@@ -38,7 +38,11 @@
       :travel_document_expiration_date,
       :travel_document_country,
       :visa_needed,
-      :visa_information)
+      :visa_information,
+      *Wsjrdp2027::Person::JamboreeData::VISA_DETAIL_ATTRS,
+      :visa_residence_other_than_nationality,
+      :visa_fingerprints_collected,
+      :visa_fingerprints_date)
 
     %h3= t('people.jamboree_data.activities')
     = render_attrs(@person,
