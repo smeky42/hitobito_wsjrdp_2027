@@ -113,16 +113,20 @@
 
     = field_set_tag do
       %h3= t('people.jamboree_data.journey')
-      = f.labeled_collection_select :arrival_location, @person.jamboree_data_options(:arrival_location), :last, :first, {include_blank: true}, class: 'span4'
-      = f.labeled_date_field :arrival_date
-      = f.labeled_input_field :arrival_time, type: :time
-      = f.labeled_collection_select :arrival_type, @person.jamboree_data_options(:arrival_type), :last, :first, {include_blank: true}, class: 'span4'
-      = f.labeled_input_field :arrival_number
-      = f.labeled_collection_select :departure_location, @person.jamboree_data_options(:departure_location), :last, :first, {include_blank: true}, class: 'span4'
-      = f.labeled_date_field :departure_date
-      = f.labeled_input_field :departure_time, type: :time
-      = f.labeled_collection_select :departure_type, @person.jamboree_data_options(:departure_type), :last, :first, {include_blank: true}, class: 'span4'
-      = f.labeled_input_field :departure_number
+      %p.text-muted= t(@person.jamboree_data_journey_editable? ? 'people.jamboree_data.journey_self_help' : 'people.jamboree_data.journey_unit_help')
+      - if @person.jamboree_data_journey_editable?
+        = f.labeled_collection_select :arrival_location, @person.jamboree_data_options(:arrival_location), :last, :first, {include_blank: true}, class: 'span4'
+        = f.labeled_date_field :arrival_date
+        = f.labeled_input_field :arrival_time, type: :time
+        = f.labeled_collection_select :arrival_type, @person.jamboree_data_options(:arrival_type), :last, :first, {include_blank: true}, class: 'span4'
+        = f.labeled_input_field :arrival_number
+        = f.labeled_collection_select :departure_location, @person.jamboree_data_options(:departure_location), :last, :first, {include_blank: true}, class: 'span4'
+        = f.labeled_date_field :departure_date
+        = f.labeled_input_field :departure_time, type: :time
+        = f.labeled_collection_select :departure_type, @person.jamboree_data_options(:departure_type), :last, :first, {include_blank: true}, class: 'span4'
+        = f.labeled_input_field :departure_number
+      - else
+        = render_attrs(@person, *Wsjrdp2027::Person::JamboreeData::JOURNEY_ATTRS)
 
     = field_set_tag do
       %h3= t('people.jamboree_data.activities')
