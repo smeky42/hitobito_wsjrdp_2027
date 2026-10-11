@@ -34,6 +34,9 @@ module Wsjrdp2027::PeopleController
     :languages_spoken,
     :shirt_size,
     :uniform_size,
+    :uniform_long_sleeve,
+    :uniform_order,
+    :headgear,
     :can_swim,
     :diet,
     :medical_eating_disorders

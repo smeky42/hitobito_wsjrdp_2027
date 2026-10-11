@@ -17,6 +17,16 @@
 = field_set_tag do
   = f.labeled_collection_select(:shirt_size, Settings.shirt_size, :to_s, :to_s, {}, class: 'span2')
   = f.labeled_collection_select(:uniform_size, Settings.uniform_size, :to_s, :to_s, {}, class: 'span2')
+  = f.labeled(:uniform_long_sleeve) do
+    - { true => 'Langarm', false => 'Kurzarm' }.each do |value, label|
+      = f.inline_radio_button(:uniform_long_sleeve, value, label)
+  - if %w[CMT UL IST].include?(@person.wsj_role.to_s)
+    = f.labeled(:uniform_order) do
+      - { true => 'Ja', false => 'Nein' }.each do |value, label|
+        = f.inline_radio_button(:uniform_order, value, label)
+      .mw-90ch.mb-2
+        = t('people.additional_info_fields.uniform_order_help')
+  = f.labeled_collection_select(:headgear, Settings.headgear, :first, :last, { include_blank: true }, class: 'span2')
 
 = field_set_tag do
   = f.labeled(:can_swim) do
