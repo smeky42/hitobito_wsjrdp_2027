@@ -34,4 +34,17 @@ class WsjrdpDeregistration < ActiveRecord::Base
   KINDS = %w[withdrawal termination cancellation].freeze
 
   validates :number, numericality: {only_integer: true, greater_than_or_equal_to: 1}
+  validate :one_open_per_person, unless: :final?
+
+  def final? = FINAL_STATUSES.include?(status)
+
+  private
+
+  # A person has at most one deregistration row that is not in a final
+  # status; a replacing row comes after the old one became superseded.
+  def one_open_per_person
+    others = self.class.where(person_id: person_id).where.not(status: FINAL_STATUSES)
+    others = others.where.not(id: id) if persisted?
+    errors.add(:status, :taken) if others.exists?
+  end
 end
