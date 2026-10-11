@@ -236,7 +236,9 @@
     -# Below a filter the toolbar keeps a small gap to the line/pane above it
     -# (.exp-toolbar-below-filter).
     .d-flex.flex-wrap.justify-content-between.align-items-end.gap-2.mb-2{ class: ("exp-toolbar-below-filter" if filter) }
-      .d-flex.flex-column.gap-1.flex-grow-1{ style: "min-width: 0" }
+      -# gap-2 under a view switch, so its buttons and the paging line below
+      -# keep apart; gap-1 between the summary and paging lines otherwise.
+      .d-flex.flex-column.flex-grow-1{ class: (view ? "gap-2" : "gap-1"), style: "min-width: 0" }
         - if view
           -# The view switch: a link per view, the chosen one pressed. A view
           -# changes what the rows say, so the open details go with it.

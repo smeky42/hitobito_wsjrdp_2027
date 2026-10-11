@@ -10,7 +10,8 @@
 # A payment announced to a person: a refund paid to it (amount negative) or a
 # claim it pays by transfer (amount positive), signed like an accounting
 # entry. payment_code is the RF reference the remittance information carries,
-# so a bank statement import can link the payment.
+# so a bank statement import can link the payment; a notice without a code
+# (e.g. a refund through Moss) carries the empty string.
 #
 # The accounting entries carry the money, the notice what is due: every
 # payment becomes an accounting entry with payment_notice_id, and
@@ -34,8 +35,27 @@ class WsjrdpPaymentNotice < ActiveRecord::Base
   belongs_to :payment_reference, class_name: "WsjrdpPaymentReference", inverse_of: :payment_notices,
     optional: true
 
+  # The empty string stands for "no code": the column is NOT NULL.
+  attribute :payment_code, :string, default: ""
+
   validates :amount, presence: true
   validate :payment_code_of_reference, if: :payment_reference
+
+  def payment_code=(value)
+    super(value.to_s)
+  end
+
+  def payment_code? = payment_code.present?
+
+  # Gives the notice a code from the stock (WsjrdpPaymentReference.assign!);
+  # nothing is saved here. Call it where the notice is made, inside the
+  # transaction that saves it.
+  def assign_payment_reference!
+    reference = WsjrdpPaymentReference.assign!
+    self.payment_reference = reference
+    self.payment_code = reference.payment_code
+    reference
+  end
 
   # What is still due: positive from the person, negative to it; nil while
   # the notice has no amount yet.

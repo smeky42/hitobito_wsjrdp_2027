@@ -1,0 +1,53 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Zahlungscodes (third tab of the Verwaltung area): the counts per status
+-#  with a warning when the stock is low, the form making codes for the stock,
+-#  and the references as an expandable table. Its filter, presets, sort and
+-#  page size come from the controller's policy; a row opens the code's page
+-#  (show) as its lazy detail.
+
+- title(t("fin.tabs.payment_references"))
+
+#main
+  %h1= t("fin.tabs.payment_references")
+  %p.text-muted= t("fin.payment_references.lead")
+
+  %p#payment-references-counts
+    - WsjrdpPaymentReference::STATUSES.each do |status|
+      %span.me-3
+        %strong= counts.fetch(status, 0)
+        = t("fin.payment_references.counts.#{status}")
+
+  - if WsjrdpPaymentReference.low_stock?
+    .alert.alert-warning#payment-references-low-stock
+      = t("fin.payment_references.low_stock", count: counts.fetch("available", 0), pool: WsjrdpPaymentReference::POOL_SIZE)
+
+  - if can?(:configure_finance, Group)
+    %h2.h5= t("fin.payment_references.generate_title")
+    %p.small.text-muted
+      = t("fin.payment_references.generate_lead", pool: WsjrdpPaymentReference::POOL_SIZE,
+        missing: WsjrdpPaymentReference.missing_for_pool)
+    = form_with url: fin_admin_generate_payment_references_path, method: :post, id: "payment-references-generate",
+      class: "d-flex gap-2 align-items-end mb-4" do
+      %div
+        = label_tag :count, t("fin.payment_references.count"), class: "form-label small mb-1"
+        = number_field_tag :count, nil, min: 1, max: Fin::PaymentReferencesController::MAX_GENERATE,
+          placeholder: WsjrdpPaymentReference.missing_for_pool, class: "form-control form-control-sm"
+      = submit_tag t("fin.payment_references.generate"), class: "btn btn-sm btn-primary"
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows payment_references, id: "pref"
+    - t.columns payment_reference_table_columns, menu: true
+    - t.row_key { |reference| reference.id }
+    - t.detail_page { |reference| fin_admin_payment_reference_path(reference) }
+    - t.detail_src { |reference| fin_admin_payment_reference_path(reference) }
+    - t.paging
+    - t.filter apply_url: fin_admin_apply_payment_references_path
+
+  %p.text-muted.small.mt-2#payment-references-shown
+    = t("fin.payment_references.shown", count: payment_references.total_count)

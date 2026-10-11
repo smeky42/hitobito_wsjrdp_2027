@@ -1237,7 +1237,7 @@ de:
       controlling:
         purpose: "Auswertungen und Kennzahlen."
       admin:
-        purpose: "Finanzzugriff auf Gruppen und Kostenstellen der Gruppen."
+        purpose: "Zahlungscodes, Finanzzugriff auf Gruppen und Kostenstellen der Gruppen."
     tabs:
       accounts: "Konten"
       person_fees: "Personen"
@@ -1258,6 +1258,7 @@ de:
       transactions: "Transaktionen"
       finance_groups: "Gruppen-Finanzzugriff"
       group_cost_centers: "Gruppen-Kostenstellen"
+      payment_references: "Zahlungscodes"
       # The Moss kind tabs (Fin::MossTransactionsController::KIND_TABS): the
       # plural of fin.moss.kinds.
       card_transactions: "Kartenzahlungen"
@@ -1330,6 +1331,71 @@ de:
       unchanged: "Keine Änderungen."
       unknown_group: "Für diese Gruppe lassen sich keine Kostenstellen zuordnen, es wurde nichts gespeichert."
       unknown_numbers: "Unbekannte Kostenstellen: %{numbers}. Es wurde nichts gespeichert."
+    # Verwaltung, dritter Tab: die Zahlungscodes (wsjrdp_payment_references)
+    # und ihr Vorrat.
+    payment_references:
+      lead: "Zahlungscodes dienen zur Abstimmung von Zahlungen. Sie können z.B. bei Rückzahlungen und Nachforderungen genutzt werden."
+      counts:
+        available: "verfügbar"
+        assigned: "vergeben"
+        void: "ungültig"
+      low_stock: "Nur noch %{count} verfügbare Codes, Vorrat auffüllen (Ziel %{pool})."
+      generate_title: "Codes auf Vorrat erzeugen"
+      generate_lead: "Ohne Anzahl wird auf %{pool} verfügbare Codes aufgefüllt; das sind gerade %{missing}."
+      count: "Anzahl"
+      generate: "Erzeugen"
+      generated:
+        one: "1 Zahlungscode erzeugt."
+        other: "%{count} Zahlungscodes erzeugt."
+      pool_full: "Der Vorrat ist voll, es wurde nichts erzeugt."
+      comment_saved: "Kommentar gespeichert."
+      invalid_count: "Die Anzahl muss zwischen 1 und %{max} liegen, es wurde nichts erzeugt."
+      shown:
+        one: "1 Zahlungscode angezeigt"
+        other: "%{count} Zahlungscodes angezeigt"
+      origins:
+        script: "Script"
+        wagon: "Anmeldesystem"
+      # Die Status einer Zahlungsankündigung (WsjrdpPaymentNotice::STATUSES).
+      notice_statuses:
+        created: "in Vorbereitung"
+        announced: "angekündigt"
+        booked: "gebucht"
+        canceled: "storniert"
+        deleted: "gelöscht"
+      # Die Seite eines Codes, zugleich das Detail seiner Tabellenzeile.
+      show:
+        title: "Zahlungscode %{code}"
+        heading: "Zahlungscode"
+        fields:
+          printed_code: "Code (gedruckt)"
+          payment_code: "Code (elektronisch)"
+          codeword: "Codewort"
+          payment_code_type: "Code-Typ"
+          codeword_scheme: "Codewort-Schema"
+          data_length: "Datensymbole"
+          parity_length: "Paritätssymbole"
+          rs_field_exponent: "Reed-Solomon: Exponent des Körpers GF(2^m)"
+          rs_primitive_polynomial: "Reed-Solomon: primitives Polynom"
+          rs_generator: "Reed-Solomon: Generator"
+          rs_fcr: "Reed-Solomon: erste Nullstelle"
+          status: "Status"
+          origin: "Herkunft"
+          created_at: "Erzeugt"
+          assigned_at: "Vergeben"
+          comment: "Kommentar"
+        comment:
+          edit: "Bearbeiten"
+          save: "Speichern"
+          cancel: "Abbrechen"
+        notices: "Zahlungsankündigungen mit diesem Code"
+        no_notices: "Keine Zahlungsankündigung benutzt diesen Code."
+        notice_columns:
+          subject: "Person"
+          amount: "Betrag"
+          status: "Status"
+          created_at: "Erstellt"
+          description: "Beschreibung"
     account_kind:
       BANK: "Bank"
       TRANSIT: "Geldtransit"

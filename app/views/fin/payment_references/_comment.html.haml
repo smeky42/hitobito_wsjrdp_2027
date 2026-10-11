@@ -1,0 +1,65 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The comment of a code, its one editable field: the text, and for who may
+-#  edit it (:update on the code) a "Bearbeiten" below it that swaps in the
+-#  form where the text stands. The form is sent from inside the frame it stands in --
+-#  the row's detail or the page's own -- and the answer renders that frame
+-#  again (Fin::PaymentReferencesController#update).
+-#
+-#  Locals: reference (WsjrdpPaymentReference)
+- scope = "fin.payment_references.show.comment"
+- may_edit = can?(:update, reference)
+.payment-reference-comment{data: {payment_reference_comment: true}}
+  -# The text as every comment field shows it: escaped, line breaks kept,
+  -# links, e-mail addresses and FIN-/HELP- ticket keys linked
+  -# (ContractHelper#auto_link_escaped_multiline); "Bearbeiten" on a line of
+  -# its own below it.
+  .payment-reference-comment-view
+    .text-break
+      - if reference.comment.present?
+        = auto_link_escaped_multiline(reference.comment)
+      - else
+        %span.text-muted —
+    - if may_edit
+      %button.btn.btn-sm.btn-link.p-0.mt-1{type: "button", data: {payment_reference_comment_edit: true}}
+        = icon(:edit)
+        = t("#{scope}.edit")
+  - if may_edit
+    = form_with url: fin_admin_payment_reference_path(reference), method: :patch, scope: :wsjrdp_payment_reference,
+      class: "payment-reference-comment-form", html: {hidden: true} do |f|
+      = f.text_area :comment, value: reference.comment, rows: 3, class: "form-control form-control-sm",
+        "aria-label": t("fin.payment_references.show.fields.comment")
+      .d-flex.gap-2.mt-1
+        = f.submit t("#{scope}.save"), class: "btn btn-sm btn-primary"
+        %button.btn.btn-sm.btn-outline-secondary{type: "button", data: {payment_reference_comment_cancel: true}}
+          = t("#{scope}.cancel")
+
+-# One listener on the document for every comment of the page and of every
+-# row's detail, however often a frame is loaded.
+:javascript
+  (function () {
+    if (window.__wsjrdpPaymentReferenceComment) return;
+    window.__wsjrdpPaymentReferenceComment = true;
+    document.addEventListener("click", function (event) {
+      var edit = event.target.closest("[data-payment-reference-comment-edit]");
+      var cancel = event.target.closest("[data-payment-reference-comment-cancel]");
+      if (!edit && !cancel) return;
+      var box = (edit || cancel).closest("[data-payment-reference-comment]");
+      var view = box.querySelector(".payment-reference-comment-view");
+      var form = box.querySelector(".payment-reference-comment-form");
+      if (edit) {
+        view.hidden = true;
+        form.hidden = false;
+        form.querySelector("textarea").focus();
+      } else {
+        form.reset();
+        form.hidden = true;
+        view.hidden = false;
+      }
+    });
+  })();

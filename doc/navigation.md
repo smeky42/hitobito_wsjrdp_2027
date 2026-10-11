@@ -62,7 +62,7 @@ Das Sheet rendert links ein Partial (siehe §4). Für Finanzen ist das
   = nav t("fin.nav.accounting"), bookkeeping_path,       %w[fin/bookkeeping]
   = nav t("fin.nav.reconciliation"), reconciliation_path, %w[fin/reconciliation]
   = nav t("fin.nav.controlling"), controlling_path,      %w[fin/controlling]
-  - if can?(:configure_finance, Group)
+  - if can?(:configure_finance, Group) || can?(:show, WsjrdpPaymentReference)
     = nav t("fin.nav.admin"), fin_admin_path,             %w[fin/admin]
 ```
 
@@ -515,14 +515,15 @@ Unter-Tabs fielen weg. Deshalb heißt die Action `show`.
 ## 8. Verwaltung (`/fin/admin`)
 
 Der letzte Bereich der linken Unter-Navigation. Er konfiguriert den
-Finanzen-Bereich selbst und hat zwei Tabs:
+Finanzen-Bereich selbst und hat drei Tabs:
 
 | Tab | Pfad | Was er bearbeitet |
 | --- | --- | --- |
+| Zahlungscodes | `/fin/admin/payment_references` | den Vorrat in `wsjrdp_payment_references` (siehe [`doc/wsjrdp/payment_code.md`](wsjrdp/payment_code.md)) |
 | Gruppen-Finanzzugriff | `/fin/admin/finance_groups` | `people.additional_info["finance_group_ids"]` |
 | Gruppen-Kostenstellen | `/fin/admin/group_cost_centers` | `groups.additional_info["cost_center_numbers"]` |
 
-Diese beiden Seiten sind die **einzigen** Editoren der beiden Felder; nichts
+Die Seiten Gruppen-Finanzzugriff und Gruppen-Kostenstellen sind die **einzigen** Editoren der beiden Felder; nichts
 wird irgendwo abgeleitet oder vorbelegt, und geschrieben wird immer über
 `Person#update!` bzw. `Group#update!`, damit die PaperTrail-Version so entsteht,
 wie das Modell sie baut.
@@ -538,10 +539,15 @@ class_side(:configure_finance).if_admin_or_finance_manage
 
 `if_admin_or_finance_manage` ist `if_admin || if_finance_manage` — Admin
 (`:admin`) oder die Manage-Stufe, und die gilt erst, wenn sie für die Sitzung
-gewählt wurde ([`doc/roles.md`](roles.md) → „The finance cap"). Beide
-Controller fragen `authorize!(:configure_finance, Group)`; dieselbe Bedingung
-trägt jeder der beiden Tabs, der Nav-Eintrag und damit auch die Karte auf
-`/fin` (§1). Der Name ist `:configure_finance` und nicht `:admin_finance`, weil
+gewählt wurde ([`doc/roles.md`](roles.md) → „The finance cap"). Die
+Controller von Gruppen-Finanzzugriff und Gruppen-Kostenstellen fragen
+`authorize!(:configure_finance, Group)`, und dieselbe Bedingung tragen ihre
+Tabs. Die Zahlungscodes sind weiter offen: Lesen und den Kommentar bearbeiten
+dürfen die Schreib-Stufe, die Manage-Stufe und Admins (`:show` / `:update` auf
+`WsjrdpPaymentReference`, `various_ability.rb`), Codes auf Vorrat erzeugen nur
+`:configure_finance`. Der Nav-Eintrag und damit die Karte auf `/fin` (§1)
+erscheinen, sobald einer der Tabs sichtbar ist; die Schreib-Stufe sieht den
+Bereich also mit dem einen Tab Zahlungscodes. Der Name ist `:configure_finance` und nicht `:admin_finance`, weil
 `:admin_finance` auf den Finanz-Modellen allein der Manage-Stufe gehört, hier
 aber auch die Admins zugreifen.
 
@@ -674,30 +680,41 @@ mit Gruppen- und Personen-Filter zusammen.
 
 ### Sheets und Routen
 
-Der Bereich hat keine eigene Seite: `/fin/admin` rendert den ersten Tab.
-Bereichs-Sheet ist `Sheet::Fin::Admin`, die beiden Controller-Sheets sind —
-singularisiert (§6) — `Sheet::Fin::FinanceGroup` und
-`Sheet::Fin::GroupCostCenter`, beide mit `parent_sheet = Sheet::Fin::Admin` und
-`always_render_parent`.
+Der Bereich hat keine eigene Seite: `/fin/admin` rendert den ersten Tab, die
+Zahlungscodes.
+Bereichs-Sheet ist `Sheet::Fin::Admin`, die drei Controller-Sheets sind —
+singularisiert (§6) — `Sheet::Fin::FinanceGroup`,
+`Sheet::Fin::GroupCostCenter` und `Sheet::Fin::PaymentReference`, alle mit
+`parent_sheet = Sheet::Fin::Admin` und `always_render_parent`.
 
 **Fallstrick:** In den Sheets liegt alles unter `module Sheet`, und dort löst
 das nackte `Group` auf `Sheet::Group` auf. Die Tab-Bedingungen schreiben
 deshalb `::Group`.
+
+Die Seite eines Zahlungscodes (`/fin/admin/payment_references/:id`, Action
+`show`) läuft unter `Sheet::Fin::PaymentReference` — keine `index`-Action,
+also kein Tausch gegen das Eltern-Sheet (§4); `always_render_parent` zeigt die
+drei Tabs trotzdem. Der Tab „Zahlungscodes" bleibt aktiv, weil sein Pfad
+Präfix des Code-Pfads ist (§7, „Aktiver Tab auf der Buchungsseite"). Die
+Zahlungscodes-Liste ist eine `expandable_table`; Spalten, Filter und Seite
+eines Codes beschreibt [`doc/wsjrdp/payment_code.md`](wsjrdp/payment_code.md)
+→ „The Zahlungscodes page".
 
 ### Beteiligte Dateien (Verwaltung)
 
 | Zweck | Datei |
 | --- | --- |
 | Bereichs-Sheet (Tabs + linke Nav) | `app/helpers/sheet/fin/admin.rb` |
-| Kind-Sheets | `app/helpers/sheet/fin/finance_group.rb`, `app/helpers/sheet/fin/group_cost_center.rb` |
-| Controller | `app/controllers/fin/finance_groups_controller.rb`, `app/controllers/fin/group_cost_centers_controller.rb` |
-| Helper | `app/helpers/fin/finance_groups_helper.rb` |
-| Views | `app/views/fin/finance_groups/index.html.haml`, `app/views/fin/group_cost_centers/index.html.haml` |
+| Kind-Sheets | `app/helpers/sheet/fin/finance_group.rb`, `app/helpers/sheet/fin/group_cost_center.rb`, `app/helpers/sheet/fin/payment_reference.rb` |
+| Controller | `app/controllers/fin/finance_groups_controller.rb`, `app/controllers/fin/group_cost_centers_controller.rb`, `app/controllers/fin/payment_references_controller.rb` |
+| Helper | `app/helpers/fin/finance_groups_helper.rb`, `app/helpers/fin/payment_references_helper.rb` |
+| Zahlungscodes-Tabelle (Spalten, Filter) | `app/domain/fin/payment_references_columns.rb`, `app/domain/fin/payment_references_filter_schema.rb` |
+| Views | `app/views/fin/finance_groups/index.html.haml`, `app/views/fin/group_cost_centers/index.html.haml`, `app/views/fin/payment_references/{index,show,_detail}.html.haml` |
 | Chips-Combobox | `app/views/shared/wsjrdp/_chips_combobox_styles.html.haml`, `app/views/shared/wsjrdp/_chips_combobox_js.html.haml` |
 | Routen | `config/routes.rb` (`get :admin …`, `scope "admin" do … end`) |
 | Linke Unter-Nav | `app/views/fin/_left_nav.html.haml` |
 | Karte auf `/fin` | `app/helpers/fin/overview_helper.rb` (`AREAS`, `#fin_areas`) |
-| i18n | `config/locales/wsjrdp_2027.de.yml` (`fin.nav.admin`, `fin.tabs.finance_groups`, `fin.tabs.group_cost_centers`, `fin.finance_groups.*`, `fin.group_cost_centers.*`, `fin.areas.admin.purpose`) |
+| i18n | `config/locales/wsjrdp_2027.de.yml` (`fin.nav.admin`, `fin.tabs.finance_groups`, `fin.tabs.group_cost_centers`, `fin.tabs.payment_references`, `fin.finance_groups.*`, `fin.group_cost_centers.*`, `fin.payment_references.*`, `fin.areas.admin.purpose`) |
 | Rechte | `app/abilities/wsjrdp_2027/group_ability.rb` |
 
 Die Routen-Helfer: `fin_admin_path`, `fin_admin_finance_groups_path` (GET) und
@@ -705,4 +722,9 @@ Die Routen-Helfer: `fin_admin_path`, `fin_admin_finance_groups_path` (GET) und
 `fin_admin_group_cost_centers_path` — letzterer für GET und als PATCH-Ziel
 `fin_admin_save_group_cost_centers_path`. Beide Seiten schicken **eine**
 Änderungsliste über alle Zeilen, deshalb ist der Schreib-Pfad je Seite eine
-**Collection-Route**; Member-Routen gibt es in diesem Bereich nicht.
+**Collection-Route**. Die Zahlungscodes haben `fin_admin_payment_references_path`
+(GET), `fin_admin_generate_payment_references_path` (POST, derselbe Pfad),
+`fin_admin_apply_payment_references_path` (POST `…/apply`, das PRG-Ziel des
+Filter-Builders) und als einzige Member-Route des Bereichs
+`fin_admin_payment_reference_path` (GET `…/:id`, nur Ziffern) für die Seite
+eines Codes.

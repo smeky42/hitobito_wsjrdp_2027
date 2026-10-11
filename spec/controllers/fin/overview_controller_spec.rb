@@ -25,9 +25,10 @@ describe Fin::OverviewController do
   before { sign_in(person) }
 
   # The areas in the order of the left sub-navigation, by the key their texts
-  # live under (fin.nav.<key>, fin.areas.<key>.purpose).
+  # live under (fin.nav.<key>, fin.areas.<key>.purpose). The write tier sees
+  # the Verwaltung for its Zahlungscodes tab.
   def area_keys
-    %w[accounts fees moss accounting reconciliation controlling]
+    %w[accounts fees moss accounting reconciliation controlling admin]
   end
 
   # [label, href] of every link inside #main.
@@ -138,7 +139,7 @@ describe Fin::OverviewController do
     # Haml merges the fa- class with .fas, so only the fa- half is read back.
     icons = cards.map { |c| c.at_css(".fin-area-icon i")["class"].split.grep(/\Afa-/) }
     expect(icons.flatten).to eq(%w[fa-university fa-coins fa-wallet fa-book fa-check-double
-      fa-chart-line])
+      fa-chart-line fa-sliders-h])
   end
 
   it "says on every card what its area is for" do

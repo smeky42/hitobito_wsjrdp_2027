@@ -27,6 +27,7 @@
   = nav t("fin.nav.reconciliation"), reconciliation_path, %w[fin/reconciliation]
   = nav t("fin.nav.controlling"), controlling_path, %w[fin/controlling]
   -# The area configures the Finanzen section itself, so only Admin and the
-  -# manage tier see it (Wsjrdp2027::GroupAbility -> :configure_finance).
-  - if can?(:configure_finance, Group)
+  -# manage tier see it (Wsjrdp2027::GroupAbility -> :configure_finance) --
+  -# apart from the payment codes, which the write tier sees too.
+  - if can?(:configure_finance, Group) || can?(:show, WsjrdpPaymentReference)
     = nav t("fin.nav.admin"), fin_admin_path, %w[fin/admin]
