@@ -143,7 +143,7 @@
 
     = field_set_tag do
       %h3= t('people.jamboree_data.diet')
-      = f.labeled_input_field :dietary_requirements
+      = f.labeled_collection_select(:diet, Settings.diets, :first, :last, {}, class: 'span4')
       = f.labeled_input_field :dietary_details
       - Wsjrdp2027::Person::JamboreeData::ALLERGIES.each do |allergy_key|
         - checkbox_id = "person_allergy_#{allergy_key}"
