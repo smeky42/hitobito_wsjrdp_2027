@@ -102,6 +102,8 @@ Rails.application.routes.draw do
       end
 
       get "map" => "group/map#index"
+      get "patrols" => "group/patrols#index", :as => :patrols
+      put "patrols" => "group/patrols#update"
       # The Buchhaltung sub-tab of the group's Finanzen tab. The action is
       # :show, not :index, so the leaf sheet keeps its sub-tabs
       # (doc/navigation.md).

@@ -32,6 +32,7 @@ module Wsjrdp2027::GroupAbility
           :export_events, :"export_event/courses")
         .none
       permission(:group_full).may(:show_statistics).in_same_group
+      permission(:group_full).may(:update_patrols).in_same_group
 
       # The API keys (service tokens) of a layer, listed for admins only
       # (Wsjrdp2027::ServiceTokenAbility); if_layer_group is the core's
