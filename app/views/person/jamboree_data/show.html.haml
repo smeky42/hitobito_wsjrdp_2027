@@ -2,6 +2,12 @@
 
 #main.row
   %article.col-lg
+    %h3= t('people.jamboree_data.clothing')
+    .text-muted.mw-90ch.mb-2= t('people.jamboree_data.clothing_help')
+    - clothing_attrs = [:shirt_size, :uniform_size, :uniform_long_sleeve]
+    - clothing_attrs << :uniform_order if %w[CMT UL IST].include?(@person.wsj_role.to_s)
+    = render_attrs(@person, *clothing_attrs, :headgear)
+
     %h3= t('people.jamboree_data.personal')
     -# The name tag: without a given name the default, grey, with where it
     -# comes from (Wsjrdp2027::Person::JamboreeData#known_as_name_source).
