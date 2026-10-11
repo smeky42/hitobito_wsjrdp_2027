@@ -34,10 +34,12 @@ class WsjrdpPaymentNotice < ActiveRecord::Base
   belongs_to :payment_reference, class_name: "WsjrdpPaymentReference", inverse_of: :payment_notices,
     optional: true
 
+  validates :amount, presence: true
   validate :payment_code_of_reference, if: :payment_reference
 
-  # What is still due: positive from the person, negative to it.
-  def open_amount = amount - booked_amount
+  # What is still due: positive from the person, negative to it; nil while
+  # the notice has no amount yet.
+  def open_amount = amount && (amount - booked_amount.to_d)
 
   private
 
