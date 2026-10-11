@@ -153,8 +153,23 @@ describe WsjrdpDocument do
     end
   end
 
+  describe "the person" do
+    it "is needed to make a document" do
+      expect(document(subject: nil)).not_to be_valid
+      expect(document(subject_type: "Person", subject_id: -1)).not_to be_valid
+    end
+  end
+
   describe "deleting the person" do
     let(:person) { Fabricate(:person) }
+
+    it "leaves its documents changeable" do
+      created = create_document
+      person.destroy!
+
+      created.reload.update!(comment: "Nach dem Löschen")
+      expect(created.reload).to have_attributes(comment: "Nach dem Löschen", subject_id: person.id)
+    end
 
     it "deletes its documents softly and keeps them pointing at it" do
       old = create_document(status: "superseded", superseded_at: 1.day.ago)

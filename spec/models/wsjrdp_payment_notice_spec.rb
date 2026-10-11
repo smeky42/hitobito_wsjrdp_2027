@@ -49,6 +49,14 @@ describe WsjrdpPaymentNotice do
   end
 
   describe "amounts" do
+    it "are needed, and leave nothing open while missing" do
+      blank = described_class.new(subject_id: person.id, payment_code: "RF04000000000000", description: "x")
+
+      expect(blank.open_amount).to be_nil
+      expect(blank).not_to be_valid
+      expect(blank.errors[:amount]).to be_present
+    end
+
     it "keep their sign and three decimals" do
       expect(notice(amount: "-1234.567").reload.amount).to eq(BigDecimal("-1234.567"))
     end

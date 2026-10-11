@@ -35,8 +35,9 @@ class WsjrdpDocument < ActiveRecord::Base
 
   # None of the belongs_to has a dependent: deleting a document leaves the
   # person, the author, the references, the predecessor, the original and the
-  # API key alone.
-  belongs_to :subject, polymorphic: true
+  # API key alone. The person is needed to make a document; the documents of
+  # a deleted person keep pointing at it and stay changeable.
+  belongs_to :subject, polymorphic: true, optional: true
   belongs_to :author, polymorphic: true, optional: true
   belongs_to :key_ref, polymorphic: true, optional: true
   belongs_to :secondary_key_ref, polymorphic: true, optional: true
@@ -55,6 +56,8 @@ class WsjrdpDocument < ActiveRecord::Base
   scope :superseded, -> { where(status: SUPERSEDED) }
   scope :visible, -> { where.not(status: DELETED) }
   scope :originals, -> { where(derived_from_id: nil) }
+
+  validates :subject, presence: true, on: :create
 
   # As the check constraints of the table.
   validates :key_number, :secondary_key_number, numericality: {only_integer: true, greater_than_or_equal_to: 0}
