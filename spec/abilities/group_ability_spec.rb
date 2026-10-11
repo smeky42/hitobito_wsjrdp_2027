@@ -81,7 +81,7 @@ describe GroupAbility do
 
     context "on their own unit" do
       it_behaves_like "only allow group actions", {allowed: [:read, :show_details, :index_people,
-        :index_local_people, :show_statistics, :index_mailing_lists, :index_events,
+        :index_local_people, :show_statistics, :index_mailing_lists, :index_events, :update_patrols,
         :show_finance, :update_finance]} do
         let(:group) { groups(:unit_a) }
       end

@@ -26,7 +26,7 @@ describe Person::JamboreeDataController, type: :controller do
 
     expect(response).to have_http_status(:ok)
     expect(assigns(:group)).to eq(ul.primary_group)
-    expect(page.css("li.active > a").map(&:text).map(&:strip)).to include("Personen", "WSJ 2027 Zusatzdaten")
+    expect(page.css("li.active > a").map(&:text).map(&:strip)).to include("Personen", "Daten für den Veranstalter")
     expect(page.at_css("a[href='#{jamboree_data_edit_person_path(ul)}']")).to be_present
   end
 
@@ -50,13 +50,13 @@ describe Person::JamboreeDataController, type: :controller do
     get :edit, params: {id: ist.id}
     expect(page.at_css("select#person_arrival_location")).to be_present
     expect(page.at_css("select#person_departure_type")).to be_present
-    expect(page.text).to include("Trage die An und Abreise ein sobald du sie für dich geklärt hast. Es ist nicht notwendig sie sofort einzutragen.")
+    expect(page.text).to include("Trage deine An- und Abreise ein sobald du dies für dich geklärt hast. Es ist nicht notwendig alles sofort einzutragen.")
 
     put :update, params: {id: ist.id, person: {arrival_location: "amber_expo", departure_type: "train"}}
     expect(ist.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train")
 
     get :show, params: {id: ist.id}
-    expect(page.text).to include("AmberExpo", "Zug", "Trage die An und Abreise ein sobald du sie für dich geklärt hast.")
+    expect(page.text).to include("AmberExpo", "Zug", "Trage deine An- und Abreise ein sobald du dies für dich geklärt hast.")
   end
 
   it "keeps UL and YP journeys read-only even for authorized editors" do
@@ -64,18 +64,20 @@ describe Person::JamboreeDataController, type: :controller do
       unit_member.update!(arrival_location: "amber_expo", departure_type: "train")
       get :edit, params: {id: unit_member.id}
       expect(page.text).to include("AmberExpo", "Zug",
-        "Die An und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.")
+        "Deine An- und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.")
       expect(page.at_css("#person_arrival_location")).to be_nil
       expect(page.at_css("#person_departure_type")).to be_nil
       expect(page.at_css("[name='person[arrival_location]']")).to be_nil
 
-      put :update, params: {id: unit_member.id, person: {arrival_location: "lech_walesa_airport",
-        departure_type: "flight", arrival_date: "2027-07-28", nationality: "deutsch"}}
+      put :update, params: {id: unit_member.id, person: {
+        arrival_location: "lech_walesa_airport",
+        departure_type: "flight", arrival_date: "2027-07-28", nationality: "deutsch"
+      }}
       expect(unit_member.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train",
         arrival_date: nil, nationality: "deutsch")
 
       get :show, params: {id: unit_member.id}
-      expect(page.text).to include("AmberExpo", "Zug", "Die An und Abreise wird zentral von der Logistik gebucht")
+      expect(page.text).to include("AmberExpo", "Zug", "Deine An- und Abreise wird zentral von der Logistik gebucht")
     end
   end
 
@@ -123,8 +125,10 @@ describe Person::JamboreeDataController, type: :controller do
   end
 
   it "does not accept adult-only answers for YP" do
-    put :update, params: {id: yp.id, person: {mothers_first_name: "Test", french_reading: "basic",
-      prior_wsj_experience: "Test", country_of_birth: "Deutschland"}}
+    put :update, params: {id: yp.id, person: {
+      mothers_first_name: "Test", french_reading: "basic",
+      prior_wsj_experience: "Test", country_of_birth: "Deutschland"
+    }}
 
     expect(yp.reload).to have_attributes(mothers_first_name: nil, french_reading: nil,
       prior_wsj_experience: nil, country_of_birth: "Deutschland")
@@ -137,7 +141,7 @@ describe Person::JamboreeDataController, type: :controller do
       expect(page.at_css("#person_french_reading_none")).to be_present
       expect(page.at_css("#person_prior_wsj_experience")).to be_present
       expect(page.at_css("#person_arrival_location")).to be_present
-      expect(page.text).to include("Trage die An und Abreise ein sobald du sie für dich geklärt hast.")
+      expect(page.text).to include("Trage deine An- und Abreise ein sobald du dies für dich geklärt hast.")
     end
   end
 
