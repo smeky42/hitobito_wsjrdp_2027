@@ -45,17 +45,8 @@
         :visa_fingerprints_date)
 
     %h3= t('people.jamboree_data.journey')
-    = render_attrs(@person,
-      :arrival_location,
-      :arrival_date,
-      :arrival_time,
-      :arrival_type,
-      :arrival_number,
-      :departure_location,
-      :departure_date,
-      :departure_time,
-      :departure_type,
-      :departure_number)
+    %p.text-muted= t(@person.jamboree_data_journey_editable? ? 'people.jamboree_data.journey_self_help' : 'people.jamboree_data.journey_unit_help')
+    = render_attrs(@person, *Wsjrdp2027::Person::JamboreeData::JOURNEY_ATTRS)
 
     %h3= t('people.jamboree_data.activities')
     = render_attrs(@person,

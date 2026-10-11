@@ -46,15 +46,37 @@ describe Person::JamboreeDataController, type: :controller do
   end
 
   it "shows and updates journey fields for a user with log access" do
-    get :edit, params: {id: ul.id}
+    ist = people(:ist_a_1)
+    get :edit, params: {id: ist.id}
     expect(page.at_css("select#person_arrival_location")).to be_present
     expect(page.at_css("select#person_departure_type")).to be_present
+    expect(page.text).to include("Trage die An und Abreise ein sobald du sie für dich geklärt hast. Es ist nicht notwendig sie sofort einzutragen.")
 
-    put :update, params: {id: ul.id, person: {arrival_location: "amber_expo", departure_type: "train"}}
-    expect(ul.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train")
+    put :update, params: {id: ist.id, person: {arrival_location: "amber_expo", departure_type: "train"}}
+    expect(ist.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train")
 
-    get :show, params: {id: ul.id}
-    expect(page.text).to include("AmberExpo", "Zug")
+    get :show, params: {id: ist.id}
+    expect(page.text).to include("AmberExpo", "Zug", "Trage die An und Abreise ein sobald du sie für dich geklärt hast.")
+  end
+
+  it "keeps UL and YP journeys read-only even for authorized editors" do
+    [ul, yp].each do |unit_member|
+      unit_member.update!(arrival_location: "amber_expo", departure_type: "train")
+      get :edit, params: {id: unit_member.id}
+      expect(page.text).to include("AmberExpo", "Zug",
+        "Die An und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.")
+      expect(page.at_css("#person_arrival_location")).to be_nil
+      expect(page.at_css("#person_departure_type")).to be_nil
+      expect(page.at_css("[name='person[arrival_location]']")).to be_nil
+
+      put :update, params: {id: unit_member.id, person: {arrival_location: "lech_walesa_airport",
+        departure_type: "flight", arrival_date: "2027-07-28", nationality: "deutsch"}}
+      expect(unit_member.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train",
+        arrival_date: nil, nationality: "deutsch")
+
+      get :show, params: {id: unit_member.id}
+      expect(page.text).to include("AmberExpo", "Zug", "Die An und Abreise wird zentral von der Logistik gebucht")
+    end
   end
 
   it "denies reading and writing journey fields without log access" do
@@ -93,7 +115,7 @@ describe Person::JamboreeDataController, type: :controller do
       expect(page.at_css("#person_#{attr}")).to be_nil
     end
     expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]")).to be_present
-    expect(page.at_css("#person_arrival_location")).to be_present
+    expect(page.at_css("#person_arrival_location")).to be_nil
 
     get :show, params: {id: yp.id}
     expect(page.text).not_to include("Mutters Vorname", "Französisch", "Frühere Jamboree-Erfahrung")
@@ -114,6 +136,8 @@ describe Person::JamboreeDataController, type: :controller do
       expect(page.at_css("#person_mothers_first_name")).to be_present
       expect(page.at_css("#person_french_reading_none")).to be_present
       expect(page.at_css("#person_prior_wsj_experience")).to be_present
+      expect(page.at_css("#person_arrival_location")).to be_present
+      expect(page.text).to include("Trage die An und Abreise ein sobald du sie für dich geklärt hast.")
     end
   end
 

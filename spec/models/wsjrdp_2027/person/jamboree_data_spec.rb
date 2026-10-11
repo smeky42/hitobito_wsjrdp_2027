@@ -19,6 +19,13 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person.jamboree_data_adult?).to be(true)
   end
 
+  it "reserves journey editing for roles outside the units" do
+    expect(people(:yp_a_1).jamboree_data_journey_editable?).to be(false)
+    expect(people(:ul_a_1).jamboree_data_journey_editable?).to be(false)
+    expect(people(:ist_a_1).jamboree_data_journey_editable?).to be(true)
+    expect(person.jamboree_data_journey_editable?).to be(true)
+  end
+
   it "keeps the answers in people.jamboree_data" do
     person.update!(nationality: "deutsch", english_speaking: "fluent", allergy_peanut: true,
       travel_document_issue_date: Date.new(2025, 1, 2), medical_equipment_needs: ["", "medication_cooling"])

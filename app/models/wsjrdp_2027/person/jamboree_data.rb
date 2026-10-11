@@ -24,6 +24,8 @@ module Wsjrdp2027::Person::JamboreeData
   LANGUAGE_ATTRS = LANGUAGES.flat_map { |language| LANGUAGE_SKILLS.map { |skill| :"#{language}_#{skill}" } }.freeze
   ADULT_ONLY_ATTRS = (%i[mothers_first_name fathers_first_name mothers_surname_at_birth
     prior_wsj_experience vehicle_registration_number] + LANGUAGE_ATTRS.drop(LANGUAGE_SKILLS.size)).freeze
+  JOURNEY_ATTRS = %i[arrival_location arrival_date arrival_time arrival_type arrival_number
+    departure_location departure_date departure_time departure_type departure_number].freeze
   LANGUAGE_EXPORT_MAP = {
     reading: {
       "none" => "Not reading",
@@ -268,6 +270,10 @@ module Wsjrdp2027::Person::JamboreeData
 
   def jamboree_data_adult?
     %w[UL IST CMT].include?(effective_wsj_role)
+  end
+
+  def jamboree_data_journey_editable?
+    !%w[YP UL].include?(effective_wsj_role)
   end
 
   def medical_equipment_needs
