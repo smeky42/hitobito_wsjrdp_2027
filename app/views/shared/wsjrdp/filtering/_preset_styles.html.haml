@@ -38,6 +38,9 @@
       .flt-presets.flt-locked .flt-preset-lock-note { display: inline; }
       /* An EXCLUSIVE group: one segmented control, exactly one segment pressed.
          The pressed one takes the same light primary tint as a pressed toggle. */
+      /* The core gives every .btn-group a bottom margin; in the bar's centred
+         row it would lift the segment above the toggles beside it. */
+      .flt-segment { margin-bottom: 0; }
       .flt-segment .btn { white-space: nowrap; }
       .flt-segment .btn[aria-pressed="true"] { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .12);
         border-color: var(--bs-primary, #21697c); position: relative; z-index: 1; font-weight: 500; }

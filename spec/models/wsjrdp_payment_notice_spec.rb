@@ -48,6 +48,19 @@ describe WsjrdpPaymentNotice do
     end
   end
 
+  describe "without a code" do
+    it "carries the empty string" do
+      created = described_class.create!(subject_id: person.id, amount: "-10", description: "Rückzahlung über Moss")
+
+      expect(created.reload.payment_code).to eq("")
+      expect(created.payment_code?).to be(false)
+    end
+
+    it "turns nil into the empty string" do
+      expect(described_class.new(payment_code: nil).payment_code).to eq("")
+    end
+  end
+
   describe "amounts" do
     it "are needed, and leave nothing open while missing" do
       blank = described_class.new(subject_id: person.id, payment_code: "RF04000000000000", description: "x")

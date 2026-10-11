@@ -44,6 +44,15 @@ module Wsjrdp2027::VariousAbility
       permission(:finance_manage).may(:show, :log, :create, :update, :manage, :admin_finance).if_finance_manage
     end
 
+    # WsjrdpPaymentReference: the payment codes. The finance write tier and
+    # up, and admins, see them and edit their comment; making codes for the
+    # stock is :configure_finance on Group.
+    on(WsjrdpPaymentReference) do
+      permission(:finance).may(:show, :update).if_finance_write
+      permission(:finance_manage).may(:show, :update).if_finance_manage
+      permission(:admin).may(:show, :update).all
+    end
+
     # WsjrdpDirectDebitPreNotification: the announcement of a single
     # participant's collection. It carries the same person-level
     # payment details as a AccountingEntry and shares its ladder.

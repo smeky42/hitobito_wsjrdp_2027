@@ -74,4 +74,89 @@ describe WsjrdpPaymentReference do
     expect(described_class.available).to eq([available])
     expect(described_class.assigned).to eq([assigned])
   end
+
+  describe ".assign!" do
+    it "hands out the oldest available reference" do
+      older = described_class.generate!(2).first
+
+      assigned = described_class.assign!
+
+      expect(assigned).to eq(older)
+      expect(assigned.reload).to have_attributes(status: "assigned", origin: "wagon")
+      expect(assigned.assigned_at).to be_present
+      expect(described_class.available.count).to eq(1)
+    end
+
+    it "makes a reference itself when none is available" do
+      payment_code(status: "assigned")
+
+      assigned = described_class.assign!
+
+      expect(assigned).to have_attributes(status: "assigned", origin: "wagon")
+      expect(Wsjrdp2027::PaymentCode.valid?(assigned.payment_code)).to be(true)
+      expect(described_class.count).to eq(2)
+    end
+
+    it "never hands out a void reference" do
+      payment_code(status: "void")
+
+      expect(described_class.assign!.payment_code).not_to eq(code)
+    end
+  end
+
+  describe ".generate!" do
+    it "makes valid available references, far enough from each other and the existing ones" do
+      payment_code
+      made = described_class.generate!(20)
+
+      expect(made.map(&:status).uniq).to eq(%w[available])
+      expect(made.map(&:origin).uniq).to eq(%w[wagon])
+      made.each { |reference| expect(Wsjrdp2027::PaymentCode.valid?(reference.payment_code)).to be(true) }
+      codewords = described_class.pluck(:codeword)
+      codewords.each do |codeword|
+        hamming, = Wsjrdp2027::PaymentCode.distances(codeword, codewords - [codeword])
+        expect(hamming).to be >= Wsjrdp2027::PaymentCode::MIN_HAMMING_DISTANCE
+      end
+    end
+
+    it "knows how many make up the pool and when the stock is low" do
+      described_class.generate!(3)
+
+      expect(described_class.missing_for_pool).to eq(described_class::POOL_SIZE - 3)
+      expect(described_class).to be_low_stock
+    end
+  end
+
+  describe "the generation lock" do
+    it "is taken when codes are made, and held until the transaction ends" do
+      held = lambda do
+        WsjrdpPaymentReference.connection.select_value(<<~SQL).to_i
+          SELECT count(*) FROM pg_locks
+           WHERE locktype = 'advisory' AND pid = pg_backend_pid()
+             AND objid = #{described_class::GENERATION_LOCK_KEY}
+        SQL
+      end
+      inside = nil
+      described_class.with_generation_lock { inside = held.call }
+
+      expect(inside).to eq(1)
+      expect { described_class.generate!(1) }.to change(described_class, :count).by(1)
+    end
+  end
+
+  describe "a payment notice" do
+    it "takes its code from the stock" do
+      described_class.generate!(1)
+      notice = WsjrdpPaymentNotice.new(subject_id: people(:yp_a_1).id, amount: "-10", description: "Rückzahlung")
+
+      reference = notice.assign_payment_reference!
+      notice.save!
+
+      expect(notice.reload).to have_attributes(payment_reference_id: reference.id, payment_code: reference.payment_code)
+    end
+  end
+
+  it "prints its code in groups of four" do
+    expect(payment_code.printed_code).to eq("RF75 K7M3 QX9P NFK3")
+  end
 end

@@ -239,10 +239,11 @@ Rails.application.routes.draw do
       get :controlling, path: "controlling", to: "controlling#index", as: "controlling"
       # Budget and DATEV actuals per cost center and year.
       get "controlling/budget", to: "budgets#index", as: "controlling_budget"
-      # "Verwaltung" section at /fin/admin: the two configuration pages of the
-      # Finanzen section, both gated on :configure_finance on Group. The area
-      # has no page of its own -- /fin/admin renders its first tab.
-      get :admin, path: "admin", to: "finance_groups#index", as: "fin_admin"
+      # "Verwaltung" section at /fin/admin: the configuration pages of the
+      # Finanzen section, all gated on :configure_finance on Group. The area
+      # has no page of its own -- /fin/admin renders its first tab, the
+      # payment codes.
+      get :admin, path: "admin", to: "payment_references#index", as: "fin_admin"
       scope "admin" do
         # Per-group finance access (people.additional_info["finance_group_ids"]).
         # The page is a two-stage editor over all rows, so the write is a
@@ -258,6 +259,20 @@ Rails.application.routes.draw do
         get "group_cost_centers", to: "group_cost_centers#index", as: "fin_admin_group_cost_centers"
         patch "group_cost_centers", to: "group_cost_centers#update",
           as: "fin_admin_save_group_cost_centers"
+        # The payment references (payment codes) and the stock of available
+        # ones; the POST makes new ones for the stock, /apply is the PRG target
+        # of the list's filter builder, /:id a code's page (and the lazy detail
+        # of its row).
+        get "payment_references", to: "payment_references#index", as: "fin_admin_payment_references"
+        post "payment_references", to: "payment_references#generate",
+          as: "fin_admin_generate_payment_references"
+        post "payment_references/apply", to: "payment_references#apply",
+          as: "fin_admin_apply_payment_references"
+        get "payment_references/:id", to: "payment_references#show", as: "fin_admin_payment_reference",
+          constraints: {id: /\d+/}
+        # Only the comment of a code is editable, inline on its page and in
+        # its row's detail.
+        patch "payment_references/:id", to: "payment_references#update", constraints: {id: /\d+/}
       end
       # /fin is the finance overview page, linking to the sections.
       get :fin, path: "", to: "overview#index"

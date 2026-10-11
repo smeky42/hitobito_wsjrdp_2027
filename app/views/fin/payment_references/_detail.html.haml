@@ -1,0 +1,68 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One payment reference, read-only: the code in both forms, the codeword and
+-#  the parameters it was made with, its status and history, and the payment
+-#  notices using it. The page's heading is an h1, in a row's detail an h2.
+-#  Links leave the frame (data-turbo-frame _top), so a person opens as a page.
+-#
+-#  Locals: reference (WsjrdpPaymentReference)
+- scope = "fin.payment_references.show"
+- fields = [[:printed_code, payment_reference_code(reference)],
+  [:payment_code, content_tag(:span, reference.payment_code, class: "font-monospace")],
+  [:codeword, content_tag(:span, reference.codeword, class: "font-monospace")],
+  [:payment_code_type, reference.payment_code_type],
+  [:codeword_scheme, reference.codeword_scheme],
+  [:data_length, reference.data_length],
+  [:parity_length, reference.parity_length],
+  [:rs_field_exponent, reference.rs_field_exponent],
+  [:rs_primitive_polynomial, reference.rs_primitive_polynomial],
+  [:rs_generator, reference.rs_generator],
+  [:rs_fcr, reference.rs_fcr],
+  [:status, payment_reference_status_label(reference.status)],
+  [:origin, payment_reference_origin_label(reference.origin)],
+  [:created_at, payment_reference_time(reference.created_at)],
+  [:assigned_at, payment_reference_time(reference.assigned_at)],
+  [:comment, render("fin/payment_references/comment", reference: reference)]]
+
+.payment-reference-detail{id: "payment-reference-#{reference.id}"}
+  -# As on every finance detail: the technical part (kind and id) light and
+  -# muted, then the record's name -- here the code -- in normal weight.
+  = content_tag(turbo_frame_request? ? :h2 : :h1, class: ["d-flex align-items-baseline flex-wrap gap-2", turbo_frame_request? ? "h5" : nil].compact.join(" ")) do
+    %span.text-muted.fw-light= "#{t("#{scope}.heading")} ##{reference.id}"
+    %span.font-monospace= reference.printed_code
+
+  %dl.row.mb-3#payment-reference-fields
+    - fields.each do |key, value|
+      %dt.col-sm-4.col-lg-3.text-muted.fw-normal= t("#{scope}.fields.#{key}")
+      %dd.col-sm-8.col-lg-9.mb-1
+        - if value.present?
+          = value
+        - else
+          %span.text-muted —
+
+  %h3.h6= t("#{scope}.notices")
+  - notices = reference.payment_notices.order(:created_at, :id).to_a
+  - if notices.empty?
+    %p.text-muted.small#payment-reference-no-notices= t("#{scope}.no_notices")
+  - else
+    %table.table.table-sm.align-middle#payment-reference-notices
+      %thead
+        %tr
+          %th= t("#{scope}.notice_columns.subject")
+          %th.text-end= t("#{scope}.notice_columns.amount")
+          %th= t("#{scope}.notice_columns.status")
+          %th= t("#{scope}.notice_columns.created_at")
+          %th= t("#{scope}.notice_columns.description")
+      %tbody
+        - notices.each do |notice|
+          %tr{id: "payment-notice-#{notice.id}"}
+            %td= payment_reference_notice_subject(notice, people_by_id)
+            %td.text-end.text-nowrap= format_eur_de(notice.amount)
+            %td= payment_reference_notice_status_label(notice.status)
+            %td.text-nowrap= payment_reference_time(notice.created_at)
+            %td= notice.description

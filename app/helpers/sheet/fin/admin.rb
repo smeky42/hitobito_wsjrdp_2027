@@ -9,16 +9,20 @@
 
 module Sheet
   # "Verwaltung" -- the last sub-item of the Finanzen main-nav section: the
-  # per-group finance access (/fin/admin/finance_groups) and the cost centers
-  # of a group (/fin/admin/group_cost_centers).
+  # payment codes (/fin/admin/payment_references), the per-group finance
+  # access (/fin/admin/finance_groups) and the cost centers of a group
+  # (/fin/admin/group_cost_centers).
   #
-  # The area has no page of its own; /fin/admin renders the first tab. Both
-  # tabs carry the area's gate, so somebody without :configure_finance sees no
+  # The area has no page of its own; /fin/admin renders the first tab. The
+  # payment codes are for the finance write tier and up and admins
+  # (:show on WsjrdpPaymentReference); the other tabs carry the area's gate, so somebody without :configure_finance sees no
   # tab -- and with that no card on /fin either, because
   # Fin::OverviewHelper#fin_areas drops an area whose tabs are all hidden.
   class Fin::Admin < Base
     # ::Group, not Group: inside `module Sheet` the bare constant resolves to
     # the core's Sheet::Group, which would make the condition silently false.
+    tab "fin.tabs.payment_references", :fin_admin_payment_references_path,
+      if: ->(view, *) { view.can?(:show, WsjrdpPaymentReference) }
     tab "fin.tabs.finance_groups", :fin_admin_finance_groups_path,
       if: ->(view, *) { view.can?(:configure_finance, ::Group) }
     tab "fin.tabs.group_cost_centers", :fin_admin_group_cost_centers_path,
