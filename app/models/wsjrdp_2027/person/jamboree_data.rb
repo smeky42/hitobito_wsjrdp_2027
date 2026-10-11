@@ -115,7 +115,6 @@ module Wsjrdp2027::Person::JamboreeData
     departure_number
     prior_wsj_experience
     vehicle_registration_number
-    dietary_requirements
     dietary_details
     religious_health_beliefs
     medical_equipment_details

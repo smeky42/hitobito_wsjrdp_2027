@@ -63,7 +63,7 @@
     %h3= t('people.jamboree_data.diet')
     - allergy_attrs = Wsjrdp2027::Person::JamboreeData::ALLERGIES.flat_map { |allergy| [:"allergy_#{allergy}", :"allergy_#{allergy}_severity"] }
     = render_attrs(@person,
-      :dietary_requirements,
+      :diet,
       :dietary_details,
       *allergy_attrs)
 

@@ -33,6 +33,8 @@ diets:
   vegan: "Vegan"
   kosher: "Koscher"
   halal: "Halal"
+  hinduism_no_beef: "Hinduismus - kein Rindfleisch"
+  other: "Andere"
 
 addresses:
   imported_countries:

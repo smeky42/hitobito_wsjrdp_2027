@@ -23,6 +23,7 @@ class Person::JamboreeDataController < ApplicationController
     *Wsjrdp2027::Person::JamboreeData::DATE_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::BOOLEAN_ATTRS,
     {medical_equipment_needs: []},
+    :diet,
     :jamboree_data_confirmed
   ]
 
