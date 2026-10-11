@@ -115,6 +115,14 @@ describe WsjrdpDocument do
     end
   end
 
+  it "may be replaced by several documents" do
+    scan = create_document(status: "superseded", superseded_at: Time.current)
+    form = create_document(secondary_key: "form", replaces: scan)
+    passport = create_document(secondary_key: "passport", replaces: scan)
+
+    expect(scan.reload.replacements).to contain_exactly(form, passport)
+  end
+
   describe "deleting" do
     it "of a predecessor empties replaces of its successor" do
       old = create_document(status: "superseded", superseded_at: Time.current)

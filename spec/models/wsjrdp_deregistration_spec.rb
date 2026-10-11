@@ -54,6 +54,30 @@ describe WsjrdpDeregistration do
     end
   end
 
+  describe "open rows" do
+    it "allow one row of a person outside the final statuses" do
+      deregistration
+
+      second = WsjrdpDeregistration.new(person_id: person.id, number: 2)
+      expect(second).not_to be_valid
+      expect(second.errors[:status]).to be_present
+    end
+
+    it "allow another row once the open one is final, and any number of final rows" do
+      first = deregistration
+      first.update!(status: "superseded")
+
+      expect { deregistration(number: 2, replaces_id: first.id) }.not_to raise_error
+      expect { deregistration(number: 3, status: "canceled") }.not_to raise_error
+    end
+
+    it "let the open row itself be saved again" do
+      row = deregistration
+
+      expect(row.update(comment: "Notiz")).to be(true)
+    end
+  end
+
   describe "deleting" do
     it "of a replaced row empties replaces of its replacement" do
       old = deregistration(status: "superseded")
@@ -74,7 +98,7 @@ describe WsjrdpDeregistration do
     end
 
     it "of a row takes its events with it, in Rails and outside" do
-      first = deregistration
+      first = deregistration(status: "superseded")
       second = deregistration(number: 2)
       events = [event(first), event(second, event: "create")]
 

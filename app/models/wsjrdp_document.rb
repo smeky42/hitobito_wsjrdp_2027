@@ -41,13 +41,14 @@ class WsjrdpDocument < ActiveRecord::Base
   belongs_to :author, polymorphic: true, optional: true
   belongs_to :key_ref, polymorphic: true, optional: true
   belongs_to :secondary_key_ref, polymorphic: true, optional: true
-  belongs_to :replaces, class_name: "WsjrdpDocument", optional: true, inverse_of: :replaced_by
+  belongs_to :replaces, class_name: "WsjrdpDocument", optional: true, inverse_of: :replacements
   belongs_to :derived_from, class_name: "WsjrdpDocument", optional: true, inverse_of: :derivatives
   belongs_to :origin_service_token, class_name: "ServiceToken", optional: true
 
   # The foreign keys do the same in the database (on_delete nullify and
   # cascade), so a delete outside Rails ends alike.
-  has_one :replaced_by, class_name: "WsjrdpDocument", foreign_key: :replaces_id,
+  # A document may be followed by several, e.g. when one scan is split up.
+  has_many :replacements, class_name: "WsjrdpDocument", foreign_key: :replaces_id,
     inverse_of: :replaces, dependent: :nullify
   has_many :derivatives, class_name: "WsjrdpDocument", foreign_key: :derived_from_id,
     inverse_of: :derived_from, dependent: :destroy
