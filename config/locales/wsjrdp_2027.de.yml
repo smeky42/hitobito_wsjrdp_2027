@@ -1409,6 +1409,7 @@ de:
 
   version:
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
+    unblock_person: 'Im Tab "Sicherheit" wurde der Login entsperrt'
     wsjrdp_add_tag: 'Tag <i>%{tag_name}</i> hinzugefügt'
     wsjrdp_remove_tag: 'Tag <i>%{tag_name}</i> entfernt'
     finance_group_ids:
