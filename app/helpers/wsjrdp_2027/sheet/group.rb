@@ -19,6 +19,7 @@ module Wsjrdp2027::Sheet::Group
     "groups.tabs.logs",
     "groups.tabs.deleted",
     "groups.tabs.map",
+    "groups.tabs.patrols",
     "groups.tabs.finance"
   ]
 
@@ -31,6 +32,12 @@ module Wsjrdp2027::Sheet::Group
     tab "groups.tabs.map",
       :group_map_path,
       if: :show_statistics
+
+    tab "groups.tabs.patrols",
+      :group_patrols_path,
+      if: (lambda do |view, group|
+        group.is_a?(::Group::Unit) && (view.can?(:update_patrols, group) || view.can?(:log, group))
+      end)
 
     # The whole Finanzen area of a group hangs below this path, so the tab needs
     # no `alt:` for the Buchhaltung's booking page: a tab's own path_method is
