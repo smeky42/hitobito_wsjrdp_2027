@@ -22,6 +22,8 @@ module Wsjrdp2027::Person::JamboreeData
   LANGUAGE_LEVEL_I18N = "activerecord.attributes.person.jamboree_language_levels"
   # english_reading, english_writing, ..., arabic_listening
   LANGUAGE_ATTRS = LANGUAGES.flat_map { |language| LANGUAGE_SKILLS.map { |skill| :"#{language}_#{skill}" } }.freeze
+  ADULT_ONLY_ATTRS = (%i[mothers_first_name fathers_first_name mothers_surname_at_birth
+    prior_wsj_experience vehicle_registration_number] + LANGUAGE_ATTRS.drop(LANGUAGE_SKILLS.size)).freeze
   LANGUAGE_EXPORT_MAP = {
     reading: {
       "none" => "Not reading",
@@ -262,6 +264,10 @@ module Wsjrdp2027::Person::JamboreeData
     return :given if known_as_name.present?
 
     nickname.present? ? :nickname : :first_name
+  end
+
+  def jamboree_data_adult?
+    %w[UL IST CMT].include?(effective_wsj_role)
   end
 
   def medical_equipment_needs

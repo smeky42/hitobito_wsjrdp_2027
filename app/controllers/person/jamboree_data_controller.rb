@@ -38,7 +38,8 @@ class Person::JamboreeDataController < ApplicationController
 
   def update
     authorize!(:edit, person)
-    person.attributes = params.require(:person).permit(permitted_attrs)
+    attrs = person.jamboree_data_adult? ? permitted_attrs : permitted_attrs - Wsjrdp2027::Person::JamboreeData::ADULT_ONLY_ATTRS
+    person.attributes = params.require(:person).permit(attrs)
     person.save
     respond_with person, location: helpers.jamboree_data_page_path(group, person)
   end

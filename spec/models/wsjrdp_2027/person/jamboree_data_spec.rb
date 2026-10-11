@@ -12,6 +12,13 @@ require "spec_helper"
 describe Wsjrdp2027::Person::JamboreeData do
   let(:person) { people(:cmt_leader) }
 
+  it "uses the effective WSJ role for adult-only answers" do
+    expect(people(:yp_a_1).jamboree_data_adult?).to be(false)
+    expect(people(:ul_a_1).jamboree_data_adult?).to be(true)
+    expect(people(:ist_a_1).jamboree_data_adult?).to be(true)
+    expect(person.jamboree_data_adult?).to be(true)
+  end
+
   it "keeps the answers in people.jamboree_data" do
     person.update!(nationality: "deutsch", english_speaking: "fluent", allergy_peanut: true,
       travel_document_issue_date: Date.new(2025, 1, 2), medical_equipment_needs: ["", "medication_cooling"])

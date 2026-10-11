@@ -13,10 +13,11 @@
       -# Empty means the default (nickname, else first name), shown as placeholder.
       = f.labeled_input_field :known_as_name, placeholder: @person.known_as_name_or_default,
         help: t('people.jamboree_data.known_as_name_help')
-      = f.labeled_input_field :mothers_first_name
-      = f.labeled_input_field :fathers_first_name
-      = f.labeled_input_field :mothers_surname_at_birth
-      = f.labeled_input_field :place_of_birth
+      - if @person.jamboree_data_adult?
+        = f.labeled_input_field :mothers_first_name
+        = f.labeled_input_field :fathers_first_name
+        = f.labeled_input_field :mothers_surname_at_birth
+        = f.labeled_input_field :place_of_birth
       = f.labeled_input_field :country_of_birth
       = f.labeled_input_field :nationality
 
@@ -56,21 +57,22 @@
         = safe_join(levels.each_with_index.map { |(label, _), i| "#{i} #{label}" }, " · ")
       .wsjrdp-languages.mb-3
         - Wsjrdp2027::Person::JamboreeData::LANGUAGES.each do |language|
-          .wsjrdp-language-block
-            .fw-semibold.mb-1= t("people.jamboree_data.language_names.#{language}")
-            - Wsjrdp2027::Person::JamboreeData::LANGUAGE_SKILLS.each do |skill|
-              - attr_name = :"#{language}_#{skill}"
-              -# Without an answer "Keine" is ticked, and saved with the form.
-              - level_value = @person.public_send(attr_name).presence || "none"
-              .wsjrdp-level-row
-                -# A break allowed after the slash of "hören/verstehen".
-                .wsjrdp-skill= safe_join(t("people.jamboree_data.language_skills.#{skill}").split("/"), "/".html_safe + tag(:wbr))
-                .btn-group.wsjrdp-level-group{role: "group", "aria-label": Person.human_attribute_name(attr_name)}
-                  - levels.each_with_index do |(label, level), number|
-                    - id = "person_#{attr_name}_#{level}"
-                    = f.radio_button attr_name, level, id: id, class: "btn-check", autocomplete: "off", checked: level == level_value
-                    %label.btn.btn-sm.btn-outline-primary{for: id, title: label, data: {level_label: label}}= number
-                .small.text-primary.wsjrdp-level-value= levels.to_h.invert[level_value]
+          - if language == :english || @person.jamboree_data_adult?
+            .wsjrdp-language-block
+              .fw-semibold.mb-1= t("people.jamboree_data.language_names.#{language}")
+              - Wsjrdp2027::Person::JamboreeData::LANGUAGE_SKILLS.each do |skill|
+                - attr_name = :"#{language}_#{skill}"
+                -# Without an answer "Keine" is ticked, and saved with the form.
+                - level_value = @person.public_send(attr_name).presence || "none"
+                .wsjrdp-level-row
+                  -# A break allowed after the slash of "hören/verstehen".
+                  .wsjrdp-skill= safe_join(t("people.jamboree_data.language_skills.#{skill}").split("/"), "/".html_safe + tag(:wbr))
+                  .btn-group.wsjrdp-level-group{role: "group", "aria-label": Person.human_attribute_name(attr_name)}
+                    - levels.each_with_index do |(label, level), number|
+                      - id = "person_#{attr_name}_#{level}"
+                      = f.radio_button attr_name, level, id: id, class: "btn-check", autocomplete: "off", checked: level == level_value
+                      %label.btn.btn-sm.btn-outline-primary{for: id, title: label, data: {level_label: label}}= number
+                  .small.text-primary.wsjrdp-level-value= levels.to_h.invert[level_value]
 
     = field_set_tag do
       %h3= t('people.jamboree_data.travel')
@@ -82,6 +84,8 @@
       -# Without an answer "Nein" is chosen, and saved with the form.
       = f.labeled_collection_select :visa_needed, @person.jamboree_data_options(:visa_needed), :last, :first, {selected: @person.visa_needed.presence || "no"}, class: 'span4'
       .mt-3{ data: { jamboree_dependent_on: 'person_visa_needed', jamboree_dependent_value: 'yes_need_support' }, hidden: @person.visa_needed != 'yes_need_support' }
+        - unless @person.jamboree_data_adult?
+          = f.labeled_input_field :place_of_birth
         = f.labeled_input_field :visa_information
         = f.labeled_input_field :visa_nationality_at_birth
         = f.labeled_input_field :visa_other_nationalities
@@ -129,8 +133,9 @@
       = f.labeled_boolean_field :comfortable_flashing_lights
       = f.labeled_boolean_field :comfortable_loud_noise
       = f.labeled_boolean_field :comfortable_confined_space
-      = f.labeled_input_field :prior_wsj_experience
-      = f.labeled_input_field :vehicle_registration_number
+      - if @person.jamboree_data_adult?
+        = f.labeled_input_field :prior_wsj_experience
+        = f.labeled_input_field :vehicle_registration_number
 
     = field_set_tag do
       %h3= t('people.jamboree_data.diet')

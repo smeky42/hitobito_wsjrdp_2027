@@ -15,6 +15,7 @@ describe Person::JamboreeDataController, type: :controller do
   render_views
 
   let(:ul) { people(:ul_a_1) }
+  let(:yp) { people(:yp_a_1) }
 
   before { sign_in(people(:admin)) }
 
@@ -83,10 +84,64 @@ describe Person::JamboreeDataController, type: :controller do
     expect(page.css("input[type=radio][name^='person['][checked]").size).to eq(16)
   end
 
+  it "shows YP only their applicable questions in the form and on the page" do
+    get :edit, params: {id: yp.id}
+    expect(page.at_css("#person_english_reading_none")).to be_present
+    expect(page.css("input[type=radio][name^='person['][checked]").size).to eq(4)
+    %w[mothers_first_name fathers_first_name mothers_surname_at_birth
+      french_reading spanish_reading arabic_reading prior_wsj_experience vehicle_registration_number].each do |attr|
+      expect(page.at_css("#person_#{attr}")).to be_nil
+    end
+    expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]")).to be_present
+    expect(page.at_css("#person_arrival_location")).to be_present
+
+    get :show, params: {id: yp.id}
+    expect(page.text).not_to include("Mutters Vorname", "Französisch", "Frühere Jamboree-Erfahrung")
+    expect(page.text).to include("Englisch", "An- und Abreise")
+  end
+
+  it "does not accept adult-only answers for YP" do
+    put :update, params: {id: yp.id, person: {mothers_first_name: "Test", french_reading: "basic",
+      prior_wsj_experience: "Test", country_of_birth: "Deutschland"}}
+
+    expect(yp.reload).to have_attributes(mothers_first_name: nil, french_reading: nil,
+      prior_wsj_experience: nil, country_of_birth: "Deutschland")
+  end
+
+  it "keeps adult questions for IST and CMT" do
+    [people(:ist_a_1), people(:cmt_leader)].each do |adult|
+      get :edit, params: {id: adult.id}
+      expect(page.at_css("#person_mothers_first_name")).to be_present
+      expect(page.at_css("#person_french_reading_none")).to be_present
+      expect(page.at_css("#person_prior_wsj_experience")).to be_present
+    end
+  end
+
+  it "hides visa details on the read-only page without visa support" do
+    get :show, params: {id: yp.id}
+    expect(page.text).not_to include(Person.human_attribute_name(:visa_employer_name))
+
+    yp.update!(visa_needed: "yes_need_support")
+    get :show, params: {id: yp.id}
+    expect(page.text).to include(Person.human_attribute_name(:visa_employer_name))
+  end
+
+  it "asks YP for their birthplace only when visa support is needed" do
+    get :edit, params: {id: yp.id}
+    expect(page.at_css("#person_place_of_birth")).to be_present
+    expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]").first["hidden"]).not_to be_nil
+
+    yp.update!(visa_needed: "yes_need_support")
+    get :edit, params: {id: yp.id}
+    expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]").first["hidden"]).to be_nil
+    get :show, params: {id: yp.id}
+    expect(page.text).to include(Person.human_attribute_name(:place_of_birth))
+  end
+
   it "shows visa application fields only when visa support is needed" do
     get :edit, params: {id: ul.id}
     visa_fields = page.at_css('[data-jamboree-dependent-value="yes_need_support"]')
-    expect(visa_fields["hidden"]).to eq("hidden")
+    expect(visa_fields["hidden"]).not_to be_nil
 
     ul.update!(visa_needed: "yes_need_support")
     get :edit, params: {id: ul.id}
