@@ -7,6 +7,8 @@ GROUP_ACTIONS = [
   :show_details,
   # show_statistics: show statistics about the group and the map
   :show_statistics,
+  # update_patrols: manage patrols in the group
+  :update_patrols,
   # show_finance: see the group's finance tab and pages
   :show_finance,
   # update_finance: edit on the group's finance pages
