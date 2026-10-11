@@ -62,6 +62,26 @@ module Wsjrdp2027::Person::JamboreeData
   TRAVEL_DOCUMENT_TYPES = %w[ordinary_passport diplomatic_passport service_passport official_passport
     special_passport other_travel_document].freeze
   VISA_NEEDED_VALUES = %w[no yes_have_one yes_need_support].freeze
+  VISA_DETAIL_ATTRS = %i[
+    visa_nationality_at_birth
+    visa_other_nationalities
+    visa_gender_as_in_travel_document
+    visa_civil_status
+    visa_civil_status_other
+    visa_current_student_status
+    visa_employer_name
+    visa_employer_address_1
+    visa_employer_address_2
+    visa_employer_city
+    visa_employer_postcode
+    visa_employer_state
+    visa_employer_country
+    visa_family_eu_citizen_relationship
+    visa_family_eu_citizen_relation
+    visa_residence_country
+    visa_schengen_first_entry
+    visa_fingerprints_visa_number
+  ].freeze
   WHEELCHAIR_TYPES = %w[manual electric].freeze
   ALLERGY_SEVERITIES = %w[severe medium mild].freeze
   MEDICAL_EQUIPMENT = %w[battery_charging_station continuous_power_supply medication_cooling other].freeze
@@ -89,7 +109,7 @@ module Wsjrdp2027::Person::JamboreeData
     medical_equipment_details
     other_mobility_details
     non_visible_disability_details
-  ].freeze
+  ].concat(VISA_DETAIL_ATTRS).freeze
 
   SELECT_ATTRS = (
     LANGUAGE_ATTRS +
@@ -104,6 +124,7 @@ module Wsjrdp2027::Person::JamboreeData
   DATE_ATTRS = %i[
     travel_document_issue_date
     travel_document_expiration_date
+    visa_fingerprints_date
   ].freeze
 
   BOOLEAN_ATTRS = (
@@ -116,6 +137,8 @@ module Wsjrdp2027::Person::JamboreeData
       comfortable_loud_noise
       comfortable_confined_space
       refrigerated_medication_needed
+      visa_residence_other_than_nationality
+      visa_fingerprints_collected
       mobility_restricted
       uses_wheelchair
       uses_mobility_frame
@@ -206,7 +229,10 @@ module Wsjrdp2027::Person::JamboreeData
   DETAILS_OF_BOX = ALLERGIES.to_h { |allergy| [:"allergy_#{allergy}_severity", :"allergy_#{allergy}"] }.merge(
     wheelchair_type: :uses_wheelchair,
     other_mobility_details: :other_mobility_needs,
-    non_visible_disability_details: :non_visible_disability
+    non_visible_disability_details: :non_visible_disability,
+    visa_residence_country: :visa_residence_other_than_nationality,
+    visa_fingerprints_date: :visa_fingerprints_collected,
+    visa_fingerprints_visa_number: :visa_fingerprints_collected
   ).freeze
 
   # The name for the name tag as shown when none was given: the stored
@@ -253,6 +279,12 @@ module Wsjrdp2027::Person::JamboreeData
   def clear_jamboree_details_without_their_box
     DETAILS_OF_BOX.each { |detail, box| public_send(:"#{detail}=", nil) unless public_send(box) }
     self.medical_equipment_details = nil unless medical_equipment_needs.include?("other")
+    unless visa_needed == "yes_need_support"
+      VISA_DETAIL_ATTRS.each { |attr| public_send(:"#{attr}=", nil) }
+      self.visa_fingerprints_date = nil
+      self.visa_fingerprints_collected = false
+      self.visa_residence_other_than_nationality = false
+    end
   end
 
   def medical_equipment_needs_known

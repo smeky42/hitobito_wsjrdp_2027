@@ -40,6 +40,19 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(Person.where(id: person.id).pick(:jamboree_data)).to include("travel_document_issue_date" => "2025-01-02")
   end
 
+  it "stores visa application details only while visa support is needed" do
+    person.update!(visa_needed: "yes_need_support", visa_nationality_at_birth: "deutsch",
+      visa_fingerprints_collected: "1", visa_fingerprints_date: "2025-01-02", visa_fingerprints_visa_number: "123")
+
+    expect(person.reload).to have_attributes(visa_nationality_at_birth: "deutsch",
+      visa_fingerprints_collected: true, visa_fingerprints_date: Date.new(2025, 1, 2),
+      visa_fingerprints_visa_number: "123")
+
+    person.update!(visa_needed: "yes_have_one")
+    expect(person.reload).to have_attributes(visa_nationality_at_birth: nil,
+      visa_fingerprints_collected: false, visa_fingerprints_date: nil, visa_fingerprints_visa_number: nil)
+  end
+
   it "reads boxes as booleans, a form's 0 as false, and drops an unticked one" do
     person.update!(allergy_milk: "1", uses_wheelchair: "1")
     expect(person.reload).to have_attributes(allergy_milk: true, uses_wheelchair: true)

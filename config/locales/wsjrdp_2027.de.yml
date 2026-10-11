@@ -249,6 +249,27 @@ de:
         travel_document_country: Ausstellungsland
         visa_needed: Visum benötigt
         visa_information: Visainformationen
+        visa_nationality_at_birth: Staatsangehörigkeit bei Geburt
+        visa_other_nationalities: Weitere Staatsangehörigkeiten
+        visa_gender_as_in_travel_document: Geschlecht wie im Reisedokument
+        visa_civil_status: Familienstand
+        visa_civil_status_other: Sonstiger Familienstand
+        visa_current_student_status: Aktueller Studierendenstatus
+        visa_employer_name: Arbeitgeber oder Bildungseinrichtung
+        visa_employer_address_1: Arbeitgeber / Bildungseinrichtung, Adresse 1
+        visa_employer_address_2: Arbeitgeber / Bildungseinrichtung, Adresse 2
+        visa_employer_city: Arbeitgeber / Bildungseinrichtung, Ort
+        visa_employer_postcode: Arbeitgeber / Bildungseinrichtung, Postleitzahl
+        visa_employer_state: Arbeitgeber / Bildungseinrichtung, Bundesland
+        visa_employer_country: Arbeitgeber / Bildungseinrichtung, Land
+        visa_family_eu_citizen_relationship: Verwandtschaft zu EU-/EWR-/CH-Staatsangehörigen
+        visa_family_eu_citizen_relation: Art der familiären Beziehung
+        visa_residence_other_than_nationality: Wohnsitzland weicht von Staatsangehörigkeit ab
+        visa_residence_country: Wohnsitzland
+        visa_schengen_first_entry: Erstes Einreiseland im Schengen-Raum
+        visa_fingerprints_collected: Wurden bereits Fingerabdrücke für ein Schengen-Visum erfasst?
+        visa_fingerprints_date: Datum der Fingerabdruckerfassung
+        visa_fingerprints_visa_number: Nummer des Visumaufklebers (falls bekannt)
         comfortable_on_water: Ich fühle mich bei Aktivitäten auf dem Wasser wohl
         comfortable_in_water: Ich fühle mich beim Schwimmen wohl
         comfortable_without_balance: Ich fühle mich bei Gleichgewichtsübungen wohl
