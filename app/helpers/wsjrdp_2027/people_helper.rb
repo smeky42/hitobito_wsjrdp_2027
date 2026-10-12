@@ -47,6 +47,19 @@ module Wsjrdp2027::PeopleHelper
     end
   end
 
+  # The medical page (or its edit form) by the same rule, and its tab.
+  def medical_page_path(group, person, edit: false)
+    if other_than_primary_group?(group, person)
+      edit ? medical_edit_group_person_path(group, person) : medical_group_person_path(group, person)
+    else
+      edit ? medical_edit_person_path(person) : medical_person_path(person)
+    end
+  end
+
+  def medical_tab_path(group, *args) = medical_page_path(group, args[0])
+
+  def medical_person_path_with_group(group, *args) = medical_person_path(args[0])
+
   # The Zusatzdaten page (or its edit form) by the same rule, and its tab.
   def jamboree_data_page_path(group, person, edit: false)
     if other_than_primary_group?(group, person)

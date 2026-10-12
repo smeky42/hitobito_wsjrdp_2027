@@ -1,7 +1,7 @@
 #main.row
-  = standard_form @person, url: medical_group_person_path,  method: :put, html: { class: 'form-striped' } do |f|
+  = standard_form @person, url: medical_page_path(@group, @person), method: :put, html: { class: 'form-striped' } do |f|
     = f.error_messages
-    = form_buttons(f, cancel_url: medical_group_person_path)
+    = form_buttons(f, cancel_url: medical_page_path(@group, @person))
 
     .mt-3
       %h3= t('people.medical_fields.vaccinations')
@@ -64,6 +64,6 @@
     = field_set_tag do
       = f.labeled_input_field :medical_other, label: t('people.medical_fields.other_long')
 
-    = form_buttons(f, cancel_url: medical_group_person_path)
+    = form_buttons(f, cancel_url: medical_page_path(@group, @person))
 
 

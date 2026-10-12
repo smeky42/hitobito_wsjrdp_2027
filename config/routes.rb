@@ -32,11 +32,14 @@ Rails.application.routes.draw do
   language_scope do
     resources :documents, only: [:show, :create], controller: "wsjrdp/documents", as: :wsjrdp_documents
 
-    # The status page without a group: in the person's primary group
-    # (Person::StatusController#group).
+    # The status, medical and Zusatzdaten pages without a group: in the
+    # person's primary group (Person::StatusController#group).
     get "people/:id/status" => "person/status#show", :as => :status_person
     get "people/:id/status/edit" => "person/status#edit", :as => :status_edit_person
     put "people/:id/status" => "person/status#update"
+    get "people/:id/medical" => "person/medical#show", :as => :medical_person
+    get "people/:id/medical/edit" => "person/medical#edit", :as => :medical_edit_person
+    put "people/:id/medical" => "person/medical#update"
     get "people/:id/jamboree_data" => "person/jamboree_data#show", :as => :jamboree_data_person
     get "people/:id/jamboree_data/edit" => "person/jamboree_data#edit", :as => :jamboree_data_edit_person
     put "people/:id/jamboree_data" => "person/jamboree_data#update"
