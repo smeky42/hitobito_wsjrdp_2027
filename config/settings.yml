@@ -136,6 +136,13 @@ event:
   # additional_languages:
   #   en: Englisch
 
+# The generic CNF filter (doc/wsjrdp/generic_filter_builder.md).
+filtering:
+  # How an array-backed table is filtered (Wsjrdp::Filtering::ArrayCompiler):
+  # ruby (in Ruby) or sql (the rows as a VALUES list in PostgreSQL). A
+  # dataset may choose its own (ArrayFilterSchema#array_strategy).
+  array_strategy: ruby
+
 # The person with this email has root access to everything
 # This person should only be used by the operators of the application,
 # not the customers.
