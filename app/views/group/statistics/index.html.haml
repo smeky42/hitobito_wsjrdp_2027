@@ -62,15 +62,22 @@
         %strong Bestätigt durch CMT:
       #chart-registration-verified.chart-container.loading
 
-= javascript_include_tag 'hitobito_wsjrdp_2027/application'
+-# On a Turbo visit the library loads only after the block below has started
+-# (a script Turbo inserts is async), so drawing waits for the data AND for
+-# the library's load event.
+= javascript_include_tag 'hitobito_wsjrdp_2027/application', id: 'statistics-chartkick'
 
 :javascript
   (function () {
     const groupId = "#{@group.id}";
+    const chartkickReady = new Promise(resolve => {
+      const lib = document.getElementById("statistics-chartkick");
+      if (window.Chartkick || !lib) resolve();
+      else lib.addEventListener("load", () => resolve(), {once: true});
+    });
 
-    fetch(`/groups/${groupId}/statistics/data`)
-      .then(response => response.json())
-      .then(data => {
+    Promise.all([fetch(`/groups/${groupId}/statistics/data`).then(response => response.json()), chartkickReady])
+      .then(([data]) => {
         renderColumnChart("chart-status", data.people_by_status, {library: {title: "Personen nach Status"}});
         renderLineChart("chart-registration-date", data.people_by_registration_date, {library: {title: "Registrierung über Zeit"}});
         renderColumnChart("chart-role", data.people_by_role, {library: {title: "Personen nach Rolle"}});

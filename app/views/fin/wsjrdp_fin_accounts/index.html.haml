@@ -35,11 +35,18 @@
   - if movements.any?
     %h2.h5 Gesamtsaldo und Bewegungen pro Monat
     #fin-acc-movements-chart.mb-4{style: "height: 300px", data: {series: movements.to_json}}
-    = javascript_include_tag "hitobito_wsjrdp_2027/application"
+    -# On a Turbo visit the library loads after the block below has run (a
+    -# script Turbo inserts is async), so the block waits for its load event.
+    = javascript_include_tag "hitobito_wsjrdp_2027/application", id: "fin-acc-chartkick"
     :javascript
-      (function () {
+      (function draw() {
         var el = document.getElementById("fin-acc-movements-chart");
-        if (!el || !window.Chartkick) return;
+        if (!el) return;
+        if (!window.Chartkick) {
+          var lib = document.getElementById("fin-acc-chartkick");
+          if (lib) lib.addEventListener("load", draw, {once: true});
+          return;
+        }
         var euro = function (value) {
           return Number(value).toLocaleString("de-DE", {maximumFractionDigits: 0}) + " €";
         };
