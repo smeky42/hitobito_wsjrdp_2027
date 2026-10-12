@@ -46,6 +46,7 @@ class Person::JamboreeDataController < ApplicationController
     authorize!(:edit, person)
     attrs = person.jamboree_data_adult? ? permitted_attrs : permitted_attrs - Wsjrdp2027::Person::JamboreeData::ADULT_ONLY_ATTRS
     attrs -= Wsjrdp2027::Person::JamboreeData::JOURNEY_ATTRS unless person.jamboree_data_journey_editable?
+    attrs -= [:uniform_order] unless person.uniform_order_available?
     person.attributes = params.require(:person).permit(attrs)
     person.save
     respond_with person, location: helpers.jamboree_data_page_path(group, person)

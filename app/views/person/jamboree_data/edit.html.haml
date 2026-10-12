@@ -13,13 +13,15 @@
       .text-muted.mw-90ch.mb-2= t('people.jamboree_data.clothing_help')
       = f.labeled_collection_select(:shirt_size, Settings.shirt_size, :to_s, :to_s, {include_blank: t('people.additional_info_fields.size_placeholder')}, class: 'span2')
       = f.labeled_collection_select(:uniform_size, Settings.uniform_size, :to_s, :to_s, {include_blank: t('people.additional_info_fields.size_placeholder')}, class: 'span2')
+      -# Without an answer Langarm and ordering are ticked; Kurzarm and Nein
+      -# are an explicit choice.
       = f.labeled(:uniform_long_sleeve) do
         - { true => 'Langarm', false => 'Kurzarm' }.each do |value, label|
-          = f.inline_radio_button(:uniform_long_sleeve, value, label)
-      - if %w[CMT UL IST].include?(@person.wsj_role.to_s)
+          = f.inline_radio_button(:uniform_long_sleeve, value, label, true, checked: value == (f.object.uniform_long_sleeve != false))
+      - if @person.uniform_order_available?
         = f.labeled(:uniform_order) do
           - { true => 'Ja', false => 'Nein' }.each do |value, label|
-            = f.inline_radio_button(:uniform_order, value, label)
+            = f.inline_radio_button(:uniform_order, value, label, true, checked: value == (f.object.uniform_order != false))
           .mw-90ch.mb-2
             = t('people.additional_info_fields.uniform_order_help')
       = f.labeled_collection_select(:headgear, Settings.headgear, :first, :last, { include_blank: true }, class: 'span2')

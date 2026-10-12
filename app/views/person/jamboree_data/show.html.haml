@@ -5,7 +5,7 @@
     %h3= t('people.jamboree_data.clothing')
     .text-muted.mw-90ch.mb-2= t('people.jamboree_data.clothing_help')
     - clothing_attrs = [:shirt_size, :uniform_size, :uniform_long_sleeve]
-    - clothing_attrs << :uniform_order if %w[CMT UL IST].include?(@person.wsj_role.to_s)
+    - clothing_attrs << :uniform_order if @person.uniform_order_available?
     = render_attrs(@person, *clothing_attrs, :headgear)
 
     %h3= t('people.jamboree_data.personal')

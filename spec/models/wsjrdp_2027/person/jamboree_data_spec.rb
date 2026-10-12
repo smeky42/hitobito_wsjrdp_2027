@@ -149,6 +149,17 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person.reload).to have_attributes(allergy_peanut_severity: nil, wheelchair_type: nil, medical_equipment_details: nil)
   end
 
+  it "asks the adults by wsjrdp_role to order a uniform" do
+    expect(people(:yp_a_1).uniform_order_available?).to be(false)
+    expect(people(:ul_a_1).uniform_order_available?).to be(true)
+    expect(people(:ist_a_1).uniform_order_available?).to be(true)
+
+    person = people(:ist_a_1)
+    person.update_columns(wsj_role: nil, primary_group_id: 45)
+    expect(person.wsjrdp_role).to eq("BMT")
+    expect(person.uniform_order_available?).to be(true)
+  end
+
   it "registers its attributes as internal ones" do
     expect(Person::INTERNAL_ATTRS).to include(:nationality, :jamboree_data_confirmed)
   end

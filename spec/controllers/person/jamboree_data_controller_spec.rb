@@ -90,6 +90,18 @@ describe Person::JamboreeDataController, type: :controller do
     expect(ul.reload.arrival_location).to be_nil
   end
 
+  it "asks only the adults to order a uniform, Langarm and Ja ticked without an answer" do
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("input#person_uniform_order_true")["checked"]).to be_present
+    expect(page.at_css("input#person_uniform_long_sleeve_true")["checked"]).to be_present
+
+    get :edit, params: {id: yp.id}
+    expect(page.at_css("[name='person[uniform_order]']")).to be_nil
+
+    put :update, params: {id: yp.id, person: {uniform_order: "false", uniform_long_sleeve: "false"}}
+    expect(yp.reload).to have_attributes(uniform_order: nil, uniform_long_sleeve: false)
+  end
+
   it "offers the selects with an empty choice and German labels" do
     get :edit, params: {id: ul.id}
 
@@ -105,13 +117,13 @@ describe Person::JamboreeDataController, type: :controller do
     expect(page.at_css("select#person_visa_needed option[selected]")&.text).to eq("Nein")
     expect(page.css("select#person_visa_needed option").map(&:text)).not_to include("")
     expect(page.at_css("input#person_english_reading_none")["checked"]).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]").size).to eq(16)
+    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_'])").size).to eq(16)
   end
 
   it "shows YP only their applicable questions in the form and on the page" do
     get :edit, params: {id: yp.id}
     expect(page.at_css("#person_english_reading_none")).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]").size).to eq(4)
+    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_'])").size).to eq(4)
     %w[mothers_first_name fathers_first_name mothers_surname_at_birth
       french_reading spanish_reading arabic_reading prior_wsj_experience vehicle_registration_number].each do |attr|
       expect(page.at_css("#person_#{attr}")).to be_nil

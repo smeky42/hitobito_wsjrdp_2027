@@ -35,7 +35,6 @@ module Wsjrdp2027::PeopleController
     :shirt_size,
     :uniform_size,
     :uniform_long_sleeve,
-    :uniform_order,
     :headgear,
     :can_swim,
     :diet,
@@ -60,6 +59,7 @@ module Wsjrdp2027::PeopleController
   def permitted_attrs
     attrs = super.dup
     attrs += WSJRDP_ALWAYS_PERMITTED_ATTRS
+    attrs += [:uniform_order] if entry.uniform_order_available?
     attrs += WSJRDP_REGISTERED_PERMITTED_ATTRS if entry.status == "registered" || can?(:update_finance, entry)
     attrs += [:sepa_mandate_id] if can?(:update_finance, entry)
     attrs += [:wsjrdp_email] if can?(:update_wsjrdp_email, entry)

@@ -15,7 +15,7 @@
                       :shirt_size,
                       :uniform_size,
                       :uniform_long_sleeve,
-                      :uniform_order,
+                      *(:uniform_order if entry.uniform_order_available?),
                       :headgear,
                       :can_swim,
                       :foto_permission)
