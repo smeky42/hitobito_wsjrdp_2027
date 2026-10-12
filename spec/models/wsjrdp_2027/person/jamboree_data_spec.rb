@@ -149,6 +149,16 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person.reload).to have_attributes(allergy_peanut_severity: nil, wheelchair_type: nil, medical_equipment_details: nil)
   end
 
+  it "lists the confirmations not yet given" do
+    expect(person.jamboree_data_missing_confirmations).to eq(%i[gdpr_agreement jamboree_data_confirmed])
+
+    person.update!(gdpr_agreement: true)
+    expect(person.jamboree_data_missing_confirmations).to eq(%i[jamboree_data_confirmed])
+
+    person.update!(jamboree_data_confirmed: true)
+    expect(person.jamboree_data_missing_confirmations).to be_empty
+  end
+
   it "asks the adults by wsjrdp_role to order a uniform" do
     expect(people(:yp_a_1).uniform_order_available?).to be(false)
     expect(people(:ul_a_1).uniform_order_available?).to be(true)

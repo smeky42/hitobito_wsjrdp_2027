@@ -81,13 +81,15 @@ describe Person::JamboreeDataController, type: :controller do
     end
   end
 
-  it "denies reading and writing journey fields without log access" do
+  it "lets a person see and edit their own data, but not their unit's journey" do
     sign_in(ul)
-    expect { get :show, params: {id: ul.id} }.to raise_error(CanCan::AccessDenied)
-    expect { get :edit, params: {id: ul.id} }.to raise_error(CanCan::AccessDenied)
-    expect { put :update, params: {id: ul.id, person: {arrival_location: "amber_expo"}} }
-      .to raise_error(CanCan::AccessDenied)
-    expect(ul.reload.arrival_location).to be_nil
+    get :show, params: {id: ul.id}
+    expect(response).to have_http_status(:ok)
+    get :edit, params: {id: ul.id}
+    expect(response).to have_http_status(:ok)
+
+    put :update, params: {id: ul.id, person: {arrival_location: "amber_expo", nationality: "deutsch"}}
+    expect(ul.reload).to have_attributes(arrival_location: nil, nationality: "deutsch")
   end
 
   it "asks only the adults to order a uniform, Langarm and Ja ticked without an answer" do

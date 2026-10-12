@@ -912,6 +912,12 @@ de:
         first_name: Vorname
       gdpr_agreement: Ja, ich habe die Datenschutzbestimmungen des Jamboree-Veranstalters gelesen und stimme diesen zu. <a href="https://www.jamboree2027.org/wp-content/uploads/2026/05/DP-Information-Notice-01-EN.pdf" target="_blank" rel="noopener noreferrer">Datenschutzinformationen als PDF</a>
       confirmed: Ich versichere hiermit, alle obenstehenden Angaben nach bestem Wissen und Gewissen vollständig und wahrheitsgetreu gemacht zu haben.
+      missing_confirmations:
+        intro: "Für die Anmeldung beim Jamboree-Veranstalter fehlt noch:"
+        gdpr_agreement: die Zustimmung zu den Datenschutzbestimmungen des Jamboree-Veranstalters
+        jamboree_data_confirmed: die Bestätigung, dass die Angaben vollständig und wahrheitsgetreu sind
+        link: Zu den Daten für den Veranstalter
+        edit_hint: Gehe dazu auf „Bearbeiten“, prüfe alle Angaben gründlich und vervollständige sie. Wenn alles vollständig ist, bestätige es ganz unten auf der Seite.
     status: Anmeldestatus
     status_log_display: Anmeldestatus
     status_help:

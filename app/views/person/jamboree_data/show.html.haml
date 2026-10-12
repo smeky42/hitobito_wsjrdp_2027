@@ -1,5 +1,6 @@
 - content_for(:toolbar, render('actions_show'))
 
+= render 'missing_confirmations', person: @person, edit_hint: true
 #main.row
   %article.col-lg
     %h3= t('people.jamboree_data.clothing')

@@ -1,0 +1,28 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# A hint while a confirmation of "Daten für den Veranstalter" is missing,
+-# with a link to that page when link_path is given, and (on that page,
+-# edit_hint) how to give them.
+- link_path = local_assigns[:link_path]
+- missing = person.jamboree_data_missing_confirmations
+- if missing.any?
+  -# The triangle stays beside the text; the button moves below when narrow.
+  .alert.alert-warning.d-flex.flex-wrap.align-items-center.gap-3.mb-3
+    .d-flex.align-items-center.gap-3.flex-grow-1{style: 'flex-basis: 20rem'}
+      = icon('exclamation-triangle', class: 'fa-3x flex-shrink-0')
+      %div
+        = t('people.jamboree_data.missing_confirmations.intro')
+        %ul.mb-0
+          - missing.each do |attr|
+            %li= t("people.jamboree_data.missing_confirmations.#{attr}")
+        - if local_assigns[:edit_hint]
+          .mt-2= t('people.jamboree_data.missing_confirmations.edit_hint')
+    - if link_path
+      = link_to(link_path, class: 'btn bg-white flex-shrink-0') do
+        = t('people.jamboree_data.missing_confirmations.link')
+        = icon('arrow-right', class: 'ms-1')
