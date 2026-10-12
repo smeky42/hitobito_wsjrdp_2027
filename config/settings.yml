@@ -84,7 +84,6 @@ return_debit_status:
   partially_depreciated: Teilweise abgeschrieben
 
 shirt_size:
-  - Größe auswählen
   - XXS
   - XS
   - S
@@ -96,7 +95,6 @@ shirt_size:
   - XXXXL
 
 uniform_size:
-  - Größe auswählen
   - Klufthemd XS 35/36
   - Klufthemd S 37/38
   - Klufthemd M 39/40

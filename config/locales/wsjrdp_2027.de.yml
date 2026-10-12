@@ -1032,6 +1032,8 @@ de:
       other: Weitere Angaben
       other_long: Es ist außerdem auf Folgendes zu achten
     additional_info_fields:
+       size_placeholder: Größe auswählen
+       size_not_chosen: nicht gewählt
        uniform_order_help: Du bekommst den Gegenwert der Kluft mit dem letzten Einzug gutgeschrieben bzw. überwiesen, wenn du keine Kluft bestellen möchtest. Wenn du diese Option wählst, gehen wir davon aus, dass du mindestens eine Ringekluft besitzt und diese für das Jamboree verwendest.
        foto_permission_help: '<p>Der rdp wird die Veranstaltung und die Vorbereitungstreffen mit Bild- und Tonaufnahmen für die Selbst- und Außendarstellung dokumentieren. Solche Aufnahmen dürfen nur mit Einwilligung der abgebildeten Person angefertigt und verarbeitet werden. </br> Genaue Informationen dazu findest du in den gedruckten Vertragsunterlagen oder auf unserer <a href="https://www.worldscoutjamboree.de/fotoeinwilligung/">Homepage unter Fotoeinwilligung</a>.</p><p>Wenn die Einwilligung nicht erteilt wird, wird der Veranstalter die vom Veranstalter beauftragten Fotograf*innen anweisen, mich nicht zu fotografieren. Der Veranstalter wird alle zumutbaren Anstrengungen unternehmen, um diesen Wunsch zu respektieren. Um dies für alle Beteiligten zu erleichtern, können Teilnehmende, die nicht fotografiert werden möchten, auf Wunsch ein spezielles Erkennungszeichen (z.B. ein farbiges Armband oder Lanyard) erhalten, welches sie während der Veranstaltung tragen.</p>'
     # How an installment plan is paid (Wsjrdp2027::ParticipationFee).

@@ -11,8 +11,8 @@
     = field_set_tag do
       %h3= t('people.jamboree_data.clothing')
       .text-muted.mw-90ch.mb-2= t('people.jamboree_data.clothing_help')
-      = f.labeled_collection_select(:shirt_size, Settings.shirt_size, :to_s, :to_s, {}, class: 'span2')
-      = f.labeled_collection_select(:uniform_size, Settings.uniform_size, :to_s, :to_s, {}, class: 'span2')
+      = f.labeled_collection_select(:shirt_size, Settings.shirt_size, :to_s, :to_s, {include_blank: t('people.additional_info_fields.size_placeholder')}, class: 'span2')
+      = f.labeled_collection_select(:uniform_size, Settings.uniform_size, :to_s, :to_s, {include_blank: t('people.additional_info_fields.size_placeholder')}, class: 'span2')
       = f.labeled(:uniform_long_sleeve) do
         - { true => 'Langarm', false => 'Kurzarm' }.each do |value, label|
           = f.inline_radio_button(:uniform_long_sleeve, value, label)

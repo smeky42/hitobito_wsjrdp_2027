@@ -97,6 +97,20 @@ module Wsjrdp2027::PeopleHelper
     person.medical_equipment_needs_labels.join(", ")
   end
 
+  def format_person_shirt_size(person) = format_size_or_not_chosen(person.shirt_size)
+
+  def format_person_uniform_size(person) = format_size_or_not_chosen(person.uniform_size)
+
+  # A size, or "nicht gewählt" without one. The placeholder text stands for
+  # no size too: the size selects once saved it as a value.
+  def format_size_or_not_chosen(size)
+    if size.blank? || size == t("people.additional_info_fields.size_placeholder")
+      content_tag(:span, t("people.additional_info_fields.size_not_chosen"), class: "text-muted fw-light")
+    else
+      size
+    end
+  end
+
   def format_person_sepa_mail(person)
     format_email_or_nil(person.sepa_mail)
   end
