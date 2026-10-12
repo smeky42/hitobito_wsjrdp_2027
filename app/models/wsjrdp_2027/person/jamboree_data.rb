@@ -267,6 +267,12 @@ module Wsjrdp2027::Person::JamboreeData
     nickname.present? ? :nickname : :first_name
   end
 
+  # The confirmations of the page "Daten für den Veranstalter" not yet given,
+  # in the order of the page.
+  def jamboree_data_missing_confirmations
+    %i[gdpr_agreement jamboree_data_confirmed].reject { |attr| public_send(attr) == true }
+  end
+
   def jamboree_data_adult?
     %w[UL IST CMT].include?(effective_wsj_role)
   end

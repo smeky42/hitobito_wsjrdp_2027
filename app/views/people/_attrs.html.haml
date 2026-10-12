@@ -5,6 +5,7 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+= render 'person/jamboree_data/missing_confirmations', person: entry, link_path: jamboree_data_page_path(@group, entry)
 #main.row
   %article.col-lg
     = render 'contact_data', person: entry, only_public: cannot?(:show_details, entry)
