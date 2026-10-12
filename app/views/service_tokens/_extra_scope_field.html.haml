@@ -5,8 +5,8 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
--# The :log extra of a core area (people:log, ...), in the line of the core's
--# checkbox of that area (Wsjrdp2027::StandardFormBuilder#boolean_field).
+-# An extra of a core area (people:log, people:documents, ...), in the line of
+-# the core's checkbox of that area (Wsjrdp2027::StandardFormBuilder#boolean_field).
 -# Disabled without an acting person; a checked one stays checked, so the form
 -# can name it before it is dropped (service_tokens/_fields_wsjrdp_2027).
 - token = f.object
@@ -15,4 +15,4 @@
   = check_box_tag 'service_token[wagon_scopes][]', scope, token.scopes.include?(scope), id: id,
     class: 'form-check-input', disabled: token.acting_person_id.nil?
   = label_tag id, class: 'form-check-label me-2' do
-    = t('service_tokens.scope_fields.log')
+    = t("service_tokens.scope_fields.#{scope.split(':').last}")

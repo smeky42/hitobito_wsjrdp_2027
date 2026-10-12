@@ -100,6 +100,33 @@ de:
               adopt_format: "muss die Form hmac-sha256:<64 Hex-Zeichen> haben."
             adopted_fingerprint:
               adopt_fingerprint_format: "muss 44 Zeichen Base64 sein (43 Zeichen und =)."
+        wsjrdp_document:
+          key_blank: darf nicht leer sein.
+          key_too_long: darf höchstens 40 Zeichen lang sein.
+          key_invalid_characters: muss mit einem Kleinbuchstaben beginnen und darf nur a–z, 0–9, - und _ enthalten.
+          key_double_separator: darf weder -- noch __ enthalten.
+          key_trailing_separator: darf nicht auf - oder _ enden.
+          key_trailing_number: darf nicht auf -<Zahl> enden.
+          attributes:
+            base:
+              slot_taken: Es gibt schon ein aktuelles Dokument dieser Art; ersetze es stattdessen.
+              replaces_not_current: Das Dokument, das ersetzt werden soll, ist nicht mehr aktuell.
+              invalid_extension: "Die Dateiendung „%{ext}“ ist ungültig: höchstens 20 Zeichen, nur a–z, 0–9 und Punkte, kein .. und kein Punkt am Ende."
+              kind_content_type: "Diese Art von Dokument nimmt nur Dateien vom Typ %{types} an."
+              kind_extension: "Diese Art von Dokument nimmt nur Dateien mit der Endung %{extensions} an."
+              kind_too_large: "Die Datei ist zu groß (höchstens %{size} MB)."
+        wsjrdp_document_kind:
+          key_blank: darf nicht leer sein.
+          key_too_long: darf höchstens 40 Zeichen lang sein.
+          key_invalid_characters: muss mit einem Kleinbuchstaben beginnen und darf nur a–z, 0–9, - und _ enthalten.
+          key_double_separator: darf weder -- noch __ enthalten.
+          key_trailing_separator: darf nicht auf - oder _ enden.
+          key_trailing_number: darf nicht auf -<Zahl> enden.
+          invalid_entries: "enthält ungültige Einträge: %{entries}"
+          not_a_list: muss eine Liste von Regeln sein.
+          invalid_rule: "Regel %{number} ist ungültig (%{problem})."
+          not_for_subject: gibt es nur für Arten von Personen-Dokumenten.
+          unknown_column: ist keine Upload-Spalte der Personen.
 
     attributes:
       service_token:
@@ -1237,6 +1264,34 @@ de:
       impersonate_start: "Imitieren"
 
   wsjrdp:
+    access_entries:
+      placeholder: hinzufügen…
+      status_placeholder: hinzufügen…
+      person: die Person selbst
+      log: darf das Log der Person sehen
+      update: darf die Person bearbeiten
+      finance_read: Finanzstufe Read und höher
+      finance_audit: Finanzstufe Audit und höher
+      finance: Finanzstufe Write und höher
+      finance_manage: Finanzstufe Manage
+    documents:
+      show:
+        missing: Die Datei dieses Dokuments fehlt in der Ablage.
+      create:
+        no_file: Bitte wähle eine Datei aus.
+        stored: "„%{filename}“ wurde gespeichert."
+        too_large: Die Datei ist zu groß (höchstens %{size} MB).
+        invalid_entries: "Ungültige Rechte-Einträge: %{entries}"
+      upload_form:
+        file: Datei
+        document_date: Datum des Dokuments
+        comment: Kommentar
+        submit: Hochladen
+        replace: Ersetzen
+        rights: Rechte (nur Admins; leer = die der Art)
+        readable_by: Lesen
+        writable_by: Schreiben
+        deletable_by: Löschen
     # The finance tiers by their permission
     finance_tiers:
       finance_none: "None"
@@ -1566,12 +1621,14 @@ de:
       read_write_log: Lesen und Schreiben, Log
       finance: Finanzen
       acting_person: "Nur soweit auch %{person} (ID %{id}) darf"
+      documents: Dokumente der Personen lesen
       scopes: "Scopes: %{scopes}"
     scope_fields:
       log: privilegiert (:log)
+      documents: Dokumente lesen
       finance: Finanzen
       extras_need_person: >-
-        Die Zusätze „privilegiert (:log)“, Audit, Write und Manage gibt es nur mit
+        Die Zusätze „privilegiert (:log)“, „Dokumente lesen“, Audit, Write und Manage gibt es nur mit
         einer handelnden Person; sie gelten nur, soweit auch diese Person sie
         hat.
       finance_admin_only: Nur Admins dürfen die Finanz-Scopes eines API-Keys bearbeiten.

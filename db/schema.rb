@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_11_180742) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_12_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1917,6 +1917,29 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_11_180742) do
     t.index ["subject_type", "subject_id"], name: "idx_on_subject_type_subject_id_89fd1c0005"
   end
 
+  create_table "wsjrdp_document_kinds", force: :cascade do |t|
+    t.string "subject_type", default: "Person", null: false
+    t.string "key", null: false
+    t.string "secondary_key", default: "", null: false
+    t.string "label", null: false
+    t.text "description", default: "", null: false
+    t.string "readable_by", default: [], null: false, array: true
+    t.string "writable_by", default: [], null: false, array: true
+    t.string "deletable_by", default: [], null: false, array: true
+    t.string "content_types", array: true
+    t.string "extensions", array: true
+    t.integer "max_upload_size_mb"
+    t.jsonb "role_rules", default: [], null: false
+    t.integer "position", default: 0, null: false
+    t.string "people_column_name"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["people_column_name"], name: "index_wsjrdp_document_kinds_on_people_column_name", unique: true, where: "(people_column_name IS NOT NULL)"
+    t.index ["subject_type", "key", "secondary_key"], name: "index_wsjrdp_document_kinds_on_subject_and_keys", unique: true
+    t.check_constraint "max_upload_size_mb IS NULL OR max_upload_size_mb > 0", name: "chk_wsjrdp_document_kinds_max_upload_size_mb"
+  end
+
   create_table "wsjrdp_documents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at"
@@ -1931,7 +1954,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_11_180742) do
     t.string "filename", null: false
     t.string "content_encoding"
     t.string "content_type", default: "application/octet-stream", null: false
-    t.bigint "byte_size", null: false
+    t.bigint "byte_size"
     t.text "comment", default: "", null: false
     t.jsonb "additional_info", default: {}, null: false
     t.string "absolute_storage_file_path", null: false
@@ -1950,9 +1973,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_11_180742) do
     t.string "origin", default: "ui", null: false
     t.integer "origin_service_token_id"
     t.string "content_sha256"
-    t.string "readable_by", default: ["person", "log"], null: false, array: true
-    t.string "writable_by", default: ["person", "log"], null: false, array: true
-    t.string "deletable_by", default: ["log"], null: false, array: true
+    t.string "readable_by", default: ["log"], null: false, array: true
+    t.string "writable_by", default: [], null: false, array: true
+    t.string "deletable_by", default: [], null: false, array: true
+    t.string "file_status", default: "present", null: false
+    t.datetime "file_checked_at"
     t.index ["absolute_storage_file_path"], name: "index_wsjrdp_documents_on_absolute_storage_file_path"
     t.index ["author_type", "author_id"], name: "index_wsjrdp_documents_on_author_type_and_author_id"
     t.index ["content_sha256"], name: "index_wsjrdp_documents_on_content_sha256"
@@ -1966,6 +1991,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_11_180742) do
     t.index ["subject_type", "subject_id", "status"], name: "index_wsjrdp_documents_on_subject_and_status"
     t.check_constraint "content_sha256 IS NULL OR content_sha256::text ~ '^[0-9a-f]{64}$'::text", name: "chk_wsjrdp_documents_content_sha256"
     t.check_constraint "derived_from_id IS NULL OR derivation_key IS NOT NULL", name: "chk_wsjrdp_documents_derivation_key"
+    t.check_constraint "file_status::text = 'missing'::text OR byte_size IS NOT NULL", name: "chk_wsjrdp_documents_byte_size"
     t.check_constraint "key_number >= 0", name: "chk_wsjrdp_documents_key_number"
     t.check_constraint "secondary_key_number >= 0", name: "chk_wsjrdp_documents_secondary_key_number"
   end

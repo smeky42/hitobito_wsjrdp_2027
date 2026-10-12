@@ -1,0 +1,74 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The tag select (Wsjrdp::TagSelectHelper): a select[data-wsjrdp-tag-select]
+-#  becomes a TomSelect (global from the core pack) with removable chips and
+-#  autocomplete. An option's description (data-description) stands beside it
+-#  in the list. With data-create-pattern a value that matches the pattern and
+-#  is not in the list can be added by typing it.
+-#
+-#  The chips are small and the placeholder disappears once something is
+-#  chosen, so the field stays one line in a narrow column; the list opens
+-#  at least 24rem wide, every entry on one line with its description in a
+-#  column of its own.
+-#
+-#  WsjrdpTagSelect.activate(root) enhances the selects in root that are not
+-#  enhanced yet; it runs on load, after every Turbo visit and in every turbo
+-#  frame that loads, and a page calls it for markup it adds itself.
+- return if @wsjrdp_tag_select_js_emitted
+- @wsjrdp_tag_select_js_emitted = true
+:css
+  .ts-wrapper.wsjrdp-tag-select .ts-control { padding: .2rem 2rem .2rem .35rem; gap: .2rem; min-height: calc(1.5em + .5rem + 2px); }
+  .ts-wrapper.wsjrdp-tag-select .ts-control > .item { font-size: .8125rem; line-height: 1.4;
+    margin: 0; padding: 0 0 0 .4rem; border-radius: .25rem; }
+  .ts-wrapper.wsjrdp-tag-select .ts-control > .item .remove { padding: 0 .3rem; margin-left: .3rem; font-size: .9em; }
+  .ts-wrapper.wsjrdp-tag-select .ts-control > input { font-size: .8125rem; min-width: 5rem !important; flex: 1 1 5rem; }
+  .ts-dropdown.wsjrdp-tag-select-dropdown { min-width: 24rem; font-size: .875rem; }
+  .ts-dropdown.wsjrdp-tag-select-dropdown .option,
+  .ts-dropdown.wsjrdp-tag-select-dropdown .create { padding: .3rem .6rem; }
+  .wsjrdp-tag-option { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: .75rem; align-items: baseline; }
+  .wsjrdp-tag-option > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wsjrdp-tag-option > .wsjrdp-tag-description { color: var(--bs-gray-600, #6c757d); font-size: .8125rem; }
+:javascript
+  (function () {
+    if (window.WsjrdpTagSelect) return
+
+    function activate(root) {
+      (root || document).querySelectorAll("select[data-wsjrdp-tag-select]").forEach((select) => {
+        if (select.tomselect || select.closest("template")) return
+        const pattern = select.dataset.createPattern ? new RegExp(select.dataset.createPattern) : null
+        new TomSelect(select, {
+          plugins: {remove_button: {title: "Entfernen"}},
+          create: pattern ? (input) => ({value: input, text: input}) : false,
+          createFilter: pattern ? (input) => pattern.test(input) : null,
+          persist: false,
+          maxOptions: null,
+          hidePlaceholder: true,
+          placeholder: select.dataset.placeholder,
+          wrapperClass: "ts-wrapper wsjrdp-tag-select",
+          dropdownClass: "ts-dropdown wsjrdp-tag-select-dropdown",
+          searchField: ["text", "description"],
+          onItemAdd() { this.setTextboxValue(""); this.refreshOptions(false) },
+          render: {
+            option: (data, escape) =>
+              `<div class="wsjrdp-tag-option"><span class="font-monospace" title="${escape(data.text)}">${escape(data.text)}</span>` +
+              `<span class="wsjrdp-tag-description" title="${escape(data.description || "")}">${escape(data.description || "")}</span></div>`,
+            item: (data, escape) => `<div class="font-monospace">${escape(data.text)}</div>`,
+            option_create: (data, escape) =>
+              `<div class="create"><span class="font-monospace">${escape(data.input)}</span> <span class="text-muted small">hinzufügen</span></div>`,
+            no_results: () => '<div class="no-results">Keine Treffer</div>'
+          }
+        })
+      })
+    }
+
+    window.WsjrdpTagSelect = {activate}
+    document.addEventListener("turbo:load", () => activate(document))
+    document.addEventListener("turbo:frame-load", (event) => activate(event.target))
+    if (document.readyState !== "loading") activate(document)
+    else document.addEventListener("DOMContentLoaded", () => activate(document))
+  })()

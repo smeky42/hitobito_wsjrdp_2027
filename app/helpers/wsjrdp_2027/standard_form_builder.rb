@@ -33,17 +33,21 @@ module Wsjrdp2027::StandardFormBuilder
   end
 
   # The core's service token form lists the areas of "Rechte" as checkboxes;
-  # people, groups and events get the area's :log extra in the same line
-  # (service_tokens/_log_scope_field, Wsjrdp2027::ServiceTokenScopes).
+  # people, groups and events get the area's extras (people:log,
+  # people:documents, ...) in the same line (service_tokens/_extra_scope_field,
+  # Wsjrdp2027::ServiceTokenScopes).
   def boolean_field(attr, html_options = {})
     field = super
     return field unless object.is_a?(::ServiceToken)
+    return field unless Wsjrdp2027::ServiceTokenScopes::CORE_AREAS.include?(attr.to_s)
 
-    log_scope = Wsjrdp2027::ServiceTokenScopes.log_scope(attr) if Wsjrdp2027::ServiceTokenScopes::CORE_AREAS.include?(attr.to_s)
-    return field unless log_scope
+    extras = Wsjrdp2027::ServiceTokenScopes::AREAS.fetch(attr.to_s).last
+    return field if extras.empty?
 
     content_tag(:div, class: "d-flex flex-wrap align-items-baseline gap-3") do
-      field + template.render("service_tokens/log_scope_field", f: self, area: attr.to_s, scope: log_scope)
+      extras.reduce(field) do |line, scope|
+        line + template.render("service_tokens/extra_scope_field", f: self, area: attr.to_s, scope: scope)
+      end
     end
   end
 

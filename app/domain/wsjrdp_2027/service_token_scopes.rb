@@ -14,7 +14,7 @@ module Wsjrdp2027
   # of the form "<area>" or "<area>:<level>":
   #
   #   area                  base            extras
-  #   people                people          people:log
+  #   people                people          people:log people:documents
   #   groups                groups          groups:log
   #   events                events          events:log
   #   invoices              invoices        -
@@ -30,7 +30,7 @@ module Wsjrdp2027
 
     # area => [base, extras]
     AREAS = {
-      "people" => ["people", %w[people:log]],
+      "people" => ["people", %w[people:log people:documents]],
       "groups" => ["groups", %w[groups:log]],
       "events" => ["events", %w[events:log]],
       "invoices" => ["invoices", []],
@@ -52,6 +52,10 @@ module Wsjrdp2027
       "finance:write" => :finance,
       "finance:manage" => :finance_manage
     }.freeze
+
+    # The scope that lets an API key read the documents of the people it may
+    # show (Wsjrdp2027::TokenAbility).
+    DOCUMENTS = "people:documents"
 
     module_function
 

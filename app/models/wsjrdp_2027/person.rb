@@ -17,6 +17,17 @@ module Wsjrdp2027::Person
   # delegate to; the name stays here for everyone who asks the person for it.
   DEREGISTRATION_KINDS = Wsjrdp2027::DeregistrationRecord::KINDS
 
+  # The contingent roles, short, by the end of the payment role's type
+  # (#short_payment_role). The rules of a document kind name these
+  # (WsjrdpDocumentKind#role_rules).
+  SHORT_PAYMENT_ROLES = {
+    "Unit::Member" => "YP",
+    "Unit::Leader" => "UL",
+    "Ist::Member" => "IST",
+    "Root::Member" => "CMT",
+    "Extern::Member" => "EXT"
+  }.freeze
+
   # The role types finance_group_ids is effective for: it counts only for
   # holders of :layer_and_below_full, and these three are the roles that carry
   # it outside a person's own layer (doc/roles.md -> "Finance on a group's
@@ -542,21 +553,11 @@ module Wsjrdp2027::Person
         wsj_role || short_payment_role
       end
 
-      def short_payment_role  # rubocop:disable Metrics/MethodLength
+      # The contingent role of the payment role, short: YP, UL, IST, CMT, EXT
+      # (SHORT_PAYMENT_ROLES); "???" for any other.
+      def short_payment_role
         role = (payment_role || default_role_type_for_payment_role).to_s
-        if role.ends_with?("Unit::Member")
-          "YP"
-        elsif role.ends_with?("Unit::Leader")
-          "UL"
-        elsif role.ends_with?("Ist::Member")
-          "IST"
-        elsif role.ends_with?("Root::Member")
-          "CMT"
-        elsif role.ends_with?("Extern::Member")
-          "EXT"
-        else
-          "???"
-        end
+        SHORT_PAYMENT_ROLES.find { |suffix, _short| role.ends_with?(suffix) }&.last || "???"
       end
 
       def cmt?

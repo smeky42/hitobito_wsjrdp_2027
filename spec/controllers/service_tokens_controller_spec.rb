@@ -297,14 +297,15 @@ describe ServiceTokensController do
       expect(token.reload.scopes).to eq(%w[people people:log])
     end
 
-    it "offers each :log extra behind its area, disabled with a hint without an acting person" do
+    it "offers the extras behind their area, disabled with a hint without an acting person" do
       get :edit, params: {group_id: group.id, id: token.id}
       page = Capybara.string(response.body)
       people_row = page.find("input#service_token_people").ancestor(".form-check")
       expect(people_row).to have_xpath("following-sibling::div[1][@data-scope-extra='people:log']")
       line = people_row.find(:xpath, "..")
       expect(line[:class]).to include("d-flex")
-      expect(line.text.squish).to eq("Personen privilegiert (:log)")
+      expect(line.text.squish).to eq("Personen privilegiert (:log) Dokumente lesen")
+      expect(page).to have_css("input#service_token_scope_people_documents[disabled]")
       finance_line = page.find("input#service_token_scope_finance_read").ancestor(".form-check").find(:xpath, "..")
       expect(finance_line.text.squish).to eq("Finanzen Audit Write Manage")
       expect(page).to have_css("input#service_token_scope_people_log[disabled]")
@@ -315,7 +316,18 @@ describe ServiceTokensController do
       get :edit, params: {group_id: group.id, id: token.id}
       page = Capybara.string(response.body)
       expect(page).to have_css("input#service_token_scope_people_log:not([disabled])")
+      expect(page).to have_css("input#service_token_scope_people_documents:not([disabled])")
       expect(page).to have_css("[data-scope-extras-hint][hidden]", visible: false)
+    end
+
+    it "stores people:documents and names it among the rights" do
+      token.update_columns(acting_person_id: admin.id)
+      patch :update, params: {group_id: group.id, id: token.id,
+                              service_token: {wagon_scopes: ["", "people:documents"]}}
+      expect(token.reload.scopes).to eq(%w[people people:documents])
+
+      get :show, params: {group_id: group.id, id: token.id}
+      expect(rights_lines).to include("Dokumente der Personen lesen")
     end
 
     it "offers the finance scopes to the root user, who is not an admin, only to look at" do

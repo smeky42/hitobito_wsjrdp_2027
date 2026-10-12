@@ -25,13 +25,23 @@
 #   carries the keys of its original and is deleted with it.
 # - origin: ui, api or import; origin_service_token the API key of an upload
 #   through the API.
+# - file_status: present or missing, whether the file exists (apart from
+#   status); file_checked_at when that was last found out. A missing file
+#   keeps its row and its name; its byte_size may be unknown.
 # - readable_by, writable_by, deletable_by: who may read, write and delete;
-#   one entry suffices. The entries are not checked here: one nobody knows
-#   gives nobody access.
+#   access is granted if one entry matches (Wsjrdp2027::DocumentAccess).
+#   Invalid or unknown entries are ignored.
+#
+# The keys are checked as the file name needs them
+# (Wsjrdp2027::DocumentFilename.key_error); Wsjrdp2027::DocumentStore writes
+# the file and the row, doc/wsjrdp/documents.md describes both.
 class WsjrdpDocument < ActiveRecord::Base
   CURRENT = "current"
   SUPERSEDED = "superseded"
   DELETED = "deleted"
+  FILE_PRESENT = "present"
+  FILE_MISSING = "missing"
+  FILE_STATUSES = [FILE_PRESENT, FILE_MISSING].freeze
 
   # None of the belongs_to has a dependent: deleting a document leaves the
   # person, the author, the references, the predecessor, the original and the
@@ -57,11 +67,68 @@ class WsjrdpDocument < ActiveRecord::Base
   scope :superseded, -> { where(status: SUPERSEDED) }
   scope :visible, -> { where.not(status: DELETED) }
   scope :originals, -> { where(derived_from_id: nil) }
+  scope :file_missing, -> { where(file_status: FILE_MISSING) }
+
+  # The documents of one subject, of one slot (the keys of an original).
+  scope :of_subject, ->(subject) { where(subject_type: subject.class.base_class.name, subject_id: subject.id) }
+  scope :in_slot, ->(key:, key_number: 0, secondary_key: "", secondary_key_number: 0) {
+    where(key: key, key_number: key_number, secondary_key: secondary_key, secondary_key_number: secondary_key_number)
+  }
 
   validates :subject, presence: true, on: :create
+  validates :subject_type, inclusion: {in: ->(_) { Wsjrdp2027::DocumentSubjects.types }}, on: :create
+  validates :filename, presence: true
+  validate :keys_valid, on: :create
+  validate :slot_free, on: :create, if: -> { status == CURRENT }
 
   # As the check constraints of the table.
   validates :key_number, :secondary_key_number, numericality: {only_integer: true, greater_than_or_equal_to: 0}
   validates :derivation_key, presence: true, if: -> { derived_from_id.present? || derived_from.present? }
   validates :content_sha256, format: {with: /\A[0-9a-f]{64}\z/}, allow_nil: true
+  validates :file_status, inclusion: {in: FILE_STATUSES}
+  validates :byte_size, presence: true, unless: :file_missing?
+
+  # The current original of a subject in a slot, nil when there is none.
+  def self.current_for(subject, **slot)
+    of_subject(subject).current.originals.in_slot(**slot).first
+  end
+
+  # The documents this one follows, oldest first.
+  def predecessors
+    chain = []
+    document = replaces
+    while document && chain.exclude?(document)
+      chain.unshift(document)
+      document = document.replaces
+    end
+    chain
+  end
+
+  def current? = status == CURRENT
+
+  def file_missing? = file_status == FILE_MISSING
+
+  private
+
+  def keys_valid
+    key_errors = {key: key}
+    key_errors[:secondary_key] = secondary_key if secondary_key.to_s != ""
+    key_errors[:derivation_key] = derivation_key unless derivation_key.nil?
+    key_errors.each do |attribute, value|
+      error = Wsjrdp2027::DocumentFilename.key_error(value)
+      errors.add(attribute, :"key_#{error}") if error
+    end
+  end
+
+  # One current document per slot (index_wsjrdp_documents_current); the one
+  # this document replaces gives up its place as it is saved.
+  def slot_free
+    taken = WsjrdpDocument.current
+      .where(subject_type: subject_type, subject_id: subject_id, derived_from_id: derived_from_id,
+        derivation_key: derivation_key)
+      .in_slot(key: key, key_number: key_number, secondary_key: secondary_key,
+        secondary_key_number: secondary_key_number)
+      .where.not(id: [id, replaces_id].compact)
+    errors.add(:base, :slot_taken) if taken.exists?
+  end
 end

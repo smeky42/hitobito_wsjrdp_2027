@@ -142,7 +142,7 @@ number of extras:
 
 | Area | Base | Extras |
 |---|---|---|
-| people | `people` | `people:log` |
+| people | `people` | `people:log`, `people:documents` |
 | groups | `groups` | `groups:log` |
 | events | `events` | `events:log` |
 | invoices, event_participations, mailing_lists | same name | – |
@@ -162,6 +162,10 @@ number of extras:
   "Schreibrechte" -- and within the acting person's rights. In this wagon
   `:log` is the gate of the privileged view (`doc/roles.md`, "The :log
   convention").
+- `people:documents` lets the API key read the stored documents of the
+  people it may show (`GET /api/documents`, `GET /api/documents/:id`); which
+  of them is up to each document's `readable_by` for the acting person
+  (`doc/wsjrdp/documents.md`).
 - Each finance scope gives the substitute person its finance permission
   (`finance:read` `finance_read`, `finance:audit` `finance_audit`,
   `finance:write` `finance`, `finance:manage` `finance_manage`); several may
@@ -175,11 +179,13 @@ number of extras:
 - `finance:read` works without an acting person; it only reads, through the
   wagon's finance pages (there is no JSON:API for the finance data).
 - Only an admin changes the finance scopes.
-- The form: the `:log` extras stand indented behind the core's checkboxes of
-  their area (`Wsjrdp2027::StandardFormBuilder#boolean_field`), the finance
-  scopes at the end of "Rechte" (`service_tokens/_fields_wsjrdp_2027`, the
-  core form's extension point). "Rechte" on the API key's page adds ", Log"
-  to an area, a line "Finanzen <highest tier>" and a line with the scopes.
+- The form: the extras of a core area stand behind the core's checkbox of
+  their area (`Wsjrdp2027::StandardFormBuilder#boolean_field`,
+  `service_tokens/_extra_scope_field`), the finance scopes at the end of
+  "Rechte" (`service_tokens/_fields_wsjrdp_2027`, the core form's extension
+  point). "Rechte" on the API key's page adds ", Log" to an area, a line for
+  `people:documents`, a line "Finanzen <highest tier>" and a line with the
+  scopes.
 
 ## A substitute person without id
 

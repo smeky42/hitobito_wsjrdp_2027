@@ -1,0 +1,54 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Uploads one document (POST /documents, Wsjrdp::DocumentsController#create)
+-# into a slot of a subject, or as the replacement of a document. The page
+-# that renders it shows it only where the person may write such a document.
+-#
+-# Locals:
+-# - subject: the document's subject (a person), unless replaces is given;
+-# - key, key_number, secondary_key, secondary_key_number: the slot;
+-# - replaces: the document the upload replaces; its subject and slot apply;
+-# - id: the form's DOM id, for a page with several forms.
+-#
+-# An admin may give the three rights lists (tag selects,
+-# Wsjrdp::TagSelectHelper); left empty, those of the replaced document or of
+-# the kind apply.
+- replaces = local_assigns[:replaces]
+- form_id = local_assigns[:id] || "wsjrdp-document-upload-#{SecureRandom.hex(4)}"
+= form_with url: wsjrdp_documents_path, scope: :document, multipart: true, id: form_id, data: {turbo: false},
+  class: 'wsjrdp-document-upload d-flex flex-wrap align-items-end gap-2' do |f|
+  - if replaces
+    = f.hidden_field :replaces_id, value: replaces.id
+  - else
+    = f.hidden_field :subject_type, value: subject.class.base_class.name
+    = f.hidden_field :subject_id, value: subject.id
+    = f.hidden_field :key, value: key
+    = f.hidden_field :key_number, value: local_assigns[:key_number] || 0
+    = f.hidden_field :secondary_key, value: local_assigns[:secondary_key].to_s
+    = f.hidden_field :secondary_key_number, value: local_assigns[:secondary_key_number] || 0
+  %div
+    = f.label :file, t('wsjrdp.documents.upload_form.file'), class: 'form-label mb-0 small'
+    = f.file_field :file, class: 'form-control form-control-sm', required: true
+  %div
+    = f.label :document_date, t('wsjrdp.documents.upload_form.document_date'), class: 'form-label mb-0 small'
+    = f.date_field :document_date, class: 'form-control form-control-sm'
+  .flex-grow-1
+    = f.label :comment, t('wsjrdp.documents.upload_form.comment'), class: 'form-label mb-0 small'
+    = f.text_field :comment, class: 'form-control form-control-sm'
+  - if Wsjrdp2027::DocumentAccess.new(current_ability).admin?
+    = render "shared/wsjrdp/tag_select_js"
+    %details.w-100.small
+      %summary= t('wsjrdp.documents.upload_form.rights')
+      .d-flex.flex-wrap.gap-2.mt-1
+        - %i[readable_by writable_by deletable_by].each do |list|
+          %div{style: 'min-width: 14rem'}
+            = label_tag "#{form_id}-#{list}", t("wsjrdp.documents.upload_form.#{list}"), class: 'form-label mb-0 small d-block'
+            = wsjrdp_access_entries_select("document[#{list}][]", [], id: "#{form_id}-#{list}")
+  %div
+    = f.submit t(replaces ? 'wsjrdp.documents.upload_form.replace' : 'wsjrdp.documents.upload_form.submit'),
+      class: 'btn btn-sm btn-primary'

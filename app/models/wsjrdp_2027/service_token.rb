@@ -161,6 +161,10 @@ module Wsjrdp2027
       scope.present? && effective_scopes.include?(scope)
     end
 
+    # Whether the API key may read the documents of the people it may show
+    # (people:documents).
+    def documents_scope? = effective_scopes.include?(ServiceTokenScopes::DOCUMENTS)
+
     # Drops the extras, stored and sent by the form, which work only with an
     # acting person.
     def drop_extra_scopes
