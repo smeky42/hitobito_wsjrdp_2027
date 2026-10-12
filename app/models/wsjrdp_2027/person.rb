@@ -105,6 +105,9 @@ module Wsjrdp2027::Person
   # follows the documents and may step back.
   CONTRACT_STATUSES = %w[none confirmed replacement_pending ended].freeze
 
+  # The wsjrdp_role values asked to order a uniform (uniform_order_available?).
+  UNIFORM_ORDER_WSJRDP_ROLES = %w[CMT UL IST BMT].freeze
+
   WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
     "Group::Extern::Member" => "EXT",
     "Group::Ist::Leader" => "IST",
@@ -454,6 +457,12 @@ module Wsjrdp2027::Person
             role
           end
         end
+      end
+
+      # Whether the person is asked to order a uniform (uniform_order): the
+      # adults, by wsjrdp_role.
+      def uniform_order_available?
+        UNIFORM_ORDER_WSJRDP_ROLES.include?(wsjrdp_role)
       end
 
       # Which team or unit the person belongs to, spelled the way the group
