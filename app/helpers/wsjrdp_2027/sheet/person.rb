@@ -51,9 +51,10 @@ module Wsjrdp2027::Sheet::Person
       if: ->(view, *path_args) { view.person_finance_tab_visible?(path_args.last) }
 
     tab "people.tabs.medical",
-      :medical_group_person_path,
-      alt: [:medical_edit_group_person_path],
-      if: :show
+      :medical_tab_path,
+      # Both URLs of the page and its edit form are this tab.
+      alt: [:medical_group_person_path, :medical_person_path_with_group, :medical_edit_group_person_path],
+      if: :show_full # as the page
 
     tab "people.tabs.jamboree_data",
       :jamboree_data_tab_path,

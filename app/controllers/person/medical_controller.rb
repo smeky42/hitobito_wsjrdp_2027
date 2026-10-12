@@ -5,6 +5,8 @@ class Person::MedicalController < ApplicationController
 
   respond_to :html
 
+  before_action :group
+
   self.permitted_attrs = [
     :medical_stiko_vaccinations,
     :medical_additional_vaccinations,
@@ -38,16 +40,19 @@ class Person::MedicalController < ApplicationController
     authorize!(:edit, person)
     person.attributes = params.require(:person).permit(permitted_attrs)
     person.save
-    respond_with person, location: medical_group_person_path
+    respond_with person, location: helpers.medical_page_path(group, person)
   end
 
   private
 
+  # By id alone, as the status page (Person::StatusController#person): the
+  # page works in every group, and without one (/people/:id/medical) in the
+  # primary group.
   def person
-    @person ||= fetch_person
+    @person ||= Person.find(params[:id])
   end
 
   def group
-    @group ||= Group.find(params[:group_id])
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
   end
 end
