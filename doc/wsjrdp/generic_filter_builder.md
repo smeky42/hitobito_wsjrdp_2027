@@ -1710,3 +1710,68 @@ Driven by the reconciliation page but landing mostly in shared code:
 - **Specs**: `spec/domain/wsjrdp/filter_chips_spec.rb` (standalone: the wording
   and the preset rule) and the line's markup in the host controller specs of the
   Kreditoren, the Moss wallet and the Moss transactions.
+
+## Filtering arrays
+
+An array-backed table (rows computed in Ruby, not loaded from a table) uses
+the same filter: the same schema, operators, presets, chips, URL codec and
+builder. Only the last step differs -- the rows the query leaves come from
+`Wsjrdp::Filtering::ArrayCompiler` instead of a `WHERE`.
+
+The pieces:
+
+- `Wsjrdp::Filtering::ArraySource` -- the dataset's "table": per field an SQL
+  type (`integer`, `bigint`, `numeric`, `text`, `date`, `boolean`) and a
+  reader `->(row) { ... }` (by default the method of the field's name). A
+  schema binds to it like to a relation; an attribute names fields as its
+  column (a symbol, or a lambda over the arel table returning several).
+- `Wsjrdp::Filtering::ArrayFilterSchema` -- the filter schema protocol for
+  such a dataset: the module extends it instead of `FilterSchema`, binds its
+  `SCHEMA` to the source in `bound`, and `TableState::Filter#scope` then takes
+  the Array of rows and answers the filtered Array, in the rows' order.
+
+```ruby
+module Things::FilterSchema
+  extend Wsjrdp::Filtering::ArrayFilterSchema
+
+  SOURCE = Wsjrdp::Filtering::ArraySource.define(:things) do |s|
+    s.field :person_id, :integer
+    s.field :state, :text, ->(thing) { thing.state.to_s }
+  end
+  SCHEMA = Wsjrdp::Filtering::Schema.define { |s| ... }
+
+  def self.bound(except: nil) = SCHEMA.bind(SOURCE, except: except)
+  # def self.array_strategy = :sql   # optional, see below
+end
+```
+
+### Two strategies
+
+| | `:ruby` | `:sql` |
+|---|---|---|
+| How | every condition in Ruby (`Wsjrdp::Filtering::RubyPredicates`, one Ruby twin per operator) | the rows as a `VALUES` list in PostgreSQL, filtered by the very predicates of the relation-backed tables |
+| Meaning | the SQL meaning, NULL rules included; case folding is Ruby's `downcase`, a regex a Ruby regex (PostgreSQL: `lower()`, POSIX) -- equal for what anyone types, different in rare corners | exactly the SQL meaning |
+| Columns | plain fields only; an SQL expression (`ABS(...)`) raises | fields and SQL expressions over them |
+| Cost | grows with rows × conditions, no database | one query; building and parsing the `VALUES` text dominates |
+
+The strategy is the dataset's `array_strategy`, by default
+`Settings.filtering.array_strategy` (`ruby`). `ArrayCompiler.apply(query,
+rows, schema:, strategy:)` takes one explicitly.
+`spec/domain/wsjrdp/filtering_array_spec.rb` checks that both strategies give
+the same rows for every operator.
+
+Measured in development (2026-10-12) on the chains of the registration
+documents (6 fields; the readers compute each chain's state), per filtering:
+
+| Rows | Query | `:ruby` | `:sql` |
+|---|---|---|---|
+| 1 000 | one condition | 0.5–1.5 ms | 2.6–4.7 ms |
+| 12 163 | one condition | 7–13 ms | 30–43 ms |
+| 12 163 | 3 slots, 4 conditions / 2 slots, 6 fields | 19 ms | 120–143 ms |
+| 100 000 | one condition | 61–108 ms | 290–376 ms |
+| 100 000 | 3 slots / 6 fields | 150–154 ms | 1.25–1.6 s |
+
+At 100 000 rows and two fields, building the `VALUES` text (3.4 MB) took
+about 490 ms and the query about 200 ms. `:ruby` is the faster default;
+`:sql` is the choice for a dataset that needs SQL expressions or exactly
+PostgreSQL's text semantics.
