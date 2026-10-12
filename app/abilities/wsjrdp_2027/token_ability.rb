@@ -17,6 +17,10 @@
 # :log it. In this wagon :log is the gate of the privileged view
 # (doc/roles.md, "The :log convention").
 #
+# people:documents: the API key may show the documents of the people it may
+# show; which of them is up to the documents' lists, as for the acting person
+# (Wsjrdp2027::DocumentAccess, Wsjrdp2027::ActingPersonTokenAbility).
+#
 # finance:read, finance:audit, finance:write, finance:manage: each gives the
 # substitute person its finance permission (Wsjrdp2027::ServiceToken#dynamic_user),
 # and the API key may the actions of every permission held (FINANCE_ACTIONS)
@@ -44,6 +48,14 @@ module Wsjrdp2027::TokenAbility
     super
     define_log_abilities
     define_finance_abilities
+    define_document_abilities if token.people? && token.documents_scope?
+  end
+
+  def define_document_abilities
+    can :index, WsjrdpDocument
+    can :show, WsjrdpDocument do |document|
+      document.subject_type == "Person" && document.subject.present? && can?(:show, document.subject)
+    end
   end
 
   # The actions of every finance permission the scopes give.

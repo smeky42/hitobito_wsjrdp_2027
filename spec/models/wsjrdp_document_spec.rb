@@ -30,8 +30,8 @@ describe WsjrdpDocument do
       created = create_document.reload
 
       expect(created).to have_attributes(status: "current", origin: "ui", key_number: 0, secondary_key_number: 0,
-        secondary_key: "", comment: "", additional_info: {}, readable_by: %w[person log],
-        writable_by: %w[person log], deletable_by: %w[log])
+        secondary_key: "", comment: "", additional_info: {}, readable_by: %w[log],
+        writable_by: [], deletable_by: [])
     end
   end
 
@@ -97,6 +97,12 @@ describe WsjrdpDocument do
       end
     end
 
+    it "let only a missing file lack its size" do
+      expect { create_document(file_status: "missing", byte_size: nil) }.not_to raise_error
+      expect { insert(key_number: 1, byte_size: nil) }
+        .to raise_error(ActiveRecord::StatementInvalid, /chk_wsjrdp_documents_byte_size/)
+    end
+
     it "let a deleted document keep superseded_at and its predecessor" do
       old = create_document(status: "superseded", superseded_at: Time.current)
 
@@ -111,7 +117,29 @@ describe WsjrdpDocument do
       expect(document(secondary_key_number: -1)).not_to be_valid
       expect(document(derived_from: create_document)).not_to be_valid
       expect(document(content_sha256: "A" * 64)).not_to be_valid
-      expect(document(content_sha256: nil)).to be_valid
+      expect(document(key_number: 5, content_sha256: nil)).to be_valid
+      expect(document(key_number: 6, byte_size: nil)).not_to be_valid
+      expect(document(key_number: 6, byte_size: nil, file_status: "missing")).to be_valid
+      expect(document(key_number: 6, file_status: "gone")).not_to be_valid
+    end
+
+    it "check the keys as the file name needs them" do
+      expect(document(key: "Medical")).not_to be_valid
+      expect(document(secondary_key: "page-2")).not_to be_valid
+      expect(document(derived_from: create_document, derivation_key: "thumb__400")).not_to be_valid
+      expect(document(key: "registration-generated", secondary_key: "page_2")).to be_valid
+    end
+
+    it "refuse a subject of an unknown kind" do
+      expect(document(subject: groups(:root))).not_to be_valid
+    end
+
+    it "refuse a second current document in a slot, but not in place of the one it replaces" do
+      old = create_document
+
+      expect(document).not_to be_valid
+      expect(document(replaces: old)).to be_valid
+      expect(document(status: "superseded", superseded_at: Time.current)).to be_valid
     end
   end
 

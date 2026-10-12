@@ -8,3 +8,8 @@ service_tokens:
   # marks test tokens, which work in no other stage, and production
   # refuses it.
   hmac_keys_default: "test:558451850472556add67e629c8393b55ddc9a5c68215209faf05a56572d5c350"
+
+documents:
+  # Specs never write below the wagon's private/uploads; examples that store
+  # files stub Wsjrdp2027::DocumentStore.root with a folder of their own.
+  storage_root: <%= File.join(Dir.tmpdir, "hitobito_wsjrdp_2027_test_documents") %>

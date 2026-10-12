@@ -21,7 +21,17 @@ Rails.application.routes.draw do
   get "wsjrdp/service_tokens/acting_people", to: "wsjrdp/service_token_acting_people#index",
     as: :wsjrdp_service_token_acting_people
 
+  # The stored documents, whatever their subject (Wsjrdp::DocumentsController,
+  # doc/wsjrdp/documents.md); read through the API as "documents"
+  # (JsonApi::DocumentsController).
+  scope path: ApplicationResource.endpoint_namespace, module: :json_api,
+    constraints: {format: "jsonapi"}, defaults: {format: "jsonapi"} do
+    resources :documents, only: [:index, :show], as: :json_api_documents
+  end
+
   language_scope do
+    resources :documents, only: [:show, :create], controller: "wsjrdp/documents", as: :wsjrdp_documents
+
     # The status page without a group: in the person's primary group
     # (Person::StatusController#group).
     get "people/:id/status" => "person/status#show", :as => :status_person

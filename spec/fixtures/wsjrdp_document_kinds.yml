@@ -1,0 +1,141 @@
+# The kinds of the registration uploads, as migration 20261012120000 inserts
+# them (WsjrdpDocumentKind).
+
+contract:
+  subject_type: Person
+  key: contract
+  people_column_name: upload_contract_pdf
+  secondary_key: ""
+  label: "Vertrag (Anmeldung)"
+  readable_by: ["person", "update", "finance_audit"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true}]
+  position: 10
+
+sepa:
+  subject_type: Person
+  key: sepa
+  people_column_name: upload_sepa_pdf
+  secondary_key: ""
+  label: "SEPA-Mandat"
+  readable_by: ["person", "update", "finance_audit"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true}]
+  position: 20
+
+medical:
+  subject_type: Person
+  key: medical
+  people_column_name: upload_medical_pdf
+  secondary_key: ""
+  label: "Medizinbogen"
+  readable_by: ["person", "update"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true}]
+  position: 30
+
+photo_permission:
+  subject_type: Person
+  key: photo_permission
+  people_column_name: upload_photo_permission_pdf
+  secondary_key: ""
+  label: "Fotoeinwilligung"
+  readable_by: ["person", "update"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true}]
+  position: 40
+
+passport:
+  subject_type: Person
+  key: passport
+  people_column_name: upload_passport_pdf
+  secondary_key: ""
+  label: "Ausweisdokument"
+  readable_by: ["person", "update"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true}]
+  position: 50
+
+data_agreement:
+  subject_type: Person
+  key: data_agreement
+  people_column_name: upload_data_agreement_pdf
+  secondary_key: ""
+  label: "Vertraulichkeitsvereinbarung"
+  readable_by: ["person", "update"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true, "roles": ["UL", "CMT"]}]
+  position: 60
+
+recommendation:
+  subject_type: Person
+  key: recommendation
+  people_column_name: upload_recommendation_pdf
+  secondary_key: ""
+  label: "Empfehlungsschreiben"
+  readable_by: ["person", "update"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true, "roles": ["UL"]}]
+  position: 70
+
+good_conduct:
+  subject_type: Person
+  key: good_conduct
+  people_column_name: upload_good_conduct_pdf
+  secondary_key: ""
+  label: "Nachweis über ein Führungszeugnis"
+  readable_by: ["person", "update"]
+  writable_by: ["log"]
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: [{"offer_to": ["update"], "not_for_status": ["registered"], "required": true, "roles": ["UL", "CMT"], "missing_tag": {"tag": "eFZ-Einsicht-fehlt", "from_status": ["in_review", "reviewed", "confirmed"]}}, {"offer_to": ["update"], "not_for_status": ["registered"], "required": false, "roles": ["IST"], "missing_tag": {"tag": "eFZ-Einsicht-fehlt", "from_status": ["in_review", "reviewed", "confirmed"]}}]
+  position: 80
+
+registration_generated:
+  subject_type: Person
+  key: registration-generated
+  people_column_name: generated_registration_pdf
+  secondary_key: ""
+  label: "Anmeldung (erzeugt)"
+  readable_by: ["person", "update"]
+  writable_by: []
+  deletable_by: ["log"]
+  content_types: ["application/pdf"]
+  extensions: ["pdf"]
+  role_rules: []
+  position: 90
+
+# Not a registration upload: a kind of the specs that the person reads and
+# writes, without restrictions on the files.
+letter:
+  subject_type: Person
+  key: letter
+  secondary_key: ""
+  label: "Brief"
+  readable_by: ["person", "log"]
+  writable_by: ["person", "log"]
+  deletable_by: ["log"]
+  role_rules: []
+  position: 100

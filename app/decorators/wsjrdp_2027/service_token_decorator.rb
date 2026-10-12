@@ -19,7 +19,8 @@
 #   condition -- shown as a line of its own;
 # - invoices: update invoices and their items, whatever the Zugriffsbereich.
 # Everything else is read only. With people:log, groups:log or events:log
-# that area adds ", Log", finance scopes add a line "Finanzen
+# that area adds ", Log", people:documents adds a line of its own, finance
+# scopes add a line "Finanzen
 # <highest tier>", and a last line names the stored scopes
 # (Wsjrdp2027::ServiceTokenScopes).
 module Wsjrdp2027::ServiceTokenDecorator
@@ -28,6 +29,7 @@ module Wsjrdp2027::ServiceTokenDecorator
     lines << acting_person_description if acting_person
     lines += kinds.filter_map { |kind| ability_description(kind, ability_action(kind)) if public_send(kind) }
     lines << roles_description if people? && groups?
+    lines << h.t("service_tokens.abilities.documents") if people? && documents_scope?
     lines << finance_description if finance_permissions.any?
     lines << scopes_description if scopes.any?
     safe_join(lines, h.tag(:br))

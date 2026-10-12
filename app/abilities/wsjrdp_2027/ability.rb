@@ -24,6 +24,7 @@ module Wsjrdp2027::Ability
   def initialize(user, max_finance_permission: Wsjrdp2027::FinanceCap::UNSET)
     tier = Wsjrdp2027::FinanceCap.resolve(user, max_finance_permission)
     Wsjrdp2027::FinanceCap.with(tier) { super(user) }
+    define_document_abilities if user && !user.root?
   end
 
   # The core keys caches on this; an ability at another tier must not share
@@ -31,5 +32,20 @@ module Wsjrdp2027::Ability
   def identifier
     tier = user_context&.finance_tier_in_force
     tier ? "#{super}-fin-#{tier}" : super
+  end
+
+  private
+
+  # A document's own lists say who may read (:show), write (:create,
+  # :update) and hide (:destroy) it (Wsjrdp2027::DocumentAccess); the
+  # AbilityDsl has no rule that reads a record's lists. Root already may
+  # everything. Anybody may ask for a list, which holds only what they may
+  # read (DocumentResource).
+  def define_document_abilities
+    access = Wsjrdp2027::DocumentAccess.new(self)
+    can(:index, WsjrdpDocument)
+    can(:show, WsjrdpDocument) { |document| access.allowed?(:read, document) }
+    can([:create, :update], WsjrdpDocument) { |document| access.allowed?(:write, document) }
+    can(:destroy, WsjrdpDocument) { |document| access.allowed?(:delete, document) }
   end
 end

@@ -141,6 +141,15 @@ filtering:
   # dataset may choose its own (ArrayFilterSchema#array_strategy).
   array_strategy: ruby
 
+# Stored documents (Wsjrdp2027::DocumentStore, doc/wsjrdp/documents.md).
+documents:
+  # The upload root the documents' relative paths start from; empty means
+  # <wagon>/private/uploads, the root of the registration uploads.
+  storage_root:
+  # The largest file accepted on upload, in MB. Files already stored have no
+  # limit.
+  max_upload_size_mb: 20
+
 # The person with this email has root access to everything
 # This person should only be used by the operators of the application,
 # not the customers.
