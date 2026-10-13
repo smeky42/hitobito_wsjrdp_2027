@@ -96,7 +96,16 @@
 
     = field_set_tag do
       %h3= t('people.jamboree_data.travel')
-      = f.labeled_collection_select :travel_document_type, @person.jamboree_data_options(:travel_document_type), :last, :first, {include_blank: true}, class: 'span4'
+      = f.labeled_collection_select :travel_document_type, @person.jamboree_data_options(:travel_document_type), :last, :first, {include_blank: true}, class: 'span4', help: t('people.jamboree_data.travel_document_type_help')
+      -# Belongs to the select above, so further in on a wide screen (on a
+      -# phone like the other fields). Required while shown, with the star of
+      -# required labels; hidden, it is disabled (here and by the script), and
+      -# a disabled field is neither sent nor checked.
+      :css
+        @media (min-width: 768px) { .wsjrdp-subfield { margin-left: 5rem; } }
+      - other_travel_document = @person.travel_document_type == 'other_travel_document'
+      .wsjrdp-subfield{ data: { jamboree_dependent_on: 'person_travel_document_type', jamboree_dependent_value: 'other_travel_document' }, hidden: !other_travel_document }
+        = f.labeled_input_field :travel_document_other, required: true, disabled: !other_travel_document, label_class: 'col-md-3 col-xl-2 pb-1 required'
       = f.labeled_input_field :travel_document_number
       = f.labeled_date_field :travel_document_issue_date
       = f.labeled_date_field :travel_document_expiration_date

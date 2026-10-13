@@ -138,11 +138,24 @@ describe Person::JamboreeDataController, type: :controller do
     expect(page.text).to include("Ei", "mild", "keine Allergie: Milch, Kasein, Erdnuss")
   end
 
+  it "requires the other travel document only while it is chosen, disabled otherwise" do
+    ul.update_columns(jamboree_data: {"travel_document_type" => "ordinary_passport"})
+    get :edit, params: {id: ul.id}
+    field = page.at_css("input#person_travel_document_other")
+    expect(field).to have_attributes(attributes: include("required", "disabled"))
+
+    ul.update_columns(jamboree_data: {"travel_document_type" => "other_travel_document"})
+    get :edit, params: {id: ul.id}
+    field = page.at_css("input#person_travel_document_other")
+    expect(field["required"]).to be_present
+    expect(field["disabled"]).to be_nil
+  end
+
   it "offers the selects with an empty choice and German labels" do
     get :edit, params: {id: ul.id}
 
     select = page.at_css("select#person_travel_document_type")
-    expect(select.css("option").map(&:text)).to start_with("", "Personalausweis")
+    expect(select.css("option").map(&:text)).to start_with("", "Reisepass", "Personalausweis")
     expect(page.at_css("input[type=hidden][name='person[medical_equipment_needs][]'][value='']")).to be_present
   end
 
