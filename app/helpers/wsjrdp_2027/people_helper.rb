@@ -110,6 +110,25 @@ module Wsjrdp2027::PeopleHelper
     person.medical_equipment_needs_labels.join(", ")
   end
 
+  # The choices of the inline radio buttons of a boolean: Ja/Nein
+  def yes_no_options = {true => t("people.additional_info_fields.answer_yes"), false => t("people.additional_info_fields.answer_no")}
+
+  def sleeve_options = {true => t("people.additional_info_fields.long_sleeve"), false => t("people.additional_info_fields.short_sleeve")}
+
+  def format_person_uniform_long_sleeve(person)
+    format_choice_or_not_chosen(sleeve_options, person.uniform_long_sleeve, :not_chosen_long_sleeve)
+  end
+
+  def format_person_uniform_order(person)
+    format_choice_or_not_chosen(yes_no_options, person.uniform_order, :not_chosen_yes)
+  end
+
+  def format_choice_or_not_chosen(options, value, not_chosen_key)
+    return options[value] unless value.nil?
+
+    content_tag(:span, t("people.additional_info_fields.#{not_chosen_key}"), class: "text-muted fw-light")
+  end
+
   def format_person_shirt_size(person) = format_size_or_not_chosen(person.shirt_size)
 
   def format_person_uniform_size(person) = format_size_or_not_chosen(person.uniform_size)

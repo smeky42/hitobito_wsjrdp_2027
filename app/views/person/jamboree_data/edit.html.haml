@@ -16,11 +16,11 @@
       -# Without an answer Langarm and ordering are ticked; Kurzarm and Nein
       -# are an explicit choice.
       = f.labeled(:uniform_long_sleeve) do
-        - { true => 'Langarm', false => 'Kurzarm' }.each do |value, label|
+        - sleeve_options.each do |value, label|
           = f.inline_radio_button(:uniform_long_sleeve, value, label, true, checked: value == (f.object.uniform_long_sleeve != false))
       - if @person.uniform_order_available?
         = f.labeled(:uniform_order) do
-          - { true => 'Ja', false => 'Nein' }.each do |value, label|
+          - yes_no_options.each do |value, label|
             = f.inline_radio_button(:uniform_order, value, label, true, checked: value == (f.object.uniform_order != false))
           .mw-90ch.mb-2
             = t('people.additional_info_fields.uniform_order_help')
