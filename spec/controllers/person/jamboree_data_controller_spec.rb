@@ -104,6 +104,16 @@ describe Person::JamboreeDataController, type: :controller do
     expect(yp.reload).to have_attributes(uniform_order: nil, uniform_long_sleeve: false)
   end
 
+  it "shows the vehicle registration hint to IST but not to ULs" do
+    ist = people(:ist_a_1)
+    hint = "Dieses Feld ist nur relevant, wenn du mit dem Auto anreist."
+
+    [[:edit, ul, false], [:show, ul, false], [:edit, ist, true], [:show, ist, true]].each do |action, person, visible|
+      get action, params: {id: person.id}
+      expect(page.text.include?(hint)).to eq(visible)
+    end
+  end
+
   it "shows the default name tag grey with where it comes from, the form without a placeholder" do
     ul.update_columns(first_name: "Anna Maria", nickname: nil, jamboree_data: {})
 
