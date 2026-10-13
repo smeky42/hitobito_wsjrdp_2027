@@ -258,14 +258,11 @@ module Wsjrdp2027::Person::JamboreeData
 
   # The name for the name tag as shown when none was given: the stored
   # known_as_name keeps only what the person entered.
-  def known_as_name_or_default = known_as_name.presence || nickname.presence || first_name
+  def known_as_name_or_default = known_as_name.presence || known_as_name_default_with_source.first
 
-  # Where known_as_name_or_default comes from: :given, :nickname or :first_name.
-  def known_as_name_source
-    return :given if known_as_name.present?
-
-    nickname.present? ? :nickname : :first_name
-  end
+  # The name for the name tag without a known_as_name, with where it comes
+  # from (Wsjrdp2027::Person#nickname_or_short_first_name_with_source).
+  def known_as_name_default_with_source = nickname_or_short_first_name_with_source
 
   # The confirmations of the page "Daten für den Veranstalter" not yet given,
   # in the order of the page.

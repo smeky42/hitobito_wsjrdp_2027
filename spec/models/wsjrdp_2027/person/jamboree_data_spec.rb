@@ -39,7 +39,7 @@ describe Wsjrdp2027::Person::JamboreeData do
   it "stores known_as_name only as given, the default apart" do
     person.update_columns(nickname: "Kim", jamboree_data: {})
     expect(person.reload).to have_attributes(known_as_name: nil, known_as_name_or_default: "Kim",
-      known_as_name_source: :nickname)
+      known_as_name_default_with_source: ["Kim", :nickname])
     expect(Person.new(first_name: "Alex").known_as_name).to be_nil
 
     person.update!(known_as_name: "Kimmy")
@@ -147,6 +147,15 @@ describe Wsjrdp2027::Person::JamboreeData do
     person.update!(allergy_peanut: "0", uses_wheelchair: "0", medical_equipment_needs: [""])
 
     expect(person.reload).to have_attributes(allergy_peanut_severity: nil, wheelchair_type: nil, medical_equipment_details: nil)
+  end
+
+  it "takes the nickname, else the first of the first names, as the default" do
+    expect(Person.new(first_name: "Anna Maria", nickname: "Ani").known_as_name_default_with_source).to eq(["Ani", :nickname])
+    expect(Person.new(first_name: "Anna").known_as_name_default_with_source).to eq(["Anna", :first_name])
+    expect(Person.new(first_name: "Anna-Lena Marie", nickname: "").known_as_name_default_with_source)
+      .to eq(["Anna-Lena", :first_names])
+    expect(Person.new(first_name: "", nickname: "").known_as_name_default_with_source).to eq([nil, nil])
+    expect(Person.new(first_name: "Anna Maria").nickname_or_short_first_name).to eq("Anna")
   end
 
   it "lists the confirmations not yet given" do

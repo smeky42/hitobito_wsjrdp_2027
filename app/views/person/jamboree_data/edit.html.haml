@@ -29,8 +29,10 @@
     = field_set_tag do
       %h3= t('people.jamboree_data.personal')
       -# Empty means the default (nickname, else first name), shown as placeholder.
-      = f.labeled_input_field :known_as_name, placeholder: @person.known_as_name_or_default,
-        help: t('people.jamboree_data.known_as_name_help')
+      -# What an empty field stands for (known_as_name_default_with_source).
+      - default, source = @person.known_as_name_default_with_source
+      = f.labeled_input_field :known_as_name,
+        help: source ? t("people.jamboree_data.known_as_name_leave_empty.#{source}", name: default) : t('people.jamboree_data.known_as_name_help')
       - if @person.jamboree_data_adult?
         = f.labeled_input_field :mothers_first_name
         = f.labeled_input_field :fathers_first_name

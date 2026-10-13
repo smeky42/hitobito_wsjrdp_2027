@@ -11,16 +11,16 @@
 
     %h3= t('people.jamboree_data.personal')
     -# The name tag: without a given name the default, grey, with where it
-    -# comes from (Wsjrdp2027::Person::JamboreeData#known_as_name_source).
+    -# comes from (Wsjrdp2027::Person::JamboreeData#known_as_name_default_with_source).
     %dl.dl-horizontal.m-0.p-2.border-top
       = labeled(captionize(:known_as_name, Person)) do
-        - if @person.known_as_name_source == :given
+        - if @person.known_as_name.present?
           = @person.known_as_name
         - else
-          %span.text-muted
-            = @person.known_as_name_or_default
-            %span.small.fw-light (#{t("people.jamboree_data.known_as_name_default.#{@person.known_as_name_source}")})
-        .small.text-muted.fw-light= t('people.jamboree_data.known_as_name_help')
+          - default, source = @person.known_as_name_default_with_source
+          - if default
+            %span.text-muted.fw-light= default
+            .small.text-muted.fw-light= t("people.jamboree_data.known_as_name_not_chosen.#{source}")
     - personal_attrs = [:country_of_birth, :nationality]
     - personal_attrs.unshift(:place_of_birth) if @person.jamboree_data_adult? || @person.visa_needed == 'yes_need_support'
     - personal_attrs.unshift(:mothers_first_name, :fathers_first_name, :mothers_surname_at_birth) if @person.jamboree_data_adult?
