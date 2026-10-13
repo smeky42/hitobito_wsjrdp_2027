@@ -9,8 +9,8 @@
 
 require "spec_helper"
 
-# The person log writes a language level of the Zusatzdaten by its German
-# label, not as stored, through
+# The person log writes a language level of the Zusatzdaten as stored, with
+# its German label in brackets, through
 # Wsjrdp2027::PaperTrail::VersionDecorator#attribute_change.
 describe Person::LogController do
   render_views
@@ -30,8 +30,7 @@ describe Person::LogController do
     get(:index, params: {group_id: person.primary_group_id, id: person.id})
 
     expect(response).to be_successful
-    expect(changes_html).to include("Englisch: Lesen", "Keine", "Muttersprache")
-    expect(changes_html).to include("Französisch: Hörverstehen", "Konversationssicher")
-    expect(changes_html).not_to include("native", "conversational")
+    expect(changes_html).to include("Englisch: Lesen", "none [Keine]", "native [Muttersprache]")
+    expect(changes_html).to include("Französisch: Hörverstehen", "conversational [Konversationssicher]")
   end
 end

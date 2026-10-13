@@ -70,17 +70,18 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person).not_to be_valid
   end
 
-  it "stores visa application details only while visa support is needed" do
+  it "keeps the visa application details when visa support is no longer needed" do
     person.update!(visa_needed: "yes_need_support", visa_nationality_at_birth: "deutsch",
-      visa_fingerprints_collected: "1", visa_fingerprints_date: "2025-01-02", visa_fingerprints_visa_number: "123")
+      visa_fingerprints_collected: "true", visa_fingerprints_date: "2025-01-02", visa_fingerprints_visa_number: "123")
 
+    person.update!(visa_needed: "yes_have_one")
     expect(person.reload).to have_attributes(visa_nationality_at_birth: "deutsch",
       visa_fingerprints_collected: true, visa_fingerprints_date: Date.new(2025, 1, 2),
       visa_fingerprints_visa_number: "123")
 
-    person.update!(visa_needed: "yes_have_one")
-    expect(person.reload).to have_attributes(visa_nationality_at_birth: nil,
-      visa_fingerprints_collected: false, visa_fingerprints_date: nil, visa_fingerprints_visa_number: nil)
+    person.update!(visa_fingerprints_collected: "false")
+    expect(person.reload).to have_attributes(visa_fingerprints_collected: false, visa_fingerprints_date: nil,
+      visa_fingerprints_visa_number: nil, visa_residence_other_than_nationality: nil)
   end
 
   it "reads boxes as booleans, a form's 0 as false, and drops an unticked one" do
@@ -160,15 +161,52 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(without).to include(:milk, :peanut)
   end
 
-  it "keeps the text of an other travel document, fixed for an identity card, none otherwise" do
+  it "keeps the text of an other travel document, fixed for an identity card" do
     person.update!(travel_document_type: "other_travel_document", travel_document_other: "Kinderreisepass")
     expect(person.reload.travel_document_other).to eq("Kinderreisepass")
 
     person.update!(travel_document_type: "national_identity_card", travel_document_other: "egal")
     expect(person.reload.travel_document_other).to eq("National identity card")
 
+    person.update!(travel_document_type: "other_travel_document", travel_document_other: "Kinderreisepass")
     person.update!(travel_document_type: "ordinary_passport")
-    expect(person.reload.travel_document_other).to be_nil
+    expect(person.reload.travel_document_other).to eq("Kinderreisepass")
+  end
+
+  it "keeps the visa choices of the template and the other civil status" do
+    person.update!(visa_needed: "yes_need_support", visa_civil_status: "other", visa_civil_status_other: "verlobt",
+      visa_current_student_status: "student", visa_family_eu_citizen_relationship: "no",
+      visa_gender_as_in_travel_document: "x")
+    expect(person.reload).to have_attributes(visa_civil_status_other: "verlobt",
+      visa_current_student_status_label: "I am a student (ich bin in Ausbildung, z. B. Schule oder Studium)",
+      visa_family_eu_citizen_relationship_label: "Nein", visa_gender_as_in_travel_document_label: "X (divers / ohne Geschlechtsangabe)")
+
+    person.update!(visa_civil_status: "married")
+    expect(person.reload.visa_civil_status_other).to eq("verlobt")
+
+    person.visa_civil_status = "engaged"
+    expect(person).not_to be_valid
+  end
+
+  it "keeps the family relation only with an EU family member, its text always" do
+    person.update!(visa_needed: "yes_need_support", visa_family_eu_citizen_relationship: "yes",
+      visa_family_eu_citizen_relation: "other", visa_family_eu_citizen_relation_other: "Cousine")
+    expect(person.reload).to have_attributes(visa_family_eu_citizen_relation_other: "Cousine",
+      visa_family_eu_citizen_relation_label: "Andere (bitte angeben)")
+
+    person.update!(visa_family_eu_citizen_relation: "spouse")
+    expect(person.reload).to have_attributes(visa_family_eu_citizen_relation: "spouse",
+      visa_family_eu_citizen_relation_other: "Cousine")
+
+    person.update!(visa_family_eu_citizen_relationship: "no")
+    expect(person.reload.visa_family_eu_citizen_relation).to be_nil
+  end
+
+  it "suggests the visa gender from the gender" do
+    expect(Person.new(gender: "w").visa_gender_as_in_travel_document_or_default).to eq("female")
+    expect(Person.new(gender: "d", visa_gender_as_in_travel_document: "male").visa_gender_as_in_travel_document_or_default)
+      .to eq("male")
+    expect(Person.new.visa_gender_as_in_travel_document_or_default).to be_nil
   end
 
   it "drops a detail whose box is unticked" do

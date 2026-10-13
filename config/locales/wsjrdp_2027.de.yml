@@ -248,6 +248,36 @@ de:
           "no": Nein
           yes_have_one: "Ja, habe bereits eines"
           yes_need_support: "Ja, brauche Unterstützung/Beantragung"
+        jamboree_visa_genders:
+          _nil: Keine Angabe
+          female: F – Female (weiblich)
+          male: M – Male (männlich)
+          x: X (divers / ohne Geschlechtsangabe)
+        jamboree_visa_civil_statuses:
+          _nil: Keine Angabe
+          single: Single (ledig)
+          married: Married (verheiratet)
+          registered_partnership: Registered Partnership (eingetragene Lebenspartnerschaft)
+          separated: Separated (getrennt lebend)
+          divorced: Divorced (geschieden)
+          widowed: Widow(er) (verwitwet)
+          other: Andere (bitte angeben)
+        jamboree_visa_student_statuses:
+          _nil: Keine Angabe
+          student: I am a student (ich bin in Ausbildung, z. B. Schule oder Studium)
+          not_student: I am not a student (ich bin nicht in Ausbildung)
+        jamboree_visa_yes_no:
+          _nil: Keine Angabe
+          "yes": Ja
+          "no": Nein
+        jamboree_visa_family_relations:
+          _nil: Keine Angabe
+          spouse: Spouse (Ehepartner*in)
+          child: Child (Kind)
+          grandchild: Grandchild (Enkelkind)
+          dependent_ascendant: Dependent Ascendant (unterhaltsberechtigte*r Verwandte*r in gerader aufsteigender Linie, z. B. Eltern)
+          registered_partnership: Registered Partnership (eingetragene Lebenspartnerschaft)
+          other: Andere (bitte angeben)
         jamboree_wheelchair_types:
           _nil: Keine Angabe
           manual: Manuell
@@ -314,7 +344,7 @@ de:
         visa_other_nationalities: Weitere Staatsangehörigkeiten
         visa_gender_as_in_travel_document: Geschlecht wie im Reisedokument
         visa_civil_status: Familienstand
-        visa_civil_status_other: Sonstiger Familienstand
+        visa_civil_status_other: Welcher Familienstand
         visa_current_student_status: Aktueller Studierendenstatus
         visa_employer_name: Arbeitgeber oder Bildungseinrichtung
         visa_employer_address_1: Arbeitgeber / Bildungseinrichtung, Adresse 1
@@ -323,8 +353,9 @@ de:
         visa_employer_postcode: Arbeitgeber / Bildungseinrichtung, Postleitzahl
         visa_employer_state: Arbeitgeber / Bildungseinrichtung, Bundesland
         visa_employer_country: Arbeitgeber / Bildungseinrichtung, Land
-        visa_family_eu_citizen_relationship: Verwandtschaft zu EU-/EWR-/CH-Staatsangehörigen
+        visa_family_eu_citizen_relationship: Familienangehörige mit EU-/EWR-/CH-Staatsangehörigkeit
         visa_family_eu_citizen_relation: Art der familiären Beziehung
+        visa_family_eu_citizen_relation_other: Welche familiäre Beziehung
         visa_residence_other_than_nationality: Wohnsitzland weicht von Staatsangehörigkeit ab
         visa_residence_country: Wohnsitzland
         visa_schengen_first_entry: Erstes Einreiseland im Schengen-Raum
@@ -887,8 +918,10 @@ de:
     jamboree_data:
       personal: Persönliche Zusatzangaben & Namensschild
       languages: Sprachkenntnisse
-      travel: Reisedokumente & Visa
+      travel: Reisedokumente & Visum
       journey: An- und Abreise
+      visa_nationality_at_birth_help: Nur angeben, wenn sie vom Geburtsland abweicht.
+      not_chosen: nicht gewählt
       travel_document_type_help: Gib bevorzugt deinen Reisepass an, nur wenn du keinen hast, deinen Personalausweis. Die anderen Arten sind nur für amtliche oder diplomatische Pässe.
       journey_unit_help: Deine An- und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.
       journey_self_help: Trage deine An- und Abreise ein sobald du dies für dich geklärt hast. Es ist nicht notwendig alles sofort einzutragen.

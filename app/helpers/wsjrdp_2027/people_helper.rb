@@ -129,6 +129,23 @@ module Wsjrdp2027::PeopleHelper
     content_tag(:span, t("people.additional_info_fields.#{not_chosen_key}"), class: "text-muted fw-light")
   end
 
+  # The visa choices by their labels, "nicht gewählt" without one.
+  %i[visa_gender_as_in_travel_document visa_civil_status visa_current_student_status
+    visa_family_eu_citizen_relationship visa_family_eu_citizen_relation].each do |attr|
+    define_method(:"format_person_#{attr}") do |person|
+      person.public_send(attr).present? ? person.public_send(:"#{attr}_label") : not_chosen_tag
+    end
+  end
+
+  # Ja or Nein, "nicht gewählt" while unanswered.
+  %i[visa_residence_other_than_nationality visa_fingerprints_collected].each do |attr|
+    define_method(:"format_person_#{attr}") do |person|
+      person.public_send(attr).nil? ? not_chosen_tag : yes_no_options[person.public_send(attr)]
+    end
+  end
+
+  def not_chosen_tag = content_tag(:span, t("people.jamboree_data.not_chosen"), class: "text-muted fw-light")
+
   def format_person_shirt_size(person) = format_size_or_not_chosen(person.shirt_size)
 
   def format_person_uniform_size(person) = format_size_or_not_chosen(person.uniform_size)

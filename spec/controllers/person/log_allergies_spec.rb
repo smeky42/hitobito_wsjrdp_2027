@@ -27,7 +27,7 @@ describe Person::LogController do
     get(:index, params: {group_id: person.primary_group_id, id: person.id})
 
     expect(response).to be_successful
-    expect(change_lines).to include("Allergie Milch wurde auf ja gesetzt.",
-      "Schwere der Milchallergie wurde auf Milde Reaktion (selbst behandelbar) gesetzt.")
+    expect(change_lines).to include("Allergie Milch wurde auf true gesetzt.",
+      "Schwere der Milchallergie wurde auf mild [Milde Reaktion (selbst behandelbar)] gesetzt.")
   end
 end
