@@ -144,6 +144,14 @@ module Wsjrdp2027::PeopleHelper
     end
   end
 
+  # "Deutschland (DE), Vereinigtes Königreich (GB)"; an entry that is no code
+  # as it is.
+  def format_person_passport_nationality(person)
+    Wsjrdp::CountryLookup.split(person.passport_nationality).map do |entry|
+      Wsjrdp::CountryLookup.code?(entry) ? "#{Wsjrdp::CountryLookup.german_name(entry)} (#{entry})" : entry
+    end.join(", ")
+  end
+
   def not_chosen_tag = content_tag(:span, t("people.jamboree_data.not_chosen"), class: "text-muted fw-light")
 
   def format_person_shirt_size(person) = format_size_or_not_chosen(person.shirt_size)

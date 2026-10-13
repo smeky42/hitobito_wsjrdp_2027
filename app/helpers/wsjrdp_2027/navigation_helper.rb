@@ -53,5 +53,8 @@ module Wsjrdp2027::NavigationHelper
     if NavigationHelper::MAIN.find_index { |e| e[:label] == :contingent }.nil?
       NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_CONTINGENT)
     end
+    # Einstellungen also for the wagon's page Ländercodes.
+    admin = NavigationHelper::MAIN.find { |e| e[:label] == :admin }
+    admin[:active_for] = admin[:active_for] | %w[country_codes] if admin
   end
 end

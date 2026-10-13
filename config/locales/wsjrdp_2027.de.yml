@@ -427,8 +427,10 @@ de:
         foto_permission: Fotoeinwilligung
         pronoun: Meine Pronomen sind
         passport_germany: Ich besitze einen bis Sept. 2027 gültigen deutschen Reisepass bzw. Personalausweis
-        passport_nationality: Nationalität
-        passport_nationality_info: z.B. Deutsch
+        passport_nationality: Nationalität(en)
+        passport_nationality_codes: Nationalität(en)
+        passport_nationality_info: z.B. Deutschland
+        passport_nationality_help: Ein oder mehrere Länder. Zum Suchen tippen.
         passport_approved: Pass überprüft
         languages_spoken: Ich spreche folgende Sprachen
         languages_spoken_info: z.B. Deutsch (Muttersprache), Englisch (5 Jahre Schule)
@@ -1675,7 +1677,55 @@ de:
 
   navigation:
     finance: Finanzen
+    country_codes: Ländercodes
     contingent: Kontingent
+
+  country_codes:
+    index:
+      title: Ländercodes
+      intro: Die einzelnen Einträge der Nationalität(en) (passport_nationality) der ausgewählten Personen und der ISO-Code, den Wsjrdp::CountryLookup dafür findet. Der Test-Lauf zeigt dieselben Personen.
+      entry: Eintrag
+      count: Personen
+      code: ISO-Code
+      country: Land
+      unknown: nicht erkannt
+      visa:
+        yes_have_one: Visum vorhanden
+        yes_need_support: Visum beantragen
+      visa_note: Die Visum-Spalten zeigen immer alle Personen, die ein Visum brauchen, nach ihrer Haupt-Nationalität – unabhängig von der Auswahl oben.
+      no_nationality: ohne Nationalität
+      people:
+        all: Alle Personen
+        contract: Personen mit gültigem Vertrag
+      nationality:
+        main: Haupt-Nationalität
+        all: Alle Nationalitäten
+      apply: Anzeigen
+      migrate: Nationalitäten auf ISO-Codes umstellen
+      migrate_help: Ersetzt bei allen Personen jeden erkannten Eintrag durch seinen ISO-Code; nicht erkannte Einträge bleiben, wie sie sind.
+      migrate_confirm: Nationalität(en) aller Personen auf ISO-Codes umstellen? Das ändert die gespeicherten Werte und lässt sich nur über das Log nachvollziehen.
+      test_run: Test-Lauf
+      test_run_title: Test-Lauf
+      test_run_intro: "Was die Umstellung speichern würde; nichts wird gespeichert. %{count} von %{total} ausgewählten Personen mit Nationalität würden sich ändern (unveränderte Werte grau). Die Umstellung selbst gilt für alle Personen."
+      id: ID
+      role: Rolle
+      primary_group: Hauptgruppe
+      old_value: Bisher
+      new_value: Neu
+      changed: Änderung
+      changes: ja
+      unchanged: nein
+      test_run_shown: "%{count} Zeilen angezeigt."
+      hide:
+        unchanged: ohne Änderung ausblenden
+        deutsch_de: „Deutsch“ → „DE“ ausblenden
+        de_de: „DE“ → „DE“ ausblenden
+        apply: Anwenden
+      table_title: Zuordnungstabelle
+      table_intro: Diese Namen ordnet Wsjrdp::CountryLookup zuerst zu, vor den Ländernamen des countries-Gems.
+      name: Name
+    migrate:
+      done: "Nationalität(en) bei %{count} Personen auf ISO-Codes umgestellt."
 
   service_tokens:
     abilities:

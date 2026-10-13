@@ -23,6 +23,25 @@ module Wsjrdp2027::StandardFormBuilder
       data: {url: template.wsjrdp_service_token_acting_people_path})
   end
 
+  # Several countries chosen from a list with search (tom-select, no value of
+  # its own; shared/wsjrdp/_country_multi_select_js), sent as ISO codes; with
+  # labeled_, e.g.
+  # f.labeled_country_multi_select_field(:passport_nationality_codes, help: ...).
+  # The list shows "Deutschland (DE)" and also finds a country by its aliases
+  # (Wsjrdp::CountryLookup.search_aliases, "USA"). The attribute answers a list
+  # of codes; an entry that is no code stays a choice, marked, so saving does
+  # not drop it. Rails' hidden empty value lets a cleared list reach the model.
+  # As wide as the other fields of the form; a placeholder: shows while
+  # nothing is chosen.
+  def country_multi_select_field(attr, html_options = {})
+    html_options[:class] = [html_options[:class],
+      "form-select form-select-sm w-100 mw-100 mw-md-60ch wsjrdp-country-multi-select"].compact.join(" ")
+    html_options[:data] = {country_multi_select: true, chosen_no_results: I18n.t("global.chosen_no_results")}
+      .merge(html_options[:data] || {})
+    select(attr, country_choices(Array(object.public_send(attr))), {}, html_options.merge(multiple: true)) +
+      template.render("shared/wsjrdp/country_multi_select_js")
+  end
+
   def mail_addresses_field(attr, html_options = {})
     html_options[:class] = html_options[:class].to_s
     html_options[:class] += " is-invalid" if errors_on?(attr)
@@ -81,5 +100,21 @@ module Wsjrdp2027::StandardFormBuilder
         end
       end
     end
+  end
+
+  private
+
+  # [German name, ISO code] of every country, the frequent ones first
+  # (Wsjrdp::CountryLookup::FREQUENT_CODES); before them each value that is no
+  # code.
+  def country_choices(values)
+    prioritized = Wsjrdp::CountryLookup::FREQUENT_CODES
+    countries = ISO3166::Country.codes.map do |code|
+      [Wsjrdp::CountryLookup.german_name(code), code,
+        {"data-code" => code, "data-aliases" => Wsjrdp::CountryLookup.search_aliases(code)}]
+    end
+    countries.sort_by! { |name, code, _data| [prioritized.index(code) || prioritized.size, I18n.transliterate(name)] }
+    unknown = values.reject { |value| Wsjrdp::CountryLookup.code?(value) }
+    unknown.map { |value| ["#{value} (#{I18n.t("country_codes.index.unknown")})", value] } + countries
   end
 end

@@ -1,0 +1,50 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later. See the COPYING
+-#  file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The entries of the nationalities with their people and code
+-# (CountryCodesController#entries), numbered, the people per role too.
+-# Room between the columns; the counts with digits of one width.
+:css
+  .wsjrdp-country-entries th, .wsjrdp-country-entries td { padding: .25rem .75rem; }
+  .wsjrdp-country-entries .wsjrdp-count { font-variant-numeric: tabular-nums; }
+%table.table.table-striped.table-sm.w-auto.wsjrdp-country-entries
+  %thead
+    %tr
+      %th.text-end #
+      %th.text-end= t('country_codes.index.entry')
+      %th.text-end= t('country_codes.index.count')
+      - CountryCodesController::ROLES.each do |role|
+        %th.text-end= role
+      %th.text-center= t('country_codes.index.code')
+      %th= t('country_codes.index.country')
+      - CountryCodesController::VISA_NEEDED.each do |answer|
+        %th= t("country_codes.index.visa.#{answer}")
+  %tbody
+    - entries.each.with_index(1) do |(entry, count, role_counts, code, visa_people), number|
+      %tr
+        %td.text-end.text-muted.wsjrdp-count= number
+        -# The people without a nationality: a row of their own.
+        %td.text-end{class: ('text-muted fw-light' unless entry)}= entry || t('country_codes.index.no_nationality')
+        %td.text-end.wsjrdp-count= count
+        -# Per role, empty for none.
+        - CountryCodesController::ROLES.each do |role|
+          %td.text-end.wsjrdp-count.text-muted= role_counts[role]
+        - if code
+          %td.text-center= code
+          %td= Wsjrdp::CountryLookup.german_name(code)
+        - elsif entry
+          %td.text-muted.fw-light{colspan: 2}= t('country_codes.index.unknown')
+        - else
+          %td{colspan: 2}
+        -# Who needs a visa, one column per answer: the number, then each
+        -# person by id (the name on hover).
+        - CountryCodesController::VISA_NEEDED.each do |answer|
+          - visa = visa_people.select { |person| person.visa_needed == answer }
+          %td
+            - if visa.any?
+              %span.wsjrdp-count= "#{visa.size}:"
+              = safe_join(visa.map { |person| link_to(person.id, person_path(person), title: person.to_s) }, ", ")
