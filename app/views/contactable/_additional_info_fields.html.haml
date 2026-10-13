@@ -7,7 +7,7 @@
   = f.labeled_input_field :passport_nationality, placeholder: t('activerecord.attributes.person.passport_nationality_info')
   = field_set_tag do
     = f.labeled(:passport_germany) do
-      - { true  => 'Ja', false => 'Nein' }.each do |value, label|
+      - yes_no_options.each do |value, label|
         = f.inline_radio_button(:passport_germany, value, label)
   = f.labeled_input_field :languages_spoken, placeholder: t('activerecord.attributes.person.languages_spoken_info')
 
@@ -20,11 +20,11 @@
   -# Without an answer Langarm and ordering are ticked; Kurzarm and Nein
   -# are an explicit choice.
   = f.labeled(:uniform_long_sleeve) do
-    - { true => 'Langarm', false => 'Kurzarm' }.each do |value, label|
+    - sleeve_options.each do |value, label|
       = f.inline_radio_button(:uniform_long_sleeve, value, label, true, checked: value == (f.object.uniform_long_sleeve != false))
   - if f.object.uniform_order_available?
     = f.labeled(:uniform_order) do
-      - { true => 'Ja', false => 'Nein' }.each do |value, label|
+      - yes_no_options.each do |value, label|
         = f.inline_radio_button(:uniform_order, value, label, true, checked: value == (f.object.uniform_order != false))
       .mw-90ch.mb-2
         = t('people.additional_info_fields.uniform_order_help')
@@ -32,13 +32,13 @@
 
 = field_set_tag do
   = f.labeled(:can_swim) do
-    - { true  => 'Ja', false => 'Nein' }.each do |value, label|
+    - yes_no_options.each do |value, label|
       = f.inline_radio_button(:can_swim, value, label)
 
 - if (@person.status == 'registered')
   = field_set_tag do
     = f.labeled(:foto_permission) do
-      - { true  => 'Ja', false => 'Nein' }.each do |value, label|
+      - yes_no_options.each do |value, label|
         = f.inline_radio_button(:foto_permission, value, label)
     .mw-90ch.mb-2
       = raw(t('people.additional_info_fields.foto_permission_help'))
