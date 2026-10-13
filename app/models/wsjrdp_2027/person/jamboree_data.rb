@@ -400,7 +400,11 @@ module Wsjrdp2027::Person::JamboreeData
   # [label, value] for the form's select of an i18n_enum attribute, in the
   # order of the locale.
   def jamboree_data_options(attr)
-    self.class.public_send(:"#{attr}_labels").map { |value, label| [label, value.to_s] }
+    labels = self.class.public_send(:"#{attr}_labels")
+    if attr.to_sym == :departure_location
+      labels = labels.select { |value, _label| DEPARTURE_LOCATIONS.include?(value.to_s) }
+    end
+    labels.map { |value, label| [label, value.to_s] }
   end
 
   # [label, value] for the medical equipment boxes; the labels of the chosen.

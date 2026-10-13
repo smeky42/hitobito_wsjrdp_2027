@@ -70,7 +70,9 @@
       :comfortable_loud_noise,
       :comfortable_confined_space)
     - if @person.jamboree_data_adult?
-      = render_attrs(@person, :prior_wsj_experience, :vehicle_registration_number)
+      = render_attrs(@person, :prior_wsj_experience)
+      = render_attrs(@person, :vehicle_registration_number)
+      %p.text-muted= t('people.jamboree_data.vehicle_registration_number_help')
 
     %h3= t('people.jamboree_data.diet')
     = render_attrs(@person, :diet, :dietary_details)
@@ -93,6 +95,7 @@
         = t('people.jamboree_data.no_allergies', allergies: without_allergy.map { |allergy| Person.human_attribute_name(:"allergy_#{allergy}") }.join(", "))
 
     %h3= t('people.jamboree_data.health')
+    .text-muted.mw-90ch.mb-2= t('people.jamboree_data.health_help')
     = render_attrs(@person,
       :refrigerated_medication_needed,
       :religious_health_beliefs,
