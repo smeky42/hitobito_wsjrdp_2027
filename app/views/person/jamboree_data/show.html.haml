@@ -38,6 +38,7 @@
     %h3= t('people.jamboree_data.travel')
     = render_attrs(@person,
       :travel_document_type,
+      *(:travel_document_other if @person.travel_document_type == 'other_travel_document'),
       :travel_document_number,
       :travel_document_issue_date,
       :travel_document_expiration_date,

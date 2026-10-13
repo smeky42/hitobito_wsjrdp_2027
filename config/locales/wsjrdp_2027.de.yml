@@ -219,12 +219,13 @@ de:
         known_as_name: Rufname / Namensschild
         jamboree_travel_document_types:
           _nil: Keine Angabe
-          official_passport: Personalausweis
           ordinary_passport: Reisepass
+          national_identity_card: Personalausweis
+          official_passport: Amtlicher Pass
           diplomatic_passport: Diplomatenpass
           service_passport: Dienstpass
           special_passport: Sonderpass
-          other_travel_document: Anderes Reisedokument
+          other_travel_document: Anderes Reisedokument (bitte angeben)
         jamboree_travel_locations:
           _nil: Keine Angabe
           amber_expo: AmberExpo
@@ -292,6 +293,7 @@ de:
         arabic_speaking: "Arabisch: Sprechen"
         arabic_listening: "Arabisch: Hörverstehen"
         travel_document_type: Art des Reisedokuments
+        travel_document_other: Welches andere Reisedokument
         travel_document_number: Ausweisnummer / Reisedokumentnummer
         travel_document_issue_date: Ausstellungsdatum
         travel_document_expiration_date: Ablaufdatum
@@ -887,6 +889,7 @@ de:
       languages: Sprachkenntnisse
       travel: Reisedokumente & Visa
       journey: An- und Abreise
+      travel_document_type_help: Gib bevorzugt deinen Reisepass an, nur wenn du keinen hast, deinen Personalausweis. Die anderen Arten sind nur für amtliche oder diplomatische Pässe.
       journey_unit_help: Deine An- und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.
       journey_self_help: Trage deine An- und Abreise ein sobald du dies für dich geklärt hast. Es ist nicht notwendig alles sofort einzutragen.
       activities: Aktivitäten & Komfort

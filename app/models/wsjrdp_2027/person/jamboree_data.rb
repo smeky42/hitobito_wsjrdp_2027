@@ -63,8 +63,11 @@ module Wsjrdp2027::Person::JamboreeData
   # The values of the selects; their labels come from the locale under
   # ENUM_I18N (i18n_enum), as for the language levels.
   ENUM_I18N = "activerecord.attributes.person"
-  TRAVEL_DOCUMENT_TYPES = %w[official_passport ordinary_passport diplomatic_passport service_passport
-    special_passport other_travel_document].freeze
+  TRAVEL_DOCUMENT_TYPES = %w[ordinary_passport national_identity_card official_passport diplomatic_passport
+    service_passport special_passport other_travel_document].freeze
+  # What travel_document_other holds for a national identity card: the export
+  # sends it as the organizer's "Other travel document (please specify)".
+  NATIONAL_IDENTITY_CARD_TEXT = "National identity card"
   VISA_NEEDED_VALUES = %w[no yes_have_one yes_need_support].freeze
   ARRIVAL_LOCATIONS = %w[amber_expo gdansk_ferry_terminal gdansk_glowny_trainstation
     gdynia_ferry_terminal lech_walesa_airport].freeze
@@ -125,7 +128,7 @@ module Wsjrdp2027::Person::JamboreeData
     medical_equipment_details
     other_mobility_details
     non_visible_disability_details
-  ].concat(VISA_DETAIL_ATTRS).freeze
+  ].concat(VISA_DETAIL_ATTRS, %i[travel_document_other]).freeze
 
   SELECT_ATTRS = (
     LANGUAGE_ATTRS +
@@ -337,6 +340,13 @@ module Wsjrdp2027::Person::JamboreeData
 
   def clear_jamboree_details_without_their_box
     DETAILS_OF_BOX.each { |detail, box| public_send(:"#{detail}=", nil) unless public_send(box) }
+    # The text of an other travel document as given, fixed for an identity
+    # card, none for every other type.
+    if travel_document_type == "national_identity_card"
+      self.travel_document_other = NATIONAL_IDENTITY_CARD_TEXT
+    elsif travel_document_type != "other_travel_document"
+      self.travel_document_other = nil
+    end
     self.medical_equipment_details = nil unless medical_equipment_needs.include?("other")
     unless visa_needed == "yes_need_support"
       VISA_DETAIL_ATTRS.each { |attr| public_send(:"#{attr}=", nil) }

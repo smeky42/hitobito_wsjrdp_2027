@@ -123,7 +123,9 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person).to have_attributes(travel_document_type_label: "Reisepass", visa_needed_label: "Nein",
       allergy_milk_severity_label: "Schwere anaphylaktische Reaktion (lebensbedrohlich)")
     expect(person.jamboree_data_options(:wheelchair_type)).to eq([["Manuell", "manual"], ["Elektrisch", "electric"]])
-    expect(person.jamboree_data_options(:travel_document_type).first).to eq(["Personalausweis", "official_passport"])
+    expect(person.jamboree_data_options(:travel_document_type).first(3))
+      .to eq([["Reisepass", "ordinary_passport"], ["Personalausweis", "national_identity_card"],
+        ["Amtlicher Pass", "official_passport"]])
 
     person.visa_needed = "maybe"
     expect(person).not_to be_valid
@@ -156,6 +158,17 @@ describe Wsjrdp2027::Person::JamboreeData do
     with, without = person.jamboree_data_allergies
     expect(with).to eq([[:egg, nil]])
     expect(without).to include(:milk, :peanut)
+  end
+
+  it "keeps the text of an other travel document, fixed for an identity card, none otherwise" do
+    person.update!(travel_document_type: "other_travel_document", travel_document_other: "Kinderreisepass")
+    expect(person.reload.travel_document_other).to eq("Kinderreisepass")
+
+    person.update!(travel_document_type: "national_identity_card", travel_document_other: "egal")
+    expect(person.reload.travel_document_other).to eq("National identity card")
+
+    person.update!(travel_document_type: "ordinary_passport")
+    expect(person.reload.travel_document_other).to be_nil
   end
 
   it "drops a detail whose box is unticked" do
