@@ -38,8 +38,9 @@
         = f.labeled_input_field :fathers_first_name
         = f.labeled_input_field :mothers_surname_at_birth
         = f.labeled_input_field :place_of_birth
-      = f.labeled_input_field :country_of_birth
-      = f.labeled_input_field :nationality
+      = f.labeled_country_select_field :country_of_birth
+      -# Without an answer the main nationality of the registration.
+      = f.labeled_country_select_field :nationality, value: @person.nationality_or_default
 
     -# One block per language, one row per skill: the level as numbered
     -# single-choice buttons (radios styled as buttons) with the legend above
@@ -109,7 +110,7 @@
       = f.labeled_input_field :travel_document_number
       = f.labeled_date_field :travel_document_issue_date
       = f.labeled_date_field :travel_document_expiration_date
-      = f.labeled_input_field :travel_document_country
+      = f.labeled_country_select_field :travel_document_country
       -# Without an answer "Nein" is chosen, and saved with the form.
       = f.labeled_collection_select :visa_needed, @person.jamboree_data_options(:visa_needed), :last, :first, {selected: @person.visa_needed.presence || "no"}, class: 'span4'
       .mt-3{ data: { jamboree_dependent_on: 'person_visa_needed', jamboree_dependent_value: 'yes_need_support' }, hidden: @person.visa_needed != 'yes_need_support' }
@@ -117,8 +118,9 @@
           = f.labeled_input_field :place_of_birth
         -# The visa choices show the template's English with a German
         -# translation. visa_information is no longer asked (kept as stored).
-        = f.labeled_input_field :visa_nationality_at_birth, help: t('people.jamboree_data.visa_nationality_at_birth_help')
-        = f.labeled_input_field :visa_other_nationalities
+        = f.labeled_country_select_field :visa_nationality_at_birth, help: t('people.jamboree_data.visa_nationality_at_birth_help')
+        -# Without an answer the further nationalities of the registration.
+        = f.labeled_country_multi_select_field :visa_other_nationalities_codes, value: @person.visa_other_nationalities_codes_or_default
         -# Without an answer the one the person's gender suggests.
         = f.labeled_collection_select :visa_gender_as_in_travel_document, @person.jamboree_data_options(:visa_gender_as_in_travel_document), :last, :first, {include_blank: true, selected: @person.visa_gender_as_in_travel_document_or_default}, class: 'span4'
         = f.labeled_collection_select :visa_civil_status, @person.jamboree_data_options(:visa_civil_status), :last, :first, {include_blank: true}, class: 'span4'
@@ -148,14 +150,15 @@
         = f.labeled_input_field :visa_employer_city
         = f.labeled_input_field :visa_employer_postcode
         = f.labeled_input_field :visa_employer_state
-        = f.labeled_input_field :visa_employer_country
+        = f.labeled_country_select_field :visa_employer_country
         -# Ja/Nein as choices, so an unanswered question stays empty.
         = f.labeled(:visa_residence_other_than_nationality) do
           - yes_no_options.each do |value, label|
             = f.inline_radio_button(:visa_residence_other_than_nationality, value, label)
         .ms-3{ data: { jamboree_dependent_on: 'person_visa_residence_other_than_nationality_true' }, hidden: !@person.visa_residence_other_than_nationality }
-          = f.labeled_input_field :visa_residence_country
-        = f.labeled_input_field :visa_schengen_first_entry
+          = f.labeled_country_select_field :visa_residence_country
+          = f.labeled_input_field :visa_residence_permit
+        = f.labeled_country_select_field :visa_schengen_first_entry, codes: Wsjrdp::CountryLookup::SCHENGEN_CODES
         = f.labeled(:visa_fingerprints_collected) do
           - yes_no_options.each do |value, label|
             = f.inline_radio_button(:visa_fingerprints_collected, value, label)

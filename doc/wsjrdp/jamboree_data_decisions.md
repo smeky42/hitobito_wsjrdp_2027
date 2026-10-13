@@ -92,7 +92,7 @@ ones are German only: Ja/Nein, and "Andere (bitte angeben)" for Other;
 | Familienangehörige mit EU-/EWR-/CH-Staatsangehörigkeit | `visa_family_eu_citizen_relationship` | CM | `yes`, `no` (Ja, Nein). |
 | Art der familiären Beziehung | `visa_family_eu_citizen_relation` | CU | `spouse`, `child`, `grandchild`, `dependent_ascendant`, `registered_partnership`, `other` ("Andere (bitte angeben)"); only with `yes`, cleared otherwise. |
 | Welche familiäre Beziehung | `visa_family_eu_citizen_relation_other` | CV | Only with `other` (shown, required in the browser); kept otherwise. |
-| Wohnsitzland weicht von Staatsangehörigkeit ab | `visa_residence_other_than_nationality` | CW | Ja/Nein buttons storing `true`/`false`, nothing while unanswered (`VISA_YES_NO_ATTRS`; unlike the boxes, `false` is stored). Wohnsitzland `visa_residence_country` (CX) only with `true`, cleared otherwise. |
+| Wohnsitzland weicht von Staatsangehörigkeit ab | `visa_residence_other_than_nationality` | CW | Ja/Nein buttons storing `true`/`false`, nothing while unanswered (`VISA_YES_NO_ATTRS`; unlike the boxes, `false` is stored). Wohnsitzland `visa_residence_country` and Aufenthaltstitel und Nummer `visa_residence_permit` (CX) only with `true`, cleared otherwise. |
 | Wurden bereits Fingerabdrücke … erfasst? | `visa_fingerprints_collected` | CZ | As above. Date and number only with `true`, cleared otherwise. |
 | Datum der Fingerabdruckerfassung, Nummer des Visumaufklebers | `visa_fingerprints_date`, `visa_fingerprints_visa_number` | DA | One free text in the template: the date (dd.mm.yyyy) and the number joined, e.g. "04.05.2020, 123456"; either alone if the other is missing. |
 | Staatsangehörigkeit bei Geburt | `visa_nationality_at_birth` | CG | Only if it differs from the country of birth (help text). |
@@ -104,8 +104,38 @@ question and its relation (CM, CU, CV) stay together before the employer
 Ja/Nein question (residence country, fingerprint date and number) is shown
 only with Ja.
 
-An empty choice is shown as "nicht gewählt". The country fields of the visa
-questions are still free text.
+An empty choice is shown as "nicht gewählt". The country fields are
+described under Countries.
+
+### Countries
+
+| UI | Ruby | Template | Mapping |
+|---|---|---|---|
+| Geburtsland | `country_of_birth` | O, CF | One country: ISO 3166 alpha-2 code (`COUNTRY_ATTRS`), chosen from the country list (`country_select_field`), shown as "Deutschland (DE)". |
+| Staatsangehörigkeit | `nationality` | R | One country. Without an answer the form preselects the main nationality of the registration, the first of `passport_nationality` (`nationality_or_default`); it is stored only by saving the form. |
+| Ausstellungsland | `travel_document_country` | CB | One country. |
+| Staatsangehörigkeit bei Geburt | `visa_nationality_at_birth` | CG | One country; only if it differs from the country of birth. |
+| Weitere Staatsangehörigkeiten | `visa_other_nationalities` | CH | Several countries (`COUNTRIES_ATTRS`): the codes as a comma-separated list, "AT, FR", chosen as `visa_other_nationalities_codes` (`country_multi_select_field`). Without an answer the form preselects the further nationalities of the registration, `passport_nationality` after the first (`visa_other_nationalities_codes_or_default`); stored only by saving the form. |
+| Arbeitgeber / Bildungseinrichtung, Land | `visa_employer_country` | CT | One country. |
+| Wohnsitzland, Aufenthaltstitel und Nummer | `visa_residence_country`, `visa_residence_permit` | CX | One country and a free text. CX is one free text asking for the country, the residence permit and its number: the export joins the country's name and the text, e.g. "<country>, <permit and number>". |
+| Erstes Einreiseland im Schengen-Raum | `visa_schengen_first_entry` | CY | One country of the Schengen area only (`Wsjrdp::CountryLookup::SCHENGEN_CODES`). |
+
+The template asks for every country but R as a free text, R from its own
+list of nationalities; the export turns the stored codes into the text or
+list entry the template wants.
+
+- Saving turns a country name or nationality into its code
+  (`Wsjrdp::CountryLookup.find_country_by_any_name`, `jsonb_accessor` with
+  `cast: :country`, for a list `cast: :countries`); a value the lookup does
+  not know is kept as it is.
+- A name stored earlier is converted on the person's next save only, there is
+  no mass update. Until then the form preselects its country and the page
+  shows it as "Deutschland (DE)"; an unknown value stays a choice, marked
+  "(nicht erkannt)", as does a stored country outside the Schengen area for
+  the Schengen entry.
+- The list finds a country by its German name, its code, its alpha-3 code and
+  other names (`search_aliases`); a code or alias typed in full puts its
+  country first.
 
 ### Other values
 
@@ -128,6 +158,7 @@ The person log writes every answer of this page (the keys of
 `uniform_order`, `headgear`, `diet`) as stored, with its label in brackets
 where the label differs: `severe [Schwere anaphylaktische Reaktion
 (lebensbedrohlich)]`, `true [Langarm]`, `2027-07-30 [30.07.2027]`; a free text
-as it is, and a value labelled just Ja or Nein too (`true`, `false`, `no`)
+as it is, and a value labelled just Ja or Nein too (`true`, `false`, `no`);
+a country as its code alone (`DE`)
 (`Wsjrdp2027::PaperTrail::VersionDecorator#jamboree_change`). An
 allergy's box is named "Allergie <allergen>".

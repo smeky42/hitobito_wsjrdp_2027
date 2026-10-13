@@ -51,7 +51,7 @@
       - unasked << :visa_civil_status_other unless @person.visa_civil_status == 'other'
       - unasked << :visa_family_eu_citizen_relation unless @person.visa_family_eu_citizen_relationship == 'yes'
       - unasked << :visa_family_eu_citizen_relation_other unless @person.visa_family_eu_citizen_relation == 'other'
-      - unasked << :visa_residence_country unless @person.visa_residence_other_than_nationality
+      - unasked.push(:visa_residence_country, :visa_residence_permit) unless @person.visa_residence_other_than_nationality
       - unasked.push(:visa_fingerprints_date, :visa_fingerprints_visa_number) unless @person.visa_fingerprints_collected
       = render_attrs(@person,
         *(Wsjrdp2027::Person::JamboreeData::VISA_DISPLAY_ATTRS - unasked))

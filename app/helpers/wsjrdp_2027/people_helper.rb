@@ -146,10 +146,19 @@ module Wsjrdp2027::PeopleHelper
 
   # "Deutschland (DE), Vereinigtes Königreich (GB)"; an entry that is no code
   # as it is.
-  def format_person_passport_nationality(person)
-    Wsjrdp::CountryLookup.split(person.passport_nationality).map do |entry|
-      Wsjrdp::CountryLookup.code?(entry) ? "#{Wsjrdp::CountryLookup.german_name(entry)} (#{entry})" : entry
-    end.join(", ")
+  def format_person_passport_nationality(person) = format_countries(person.passport_nationality)
+
+  # "Deutschland (DE)" for the countries of "Daten für den Veranstalter".
+  Wsjrdp2027::Person::JamboreeData::COUNTRY_ATTRS.each do |attr|
+    define_method(:"format_person_#{attr}") { |person| Wsjrdp::CountryLookup.display_name(person.public_send(attr)) }
+  end
+
+  Wsjrdp2027::Person::JamboreeData::COUNTRIES_ATTRS.each do |attr|
+    define_method(:"format_person_#{attr}") { |person| format_countries(person.public_send(attr)) }
+  end
+
+  def format_countries(list)
+    Wsjrdp::CountryLookup.split(list).map { |entry| Wsjrdp::CountryLookup.display_name(entry) }.join(", ")
   end
 
   def not_chosen_tag = content_tag(:span, t("people.jamboree_data.not_chosen"), class: "text-muted fw-light")

@@ -342,6 +342,7 @@ de:
         visa_information: Visainformationen
         visa_nationality_at_birth: Staatsangehörigkeit bei Geburt
         visa_other_nationalities: Weitere Staatsangehörigkeiten
+        visa_other_nationalities_codes: Weitere Staatsangehörigkeiten
         visa_gender_as_in_travel_document: Geschlecht wie im Reisedokument
         visa_civil_status: Familienstand
         visa_civil_status_other: Welcher Familienstand
@@ -358,6 +359,7 @@ de:
         visa_family_eu_citizen_relation_other: Welche familiäre Beziehung
         visa_residence_other_than_nationality: Wohnsitzland weicht von Staatsangehörigkeit ab
         visa_residence_country: Wohnsitzland
+        visa_residence_permit: Aufenthaltstitel und Nummer
         visa_schengen_first_entry: Erstes Einreiseland im Schengen-Raum
         visa_fingerprints_collected: Wurden bereits Fingerabdrücke für ein Schengen-Visum erfasst?
         visa_fingerprints_date: Datum der Fingerabdruckerfassung

@@ -27,11 +27,11 @@ describe Wsjrdp2027::Person::JamboreeData do
   end
 
   it "keeps the answers in people.jamboree_data" do
-    person.update!(nationality: "deutsch", english_speaking: "fluent", allergy_peanut: true,
+    person.update!(nationality: "DE", english_speaking: "fluent", allergy_peanut: true,
       travel_document_issue_date: Date.new(2025, 1, 2), medical_equipment_needs: ["", "medication_cooling"])
 
     stored = Person.where(id: person.id).pick(:jamboree_data)
-    expect(stored).to include("nationality" => "deutsch", "english_speaking" => "fluent", "allergy_peanut" => true,
+    expect(stored).to include("nationality" => "DE", "english_speaking" => "fluent", "allergy_peanut" => true,
       "travel_document_issue_date" => "2025-01-02", "medical_equipment_needs" => ["medication_cooling"])
     expect(person.reload.allergy_peanut).to be(true)
   end
@@ -71,17 +71,47 @@ describe Wsjrdp2027::Person::JamboreeData do
   end
 
   it "keeps the visa application details when visa support is no longer needed" do
-    person.update!(visa_needed: "yes_need_support", visa_nationality_at_birth: "deutsch",
+    person.update!(visa_needed: "yes_need_support", visa_nationality_at_birth: "DE",
       visa_fingerprints_collected: "true", visa_fingerprints_date: "2025-01-02", visa_fingerprints_visa_number: "123")
 
     person.update!(visa_needed: "yes_have_one")
-    expect(person.reload).to have_attributes(visa_nationality_at_birth: "deutsch",
+    expect(person.reload).to have_attributes(visa_nationality_at_birth: "DE",
       visa_fingerprints_collected: true, visa_fingerprints_date: Date.new(2025, 1, 2),
       visa_fingerprints_visa_number: "123")
 
     person.update!(visa_fingerprints_collected: "false")
     expect(person.reload).to have_attributes(visa_fingerprints_collected: false, visa_fingerprints_date: nil,
       visa_fingerprints_visa_number: nil, visa_residence_other_than_nationality: nil)
+  end
+
+  it "stores the countries as ISO codes, keeping a value it does not know" do
+    person.update!(travel_document_country: "Deutschland", visa_employer_country: "Österreich",
+      visa_schengen_first_entry: "PL", visa_nationality_at_birth: "Mittelerde",
+      visa_other_nationalities_codes: ["", "FR", "Elbisch"])
+
+    expect(person.reload).to have_attributes(travel_document_country: "DE", visa_employer_country: "AT",
+      visa_schengen_first_entry: "PL", visa_nationality_at_birth: "Mittelerde",
+      visa_other_nationalities: "FR, Elbisch", visa_other_nationalities_codes: %w[FR Elbisch])
+
+    person.update!(visa_other_nationalities_codes: [""])
+    expect(Person.where(id: person.id).pick(:jamboree_data)).not_to have_key("visa_other_nationalities")
+  end
+
+  it "suggests the further nationalities of the registration as other nationalities" do
+    person.passport_nationality = "ZA, Deutsch, GB"
+    expect(person.visa_other_nationalities_codes_or_default).to eq(%w[DE GB])
+
+    person.visa_other_nationalities = "FR"
+    expect(person.visa_other_nationalities_codes_or_default).to eq(%w[FR])
+  end
+
+  it "keeps the residence country and permit only with a residence other than the nationality" do
+    person.update!(visa_residence_other_than_nationality: "true", visa_residence_country: "Schweiz",
+      visa_residence_permit: "Permit C 123")
+    expect(person.reload).to have_attributes(visa_residence_country: "CH", visa_residence_permit: "Permit C 123")
+
+    person.update!(visa_residence_other_than_nationality: "false")
+    expect(person.reload).to have_attributes(visa_residence_country: nil, visa_residence_permit: nil)
   end
 
   it "reads boxes as booleans, a form's 0 as false, and drops an unticked one" do
@@ -100,7 +130,7 @@ describe Wsjrdp2027::Person::JamboreeData do
 
   it "logs each answer changed, not the column" do
     with_versioning do
-      person.update!(nationality: "deutsch", allergy_milk: "1", jamboree_data_confirmed: true)
+      person.update!(nationality: "DE", allergy_milk: "1", jamboree_data_confirmed: true)
     end
 
     version = person.versions.reorder(:id).last
