@@ -140,6 +140,24 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person).not_to be_valid
   end
 
+  it "writes an allergy level to the allergy and its severity, a blank one changes nothing" do
+    person.update!(allergy_peanut_level: "severe", allergy_milk_level: "none")
+    expect(person.reload).to have_attributes(allergy_peanut: true, allergy_peanut_severity: "severe",
+      allergy_peanut_level: "severe", allergy_milk: false, allergy_milk_severity: nil, allergy_milk_level: "none")
+
+    person.update!(allergy_peanut_level: "none")
+    expect(person.reload).to have_attributes(allergy_peanut: false, allergy_peanut_severity: nil)
+
+    person.update!(allergy_egg: true)
+    expect(person.reload.allergy_egg_level).to be_nil
+    person.update!(allergy_egg_level: "")
+    expect(person.reload).to have_attributes(allergy_egg: true, allergy_egg_severity: nil)
+
+    with, without = person.jamboree_data_allergies
+    expect(with).to eq([[:egg, nil]])
+    expect(without).to include(:milk, :peanut)
+  end
+
   it "drops a detail whose box is unticked" do
     person.update!(allergy_peanut: "1", allergy_peanut_severity: "mild", uses_wheelchair: "1", wheelchair_type: "manual",
       medical_equipment_needs: ["other"], medical_equipment_details: "Pumpe")

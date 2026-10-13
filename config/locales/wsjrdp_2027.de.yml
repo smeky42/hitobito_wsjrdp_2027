@@ -890,7 +890,17 @@ de:
       journey_unit_help: Deine An- und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.
       journey_self_help: Trage deine An- und Abreise ein sobald du dies für dich geklärt hast. Es ist nicht notwendig alles sofort einzutragen.
       activities: Aktivitäten & Komfort
-      diet: Ernährung & Allergien
+      diet: Ernährung
+      allergies: Allergien
+      allergy_levels:
+        none: keine
+        mild: mild
+        medium: mittel
+        severe: schwer
+      allergy_log_attr: "Allergie %{allergy}"
+      allergy_severity_missing: Allergie angegeben, aber die Stärke fehlt. Wähle mild, mittel oder schwer.
+      allergy_severity_not_given: Allergie, Stärke nicht angegeben
+      no_allergies: "keine Allergie: %{allergies}"
       health: Gesundheit, Mobilität & Besondere Bedarfe
       legal: Rechtliche Bestätigung & Vollständigkeit
       intro: Die folgenden Angaben sind für die Anmeldung beim Jamboree Veranstalter in Polen notwendig. Damit wir die Anmeldung für dich durchführen können musst du diese bis zum 15.11. möglichst vollständig ausfüllen. Die Angaben werden für Reise, Visa, Gesundheit und Notfallplanung verwendet.

@@ -97,6 +97,11 @@ module Wsjrdp2027::Person::JamboreeData
   # (allergy_<key>), the severity its own select (allergy_<key>_severity).
   ALLERGIES = %i[milk casein egg peanut tree_nuts gluten soy lupin mustard crustaceans sesame molluscs
     sulfite fruit allium fish seafood].freeze
+  # The one choice per allergy on the form (allergy_<key>_level): "none" for
+  # no allergy, else its severity. Written to allergy_<key> and
+  # allergy_<key>_severity, which stay what is stored.
+  ALLERGY_LEVELS = (%w[none] + ALLERGY_SEVERITIES.reverse).freeze
+  ALLERGY_LEVEL_ATTRS = ALLERGIES.map { |allergy| :"allergy_#{allergy}_level" }.freeze
 
   TEXT_ATTRS = %i[
     known_as_name
@@ -217,6 +222,21 @@ module Wsjrdp2027::Person::JamboreeData
     i18n_enum :departure_type, TRAVEL_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_types"
     ALLERGIES.each do |allergy|
       i18n_enum :"allergy_#{allergy}_severity", ALLERGY_SEVERITIES, i18n_prefix: "#{ENUM_I18N}.jamboree_allergy_severities"
+
+      # "none" without the allergy, the severity with it -- nil for an allergy
+      # whose severity is missing. A blank choice changes nothing, so a missing
+      # severity stays as it is until one is chosen.
+      define_method(:"allergy_#{allergy}_level") do
+        public_send(:"allergy_#{allergy}") ? public_send(:"allergy_#{allergy}_severity") : "none"
+      end
+
+      define_method(:"allergy_#{allergy}_level=") do |level|
+        level = level.to_s
+        return if level.blank?
+
+        public_send(:"allergy_#{allergy}=", level != "none")
+        public_send(:"allergy_#{allergy}_severity=", (level == "none") ? nil : level)
+      end
     end
 
     # Cast on write and read: a form sends dates and boxes as strings, and a
@@ -263,6 +283,13 @@ module Wsjrdp2027::Person::JamboreeData
   # The name for the name tag without a known_as_name, with where it comes
   # from (Wsjrdp2027::Person#nickname_or_short_first_name_with_source).
   def known_as_name_default_with_source = nickname_or_short_first_name_with_source
+
+  # The allergies with an allergy, as [key, severity or nil], and those
+  # without, in the order of ALLERGIES.
+  def jamboree_data_allergies
+    with, without = ALLERGIES.partition { |allergy| public_send(:"allergy_#{allergy}") }
+    [with.map { |allergy| [allergy, public_send(:"allergy_#{allergy}_severity").presence] }, without]
+  end
 
   # The confirmations of the page "Daten für den Veranstalter" not yet given,
   # in the order of the page.

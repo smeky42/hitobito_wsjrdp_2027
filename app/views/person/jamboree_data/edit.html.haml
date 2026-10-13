@@ -165,16 +165,43 @@
       %h3= t('people.jamboree_data.diet')
       = f.labeled_collection_select(:diet, Settings.diets, :first, :last, {}, class: 'span4')
       = f.labeled_input_field :dietary_details
-      - Wsjrdp2027::Person::JamboreeData::ALLERGIES.each do |allergy_key|
-        - checkbox_id = "person_allergy_#{allergy_key}"
-        .mb-3
-          .form-check
-            -# The "0" before the box sends an unticked box too, so it can be cleared.
-            = hidden_field_tag "person[allergy_#{allergy_key}]", "0", id: nil
-            = check_box_tag "person[allergy_#{allergy_key}]", '1', @person.public_send("allergy_#{allergy_key}"), id: checkbox_id, class: 'form-check-input'
-            = label_tag checkbox_id, Person.human_attribute_name(:"allergy_#{allergy_key}"), class: 'form-check-label'
-          .mt-2{ data: { jamboree_dependent_on: checkbox_id }, hidden: !@person.public_send("allergy_#{allergy_key}") }
-            = f.labeled_collection_select :"allergy_#{allergy_key}_severity", @person.jamboree_data_options(:"allergy_#{allergy_key}_severity"), :last, :first, {include_blank: true}, class: 'span4'
+
+    = field_set_tag do
+      %h3= t('people.jamboree_data.allergies')
+      -# One row per allergy: keine, mild, mittel or schwer as single-choice
+      -# buttons (allergy_<key>_level, see Wsjrdp2027::Person::JamboreeData),
+      -# the severities explained once above. Two columns where the width
+      -# allows; a narrow row puts the name above the buttons, which then fill it.
+      :css
+        .wsjrdp-allergies { columns: 24rem 2; column-gap: 4rem; }
+        .wsjrdp-allergy { break-inside: avoid; container-type: inline-size; padding-bottom: .5rem; }
+        .wsjrdp-allergy-row { display: grid; grid-template-columns: 8.5rem auto; justify-content: start; align-items: center; gap: .1rem .75rem; }
+        .wsjrdp-allergy-row > :first-child { text-align: right; }
+        .wsjrdp-allergy-row .btn-group { margin-bottom: 0; }
+        @container (max-width: 23.75rem) {
+          .wsjrdp-allergy-row { grid-template-columns: 1fr; justify-content: stretch; }
+          .wsjrdp-allergy-row > :first-child { text-align: left; }
+          .wsjrdp-allergy-row .btn-group { display: flex; }
+          .wsjrdp-allergy-row .btn { flex: 1 1 0; }
+        }
+      - level_labels = Wsjrdp2027::Person::JamboreeData::ALLERGY_LEVELS.index_with { |level| t("people.jamboree_data.allergy_levels.#{level}") }
+      - severity_texts = Wsjrdp2027::Person::JamboreeData::ALLERGY_SEVERITIES.index_with { |level| t("activerecord.attributes.person.jamboree_allergy_severities.#{level}") }
+      .small.text-muted.mb-2
+        = safe_join(Wsjrdp2027::Person::JamboreeData::ALLERGY_SEVERITIES.reverse.map { |level| "#{level_labels[level]}: #{severity_texts[level]}" }, " · ")
+      .wsjrdp-allergies.mb-3
+        - Wsjrdp2027::Person::JamboreeData::ALLERGIES.each do |allergy_key|
+          - attr_name = :"allergy_#{allergy_key}_level"
+          - level_value = @person.public_send(attr_name)
+          .wsjrdp-allergy
+            .wsjrdp-allergy-row
+              %div= Person.human_attribute_name(:"allergy_#{allergy_key}")
+              .btn-group{role: "group", "aria-label": Person.human_attribute_name(:"allergy_#{allergy_key}")}
+                - level_labels.each do |level, label|
+                  - id = "person_#{attr_name}_#{level}"
+                  = f.radio_button attr_name, level, id: id, class: "btn-check", autocomplete: "off", checked: level == level_value
+                  %label.btn.btn-sm.btn-outline-primary{for: id, title: severity_texts[level]}= label
+            - if level_value.nil?
+              .alert.alert-warning.py-1.px-2.mt-1.mb-0.small= t('people.jamboree_data.allergy_severity_missing')
 
     = field_set_tag do
       %h3= t('people.jamboree_data.health')
@@ -217,5 +244,5 @@
 
     = form_buttons(f, cancel_url: jamboree_data_page_path(@group, @person))
 
--# Shows and hides the blocks that depend on a box (allergy severity, ...).
+-# Shows and hides the blocks that depend on a box (wheelchair type, ...).
 = javascript_include_tag "hitobito_wsjrdp_2027/jamboree_data_form", "data-turbo-track": true
