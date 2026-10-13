@@ -40,9 +40,9 @@ describe Person::JamboreeDataController, type: :controller do
     get :edit, params: {id: ul.id}
     expect(page.at_css("form[action='#{jamboree_data_person_path(ul)}']")).to be_present
 
-    put :update, params: {id: ul.id, person: {nationality: "deutsch"}}
+    put :update, params: {id: ul.id, person: {nationality: "DE"}}
     expect(response).to redirect_to(jamboree_data_person_path(ul))
-    expect(ul.reload.nationality).to eq("deutsch")
+    expect(ul.reload.nationality).to eq("DE")
   end
 
   it "shows and updates journey fields for a user with log access" do
@@ -71,10 +71,10 @@ describe Person::JamboreeDataController, type: :controller do
 
       put :update, params: {id: unit_member.id, person: {
         arrival_location: "lech_walesa_airport",
-        departure_type: "flight", arrival_date: "2027-07-28", nationality: "deutsch"
+        departure_type: "flight", arrival_date: "2027-07-28", nationality: "DE"
       }}
       expect(unit_member.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train",
-        arrival_date: nil, nationality: "deutsch")
+        arrival_date: nil, nationality: "DE")
 
       get :show, params: {id: unit_member.id}
       expect(page.text).to include("AmberExpo", "Zug", "Deine An- und Abreise wird zentral von der Logistik gebucht")
@@ -88,8 +88,8 @@ describe Person::JamboreeDataController, type: :controller do
     get :edit, params: {id: ul.id}
     expect(response).to have_http_status(:ok)
 
-    put :update, params: {id: ul.id, person: {arrival_location: "amber_expo", nationality: "deutsch"}}
-    expect(ul.reload).to have_attributes(arrival_location: nil, nationality: "deutsch")
+    put :update, params: {id: ul.id, person: {arrival_location: "amber_expo", nationality: "DE"}}
+    expect(ul.reload).to have_attributes(arrival_location: nil, nationality: "DE")
   end
 
   it "asks only the adults to order a uniform, Langarm and Ja ticked without an answer" do
@@ -210,11 +210,11 @@ describe Person::JamboreeDataController, type: :controller do
   it "does not accept adult-only answers for YP" do
     put :update, params: {id: yp.id, person: {
       mothers_first_name: "Test", french_reading: "basic",
-      prior_wsj_experience: "Test", country_of_birth: "Deutschland"
+      prior_wsj_experience: "Test", country_of_birth: "DE"
     }}
 
     expect(yp.reload).to have_attributes(mothers_first_name: nil, french_reading: nil,
-      prior_wsj_experience: nil, country_of_birth: "Deutschland")
+      prior_wsj_experience: nil, country_of_birth: "DE")
   end
 
   it "keeps adult questions for IST and CMT" do
@@ -259,6 +259,64 @@ describe Person::JamboreeDataController, type: :controller do
     visa_fields = page.at_css('[data-jamboree-dependent-value="yes_need_support"]')
     expect(visa_fields["hidden"]).to be_nil
     expect(visa_fields.at_css("#person_visa_employer_name")).to be_present
+  end
+
+  it "chooses the country of birth from the country list and stores its code" do
+    ul.update_columns(jamboree_data: {"country_of_birth" => "Deutschland"})
+    get :edit, params: {id: ul.id}
+    select = page.at_css("select#person_country_of_birth[data-country-select]")
+    expect(select["multiple"]).to be_nil
+    expect(select.at_css("option[selected]")["value"]).to eq("DE")
+    expect(select.css("option").first["value"]).to eq("")
+
+    put :update, params: {id: ul.id, person: {country_of_birth: "Österreich"}}
+    expect(ul.reload.country_of_birth).to eq("AT")
+    get :show, params: {id: ul.id}
+    expect(page.text).to include("Österreich (AT)")
+
+    put :update, params: {id: ul.id, person: {country_of_birth: ""}}
+    expect(ul.reload.jamboree_data).not_to have_key("country_of_birth")
+  end
+
+  it "preselects the main nationality of the registration while no nationality is stored" do
+    ul.update_columns(passport_nationality: "AT, DE", jamboree_data: {})
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("select#person_nationality[data-country-select] option[selected]")["value"]).to eq("AT")
+
+    ul.update_columns(jamboree_data: {"nationality" => "deutsch"})
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("select#person_nationality option[selected]")["value"]).to eq("DE")
+  end
+
+  it "chooses the visa countries from the country list, the Schengen entry from its members only" do
+    ul.update_columns(passport_nationality: "ZA, DE, GB",
+      jamboree_data: {"visa_needed" => "yes_need_support", "visa_schengen_first_entry" => "US"})
+    get :edit, params: {id: ul.id}
+
+    other = page.at_css("select#person_visa_other_nationalities_codes[multiple][data-country-select]")
+    expect(other.css("option[selected]").pluck("value")).to eq(%w[DE GB])
+    schengen = page.css("select#person_visa_schengen_first_entry option").pluck("value")
+    expect(schengen).to match_array(["", "US", *Wsjrdp::CountryLookup::SCHENGEN_CODES])
+    expect(page.at_css("select#person_visa_schengen_first_entry option[selected]").text)
+      .to eq("US (nicht erkannt)")
+    %w[travel_document_country visa_nationality_at_birth visa_employer_country visa_residence_country].each do |attr|
+      expect(page.at_css("select#person_#{attr}[data-country-select]")).to be_present
+    end
+    expect(page.at_css("input#person_visa_residence_permit")).to be_present
+
+    put :update, params: {id: ul.id, person: {visa_other_nationalities_codes: ["", "GB", "FR"]}}
+    expect(ul.reload.visa_other_nationalities).to eq("GB, FR")
+    get :show, params: {id: ul.id}
+    expect(page.text).to include("Vereinigtes Königreich (GB), Frankreich (FR)")
+  end
+
+  it "keeps a country of birth it does not know, marked in the list" do
+    ul.update_columns(jamboree_data: {"country_of_birth" => "Mittelerde"})
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("select#person_country_of_birth option[selected]").text).to eq("Mittelerde (nicht erkannt)")
+
+    put :update, params: {id: ul.id, person: {country_of_birth: "Mittelerde"}}
+    expect(ul.reload.country_of_birth).to eq("Mittelerde")
   end
 
   it "routes the short URLs" do

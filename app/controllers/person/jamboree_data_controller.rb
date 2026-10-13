@@ -24,6 +24,7 @@ class Person::JamboreeDataController < ApplicationController
     *Wsjrdp2027::Person::JamboreeData::VISA_YES_NO_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::ALLERGY_LEVEL_ATTRS,
     {medical_equipment_needs: []},
+    {visa_other_nationalities_codes: []},
     :diet,
     :shirt_size,
     :uniform_size,

@@ -128,6 +128,10 @@ module Wsjrdp::CountryLookup
   # The countries named most often, first in the country choice, in this order.
   FREQUENT_CODES = %w[DE AT IT CH FR NL US GB].freeze
 
+  # The members of the Schengen area.
+  SCHENGEN_CODES = %w[AT BE BG CH CZ DE DK EE ES FI FR GR HR HU IS IT LI LT LU LV MT NL NO PL PT RO SE SI
+    SK].freeze
+
   # The ISO code of a country name, nationality or code; nil for none.
   def find_country_by_any_name(name)
     key = name.to_s.squish
@@ -163,4 +167,11 @@ module Wsjrdp::CountryLookup
 
   # The German name of a code, the entry itself for anything else.
   def german_name(entry) = code?(entry) ? ::Country.new(entry).name(:de) : entry
+
+  # A country for display: "Deutschland (DE)" for a code or a name the lookup
+  # knows, anything else as it is.
+  def display_name(entry)
+    code = find_country_by_any_name(entry)
+    code ? "#{german_name(code)} (#{code})" : entry
+  end
 end

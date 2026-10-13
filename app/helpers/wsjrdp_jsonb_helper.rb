@@ -21,6 +21,13 @@ module WsjrdpJsonbHelper
     # cast: :date -- values are cast with ActiveModel::Type::Date (a Date, an
     # ISO string or a form's "dd.mm.yyyy") and stored as an ISO string; the
     # reader answers a Date, nil for an absent key or one that is no date.
+    #
+    # cast: :country -- a country name, nationality or code is stored as its
+    # ISO code (Wsjrdp::CountryLookup.find_country_by_any_name, "Deutschland"
+    # => "DE"); a value the lookup does not know stays as it is.
+    #
+    # cast: :countries -- the same for each entry of a comma-separated list
+    # (Wsjrdp::CountryLookup.codes_of, "Deutsch, Elbisch" => "DE, Elbisch").
     def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil, cast: nil)
       accessor_prefix =
         case prefix
@@ -48,6 +55,8 @@ module WsjrdpJsonbHelper
           value = ActiveModel::Type::Boolean.new.cast(value) if cast == :boolean
           value = ActiveModel::Type::Date.new.cast(value)&.iso8601 if cast == :date
           value = value&.strip if strip
+          value = Wsjrdp::CountryLookup.find_country_by_any_name(value) || value if cast == :country
+          value = Wsjrdp::CountryLookup.codes_of(value) if cast == :countries
           if delete_on_blank && value.blank?
             # Delete the STORE key, not the accessor name: with prefix/suffix the
             # two differ, and the value was written under `key`. jsonb hashes use

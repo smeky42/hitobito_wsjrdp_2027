@@ -38,12 +38,12 @@ describe Person::LogController do
   it "writes the other answers of the page as stored, a label in brackets where it differs" do
     with_versioning do
       person.update!(headgear: "beanie", diet: "vegan", travel_document_issue_date: Date.new(2020, 5, 4),
-        nationality: "deutsch", visa_needed: "no")
+        nationality: "deutsch", visa_needed: "no", country_of_birth: "Deutschland")
     end
 
     get(:index, params: {group_id: person.primary_group_id, id: person.id})
 
     expect(changes_html).to include("beanie [Beanie]", "vegan [Vegan]", "2020-05-04 [04.05.2020]",
-      "<i>deutsch</i>", "Visum benötigt wurde auf <i>no</i> gesetzt.")
+      "Staatsangehörigkeit wurde auf <i>DE</i> gesetzt.", "Visum benötigt wurde auf <i>no</i> gesetzt.", "Geburtsland wurde auf <i>DE</i> gesetzt.")
   end
 end

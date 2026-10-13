@@ -32,4 +32,11 @@ describe Wsjrdp::CountryLookup do
     expect(described_class.search_aliases("US")).to include("amerika", "USA")
     expect(described_class.search_aliases("Elbisch")).to eq("")
   end
+
+  it "shows a country by its German name and code" do
+    expect(described_class.display_name("DE")).to eq("Deutschland (DE)")
+    expect(described_class.display_name("Holland")).to eq("Niederlande (NL)")
+    expect(described_class.display_name("Elbisch")).to eq("Elbisch")
+    expect(described_class.display_name(nil)).to be_nil
+  end
 end

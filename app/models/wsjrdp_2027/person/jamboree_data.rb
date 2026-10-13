@@ -101,6 +101,7 @@ module Wsjrdp2027::Person::JamboreeData
     visa_employer_state
     visa_employer_country
     visa_residence_country
+    visa_residence_permit
     visa_schengen_first_entry
     visa_fingerprints_visa_number
   ].freeze
@@ -152,6 +153,16 @@ module Wsjrdp2027::Person::JamboreeData
     other_mobility_details
     non_visible_disability_details
   ].concat(VISA_DETAIL_ATTRS, %i[travel_document_other]).freeze
+
+  # Texts holding a country, stored as its ISO code (jsonb_accessor cast:
+  # :country) and chosen from the country list
+  # (StandardFormBuilder#country_select_field).
+  COUNTRY_ATTRS = %i[country_of_birth nationality travel_document_country visa_nationality_at_birth
+    visa_employer_country visa_residence_country visa_schengen_first_entry].freeze
+  # Texts holding several countries, stored as their ISO codes ("AT, FR",
+  # cast: :countries), chosen as <attr>_codes
+  # (StandardFormBuilder#country_multi_select_field).
+  COUNTRIES_ATTRS = %i[visa_other_nationalities].freeze
 
   SELECT_ATTRS = (
     LANGUAGE_ATTRS +
@@ -226,7 +237,10 @@ module Wsjrdp2027::Person::JamboreeData
     remove_schema_validations :jamboree_data, only: :presence
 
     TEXT_ATTRS.each do |attr|
-      jsonb_accessor :jamboree_data, attr, strip: true
+      cast = if COUNTRY_ATTRS.include?(attr) then :country
+      elsif COUNTRIES_ATTRS.include?(attr) then :countries
+      end
+      jsonb_accessor :jamboree_data, attr, strip: true, cast: cast
       attribute attr, :string
     end
 
@@ -314,6 +328,7 @@ module Wsjrdp2027::Person::JamboreeData
     other_mobility_details: :other_mobility_needs,
     non_visible_disability_details: :non_visible_disability,
     visa_residence_country: :visa_residence_other_than_nationality,
+    visa_residence_permit: :visa_residence_other_than_nationality,
     visa_fingerprints_date: :visa_fingerprints_collected,
     visa_fingerprints_visa_number: :visa_fingerprints_collected
   ).freeze
@@ -331,6 +346,28 @@ module Wsjrdp2027::Person::JamboreeData
   def jamboree_data_allergies
     with, without = ALLERGIES.partition { |allergy| public_send(:"allergy_#{allergy}") }
     [with.map { |allergy| [allergy, public_send(:"allergy_#{allergy}_severity").presence] }, without]
+  end
+
+  # The nationality as stored, else the main one of the registration (the
+  # first of passport_nationality, as its code where the lookup knows it).
+  def nationality_or_default
+    nationality.presence || Wsjrdp::CountryLookup.codes_of(
+      Wsjrdp::CountryLookup.split(passport_nationality).first
+    )
+  end
+
+  # The other nationalities as codes, for the form.
+  def visa_other_nationalities_codes = Wsjrdp::CountryLookup.split(visa_other_nationalities)
+
+  def visa_other_nationalities_codes=(values)
+    self.visa_other_nationalities = Array(values).join(",")
+  end
+
+  # The other nationalities as stored, else those of the registration after
+  # the main one (passport_nationality).
+  def visa_other_nationalities_codes_or_default
+    visa_other_nationalities_codes.presence ||
+      Wsjrdp::CountryLookup.split(Wsjrdp::CountryLookup.codes_of(passport_nationality)).drop(1)
   end
 
   # The visa gender as stored, else the one the person's gender suggests.
