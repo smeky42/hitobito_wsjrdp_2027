@@ -3,11 +3,6 @@
     = f.error_messages
     = form_buttons(f, cancel_url: jamboree_data_page_path(@group, @person))
 
-    .mt-3
-      %h3= t('people.tabs.jamboree_data')
-    .text-muted.mw-90ch.mb-2
-      %p= t('people.jamboree_data.intro')
-
     = field_set_tag do
       %h3= t('people.jamboree_data.clothing')
       .text-muted.mw-90ch.mb-2= t('people.jamboree_data.clothing_help')
@@ -26,6 +21,11 @@
             = t('people.additional_info_fields.uniform_order_help')
       = f.labeled_collection_select(:headgear, Settings.headgear, :first, :last, { include_blank: true }, class: 'span2')
 
+    .mt-3
+      %h3= t('people.tabs.jamboree_data')
+    .text-muted.mw-90ch.mb-2
+      %p= t('people.jamboree_data.intro')
+      
     = field_set_tag do
       %h3= t('people.jamboree_data.personal')
       -# Empty means the default (nickname, else first name), shown as placeholder.
@@ -194,7 +194,10 @@
       = f.labeled_boolean_field :comfortable_confined_space
       - if @person.jamboree_data_adult?
         = f.labeled_input_field :prior_wsj_experience
-        = f.labeled_input_field :vehicle_registration_number
+        - if @person.effective_wsj_role == 'UL'
+          = f.labeled_input_field :vehicle_registration_number
+        - else
+          = f.labeled_input_field :vehicle_registration_number, help: t('people.jamboree_data.vehicle_registration_number_help')
 
     = field_set_tag do
       %h3= t('people.jamboree_data.diet')
@@ -240,6 +243,7 @@
 
     = field_set_tag do
       %h3= t('people.jamboree_data.health')
+      .text-muted.mw-90ch.mb-2= t('people.jamboree_data.health_help')
       = f.labeled_boolean_field :refrigerated_medication_needed
       = f.labeled_input_field :religious_health_beliefs
       .mb-3
