@@ -68,11 +68,24 @@
       = render_attrs(@person, :prior_wsj_experience, :vehicle_registration_number)
 
     %h3= t('people.jamboree_data.diet')
-    - allergy_attrs = Wsjrdp2027::Person::JamboreeData::ALLERGIES.flat_map { |allergy| [:"allergy_#{allergy}", :"allergy_#{allergy}_severity"] }
-    = render_attrs(@person,
-      :diet,
-      :dietary_details,
-      *allergy_attrs)
+    = render_attrs(@person, :diet, :dietary_details)
+
+    -# Only the allergies with an allergy, each with its severity; the others
+    -# in one line.
+    %h3= t('people.jamboree_data.allergies')
+    - with_allergy, without_allergy = @person.jamboree_data_allergies
+    %dl.dl-horizontal.m-0.p-2.border-top
+      - with_allergy.each do |allergy, severity|
+        = labeled(Person.human_attribute_name(:"allergy_#{allergy}")) do
+          - if severity
+            = t("people.jamboree_data.allergy_levels.#{severity}")
+            %span.small.text-muted.fw-light
+              – #{t("activerecord.attributes.person.jamboree_allergy_severities.#{severity}")}
+          - else
+            %span.text-warning= t('people.jamboree_data.allergy_severity_not_given')
+    - if without_allergy.any?
+      .text-muted.fw-light.px-2.pb-2
+        = t('people.jamboree_data.no_allergies', allergies: without_allergy.map { |allergy| Person.human_attribute_name(:"allergy_#{allergy}") }.join(", "))
 
     %h3= t('people.jamboree_data.health')
     = render_attrs(@person,

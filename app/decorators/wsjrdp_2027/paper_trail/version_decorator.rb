@@ -33,6 +33,17 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
 
   private
 
+  ALLERGY_ATTRS = Wsjrdp2027::Person::JamboreeData::ALLERGIES.map { |allergy| "allergy_#{allergy}" }.freeze
+
+  # An allergy's box is named by its allergen alone ("Milch"), which says
+  # nothing in the log; there it is "Allergie Milch".
+  def attribute_change_args(attr, from, to)
+    args = super
+    return args unless ALLERGY_ATTRS.include?(attr.to_s)
+
+    args.merge(attr: I18n.t("people.jamboree_data.allergy_log_attr", allergy: args[:attr]))
+  end
+
   # Three jsonb store keys hold something the core would render with #to_s:
   # additional_info["finance_group_ids"] on a person is a Hash of group id =>
   # tokens (doc/roles.md -> "Finance on a group's page"),

@@ -21,6 +21,7 @@ class Person::JamboreeDataController < ApplicationController
     *Wsjrdp2027::Person::JamboreeData::SELECT_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::DATE_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::BOOLEAN_ATTRS,
+    *Wsjrdp2027::Person::JamboreeData::ALLERGY_LEVEL_ATTRS,
     {medical_equipment_needs: []},
     :diet,
     :shirt_size,

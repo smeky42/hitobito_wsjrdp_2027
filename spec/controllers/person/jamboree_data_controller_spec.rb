@@ -121,6 +121,23 @@ describe Person::JamboreeDataController, type: :controller do
       "(wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein 1. Vorname: Anna")
   end
 
+  it "offers one choice per allergy and shows only the allergies with their severity" do
+    ul.update_columns(jamboree_data: {"allergy_peanut" => true, "allergy_peanut_severity" => "severe", "allergy_egg" => true})
+
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("input#person_allergy_peanut_level_severe")["checked"]).to be_present
+    expect(page.at_css("input#person_allergy_milk_level_none")["checked"]).to be_present
+    expect(page.css("input[name='person[allergy_egg_level]'][checked]")).to be_empty
+    expect(page.text).to include("Allergie angegeben, aber die Stärke fehlt.", "schwer: Schwere anaphylaktische Reaktion")
+
+    put :update, params: {id: ul.id, person: {allergy_egg_level: "mild", allergy_peanut_level: "none"}}
+    expect(ul.reload).to have_attributes(allergy_egg: true, allergy_egg_severity: "mild", allergy_peanut: false,
+      allergy_peanut_severity: nil)
+
+    get :show, params: {id: ul.id}
+    expect(page.text).to include("Ei", "mild", "keine Allergie: Milch, Kasein, Erdnuss")
+  end
+
   it "offers the selects with an empty choice and German labels" do
     get :edit, params: {id: ul.id}
 
@@ -136,13 +153,13 @@ describe Person::JamboreeDataController, type: :controller do
     expect(page.at_css("select#person_visa_needed option[selected]")&.text).to eq("Nein")
     expect(page.css("select#person_visa_needed option").map(&:text)).not_to include("")
     expect(page.at_css("input#person_english_reading_none")["checked"]).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_'])").size).to eq(16)
+    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_'])").size).to eq(16)
   end
 
   it "shows YP only their applicable questions in the form and on the page" do
     get :edit, params: {id: yp.id}
     expect(page.at_css("#person_english_reading_none")).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_'])").size).to eq(4)
+    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_'])").size).to eq(4)
     %w[mothers_first_name fathers_first_name mothers_surname_at_birth
       french_reading spanish_reading arabic_reading prior_wsj_experience vehicle_registration_number].each do |attr|
       expect(page.at_css("#person_#{attr}")).to be_nil
