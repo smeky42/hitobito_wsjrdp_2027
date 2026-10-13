@@ -43,7 +43,8 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # numbers. Each is rendered per element instead. The person's active
   # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
   # written out like everywhere else (installments_text), its payment method
-  # by its label, and an i18n_enum attribute by its labels.
+  # by its label, an i18n_enum attribute by its labels, and the uniform's
+  # booleans as the forms say them (Langarm/Kurzarm, Ja/Nein).
   def attribute_change(attr, from, to)
     case attr.to_s
     when "wsjrdp_raw_installments_eur" then raw_installments_eur_change(attr, from, to)
@@ -52,6 +53,8 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
     when "medical_equipment_needs" then medical_equipment_needs_change(attr, from, to)
+    when "uniform_long_sleeve" then boolean_label_change(attr, from, to, :long_sleeve, :short_sleeve)
+    when "uniform_order" then boolean_label_change(attr, from, to, :answer_yes, :answer_no)
     else
       i18n_enum_attr?(attr) ? i18n_enum_change(attr, from, to) : super
     end
@@ -65,6 +68,19 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # The medical equipment of the Zusatzdaten by its labels, "Akkuladestation, Sonstiges".
   def medical_equipment_needs_change(attr, from, to)
     label = ->(values) { Array(values).map { |v| I18n.t("activerecord.attributes.person.jamboree_medical_equipment.#{v}", default: v) }.join(", ") }
+    from = label.call(from)
+    to = label.call(to)
+    key = attribute_change_key(from, to)
+    return "" unless key
+
+    I18n.t("version.attribute_change.#{key}",
+      attr: item_class.human_attribute_name(attr),
+      from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
+  end
+
+  # A boolean by the labels its form shows (people.additional_info_fields).
+  def boolean_label_change(attr, from, to, true_key, false_key)
+    label = ->(value) { I18n.t("people.additional_info_fields.#{value ? true_key : false_key}") unless value.nil? }
     from = label.call(from)
     to = label.call(to)
     key = attribute_change_key(from, to)
