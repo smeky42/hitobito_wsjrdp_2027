@@ -907,9 +907,14 @@ de:
         french: Französisch
         spanish: Spanisch
         arabic: Arabisch
-      known_as_name_default:
-        nickname: Spitzname
-        first_name: Vorname
+      known_as_name_leave_empty:
+        nickname: "Wenn das Feld leer bleibt, nehmen wir beim Datenexport deinen Spitznamen (wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein Spitzname/Fahrtenname: %{name}"
+        first_name: "Wenn das Feld leer bleibt, nehmen wir beim Datenexport deinen Spitznamen (wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein Vorname: %{name}"
+        first_names: "Wenn das Feld leer bleibt, nehmen wir beim Datenexport deinen Spitznamen (wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein 1. Vorname: %{name}"
+      known_as_name_not_chosen:
+        nickname: nicht gewählt. Wir nehmen beim Datenexport deinen Spitznamen (wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein Spitzname/Fahrtenname
+        first_name: nicht gewählt. Wir nehmen beim Datenexport deinen Spitznamen (wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein Vorname
+        first_names: nicht gewählt. Wir nehmen beim Datenexport deinen Spitznamen (wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein 1. Vorname
       gdpr_agreement: Ja, ich habe die Datenschutzbestimmungen des Jamboree-Veranstalters gelesen und stimme diesen zu. <a href="https://www.jamboree2027.org/wp-content/uploads/2026/05/DP-Information-Notice-01-EN.pdf" target="_blank" rel="noopener noreferrer">Datenschutzinformationen als PDF</a>
       confirmed: Ich versichere hiermit, alle obenstehenden Angaben nach bestem Wissen und Gewissen vollständig und wahrheitsgetreu gemacht zu haben.
       missing_confirmations:

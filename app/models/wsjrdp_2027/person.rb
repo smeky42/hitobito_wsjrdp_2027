@@ -398,8 +398,18 @@ module Wsjrdp2027::Person
         [Settings.sepa_status[sepa_status].presence, "(#{sepa_status})"].compact.join(" ")
       end
 
-      def nickname_or_short_first_name
-        nickname.presence || first_name&.split&.first
+      def nickname_or_short_first_name = nickname_or_short_first_name_with_source.first
+
+      # The nickname, else the first of the first names, with where it comes
+      # from: :nickname, :first_name (the only first name) or :first_names
+      # (the first of several); [nil, nil] without either.
+      def nickname_or_short_first_name_with_source
+        return [nickname, :nickname] if nickname.present?
+
+        first_names = first_name.to_s.split
+        return [nil, nil] if first_names.empty?
+
+        [first_names.first, (first_names.size > 1) ? :first_names : :first_name]
       end
 
       def short_first_name

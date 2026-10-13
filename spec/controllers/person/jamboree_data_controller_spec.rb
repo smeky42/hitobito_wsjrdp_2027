@@ -104,6 +104,23 @@ describe Person::JamboreeDataController, type: :controller do
     expect(yp.reload).to have_attributes(uniform_order: nil, uniform_long_sleeve: false)
   end
 
+  it "shows the default name tag grey with where it comes from, the form without a placeholder" do
+    ul.update_columns(first_name: "Anna Maria", nickname: nil, jamboree_data: {})
+
+    get :show, params: {id: ul.id}
+    name_tag = page.css("dt").find { |dt| dt.text.include?("Rufname") }.next_element
+    expect(name_tag.at_css("span.text-muted.fw-light").text).to eq("Anna")
+    expect(page.text).to include("nicht gewählt. Wir nehmen beim Datenexport deinen Spitznamen (wenn eingetragen) " \
+      "oder deinen 1. Vornamen. Aktuell dein 1. Vorname")
+    expect(page.text).not_to include("Leer lassen für Spitzname bzw. Vorname.")
+
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("input#person_known_as_name")["placeholder"]).to be_nil
+    expect(page.at_css("input#person_known_as_name")["value"]).to be_blank
+    expect(page.text).to include("Wenn das Feld leer bleibt, nehmen wir beim Datenexport deinen Spitznamen " \
+      "(wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein 1. Vorname: Anna")
+  end
+
   it "offers the selects with an empty choice and German labels" do
     get :edit, params: {id: ul.id}
 
