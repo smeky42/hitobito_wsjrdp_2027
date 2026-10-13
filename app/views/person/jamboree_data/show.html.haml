@@ -45,12 +45,16 @@
       :travel_document_country,
       :visa_needed)
     - if @person.visa_needed == 'yes_need_support'
+      -# The free texts, the relation and the details of a Ja/Nein question
+      -# only where their choice asks for them.
+      - unasked = []
+      - unasked << :visa_civil_status_other unless @person.visa_civil_status == 'other'
+      - unasked << :visa_family_eu_citizen_relation unless @person.visa_family_eu_citizen_relationship == 'yes'
+      - unasked << :visa_family_eu_citizen_relation_other unless @person.visa_family_eu_citizen_relation == 'other'
+      - unasked << :visa_residence_country unless @person.visa_residence_other_than_nationality
+      - unasked.push(:visa_fingerprints_date, :visa_fingerprints_visa_number) unless @person.visa_fingerprints_collected
       = render_attrs(@person,
-        :visa_information,
-        *Wsjrdp2027::Person::JamboreeData::VISA_DETAIL_ATTRS,
-        :visa_residence_other_than_nationality,
-        :visa_fingerprints_collected,
-        :visa_fingerprints_date)
+        *(Wsjrdp2027::Person::JamboreeData::VISA_DISPLAY_ATTRS - unasked))
 
     %h3= t('people.jamboree_data.journey')
     %p.text-muted= t(@person.jamboree_data_journey_editable? ? 'people.jamboree_data.journey_self_help' : 'people.jamboree_data.journey_unit_help')

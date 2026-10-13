@@ -73,6 +73,16 @@ module Wsjrdp2027::Person::JamboreeData
     gdynia_ferry_terminal lech_walesa_airport].freeze
   DEPARTURE_LOCATIONS = (ARRIVAL_LOCATIONS - %w[amber_expo] + %w[jamboree_site_pick_up_point]).freeze
   TRAVEL_TYPES = %w[bicycle bus car coach ferry flight train].freeze
+  # The choices of the visa questions, as the organizer's template has them;
+  # non-trivial labels give the template's English with a German translation
+  # (Ja/Nein and "Andere (bitte angeben)" are German only).
+  VISA_GENDERS = %w[female male x].freeze
+  VISA_CIVIL_STATUSES = %w[single married registered_partnership separated divorced widowed other].freeze
+  VISA_STUDENT_STATUSES = %w[student not_student].freeze
+  VISA_YES_NO = %w[yes no].freeze
+  VISA_FAMILY_RELATIONS = %w[spouse child grandchild dependent_ascendant registered_partnership other].freeze
+  # The visa gender a person's gender suggests (w, m, d).
+  VISA_GENDER_OF_GENDER = {"w" => "female", "m" => "male", "d" => "x"}.freeze
   VISA_DETAIL_ATTRS = %i[
     visa_nationality_at_birth
     visa_other_nationalities
@@ -80,6 +90,9 @@ module Wsjrdp2027::Person::JamboreeData
     visa_civil_status
     visa_civil_status_other
     visa_current_student_status
+    visa_family_eu_citizen_relationship
+    visa_family_eu_citizen_relation
+    visa_family_eu_citizen_relation_other
     visa_employer_name
     visa_employer_address_1
     visa_employer_address_2
@@ -87,12 +100,22 @@ module Wsjrdp2027::Person::JamboreeData
     visa_employer_postcode
     visa_employer_state
     visa_employer_country
-    visa_family_eu_citizen_relationship
-    visa_family_eu_citizen_relation
     visa_residence_country
     visa_schengen_first_entry
     visa_fingerprints_visa_number
   ].freeze
+  # Visa questions answered Ja or Nein: true or false stored, nothing while
+  # unanswered (unlike BOOLEAN_ATTRS, where false is not stored).
+  VISA_YES_NO_ATTRS = %i[visa_residence_other_than_nationality visa_fingerprints_collected].freeze
+  # The visa answers in the order of the form: each Ja/Nein question before
+  # what it asks for.
+  VISA_DISPLAY_ATTRS = VISA_DETAIL_ATTRS.flat_map do |attr|
+    case attr
+    when :visa_residence_country then [:visa_residence_other_than_nationality, attr]
+    when :visa_fingerprints_visa_number then [:visa_fingerprints_collected, :visa_fingerprints_date, attr]
+    else [attr]
+    end
+  end.freeze
   WHEELCHAIR_TYPES = %w[manual electric].freeze
   ALLERGY_SEVERITIES = %w[severe medium mild].freeze
   MEDICAL_EQUIPMENT = %w[battery_charging_station continuous_power_supply medication_cooling other].freeze
@@ -162,8 +185,6 @@ module Wsjrdp2027::Person::JamboreeData
       comfortable_loud_noise
       comfortable_confined_space
       refrigerated_medication_needed
-      visa_residence_other_than_nationality
-      visa_fingerprints_collected
       mobility_restricted
       uses_wheelchair
       uses_mobility_frame
@@ -185,6 +206,7 @@ module Wsjrdp2027::Person::JamboreeData
     DATE_ATTRS +
     BOOLEAN_ATTRS +
     ARRAY_ATTRS +
+    VISA_YES_NO_ATTRS +
     %i[jamboree_data_confirmed]
   ).freeze
 
@@ -219,6 +241,13 @@ module Wsjrdp2027::Person::JamboreeData
     i18n_enum :travel_document_type, TRAVEL_DOCUMENT_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_document_types"
     i18n_enum :visa_needed, VISA_NEEDED_VALUES, i18n_prefix: "#{ENUM_I18N}.jamboree_visa_needed"
     i18n_enum :wheelchair_type, WHEELCHAIR_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_wheelchair_types"
+    i18n_enum :visa_gender_as_in_travel_document, VISA_GENDERS, i18n_prefix: "#{ENUM_I18N}.jamboree_visa_genders"
+    i18n_enum :visa_civil_status, VISA_CIVIL_STATUSES, i18n_prefix: "#{ENUM_I18N}.jamboree_visa_civil_statuses"
+    i18n_enum :visa_current_student_status, VISA_STUDENT_STATUSES,
+      i18n_prefix: "#{ENUM_I18N}.jamboree_visa_student_statuses"
+    i18n_enum :visa_family_eu_citizen_relationship, VISA_YES_NO, i18n_prefix: "#{ENUM_I18N}.jamboree_visa_yes_no"
+    i18n_enum :visa_family_eu_citizen_relation, VISA_FAMILY_RELATIONS,
+      i18n_prefix: "#{ENUM_I18N}.jamboree_visa_family_relations"
     i18n_enum :arrival_location, ARRIVAL_LOCATIONS, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_locations"
     i18n_enum :departure_location, DEPARTURE_LOCATIONS, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_locations"
     i18n_enum :arrival_type, TRAVEL_TYPES, i18n_prefix: "#{ENUM_I18N}.jamboree_travel_types"
@@ -252,6 +281,16 @@ module Wsjrdp2027::Person::JamboreeData
     BOOLEAN_ATTRS.each do |attr|
       jsonb_accessor :jamboree_data, attr, cast: :boolean
       attribute attr, :boolean
+    end
+
+    # true, false, or nil while unanswered; a blank answer removes the key.
+    VISA_YES_NO_ATTRS.each do |attr|
+      store_accessor :jamboree_data, attr
+      define_method(attr) { ActiveModel::Type::Boolean.new.cast(read_store_attribute(:jamboree_data, attr)) }
+      define_method(:"#{attr}=") do |value|
+        value = ActiveModel::Type::Boolean.new.cast(value)
+        value.nil? ? jamboree_data.delete(attr.to_s) : write_store_attribute(:jamboree_data, attr, value)
+      end
     end
 
     store_accessor :jamboree_data, :medical_equipment_needs
@@ -292,6 +331,11 @@ module Wsjrdp2027::Person::JamboreeData
   def jamboree_data_allergies
     with, without = ALLERGIES.partition { |allergy| public_send(:"allergy_#{allergy}") }
     [with.map { |allergy| [allergy, public_send(:"allergy_#{allergy}_severity").presence] }, without]
+  end
+
+  # The visa gender as stored, else the one the person's gender suggests.
+  def visa_gender_as_in_travel_document_or_default
+    visa_gender_as_in_travel_document.presence || VISA_GENDER_OF_GENDER[gender]
   end
 
   # The confirmations of the page "Daten für den Veranstalter" not yet given,
@@ -340,20 +384,12 @@ module Wsjrdp2027::Person::JamboreeData
 
   def clear_jamboree_details_without_their_box
     DETAILS_OF_BOX.each { |detail, box| public_send(:"#{detail}=", nil) unless public_send(box) }
-    # The text of an other travel document as given, fixed for an identity
-    # card, none for every other type.
-    if travel_document_type == "national_identity_card"
-      self.travel_document_other = NATIONAL_IDENTITY_CARD_TEXT
-    elsif travel_document_type != "other_travel_document"
-      self.travel_document_other = nil
-    end
+    # Fixed for an identity card. The texts for Other (*_other) and the visa
+    # answers stay when their choice changes: hidden, they are not sent, and
+    # the page and the export use them only while their choice asks for them.
+    self.travel_document_other = NATIONAL_IDENTITY_CARD_TEXT if travel_document_type == "national_identity_card"
+    self.visa_family_eu_citizen_relation = nil unless visa_family_eu_citizen_relationship == "yes"
     self.medical_equipment_details = nil unless medical_equipment_needs.include?("other")
-    unless visa_needed == "yes_need_support"
-      VISA_DETAIL_ATTRS.each { |attr| public_send(:"#{attr}=", nil) }
-      self.visa_fingerprints_date = nil
-      self.visa_fingerprints_collected = false
-      self.visa_residence_other_than_nationality = false
-    end
   end
 
   def medical_equipment_needs_known

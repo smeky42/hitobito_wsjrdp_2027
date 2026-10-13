@@ -151,6 +151,28 @@ describe Person::JamboreeDataController, type: :controller do
     expect(field["disabled"]).to be_nil
   end
 
+  it "asks the visa questions with the template's choices, without the old visa information" do
+    ul.update_columns(gender: "w", jamboree_data: {"visa_needed" => "yes_need_support", "visa_information" => "alt"})
+
+    get :edit, params: {id: ul.id}
+    expect(page.at_css("select#person_visa_gender_as_in_travel_document option[selected]")&.text).to eq("F – Female (weiblich)")
+    expect(page.css("select#person_visa_civil_status option").map(&:text)).to start_with("", "Single (ledig)")
+    expect(page.at_css("input#person_visa_civil_status_other")).to have_attributes(attributes: include("disabled"))
+    expect(page.css("input[name='person[visa_current_student_status]'][type=radio]").size).to eq(2)
+    expect(page.css("input[name='person[visa_family_eu_citizen_relationship]'][type=radio]").size).to eq(2)
+    expect(page.at_css("[name='person[visa_information]']")).to be_nil
+    expect(page.at_css("select#person_visa_family_eu_citizen_relation")).to have_attributes(attributes: include("disabled"))
+    expect(page.at_css("input#person_visa_family_eu_citizen_relation_other")).to have_attributes(attributes: include("disabled"))
+
+    get :show, params: {id: ul.id}
+    status = page.css("dt").find { |dt| dt.text.include?("Familienstand") }.next_element
+    expect(status.at_css("span.text-muted.fw-light").text).to eq("nicht gewählt")
+    expect(page.text).not_to include("Visainformationen")
+
+    put :update, params: {id: ul.id, person: {visa_information: "neu", visa_civil_status: "single"}}
+    expect(ul.reload).to have_attributes(visa_information: "alt", visa_civil_status: "single")
+  end
+
   it "offers the selects with an empty choice and German labels" do
     get :edit, params: {id: ul.id}
 

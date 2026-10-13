@@ -35,6 +35,11 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
 
   ALLERGY_ATTRS = Wsjrdp2027::Person::JamboreeData::ALLERGIES.map { |allergy| "allergy_#{allergy}" }.freeze
 
+  # Every answer of the page "Daten für den Veranstalter": the keys of
+  # people.jamboree_data and the person columns the page edits as well.
+  JAMBOREE_PAGE_ATTRS = (Wsjrdp2027::Person::JamboreeData::ATTRS.map(&:to_s) +
+    %w[shirt_size uniform_size uniform_long_sleeve uniform_order headgear diet]).freeze
+
   # An allergy's box is named by its allergen alone ("Milch"), which says
   # nothing in the log; there it is "Allergie Milch".
   def attribute_change_args(attr, from, to)
@@ -54,18 +59,17 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # numbers. Each is rendered per element instead. The person's active
   # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
   # written out like everywhere else (installments_text), its payment method
-  # by its label, an i18n_enum attribute by its labels, and the uniform's
-  # booleans as the forms say them (Langarm/Kurzarm, Ja/Nein).
+  # by its label, and an i18n_enum attribute by its labels. An answer of
+  # "Daten für den Veranstalter" as stored, with its label (jamboree_change).
   def attribute_change(attr, from, to)
+    return jamboree_change(attr, from, to) if jamboree_page_attr?(attr)
+
     case attr.to_s
     when "wsjrdp_raw_installments_eur" then raw_installments_eur_change(attr, from, to)
     when "wsjrdp_installments_payment_method" then payment_method_change(attr, from, to)
     when "finance_group_ids" then finance_group_ids_change(from, to)
     when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
-    when "medical_equipment_needs" then medical_equipment_needs_change(attr, from, to)
-    when "uniform_long_sleeve" then boolean_label_change(attr, from, to, :long_sleeve, :short_sleeve)
-    when "uniform_order" then boolean_label_change(attr, from, to, :answer_yes, :answer_no)
     else
       i18n_enum_attr?(attr) ? i18n_enum_change(attr, from, to) : super
     end
@@ -76,30 +80,45 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # rather than "basic"; a value without a label as stored.
   def i18n_enum_attr?(attr) = item_class.respond_to?(:"#{attr}_labels")
 
-  # The medical equipment of the Zusatzdaten by its labels, "Akkuladestation, Sonstiges".
-  def medical_equipment_needs_change(attr, from, to)
-    label = ->(values) { Array(values).map { |v| I18n.t("activerecord.attributes.person.jamboree_medical_equipment.#{v}", default: v) }.join(", ") }
-    from = label.call(from)
-    to = label.call(to)
+  def jamboree_page_attr?(attr) = item_class <= ::Person && JAMBOREE_PAGE_ATTRS.include?(attr.to_s)
+
+  # The value as stored and, where it differs, its label in brackets:
+  # "severe [Schwere anaphylaktische Reaktion (lebensbedrohlich)]",
+  # "true [Langarm]", "2027-07-30 [30.07.2027]"; a free text as it is, and a
+  # value labelled just Ja or Nein ("true", "no") too.
+  def jamboree_change(attr, from, to)
+    from = jamboree_value_text(attr, from)
+    to = jamboree_value_text(attr, to)
     key = attribute_change_key(from, to)
     return "" unless key
 
     I18n.t("version.attribute_change.#{key}",
-      attr: item_class.human_attribute_name(attr),
+      **attribute_change_args(attr, nil, nil),
       from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
   end
 
-  # A boolean by the labels its form shows (people.additional_info_fields).
-  def boolean_label_change(attr, from, to, true_key, false_key)
-    label = ->(value) { I18n.t("people.additional_info_fields.#{value ? true_key : false_key}") unless value.nil? }
-    from = label.call(from)
-    to = label.call(to)
-    key = attribute_change_key(from, to)
-    return "" unless key
+  def jamboree_value_text(attr, value)
+    return nil if value.nil? || value == "" || value == []
 
-    I18n.t("version.attribute_change.#{key}",
-      attr: item_class.human_attribute_name(attr),
-      from: ERB::Util.html_escape(from), to: ERB::Util.html_escape(to)).html_safe
+    stored = value.is_a?(Array) ? value.join(", ") : value.to_s
+    label = jamboree_value_label(attr.to_s, value)
+    (label.blank? || label == stored || %w[ja nein].include?(label.downcase)) ? stored : "#{stored} [#{label}]"
+  end
+
+  def jamboree_value_label(attr, value) # rubocop:disable Metrics/CyclomaticComplexity
+    case attr
+    when "medical_equipment_needs"
+      Array(value).map { |v| I18n.t("activerecord.attributes.person.jamboree_medical_equipment.#{v}", default: v) }.join(", ")
+    when "uniform_long_sleeve" then I18n.t("people.additional_info_fields.#{value ? "long_sleeve" : "short_sleeve"}")
+    when "uniform_order" then I18n.t("people.additional_info_fields.#{value ? "answer_yes" : "answer_no"}")
+    when "headgear" then Settings.headgear[value.to_s]
+    when "diet" then Settings.diets[value.to_s]
+    else
+      if i18n_enum_attr?(attr) then item_class.public_send(:"#{attr}_labels")[value.to_s.to_sym]
+      elsif value == true || value == false then I18n.t("global.#{value ? "yes" : "no"}")
+      elsif value.respond_to?(:strftime) then I18n.l(value.to_date)
+      end
+    end
   end
 
   def i18n_enum_change(attr, from, to)

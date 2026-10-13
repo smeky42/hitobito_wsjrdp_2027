@@ -115,13 +115,33 @@
       .mt-3{ data: { jamboree_dependent_on: 'person_visa_needed', jamboree_dependent_value: 'yes_need_support' }, hidden: @person.visa_needed != 'yes_need_support' }
         - unless @person.jamboree_data_adult?
           = f.labeled_input_field :place_of_birth
-        = f.labeled_input_field :visa_information
-        = f.labeled_input_field :visa_nationality_at_birth
+        -# The visa choices show the template's English with a German
+        -# translation. visa_information is no longer asked (kept as stored).
+        = f.labeled_input_field :visa_nationality_at_birth, help: t('people.jamboree_data.visa_nationality_at_birth_help')
         = f.labeled_input_field :visa_other_nationalities
-        = f.labeled_input_field :visa_gender_as_in_travel_document
-        = f.labeled_input_field :visa_civil_status
-        = f.labeled_input_field :visa_civil_status_other
-        = f.labeled_input_field :visa_current_student_status
+        -# Without an answer the one the person's gender suggests.
+        = f.labeled_collection_select :visa_gender_as_in_travel_document, @person.jamboree_data_options(:visa_gender_as_in_travel_document), :last, :first, {include_blank: true, selected: @person.visa_gender_as_in_travel_document_or_default}, class: 'span4'
+        = f.labeled_collection_select :visa_civil_status, @person.jamboree_data_options(:visa_civil_status), :last, :first, {include_blank: true}, class: 'span4'
+        -# As the other travel document: further in, required while shown.
+        - other_civil_status = @person.visa_civil_status == 'other'
+        .wsjrdp-subfield{ data: { jamboree_dependent_on: 'person_visa_civil_status', jamboree_dependent_value: 'other' }, hidden: !other_civil_status }
+          = f.labeled_input_field :visa_civil_status_other, required: true, disabled: !other_civil_status, label_class: 'col-md-3 col-xl-2 pb-1 required'
+        = f.labeled(:visa_current_student_status) do
+          - @person.jamboree_data_options(:visa_current_student_status).each do |label, value|
+            = f.inline_radio_button(:visa_current_student_status, value, label, false)
+        -# The EU family question with its relation (template CM, CU, CV)
+        -# together, before the employer.
+        = f.labeled(:visa_family_eu_citizen_relationship) do
+          - @person.jamboree_data_options(:visa_family_eu_citizen_relationship).each do |label, value|
+            = f.inline_radio_button(:visa_family_eu_citizen_relationship, value, label)
+        -# The relation only with such a family member, its text only with
+        -# Other; hidden, disabled here and by the script.
+        - eu_family = @person.visa_family_eu_citizen_relationship == 'yes'
+        - other_relation = eu_family && @person.visa_family_eu_citizen_relation == 'other'
+        .wsjrdp-subfield{ data: { jamboree_dependent_on: 'person_visa_family_eu_citizen_relationship_yes' }, hidden: !eu_family }
+          = f.labeled_collection_select :visa_family_eu_citizen_relation, @person.jamboree_data_options(:visa_family_eu_citizen_relation), :last, :first, {include_blank: true}, class: 'span4', disabled: !eu_family
+          %div{ data: { jamboree_dependent_on: 'person_visa_family_eu_citizen_relation', jamboree_dependent_value: 'other' }, hidden: !other_relation }
+            = f.labeled_input_field :visa_family_eu_citizen_relation_other, required: true, disabled: !other_relation, label_class: 'col-md-3 col-xl-2 pb-1 required'
         = f.labeled_input_field :visa_employer_name
         = f.labeled_input_field :visa_employer_address_1
         = f.labeled_input_field :visa_employer_address_2
@@ -129,14 +149,17 @@
         = f.labeled_input_field :visa_employer_postcode
         = f.labeled_input_field :visa_employer_state
         = f.labeled_input_field :visa_employer_country
-        = f.labeled_input_field :visa_family_eu_citizen_relationship
-        = f.labeled_input_field :visa_family_eu_citizen_relation
-        = f.labeled_boolean_field :visa_residence_other_than_nationality
-        .ms-3{ data: { jamboree_dependent_on: 'person_visa_residence_other_than_nationality' }, hidden: !@person.visa_residence_other_than_nationality }
+        -# Ja/Nein as choices, so an unanswered question stays empty.
+        = f.labeled(:visa_residence_other_than_nationality) do
+          - yes_no_options.each do |value, label|
+            = f.inline_radio_button(:visa_residence_other_than_nationality, value, label)
+        .ms-3{ data: { jamboree_dependent_on: 'person_visa_residence_other_than_nationality_true' }, hidden: !@person.visa_residence_other_than_nationality }
           = f.labeled_input_field :visa_residence_country
         = f.labeled_input_field :visa_schengen_first_entry
-        = f.labeled_boolean_field :visa_fingerprints_collected
-        .ms-3{ data: { jamboree_dependent_on: 'person_visa_fingerprints_collected' }, hidden: !@person.visa_fingerprints_collected }
+        = f.labeled(:visa_fingerprints_collected) do
+          - yes_no_options.each do |value, label|
+            = f.inline_radio_button(:visa_fingerprints_collected, value, label)
+        .ms-3{ data: { jamboree_dependent_on: 'person_visa_fingerprints_collected_true' }, hidden: !@person.visa_fingerprints_collected }
           = f.labeled_date_field :visa_fingerprints_date
           = f.labeled_input_field :visa_fingerprints_visa_number
 

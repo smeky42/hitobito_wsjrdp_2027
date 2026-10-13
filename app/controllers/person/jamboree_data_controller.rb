@@ -21,6 +21,7 @@ class Person::JamboreeDataController < ApplicationController
     *Wsjrdp2027::Person::JamboreeData::SELECT_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::DATE_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::BOOLEAN_ATTRS,
+    *Wsjrdp2027::Person::JamboreeData::VISA_YES_NO_ATTRS,
     *Wsjrdp2027::Person::JamboreeData::ALLERGY_LEVEL_ATTRS,
     {medical_equipment_needs: []},
     :diet,
@@ -47,6 +48,7 @@ class Person::JamboreeDataController < ApplicationController
     attrs = person.jamboree_data_adult? ? permitted_attrs : permitted_attrs - Wsjrdp2027::Person::JamboreeData::ADULT_ONLY_ATTRS
     attrs -= Wsjrdp2027::Person::JamboreeData::JOURNEY_ATTRS unless person.jamboree_data_journey_editable?
     attrs -= [:uniform_order] unless person.uniform_order_available?
+    attrs -= [:visa_information] # kept, but no longer asked
     person.attributes = params.require(:person).permit(attrs)
     person.save
     respond_with person, location: helpers.jamboree_data_page_path(group, person)
