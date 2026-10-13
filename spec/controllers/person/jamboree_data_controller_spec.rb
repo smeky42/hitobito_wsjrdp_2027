@@ -103,7 +103,7 @@ describe Person::JamboreeDataController, type: :controller do
     put :update, params: {id: yp.id, person: {uniform_order: "false", uniform_long_sleeve: "false"}}
     expect(yp.reload).to have_attributes(uniform_order: nil, uniform_long_sleeve: false)
   end
-  
+
   it "shows the default name tag grey with where it comes from, the form without a placeholder" do
     ul.update_columns(first_name: "Anna Maria", nickname: nil, jamboree_data: {})
 
