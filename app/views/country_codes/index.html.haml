@@ -1,0 +1,103 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later. See the COPYING
+-#  file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+- title t('.title')
+
+%p.text-muted.mw-90ch= t('.intro')
+
+-# The view of the table: which people, which of their nationalities, which
+-# roles (CountryCodesController#index). The empty roles value keeps a choice
+-# of none apart from no choice (all). An open test run stays open.
+= form_tag country_codes_path, method: :get, class: 'mb-3' do
+  - if @test_run
+    = hidden_field_tag :test_run, 1, id: nil
+    - Array(params[:hide]).each do |key|
+      = hidden_field_tag 'hide[]', key, id: nil
+  .d-flex.flex-wrap.align-items-center{style: 'column-gap: 2rem; row-gap: .5rem'}
+    .btn-group{role: 'group'}
+      - %w[all contract].each do |mode|
+        = radio_button_tag :people, mode, @people_mode == mode, id: "people_#{mode}", class: 'btn-check', autocomplete: 'off'
+        = label_tag "people_#{mode}", t(".people.#{mode}"), class: 'btn btn-sm btn-outline-primary'
+    .btn-group{role: 'group'}
+      - %w[all main].each do |mode|
+        = radio_button_tag :nationality, mode, @nationality_mode == mode, id: "nationality_#{mode}", class: 'btn-check', autocomplete: 'off'
+        = label_tag "nationality_#{mode}", t(".nationality.#{mode}"), class: 'btn btn-sm btn-outline-primary'
+    %div
+      = hidden_field_tag 'roles[]', '', id: nil
+      - CountryCodesController::ROLES.each do |role|
+        .form-check.form-check-inline
+          = check_box_tag 'roles[]', role, @roles.include?(role), id: "roles_#{role}", class: 'form-check-input'
+          = label_tag "roles_#{role}", role, class: 'form-check-label'
+    = submit_tag t('.apply'), class: 'btn btn-sm btn-primary', name: nil
+%p.small.text-muted= t('.visa_note')
+= render 'entries', entries: @entries
+
+.mb-4
+  .d-flex.gap-2
+    = link_to t('.test_run'), country_codes_path(@view_params.merge(test_run: 1, anchor: 'test-run')), class: 'btn btn-outline-primary'
+    = button_to t('.migrate'), migrate_country_codes_path, method: :post, class: 'btn btn-danger',
+      data: { confirm: t('.migrate_confirm') }
+  .form-text= t('.migrate_help')
+
+-# The test run: what the switch would store, nothing saved.
+- if @test_run
+  %h2#test-run= t('.test_run_title')
+  %p.text-muted.mw-90ch= t('.test_run_intro', count: @test_run_changed, total: @test_run_total)
+  -# Hide some rows; checked again after a reload of the filter.
+  = form_tag country_codes_path(anchor: 'test-run'), method: :get, class: 'mb-2' do
+    = hidden_field_tag :test_run, 1, id: nil
+    = hidden_field_tag :people, @people_mode, id: nil
+    = hidden_field_tag :nationality, @nationality_mode, id: nil
+    - @view_params[:roles].each do |role|
+      = hidden_field_tag 'roles[]', role, id: nil
+    - CountryCodesController::TEST_RUN_HIDE.each_key do |key|
+      .form-check.form-check-inline
+        = check_box_tag 'hide[]', key, Array(params[:hide]).include?(key), id: "hide_#{key}", class: 'form-check-input'
+        = label_tag "hide_#{key}", t(".hide.#{key}"), class: 'form-check-label'
+    = submit_tag t('.hide.apply'), class: 'btn btn-sm btn-outline-primary', name: nil
+  %p.small.text-muted= t('.test_run_shown', count: @test_run.size)
+  %table.table.table-striped.table-sm.w-auto
+    %thead
+      %tr
+        %th= t('.id')
+        %th= Person.human_attribute_name(:first_name)
+        %th= Person.human_attribute_name(:last_name)
+        %th= t('.role')
+        %th= t('.primary_group')
+        %th= Person.human_attribute_name(:status)
+        %th= Person.human_attribute_name(:contract_status)
+        %th= t('.old_value')
+        %th= t('.new_value')
+        %th= t('.changed')
+    %tbody
+      - @test_run.each do |person, old, new|
+        %tr
+          %td= link_to person.id, person_path(person)
+          %td= person.first_name
+          %td= person.last_name
+          %td= person.wsjrdp_role
+          %td= person.primary_group&.short_name.presence || person.primary_group&.name
+          %td= person.status
+          %td= person.contract_status
+          %td= old
+          %td{class: ('text-muted fw-light' if old == new)}= new
+          %td= old == new ? t('.unchanged') : t('.changes')
+
+%h2= t('.table_title')
+%p.text-muted.mw-90ch= t('.table_intro')
+%table.table.table-striped.table-sm.w-auto
+  %thead
+    %tr
+      %th= t('.name')
+      %th= t('.code')
+      %th= t('.country')
+  %tbody
+    - Wsjrdp::CountryLookup::NAMES.sort.each do |name, code|
+      %tr
+        %td= name
+        %td= code
+        %td= Wsjrdp::CountryLookup.german_name(code)

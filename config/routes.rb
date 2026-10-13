@@ -30,6 +30,10 @@ Rails.application.routes.draw do
   end
 
   language_scope do
+    # Einstellungen > Ländercodes (CountryCodesController).
+    get "country_codes" => "country_codes#index", :as => :country_codes
+    post "country_codes/migrate" => "country_codes#migrate", :as => :migrate_country_codes
+
     resources :documents, only: [:show, :create], controller: "wsjrdp/documents", as: :wsjrdp_documents
 
     # The status, medical and Zusatzdaten pages without a group: in the

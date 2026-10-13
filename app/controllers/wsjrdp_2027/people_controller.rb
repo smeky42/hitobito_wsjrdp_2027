@@ -29,7 +29,7 @@ module Wsjrdp2027::PeopleController
     :foto_permission,
     :pronoun,
     :passport_germany,
-    :passport_nationality,
+    {passport_nationality_codes: []},
     :passport_approved,
     :languages_spoken,
     :shirt_size,

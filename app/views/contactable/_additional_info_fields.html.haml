@@ -4,7 +4,8 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027.
 
 = field_set_tag do
-  = f.labeled_input_field :passport_nationality, placeholder: t('activerecord.attributes.person.passport_nationality_info')
+  = f.labeled_country_multi_select_field :passport_nationality_codes, placeholder: t('activerecord.attributes.person.passport_nationality_info'),
+    help: t('activerecord.attributes.person.passport_nationality_help')
   = field_set_tag do
     = f.labeled(:passport_germany) do
       - yes_no_options.each do |value, label|

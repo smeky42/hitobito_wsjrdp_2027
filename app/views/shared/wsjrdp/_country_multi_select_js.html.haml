@@ -1,0 +1,70 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later. See the COPYING
+-#  file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# The country choice (Wsjrdp2027::StandardFormBuilder#country_multi_select_field):
+-# the core's tom-select, but searching the aliases and the code too, and
+-# showing the code in the list ("Deutschland (DE)") and, when the search
+-# matched an alias only, that alias, grey ("Vereinigte Staaten (US) USA");
+-# tom-select takes an option's data-code and data-aliases as fields. Once
+-# per page.
+- return if @wsjrdp_country_multi_select_js_emitted
+- @wsjrdp_country_multi_select_js_emitted = true
+-# The placeholder only while nothing is chosen: tom-select copies the
+-# select's classes to its wrapper and marks it has-items.
+:css
+  .wsjrdp-country-multi-select.has-items input::placeholder { color: transparent; }
+:javascript
+  (function () {
+    function activate(select) {
+      if (select.tomselect) return;
+      new TomSelect(select, {
+        plugins: ["remove_button"],
+        create: false,
+        searchField: ["text", "code", "aliases"],
+        onItemAdd() {
+          this.setTextboxValue("");
+          this.refreshOptions();
+        },
+        // An option's look depends on the search (its alias), so it is not
+        // kept from the last search.
+        onType() {
+          this.clearCache("option");
+          this.refreshOptions();
+        },
+        render: {
+          option(data, escape) {
+            const query = this.inputValue().trim().toLowerCase();
+            const matches = (value) => (value || "").toLowerCase().includes(query);
+            const alias = query && !matches(data.text) && !matches(data.code)
+              ? (data.aliases || "").split(" | ").find(matches)
+              : null;
+            return "<div>" + escape(data.text) + (data.code ? " (" + escape(data.code) + ")" : "") +
+              (alias ? ' <span class="text-muted fw-light">' + escape(alias) + "</span>" : "") + "</div>";
+          },
+          item(data, escape) {
+            return "<div>" + escape(data.text) + "</div>";
+          },
+          no_results() {
+            const message = this.input.dataset.chosenNoResults || "";
+            return '<div class="no-results">' + message + "</div>";
+          }
+        }
+      });
+    }
+
+    function activateAll() {
+      // Before the core's pack has loaded, turbo:load does it.
+      if (typeof TomSelect === "undefined") return;
+      document.querySelectorAll("select[data-country-multi-select]").forEach(activate);
+    }
+
+    if (!window.wsjrdpCountryMultiSelectBound) {
+      window.wsjrdpCountryMultiSelectBound = true;
+      document.addEventListener("turbo:load", activateAll);
+    }
+    activateAll();
+  })();

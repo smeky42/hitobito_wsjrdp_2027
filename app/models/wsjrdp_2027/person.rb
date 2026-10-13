@@ -398,6 +398,16 @@ module Wsjrdp2027::Person
         [Settings.sepa_status[sepa_status].presence, "(#{sepa_status})"].compact.join(" ")
       end
 
+      # passport_nationality ("Nationalität") holds a comma-separated list of
+      # ISO codes ("DE, GB"). The form chooses them from a list
+      # (passport_nationality_codes); an entry that is no code -- typed before
+      # the codes, or sent by hand -- is kept as it is (Wsjrdp::CountryLookup).
+      def passport_nationality_codes = Wsjrdp::CountryLookup.split(passport_nationality)
+
+      def passport_nationality_codes=(values)
+        self.passport_nationality = Wsjrdp::CountryLookup.codes_of(Array(values).join(","))
+      end
+
       def nickname_or_short_first_name = nickname_or_short_first_name_with_source.first
 
       # The nickname, else the first of the first names, with where it comes

@@ -56,6 +56,8 @@ module Wsjrdp2027::PersonAbility
 
       permission(:admin).may(:update_wsjrdp_email, :update_moss_email).all
       permission(:admin).may(:show_keycloak_username, :update_keycloak_username).all
+      # The page Einstellungen > Ländercodes (CountryCodesController).
+      class_side(:country_codes).if_admin
     end
   end
 end
