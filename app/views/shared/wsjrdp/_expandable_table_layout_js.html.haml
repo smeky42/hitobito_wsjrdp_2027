@@ -1,0 +1,64 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The behaviour of truncating and sticky columns
+-#  (shared/wsjrdp/_expandable_table; doc/wsjrdp/expandable_table.md,
+-#  "Widths"), rendered only by a table that has such a column:
+-#
+-#  - A truncating cell that is cut off shows its full text in a box on hover
+-#    -- the box of the graphical tooltip (shared/wsjrdp/_tip), on the body,
+-#    so the table does not clip it. Not for a cell that brings a tooltip of
+-#    its own (a title, a graphical or a Bootstrap tooltip in it) or says
+-#    data-exp-no-auto-tip, so there is never a second one.
+-#  - A table wrapper scrolled sideways gets .exp-scrolled-x, for the shadow of
+-#    the last sticky column.
+-#
+-#  Delegated listeners on the document, installed once, so they survive Turbo
+-#  visits and lazily loaded details.
+- return if @wsjrdp_expandable_table_layout_js_emitted
+- @wsjrdp_expandable_table_layout_js_emitted = true
+= render "shared/wsjrdp/tip"
+:javascript
+  (function () {
+    if (window.__expTableLayout) return;
+    window.__expTableLayout = true;
+    var OWN_TIP = "[title], .wsjrdp-tip-host, .wsjrdp-html-tip, [data-bs-toggle='tooltip'], [data-bs-title], [data-exp-no-auto-tip]";
+    var box = null, owner = null;
+    function hide() {
+      if (box) box.remove();
+      box = null;
+      owner = null;
+    }
+    document.addEventListener("mouseover", function (e) {
+      var cell = e.target.closest && e.target.closest("td.exp-truncate");
+      if (!cell) { hide(); return; }
+      if (cell === owner) return;
+      hide();
+      if (cell.scrollWidth <= cell.clientWidth) return;
+      if (cell.matches(OWN_TIP) || cell.querySelector(OWN_TIP)) return;
+      var text = cell.innerText.trim();
+      if (!text) return;
+      owner = cell;
+      box = document.createElement("div");
+      box.className = "wsjrdp-tip-box exp-truncate-tip";
+      box.textContent = text;
+      document.body.appendChild(box);
+      var r = cell.getBoundingClientRect(), b = box.getBoundingClientRect();
+      var top = r.bottom + 6;
+      if (top + b.height > window.innerHeight) top = r.top - b.height - 6;
+      box.style.top = top + "px";
+      box.style.left = Math.max(4, Math.min(r.left, window.innerWidth - b.width - 4)) + "px";
+    });
+    document.addEventListener("scroll", function (e) {
+      hide();
+      var wrap = e.target;
+      if (wrap && wrap.classList && wrap.classList.contains("exp-table-wrap")) {
+        wrap.classList.toggle("exp-scrolled-x", wrap.scrollLeft > 0);
+      }
+    }, true);
+    document.addEventListener("turbo:before-render", hide);
+  })();

@@ -111,7 +111,9 @@ to nothing; it stays in the columns menu), `width` (for the fixed table
 layout), `sort` (how it sorts — an SQL expression for a relation, a
 `->(row){ comparable }` extractor for an array), `sort_first` and
 `sort_variants` (§2, sortable headers), `default` (shown before the user picks
-any) and `css_class` (derived from `css_prefix:` unless given).
+any), `css_class` (derived from `css_prefix:` unless given) and the width
+options `target_width`, `target_grow`, `truncate` and `sticky` (see "Widths"
+below).
 `Wsjrdp::ExpandableTableColumn` is the value object; the collection is
 `Enumerable` and also answers `keys`, `fetch(key)`, `key?(key)` and `size`.
 
@@ -168,6 +170,68 @@ a gap is extra right padding of the cell before it, and every column is
 `width + grow * var(--exp-c) [+ var(--exp-g)]` wide -- whole pixels, no extra
 cells, so a copied table stays clean. The filter and the toolbar stop at the
 table's maximum width. A condensed table has none of this.
+
+#### Widths: `target_width`, `truncate`, `sticky`
+
+Three column options for tables that have to work on very different widths.
+A table that uses none of them renders exactly as before; a condensed table
+ignores them.
+
+**`target_width:`** (rem, at least `width`) lets a column start narrow and
+widen to a target. `width` is then the narrowest the column gets; below the
+sum of the widths the table scrolls. The room the table has beyond the
+widths is spent in three phases (`Wsjrdp::ExpandableTableLayout`, in CSS
+against the size container, whole pixels):
+
+1. The columns with a target widen towards it, each at the speed of its
+   **`target_grow:`** (a weight, 1 by default; 0 is refused). A column at its
+   target stops and leaves the room to the others, which then widen faster --
+   a water level: `--exp-c1 = clamp(0, max_k((room - S_k) / F_k), max span/tg)`
+   over the target columns in the order of `span / target_grow`, `S_k` the
+   spans (`target_width - width`) of those already at their target, `F_k` the
+   weights of the rest.
+2. Once every target is reached, the columns with **`grow:`** widen further,
+   exactly as `grow` does without targets: by their weight per unit of
+   `--exp-c2`, up to `t.gaps`' `grow_max` per unit (unbounded without
+   `t.gaps`). A target column without `grow` stops at its target.
+3. The rest goes to the gaps, up to their `max`; then the table stops
+   widening, and the filter and the toolbar stop with it.
+
+A column is `width + min(target_grow * c1, span) [+ grow * c2] [+ gap]`
+wide. `target_width` does not go with `merge`.
+
+```ruby
+c.column key: "subject", label: "Person", width: "8rem", target_width: "13rem", truncate: true, sticky: true
+c.column key: "kind", label: "Art", width: "7rem", target_width: "12rem", grow: 1, truncate: true
+c.column key: "filename", label: "Dateiname", width: "8rem", target_width: "20rem", target_grow: 2
+```
+
+Here the three widen together towards their targets, the file name twice as
+fast; Art then goes on by `grow` past 12rem, and only after that the gaps
+grow.
+
+**`truncate: true`** keeps the column's body and footer cells on one line,
+cut off with "…" (the header keeps its own rules). A cut-off cell shows its
+full text on hover in the box of the graphical tooltip
+(`shared/wsjrdp/_tip`) -- unless the cell brings a tooltip of its own: an
+element with a `title`, `.wsjrdp-tip-host`, `.wsjrdp-html-tip`,
+`data-bs-toggle="tooltip"` or `data-bs-title`, or `data-exp-no-auto-tip` to
+switch it off. A tooltip box of a truncating cell must sit on the body or be
+`position: fixed` (as all of the app's are); an absolutely positioned one
+inside the cell would be cut off with the text.
+
+**`sticky: true`** keeps the column at the left while the table scrolls
+sideways -- header, rows, sub-rows and footer; with a selection, its
+checkbox column sticks too. It applies to the LEADING shown columns only: a
+sticky column the user moves behind a non-sticky one scrolls like the rest.
+It needs a `width` in rem and does not go with `merge`, `group` or
+`mobile: false`. A sticky cell paints the page's background with the row's
+own colour on top, so coloured, hovered and open rows keep their look; the
+last sticky column casts a shadow while the table is scrolled.
+
+The CSS and the script for these live in their own partials
+(`shared/wsjrdp/_expandable_table_layout_styles`, `…_layout_js`), rendered
+only by a table that uses an option.
 
 That renders a table with a clickable row per record; clicking a row expands an
 inline **detail** (Bootstrap collapse, several can be open at once). `row_key`

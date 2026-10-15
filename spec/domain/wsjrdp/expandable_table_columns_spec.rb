@@ -154,6 +154,7 @@ describe Wsjrdp::ExpandableTableColumns do
       expect(columns.fetch("amount").to_table_column(cell: cell)).to eq(
         key: "amount", abbr: "amt", label: "Betrag", condensed_label: nil,
         header_label: nil, header_tooltip: nil, group: nil, grow: 0, tabular_nums: true, merge: nil, merge_share: 1,
+        target_width: nil, target_grow: 0, truncate: false, sticky: false,
         header_align: nil, merged_cell: nil,
         numeric: true, width: nil, mobile: true, css_class: "tblcol-amount",
         sort_key: "amount", sort_first: "asc", sort_variants: [], cell: cell
@@ -209,6 +210,62 @@ describe Wsjrdp::ExpandableTableColumns do
       expect(columns.fetch("note")).to be_frozen
       expect(described_class.new(key: "a", label: "A"))
         .to eq(described_class.new(key: "a", label: "A"))
+    end
+  end
+end
+
+describe Wsjrdp::ExpandableTableColumn do
+  def column(**options) = described_class.new(key: "name", label: "Name", **options)
+
+  describe "widths" do
+    it "keeps the old defaults: no target, no truncation, not sticky" do
+      expect(column(width: "8rem").to_table_column(cell: nil))
+        .to include(target_width: nil, target_grow: 0, truncate: false, sticky: false, grow: 0)
+    end
+
+    it "gives a target wider than the width a target_grow of 1" do
+      expect(column(width: "8rem", target_width: "13rem")).to have_attributes(target_width: "13rem", target_grow: 1)
+    end
+
+    it "keeps a given target_grow" do
+      expect(column(width: "8rem", target_width: "13rem", target_grow: 2.5).target_grow).to eq(2.5)
+    end
+
+    it "gives a target as wide as the width no target_grow" do
+      expect(column(width: "8rem", target_width: "8rem").target_grow).to eq(0)
+    end
+
+    it "refuses a target_grow of 0 or less" do
+      expect { column(width: "8rem", target_width: "13rem", target_grow: 0) }.to raise_error(ArgumentError, /above 0/)
+      expect { column(width: "8rem", target_width: "13rem", target_grow: -1) }.to raise_error(ArgumentError, /above 0/)
+    end
+
+    it "refuses a target_grow without a target_width" do
+      expect { column(width: "8rem", target_grow: 1) }.to raise_error(ArgumentError, /needs a target_width/)
+    end
+
+    it "refuses a target narrower than the width" do
+      expect { column(width: "8rem", target_width: "7rem") }.to raise_error(ArgumentError, /narrower/)
+    end
+
+    it "refuses widths that are not rem" do
+      expect { column(width: "100px", target_width: "13rem") }.to raise_error(ArgumentError, /must be rem/)
+      expect { column(target_width: "13rem") }.to raise_error(ArgumentError, /must be rem/)
+    end
+
+    it "refuses a target on a merged column" do
+      expect { column(width: "8rem", target_width: "13rem", merge: "name") }.to raise_error(ArgumentError, /merge/)
+    end
+
+    it "takes truncate and sticky as booleans" do
+      expect(column(width: "8rem", truncate: 1, sticky: "yes")).to have_attributes(truncate: true, sticky: true)
+    end
+
+    it "refuses a sticky column without a rem width, merged, grouped or hidden on a phone" do
+      expect { column(sticky: true) }.to raise_error(ArgumentError, /width in rem/)
+      expect { column(width: "8rem", sticky: true, merge: "x") }.to raise_error(ArgumentError, /merge/)
+      expect { column(width: "8rem", sticky: true, group: "G") }.to raise_error(ArgumentError, /group/)
+      expect { column(width: "8rem", sticky: true, mobile: false) }.to raise_error(ArgumentError, /mobile/)
     end
   end
 end

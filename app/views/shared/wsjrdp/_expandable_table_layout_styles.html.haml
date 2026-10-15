@@ -1,0 +1,34 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The look of truncating and sticky columns (shared/wsjrdp/_expandable_table,
+-#  a column's `truncate:` / `sticky:`; doc/wsjrdp/expandable_table.md,
+-#  "Widths"). Rendered only by a table that has such a column, once per
+-#  response.
+-#
+-#  A sticky cell needs a background of its own, or the cells scrolling under
+-#  it show through: the page's, with the row's own colour on top
+-#  (--bs-table-bg, which Bootstrap's contextual rows set), so a coloured row
+-#  stays coloured; Bootstrap's hover and the group's hover still paint over
+-#  it; an open row's tint where the theme has one. While the table is
+-#  scrolled sideways (.exp-scrolled-x, set by
+-#  shared/wsjrdp/_expandable_table_layout_js) the last sticky column casts a
+-#  shadow onto the cells passing under it. The table keeps its borders with
+-#  the cells (border-collapse: separate), so a sticky cell takes its border
+-#  along.
+- return if @wsjrdp_expandable_table_layout_styles_emitted
+- @wsjrdp_expandable_table_layout_styles_emitted = true
+:css
+  .bookings-table > * > tr > td.exp-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bookings-table.exp-has-sticky { border-collapse: separate; border-spacing: 0; }
+  .bookings-table > * > tr > .exp-sticky { position: sticky; z-index: 1;
+    background-color: var(--bs-body-bg, #fff); background-image: linear-gradient(var(--bs-table-bg), var(--bs-table-bg)); }
+  .bookings-table > thead > tr > .exp-sticky { z-index: 2; }
+  .bookings-table > tbody > tr.exp-row[aria-expanded="true"] > .exp-sticky {
+    background: var(--bs-secondary-bg, var(--bs-body-bg, #fff)); }
+  .exp-table-wrap.exp-scrolled-x > .bookings-table > * > tr > .exp-sticky-last {
+    box-shadow: inset 0 0 0 9999px var(--bs-table-accent-bg, transparent), 6px 0 6px -4px rgba(0, 0, 0, .18); }

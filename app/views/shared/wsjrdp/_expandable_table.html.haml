@@ -18,7 +18,8 @@
 -#                 filter and nesting level. The widget reads the state, never
 -#                 params (D8.4 of doc/plans/2026-09_expandable-table-state.md).
 -#    columns   -- [{ key:, label:, cell: ->(row){..}, numeric:, width:,
--#                    sort_key:, css_class:, condensed_label:, header_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, mobile:, abbr: }]
+-#                    sort_key:, css_class:, condensed_label:, header_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, mobile:, abbr:,
+-#                    target_width:, target_grow:, truncate:, sticky: }]
 -#                    (FULL set)
 -#    rows      -- the collection (a Kaminari page when paginating, else any list)
 -#    row_key   -- ->(row){ String } unique key (URL param + DOM id + selection)
@@ -157,7 +158,15 @@
 -# merge key share ONE body cell; the host's merged_cell renders it from the row
 -# and the keys of the run's shown columns (the first column's cell otherwise).
 - body_runs = columns.chunk_while { |a, b| a[:merge].present? && a[:merge] == b[:merge] }.to_a
-- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1), ("exp-no-mobile" if run.first[:mobile] == false)].compact }
+-# Sticky columns (a column's `sticky:`): key => left offset, filled in below
+-# once the widths are known; empty for a table without them. Truncating
+-# columns (`truncate:`) keep their cells on one line.
+- sticky_lefts = {}
+- sticky_classes = ->(col) { sticky_lefts[col[:key]] ? ["exp-sticky", ("exp-sticky-last" if col[:key] == sticky_lefts.keys.last)] : [] }
+- sticky_style = ->(col) { (left = sticky_lefts[col[:key]]) ? "left: #{left}" : nil }
+-# Only a sticky cell gets a style: Hamlit writes style="" for a nil.
+- sticky_attrs = ->(col) { (style = sticky_style.call(col)) ? {style: style} : {} }
+- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1), ("exp-no-mobile" if run.first[:mobile] == false), ("exp-truncate" if run.first[:truncate] && !condensed), *sticky_classes.call(run.first)].compact }
 - run_cell = ->(run, row) { run.first[:merged_cell] ? run.first[:merged_cell].call(row, run.map { |c| c[:key] }) : run.first[:cell].call(row) }
 -# A merged run shares its width (the sum of its shown columns' widths) out by
 -# `merge_share` -- evenly by default --, so its headers spread regularly.
@@ -187,6 +196,19 @@
 -# the toolbar above it stop there too, so the column menu sits at the table's
 -# right edge and the filter pane is never wider than the table.
 - max_width_style = (growing && gaps) ? "max-width: calc(#{min_rem}rem + #{grow_weight} * #{grow_max} + #{gap_count} * #{gap_max})" : nil
+-# Target widths (a column's `target_width:`): the room widens the columns
+-# towards their targets first, then the growing columns past them, then the
+-# gaps -- Wsjrdp::ExpandableTableLayout. A table without targets keeps the
+-# reckoning above.
+- target_layout = (Wsjrdp::ExpandableTableLayout.new(columns: columns, min_rem: min_rem, gap_keys: gap_keys, grow_max: grow_max, gap_max: gap_max) if !condensed && columns.any? { |col| Wsjrdp::ExpandableTableLayout.target_column?(col) })
+- if target_layout
+  - growing = true
+  - col_width = target_layout.method(:col_width)
+  - max_width_style = gaps ? target_layout.max_width_style : nil
+- sticky_lefts.merge!(Wsjrdp::ExpandableTableLayout.sticky_lefts(columns, col_width, selection: !!selection)) unless condensed
+- sticky_selection = sticky_lefts.any? && selection
+- sticky_selection_attrs = sticky_selection ? {class: "exp-sticky", style: "left: 0px"} : {}
+- layout_features = !condensed && (target_layout || sticky_lefts.any? || columns.any? { |col| col[:truncate] })
 - paging_top_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :top) if per_options
 - paging_bottom_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :bottom) if per_options
 -# The filter has its OWN two lines above the toolbar (the filter line and the
@@ -194,6 +216,8 @@
 - has_toolbar = columns_menu || paging_top_html.present? || summary || view || (selection && selection[:all_param]) || sort_bar
 
 = render "shared/wsjrdp/expandable_table_styles"
+- if layout_features
+  = render "shared/wsjrdp/expandable_table_layout_styles"
 = render "shared/wsjrdp/row_click_guard"
 - if selection
   = render "shared/wsjrdp/table_selection_js"
@@ -276,19 +300,21 @@
 
   .table-responsive.exp-table-wrap{ class: ("bk-condensed-wrap" if condensed), data: { exptbl: id_prefix, open_param: param } }
     - table_style = condensed ? nil : "min-width: #{min_rem}rem"
-    - if growing
+    - if target_layout
+      - table_style = target_layout.table_style
+    - elsif growing
       - room = "(100cqw - #{min_rem}rem)"
       - c_expr = grow_weight.positive? ? "clamp(0px, round(down, #{room} / #{grow_weight}, 1px), #{grow_max})" : "0px"
       - g_expr = gap_count.positive? ? "clamp(0px, round(down, (#{room} - #{grow_weight} * var(--exp-c)) / #{gap_count}, 1px), #{gap_max})" : "0px"
       - table_style = "--exp-c: #{c_expr}; --exp-g: #{g_expr}; min-width: #{min_rem}rem; width: calc(#{min_rem}rem + #{grow_weight} * var(--exp-c) + #{gap_count} * var(--exp-g))"
-    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: ("bookings-table-condensed" if condensed), style: table_style }
+    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: [("bookings-table-condensed" if condensed), ("exp-has-sticky" if sticky_lefts.any?)].compact, style: table_style }
       -# Column groups (a column's `group:`): the group's name over a bracket
       -# that spans exactly its columns, whose headers form a second row; every
       -# other header spans both rows, bottom-aligned with them. The fixed table
       -# layout takes its widths from the first row, which then holds the group
       -# cells -- so the widths go into a colgroup.
       - grouped = columns.any? { |col| col[:group].present? }
-      - th_locals = {state: state, condensed: condensed, sort_links: sort_links, sort_names: sort_names, multi_sort: multi_sort, show_ranks: show_ranks, sort_list: sort_list, gap_keys: gap_keys, col_width: col_width, header_align: header_align}
+      - th_locals = {state: state, condensed: condensed, sort_links: sort_links, sort_names: sort_names, multi_sort: multi_sort, show_ranks: show_ranks, sort_list: sort_list, gap_keys: gap_keys, col_width: col_width, header_align: header_align, sticky_classes: sticky_classes, sticky_style: sticky_style}
       - if (grouped || growing) && !condensed
         %colgroup
           - if selection
@@ -299,7 +325,7 @@
         - if grouped
           %tr.exp-col-groups
             - if selection
-              %th.bk-select-cell{ rowspan: 2 }
+              %th.bk-select-cell{ rowspan: 2, **sticky_selection_attrs }
                 %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
             - columns.chunk_while { |a, b| a[:group].present? && a[:group] == b[:group] }.each do |run|
               - if run.first[:group].present?
@@ -314,7 +340,7 @@
         - else
           %tr
             - if selection
-              %th.bk-select-cell{ style: "width: 2rem" }
+              %th.bk-select-cell{ style: ["width: 2rem", ("left: 0px" if sticky_selection)].compact.join("; "), class: ("exp-sticky" if sticky_selection) }
                 %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
             - columns.each do |col|
               = render "shared/wsjrdp/expandable_table_th", col: col, **th_locals
@@ -342,13 +368,13 @@
         %tbody.exp-group{ class: (group_class && group_class.call(row)) }
           %tr.exp-row{ { class: (local_assigns[:row_class] && local_assigns[:row_class].call(row)) }.merge(disclosure) }
             - if selection
-              %td.bk-select-cell
+              %td.bk-select-cell{ **sticky_selection_attrs }
                 - if !selection[:enabled] || selection[:enabled].call(row)
                   %input.form-check-input.bk-select-check{ type: "checkbox", name: selection[:name],
                     value: selection[:id_field].call(row), form: selection[:form], "aria-label": "Zeile auswählen",
                     data: (selection[:row_data] ? selection[:row_data].call(row) : {}) }
             - body_runs.each do |run|
-              %td.exp-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), data: { colkey: run.first[:key] } }= run_cell.call(run, row)
+              %td.exp-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), **sticky_attrs.call(run.first), data: { colkey: run.first[:key] } }= run_cell.call(run, row)
           - Array(sub_rows && sub_rows.call(row)).each do |sub|
             -# A sub-row is a disclosure control like the row it belongs to: the
             -# SAME collapse target, so it opens and closes the group's one
@@ -359,9 +385,9 @@
               -# The selection belongs to the PARENT row: the sub-row gets the
               -# cell so the columns keep lining up, and nothing in it.
               - if selection
-                %td.bk-select-cell
+                %td.bk-select-cell{ **sticky_selection_attrs }
               - body_runs.each do |run|
-                %td.exp-col.exp-sub-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), data: { colkey: run.first[:key] } }= sub_cell.call(sub, run.first[:merge].present? ? run.first.merge(merged_keys: run.map { |c| c[:key] }) : run.first)
+                %td.exp-col.exp-sub-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), **sticky_attrs.call(run.first), data: { colkey: run.first[:key] } }= sub_cell.call(sub, run.first[:merge].present? ? run.first.merge(merged_keys: run.map { |c| c[:key] }) : run.first)
           - if row_expandable
             -# The detail is the group's LAST row: it opens under the whole
             -# group, sub-rows included. exp-open marks the open one for the CSS
@@ -410,11 +436,13 @@
         %tfoot
           %tr.exp-footer-row
             - if selection
-              %td.bk-select-cell
+              %td.bk-select-cell{ **sticky_selection_attrs }
             - columns.each do |col|
-              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-no-mobile" if col[:mobile] == false)].compact, data: { colkey: col[:key] } }= footer.call(col)
+              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-no-mobile" if col[:mobile] == false), ("exp-truncate" if col[:truncate] && !condensed), *sticky_classes.call(col)].compact, **sticky_attrs.call(col), data: { colkey: col[:key] } }= footer.call(col)
 
   - if paging_bottom_html.present?
     .mt-2= paging_bottom_html
 
 = render "shared/wsjrdp/expandable_table_js"
+- if layout_features
+  = render "shared/wsjrdp/expandable_table_layout_js"
