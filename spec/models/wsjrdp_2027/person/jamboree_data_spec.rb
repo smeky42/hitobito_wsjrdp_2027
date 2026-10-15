@@ -36,13 +36,17 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person.reload.allergy_peanut).to be(true)
   end
 
-  it "defaults unanswered comfort choices to comfortable and stores explicit answers" do
+  it "reads an unanswered comfort answer as comfortable without storing it, and stores false as well as true" do
     person.update_columns(jamboree_data: {})
     expect(person.reload.comfortable_on_water).to be(true)
+    expect(Person.where(id: person.id).pick(:jamboree_data)).to eq({})
 
     person.update!(comfortable_on_water: "false")
     expect(person.reload.comfortable_on_water).to be(false)
     expect(Person.where(id: person.id).pick(:jamboree_data)).to include("comfortable_on_water" => false)
+
+    person.update!(comfortable_on_water: "true")
+    expect(Person.where(id: person.id).pick(:jamboree_data)).to include("comfortable_on_water" => true)
   end
 
   it "stores known_as_name only as given, the default apart" do

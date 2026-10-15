@@ -34,6 +34,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   private
 
   ALLERGY_ATTRS = Wsjrdp2027::Person::JamboreeData::ALLERGIES.map { |allergy| "allergy_#{allergy}" }.freeze
+  COMFORT_ATTRS = Wsjrdp2027::Person::JamboreeData::COMFORT_ATTRS.map(&:to_s).freeze
 
   # Every answer of the page "Daten für den Veranstalter": the keys of
   # people.jamboree_data and the person columns the page edits as well.
@@ -84,8 +85,8 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
 
   # The value as stored and, where it differs, its label in brackets:
   # "severe [Schwere anaphylaktische Reaktion (lebensbedrohlich)]",
-  # "true [Langarm]", "2027-07-30 [30.07.2027]"; a free text as it is, and a
-  # value labelled just Ja or Nein ("true", "no") too.
+  # "true [Langarm]", "false [unwohl]", "2027-07-30 [30.07.2027]"; a free text
+  # as it is, and a value labelled just Ja or Nein ("true", "no") too.
   def jamboree_change(attr, from, to)
     from = jamboree_value_text(attr, from)
     to = jamboree_value_text(attr, to)
@@ -111,6 +112,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
       Array(value).map { |v| I18n.t("activerecord.attributes.person.jamboree_medical_equipment.#{v}", default: v) }.join(", ")
     when "uniform_long_sleeve" then I18n.t("people.additional_info_fields.#{value ? "long_sleeve" : "short_sleeve"}")
     when "uniform_order" then I18n.t("people.additional_info_fields.#{value ? "answer_yes" : "answer_no"}")
+    when *COMFORT_ATTRS then I18n.t("people.jamboree_data.#{value ? "comfortable" : "uncomfortable"}")
     when "headgear" then Settings.headgear[value.to_s]
     when "diet" then Settings.diets[value.to_s]
     else

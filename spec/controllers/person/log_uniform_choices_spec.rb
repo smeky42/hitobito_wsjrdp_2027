@@ -35,6 +35,17 @@ describe Person::LogController do
     expect(changes_html).not_to include("[Ja]", "[Nein]")
   end
 
+  it "renders the comfort answers by their form labels" do
+    with_versioning do
+      person.update!(comfortable_in_crowd: true)
+      person.update!(comfortable_in_crowd: false)
+    end
+
+    get(:index, params: {group_id: person.primary_group_id, id: person.id})
+
+    expect(changes_html).to include("Ich fühle mich in Menschenmengen", "true [wohl]", "false [unwohl]")
+  end
+
   it "writes the other answers of the page as stored, a label in brackets where it differs" do
     with_versioning do
       person.update!(headgear: "beanie", diet: "vegan", travel_document_issue_date: Date.new(2020, 5, 4),
