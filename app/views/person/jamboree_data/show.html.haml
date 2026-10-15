@@ -61,14 +61,7 @@
     = render_attrs(@person, *Wsjrdp2027::Person::JamboreeData::JOURNEY_ATTRS)
 
     %h3= t('people.jamboree_data.activities')
-    = render_attrs(@person,
-      :comfortable_on_water,
-      :comfortable_in_water,
-      :comfortable_without_balance,
-      :comfortable_in_crowd,
-      :comfortable_flashing_lights,
-      :comfortable_loud_noise,
-      :comfortable_confined_space)
+    = render_attrs(@person, *Wsjrdp2027::Person::JamboreeData::COMFORT_ATTRS)
     - if @person.jamboree_data_adult?
       = render_attrs(@person, :prior_wsj_experience)
       = render_attrs(@person, :vehicle_registration_number)

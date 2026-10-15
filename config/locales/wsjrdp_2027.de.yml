@@ -364,13 +364,13 @@ de:
         visa_fingerprints_collected: Wurden bereits Fingerabdrücke für ein Schengen-Visum erfasst?
         visa_fingerprints_date: Datum der Fingerabdruckerfassung
         visa_fingerprints_visa_number: Nummer des Visumaufklebers (falls bekannt)
-        comfortable_on_water: Ich fühle mich bei Aktivitäten auf dem Wasser wohl
-        comfortable_in_water: Ich fühle mich beim Schwimmen wohl
-        comfortable_without_balance: Ich fühle mich bei Gleichgewichtsübungen wohl
-        comfortable_in_crowd: Ich fühle mich in Menschenmengen wohl
-        comfortable_flashing_lights: Ich fühle mich bei blinkenden Lichtern wohl
-        comfortable_loud_noise: Ich fühle mich bei lauten Geräuschen wohl
-        comfortable_confined_space: Ich fühle mich in engen Räumen wohl
+        comfortable_on_water: Ich fühle mich bei Aktivitäten auf dem Wasser
+        comfortable_in_water: Ich fühle mich beim Schwimmen
+        comfortable_without_balance: Ich fühle mich bei Gleichgewichtsübungen
+        comfortable_in_crowd: Ich fühle mich in Menschenmengen
+        comfortable_flashing_lights: Ich fühle mich bei blinkenden Lichtern
+        comfortable_loud_noise: Ich fühle mich bei lauten Geräuschen
+        comfortable_confined_space: Ich fühle mich in engen Räumen
         prior_wsj_experience: Frühere Jamboree-Erfahrung
         vehicle_registration_number: Fahrzeugkennzeichen
         dietary_details: Details zur Ernährung
@@ -415,7 +415,7 @@ de:
         mobility_restricted: Mobilität eingeschränkt
         uses_wheelchair: Rollstuhl wird genutzt
         wheelchair_type: Rollstuhltyp
-        uses_mobility_frame: Gehhilfe / Mobilitätsrahmen wird genutzt
+        uses_mobility_frame: Gehhilfe wird genutzt
         other_mobility_needs: Andere Mobilitätsbedarfe vorhanden
         other_mobility_details: Details zu anderen Mobilitätsbedarfen
         sensory_sensitivities: Sensorische Empfindlichkeiten vorhanden
@@ -930,6 +930,9 @@ de:
       journey_unit_help: Deine An- und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.
       journey_self_help: Trage deine An- und Abreise ein sobald du dies für dich geklärt hast. Es ist nicht notwendig alles sofort einzutragen.
       activities: Aktivitäten & Komfort
+      activities_help: Bitte wähle "unwohl" nur aus, wenn du Aktivitäten und Situationen vermeiden möchtest, bei denen diese Umstände auftreten.
+      comfortable: wohl
+      uncomfortable: unwohl
       diet: Ernährung
       allergies: Allergien
       allergy_levels:
