@@ -41,9 +41,20 @@
 #   default         shown before the user picks any columns
 #   css_class       per-column class (responsive hiding); usually derived from
 #                   the collection's css_prefix
+#
+# Widths (doc/wsjrdp/expandable_table.md, "Widths"): `width` is the column's
+# narrowest width; `target_width` (with `target_grow`), `grow` and the table's
+# t.gaps let it widen with the room the table has. `truncate` keeps a cell on
+# one line, `sticky` keeps a leading column in view while the table scrolls
+# sideways.
 class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condensed_label,
-  :header_label, :header_tooltip, :group, :grow, :tabular_nums, :merge, :merge_share, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile, :css_class)
+  :header_label, :header_tooltip, :group, :grow, :target_width, :target_grow, :truncate, :sticky, :tabular_nums,
+  :merge, :merge_share, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile,
+  :css_class)
   SORT_DIRECTIONS = %w[asc desc].freeze
+  # The form `width` and `target_width` take where widths are reckoned with
+  # (target_width, sticky): rem, so the widget can add them up.
+  REM_WIDTH = /\A\d+(\.\d+)?rem\z/
 
   # One further way to sort by a column. It is a SORT KEY of its own (in the ?s=
   # param, in the rows' sort allow-list) but never a column: it cannot be shown,
@@ -80,7 +91,24 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #   grow          how much the column widens with a table that has room to
   #                 spare (t.gaps) -- before any gap grows: a weight, 0 (the
   #                 default) for a column that keeps its width; it widens by
-  #                 weight * the gaps' grow_max at most, 2 twice as much as 1
+  #                 weight * the gaps' grow_max at most, 2 twice as much as 1.
+  #                 With a `target_width` it is the widening PAST the target,
+  #                 once every column has reached its target
+  #   target_width  the width the column widens to FIRST, from `width`, before
+  #                 any column widens past its target (`grow`) and before any
+  #                 gap grows; rem like `width`, at least as wide
+  #   target_grow   how fast the column approaches its target_width compared
+  #                 with the other columns that have one: a weight, 1 by
+  #                 default (when the target is wider than the width); a column
+  #                 that reaches its target stops there and leaves the room to
+  #                 the others
+  #   truncate      true: the column's cells stay on one line, cut off with
+  #                 "…"; a cut-off cell without a tooltip of its own shows its
+  #                 full text in one on hover
+  #   sticky        true: the column stays in view at the left while the table
+  #                 scrolls sideways -- for the LEADING shown columns only (a
+  #                 sticky column behind a non-sticky one scrolls); needs a
+  #                 width in rem, not with merge, group or mobile: false
   #   group         a heading over the header: neighbouring shown columns of the
   #                 same group share one cell of an extra header row ("Rolle"
   #                 over "WSJ" and "Kontingent")
@@ -88,8 +116,12 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #                 breakpoint (768px) its header, cells and footer collapse to
   #                 nothing (the styles' .exp-no-mobile); it stays in the menu
   def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, header_tooltip: nil,
-    group: nil, grow: 0, tabular_nums: nil, merge: nil, merge_share: 1, header_align: nil, numeric: false, width: nil, sort: nil, sort_first: "asc", sort_variants: [], default: false, mobile: true, css_class: nil)
+    group: nil, grow: 0, target_width: nil, target_grow: nil, truncate: false, sticky: false,
+    tabular_nums: nil, merge: nil, merge_share: 1, header_align: nil, numeric: false, width: nil, sort: nil,
+    sort_first: "asc", sort_variants: [], default: false, mobile: true, css_class: nil)
     key = key.to_s
+    target_grow = self.class.validate_target!(key, width, target_width, target_grow, merge)
+    self.class.validate_sticky!(key, width, merge, group, mobile) if sticky
     abbr = (abbr || key).to_s
     sort_first = self.class.validate_direction!(sort_first)
     variants = sort_variants.map do |variant|
@@ -103,7 +135,8 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
     end
     super(key: key, abbr: abbr, label: label,
           condensed_label: condensed_label, header_label: header_label, header_tooltip: header_tooltip, group: group,
-          grow: grow, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
+          grow: grow, target_width: target_width&.to_s, target_grow: target_grow, truncate: truncate ? true : false,
+          sticky: sticky ? true : false, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
           header_align: header_align&.to_s, numeric: numeric, width: width,
           sort: sort, sort_first: sort_first, sort_variants: variants.freeze,
           default: default, mobile: mobile, css_class: css_class)
@@ -114,6 +147,33 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
     return dir if SORT_DIRECTIONS.include?(dir)
 
     raise ArgumentError, "sort direction #{dir.inspect} must be one of #{SORT_DIRECTIONS.join(", ")}"
+  end
+
+  # The target_grow a column gets: the given one, 1 for a target wider than
+  # the width, else 0. Raises for a target the widget cannot reckon with.
+  def self.validate_target!(key, width, target_width, target_grow, merge)
+    if target_width.nil?
+      raise ArgumentError, "column #{key}: target_grow needs a target_width" unless target_grow.nil?
+
+      return 0
+    end
+    unless width.to_s.match?(REM_WIDTH) && target_width.to_s.match?(REM_WIDTH)
+      raise ArgumentError, "column #{key}: width and target_width must be rem (#{width.inspect}, #{target_width.inspect})"
+    end
+    span = target_width.to_f - width.to_f
+    raise ArgumentError, "column #{key}: target_width #{target_width} is narrower than width #{width}" if span.negative?
+    raise ArgumentError, "column #{key}: target_width does not go with merge" if merge.present?
+    return 0 if span.zero? && target_grow.nil?
+    raise ArgumentError, "column #{key}: target_grow must be above 0, not #{target_grow.inspect}" unless target_grow.nil? || target_grow.to_f.positive?
+
+    span.zero? ? 0 : (target_grow || 1)
+  end
+
+  def self.validate_sticky!(key, width, merge, group, mobile)
+    raise ArgumentError, "column #{key}: a sticky column needs a width in rem" unless width.to_s.match?(REM_WIDTH)
+    raise ArgumentError, "column #{key}: sticky does not go with merge" if merge.present?
+    raise ArgumentError, "column #{key}: sticky does not go with group" if group.present?
+    raise ArgumentError, "column #{key}: sticky does not go with mobile: false" if mobile == false
   end
 
   def sortable? = !sort.nil?
@@ -127,6 +187,7 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   def to_table_column(cell:, merged_cell: nil)
     {key: key, abbr: abbr, label: label, condensed_label: condensed_label,
      header_label: header_label, header_tooltip: header_tooltip, group: group, grow: grow,
+     target_width: target_width, target_grow: target_grow, truncate: truncate, sticky: sticky,
      tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, header_align: header_align,
      merged_cell: merged_cell,
      numeric: numeric, width: width, mobile: mobile, css_class: css_class,
