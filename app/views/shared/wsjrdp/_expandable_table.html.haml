@@ -390,10 +390,10 @@
                 %td.exp-col.exp-sub-col{ class: run_classes.call(run), colspan: (run.size if run.size > 1), **sticky_attrs.call(run.first), data: { colkey: run.first[:key] } }= sub_cell.call(sub, run.first[:merge].present? ? run.first.merge(merged_keys: run.map { |c| c[:key] }) : run.first)
           - if row_expandable
             -# The detail is the group's LAST row: it opens under the whole
-            -# group, sub-rows included. exp-open marks the open one for the CSS
-            -# (shared/wsjrdp/_expandable_table_js keeps it in sync on toggle) --
-            -# with sub-rows in between, the detail row is no longer the open
-            -# row's next sibling.
+            -# group, sub-rows included. exp-open marks the open one, so a
+            -# selector reaches it by the class (shared/wsjrdp/_expandable_table_js
+            -# keeps it in sync on toggle) -- with sub-rows in between, the detail
+            -# row is no longer the open row's next sibling.
             %tr.exp-detail-row{ class: ("exp-open" if is_open) }
               %td.p-0{ colspan: cols_count }
                 .collapse.exp-detail{ id: detail_id, class: ("show" if is_open), data: { "exp-key": key } }

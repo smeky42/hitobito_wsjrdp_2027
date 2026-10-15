@@ -9,9 +9,9 @@
 -#  the standalone /fin/bookings/:id page; the "Detailseite" link is the table's
 -#  detail header line (shared/wsjrdp/_detail_links), so the content is the
 -#  same in both places.
--#  The OUTER layout is the shared item-detail card (.bk-item-detail, as used by
--#  the Buchhaltung details) minus the tinted background (-plain); INSIDE, the
--#  booking keeps its own compact grid of labeled fields.
+-#  The OUTER layout is the shared item-detail wrapper (.bk-item-detail, as used
+-#  by the Buchhaltung details); INSIDE, the booking keeps its own compact grid
+-#  of labeled fields.
 -#
 -#  Two host injection slots (both optional lambdas booking -> HTML):
 -#    top:   rendered at the very TOP of the detail (e.g. the reconciliation
@@ -28,7 +28,7 @@
 -# too (idempotent once-guard) so the standalone /bookkeeping/bookings/:id page
 -# also gets the light labels.
 = render "shared/wsjrdp/expandable_table_styles"
-.bk-item-detail.bk-item-detail-plain
+.bk-item-detail
   - if top && (top_html = top.call(booking)).present?
     .mb-3= top_html
 

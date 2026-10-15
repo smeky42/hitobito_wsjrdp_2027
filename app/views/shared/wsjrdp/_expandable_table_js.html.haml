@@ -40,9 +40,9 @@
     // The detail row is the LAST row of its group, so with sub-rows between the
     // two it is not the open row's next sibling any more and CSS cannot reach it
     // by adjacency. Mark it instead: the server renders .exp-open on a row that
-    // starts open, this keeps the class in sync (see the .exp-open rule in
-    // shared/wsjrdp/_expandable_table_styles). The row of the OWN detail is the
-    // nearest one, so a nested table's detail marks its own row, not the outer.
+    // starts open, this keeps the class in sync once the detail is shown or
+    // hidden. The row of the OWN detail is the nearest one, so a nested table's
+    // detail marks its own row, not the outer.
     function markOpen(detail, open) {
       var row = detail.closest("tr.exp-detail-row");
       if (row) row.classList.toggle("exp-open", open);

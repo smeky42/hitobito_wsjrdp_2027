@@ -225,7 +225,7 @@ finance tier away for the session, and the empty value gives them back
 
 Two phases, like `Wsjrdp::ExpandableTableBuilder`: the block **declares**
 sections into a `Fin::DetailBuilder`, then `fin_detail` renders them through
-`fin/shared/_detail` inside the shared `.bk-item-detail` card. No HTML is
+`fin/shared/_detail` inside the shared `.bk-item-detail` wrapper. No HTML is
 produced inside the block except by `d.custom`, whose block is captured on the
 spot.
 

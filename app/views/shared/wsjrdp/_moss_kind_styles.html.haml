@@ -53,9 +53,10 @@
      content and fight the table's own borders. Bootstrap 5.2 paints a row's
      hover and stripe tint through an inset box-shadow of its own
      (--bs-table-accent-bg) on every cell; that one is repeated here, or the
-     first cell would lose the tint the rest of the row gets. The cell's own
-     padding grows by the rail's width, so the content keeps its distance from
-     the rail the same as from the cell edge.
+     first cell would lose the tint the rest of the row gets. The table's first
+     column already starts further in (room for an open group's edge,
+     shared/wsjrdp/_expandable_table_styles), which leaves the content clear of
+     the rail.
      A row carries the class where one row is one record (the wallet); where a
      record owns a GROUP of rows -- the transactions list, whose reimbursement
      brings an expense row per expense -- the group's tbody carries it, and the
@@ -69,8 +70,12 @@
   tbody.moss-kind-reimbursement > tr > td:first-child,
   tbody.moss-kind-top_up > tr > td:first-child {
     box-shadow: inset 3px 0 0 var(--moss-kind-bg), inset 0 0 0 9999px var(--bs-table-accent-bg, transparent);
-    padding-left: 7px; /* the table's 4px cell padding plus the 3px rail */
   }
+  /* An OPEN group's edge (shared/wsjrdp/_expandable_table_styles, "the open
+     group") takes the kind's text colour: the pale rail lights up while the
+     group is open, the 4px edge covering it, and the end line follows. */
+  tbody.moss-kind-card_transaction, tbody.moss-kind-invoice,
+  tbody.moss-kind-reimbursement, tbody.moss-kind-top_up { --exp-edge: var(--moss-kind-fg); }
 
   /* The overview tiles (/fin/moss): the kind's colour as a top edge. The
      fallback keeps a tile without a kind class (the total tile) unmarked
