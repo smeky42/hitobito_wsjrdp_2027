@@ -129,6 +129,15 @@ module Wsjrdp2027::Person::JamboreeData
   # allergy_<key>_severity, which stay what is stored.
   ALLERGY_LEVELS = (%w[none] + ALLERGY_SEVERITIES.reverse).freeze
   ALLERGY_LEVEL_ATTRS = ALLERGIES.map { |allergy| :"allergy_#{allergy}_level" }.freeze
+  COMFORT_ATTRS = %i[
+    comfortable_on_water
+    comfortable_in_water
+    comfortable_without_balance
+    comfortable_in_crowd
+    comfortable_flashing_lights
+    comfortable_loud_noise
+    comfortable_confined_space
+  ].freeze
 
   TEXT_ATTRS = %i[
     known_as_name
@@ -187,14 +196,7 @@ module Wsjrdp2027::Person::JamboreeData
   ].freeze
 
   BOOLEAN_ATTRS = (
-    %i[
-      comfortable_on_water
-      comfortable_in_water
-      comfortable_without_balance
-      comfortable_in_crowd
-      comfortable_flashing_lights
-      comfortable_loud_noise
-      comfortable_confined_space
+    COMFORT_ATTRS + %i[
       refrigerated_medication_needed
       mobility_restricted
       uses_wheelchair
@@ -292,9 +294,21 @@ module Wsjrdp2027::Person::JamboreeData
       attribute attr, :date
     end
 
-    BOOLEAN_ATTRS.each do |attr|
+    (BOOLEAN_ATTRS - COMFORT_ATTRS).each do |attr|
       jsonb_accessor :jamboree_data, attr, cast: :boolean
       attribute attr, :boolean
+    end
+
+    COMFORT_ATTRS.each do |attr|
+      store_accessor :jamboree_data, attr
+      define_method(attr) do
+        value = ActiveModel::Type::Boolean.new.cast(read_store_attribute(:jamboree_data, attr))
+        value.nil? ? true : value
+      end
+      define_method(:"#{attr}=") do |value|
+        value = ActiveModel::Type::Boolean.new.cast(value)
+        value.nil? ? jamboree_data.delete(attr.to_s) : write_store_attribute(:jamboree_data, attr, value)
+      end
     end
 
     # true, false, or nil while unanswered; a blank answer removes the key.

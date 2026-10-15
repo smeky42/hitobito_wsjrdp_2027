@@ -104,6 +104,18 @@ describe Person::JamboreeDataController, type: :controller do
     expect(yp.reload).to have_attributes(uniform_order: nil, uniform_long_sleeve: false)
   end
 
+  it "offers defaulted Wohl/Unwohl choices and explains when to choose Unwohl" do
+    get :edit, params: {id: ul.id}
+
+    expect(page.at_css("input#person_comfortable_on_water_true")["checked"]).to be_present
+    expect(page.css("input[name='person[comfortable_on_water]']").pluck("value")).to eq(%w[true false])
+    expect(page.text).to include("Ich fühle mich bei Aktivitäten auf dem Wasser", "wohl", "unwohl",
+      "Bitte wähle \"unwohl\" nur aus, wenn du Aktivitäten und Situationen vermeiden möchtest, bei denen diese Umstände auftreten.")
+
+    put :update, params: {id: ul.id, person: {comfortable_on_water: "false"}}
+    expect(ul.reload.comfortable_on_water).to be(false)
+  end
+
   it "shows the default name tag grey with where it comes from, the form without a placeholder" do
     ul.update_columns(first_name: "Anna Maria", nickname: nil, jamboree_data: {})
 
@@ -188,13 +200,13 @@ describe Person::JamboreeDataController, type: :controller do
     expect(page.at_css("select#person_visa_needed option[selected]")&.text).to eq("Nein")
     expect(page.css("select#person_visa_needed option").map(&:text)).not_to include("")
     expect(page.at_css("input#person_english_reading_none")["checked"]).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_'])").size).to eq(16)
+    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_']):not([name^='person[comfortable_'])").size).to eq(16)
   end
 
   it "shows YP only their applicable questions in the form and on the page" do
     get :edit, params: {id: yp.id}
     expect(page.at_css("#person_english_reading_none")).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_'])").size).to eq(4)
+    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_']):not([name^='person[comfortable_'])").size).to eq(4)
     %w[mothers_first_name fathers_first_name mothers_surname_at_birth
       french_reading spanish_reading arabic_reading prior_wsj_experience vehicle_registration_number].each do |attr|
       expect(page.at_css("#person_#{attr}")).to be_nil

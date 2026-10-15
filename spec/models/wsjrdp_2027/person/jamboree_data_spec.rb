@@ -36,6 +36,15 @@ describe Wsjrdp2027::Person::JamboreeData do
     expect(person.reload.allergy_peanut).to be(true)
   end
 
+  it "defaults unanswered comfort choices to comfortable and stores explicit answers" do
+    person.update_columns(jamboree_data: {})
+    expect(person.reload.comfortable_on_water).to be(true)
+
+    person.update!(comfortable_on_water: "false")
+    expect(person.reload.comfortable_on_water).to be(false)
+    expect(Person.where(id: person.id).pick(:jamboree_data)).to include("comfortable_on_water" => false)
+  end
+
   it "stores known_as_name only as given, the default apart" do
     person.update_columns(nickname: "Kim", jamboree_data: {})
     expect(person.reload).to have_attributes(known_as_name: nil, known_as_name_or_default: "Kim",

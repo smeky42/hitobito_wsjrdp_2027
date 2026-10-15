@@ -185,13 +185,29 @@
 
     = field_set_tag do
       %h3= t('people.jamboree_data.activities')
-      = f.labeled_boolean_field :comfortable_on_water
-      = f.labeled_boolean_field :comfortable_in_water
-      = f.labeled_boolean_field :comfortable_without_balance
-      = f.labeled_boolean_field :comfortable_in_crowd
-      = f.labeled_boolean_field :comfortable_flashing_lights
-      = f.labeled_boolean_field :comfortable_loud_noise
-      = f.labeled_boolean_field :comfortable_confined_space
+      .text-muted.mw-90ch.mb-2= t('people.jamboree_data.activities_help')
+      :css
+        .wsjrdp-comfort-row { display: grid; grid-template-columns: 26rem auto; justify-content: start; align-items: center;
+          gap: .1rem .75rem; margin-bottom: .5rem; }
+        .wsjrdp-comfort-row > :first-child { text-align: left; }
+        .wsjrdp-comfort-group { margin-bottom: 0; }
+        .wsjrdp-comfort-group .btn { width: 6.5rem; }
+        .wsjrdp-comfort-block { container-type: inline-size; }
+        @container (max-width: 28rem) {
+          .wsjrdp-comfort-row { grid-template-columns: 1fr; }
+          .wsjrdp-comfort-group { display: flex; }
+          .wsjrdp-comfort-group .btn { flex: 1 1 0; width: auto; }
+        }
+      .wsjrdp-comfort-block
+        - Wsjrdp2027::Person::JamboreeData::COMFORT_ATTRS.each do |attr|
+          - comfort_value = @person.public_send(attr)
+          .wsjrdp-comfort-row
+            %div= Person.human_attribute_name(attr)
+            .btn-group.wsjrdp-comfort-group{role: "group", "aria-label": Person.human_attribute_name(attr)}
+              - comfort_options.each do |value, label|
+                - id = "person_#{attr}_#{value}"
+                = f.radio_button attr, value, id: id, class: "btn-check", autocomplete: "off", checked: value == comfort_value
+                %label.btn.btn-sm.btn-outline-primary{for: id}= label
       - if @person.jamboree_data_adult?
         = f.labeled_input_field :prior_wsj_experience
         - if @person.effective_wsj_role == 'UL'

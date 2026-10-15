@@ -113,6 +113,8 @@ module Wsjrdp2027::PeopleHelper
   # The choices of the inline radio buttons of a boolean: Ja/Nein
   def yes_no_options = {true => t("people.additional_info_fields.answer_yes"), false => t("people.additional_info_fields.answer_no")}
 
+  def comfort_options = {true => t("people.jamboree_data.comfortable"), false => t("people.jamboree_data.uncomfortable")}
+
   def sleeve_options = {true => t("people.additional_info_fields.long_sleeve"), false => t("people.additional_info_fields.short_sleeve")}
 
   def format_person_uniform_long_sleeve(person)
@@ -141,6 +143,12 @@ module Wsjrdp2027::PeopleHelper
   %i[visa_residence_other_than_nationality visa_fingerprints_collected].each do |attr|
     define_method(:"format_person_#{attr}") do |person|
       person.public_send(attr).nil? ? not_chosen_tag : yes_no_options[person.public_send(attr)]
+    end
+  end
+
+  Wsjrdp2027::Person::JamboreeData::COMFORT_ATTRS.each do |attr|
+    define_method(:"format_person_#{attr}") do |person|
+      comfort_options[person.public_send(attr)]
     end
   end
 
