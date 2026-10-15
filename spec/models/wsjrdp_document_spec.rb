@@ -127,7 +127,8 @@ describe WsjrdpDocument do
       expect(document(key: "Medical")).not_to be_valid
       expect(document(secondary_key: "page-2")).not_to be_valid
       expect(document(derived_from: create_document, derivation_key: "thumb__400")).not_to be_valid
-      expect(document(key: "registration-generated", secondary_key: "page_2")).to be_valid
+      expect(document(key: "registration-generated")).not_to be_valid
+      expect(document(key: "registration_generated", secondary_key: "page_2")).to be_valid
     end
 
     it "refuse a subject of an unknown kind" do

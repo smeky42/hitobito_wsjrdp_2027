@@ -17,8 +17,8 @@ describe Wsjrdp2027::DocumentFilename do
   describe ".build" do
     it "gives the name of the registration uploads with only a key" do
       expect(build(key: "medical", ext: "pdf")).to eq("2026-10-11-14-03-07--791-medical.pdf")
-      expect(build(key: "registration-generated", ext: "pdf"))
-        .to eq("2026-10-11-14-03-07--791-registration-generated.pdf")
+      expect(build(key: "registration_generated", ext: "pdf"))
+        .to eq("2026-10-11-14-03-07--791-registration_generated.pdf")
     end
 
     it "writes numbers above 0, the secondary part, the derivation and the suffix" do
@@ -42,11 +42,11 @@ describe Wsjrdp2027::DocumentFilename do
     it "gives back what build took" do
       [
         {key: "medical", ext: "pdf"},
-        {key: "registration-generated", ext: "pdf"},
+        {key: "registration_generated", ext: "pdf"},
         {key: "deregistration", key_number: 2, secondary_key: "signed_form", secondary_key_number: 3, suffix: 4,
          ext: "pdf"},
         {key: "medical", secondary_key_number: 2, ext: "pdf"},
-        {key: "a-b_c", secondary_key: "x2", derivation_key: "thumb_400", ext: "png"},
+        {key: "a_b_c", secondary_key: "x2", derivation_key: "thumb_400", ext: "png"},
         {key: "medical"}
       ].each do |attrs|
         parsed = described_class.parse(build(**attrs))
@@ -72,9 +72,17 @@ describe Wsjrdp2027::DocumentFilename do
   end
 
   describe ".key_error" do
-    it "accepts keys of a-z, 0-9, - and _ starting with a letter" do
-      %w[medical registration-generated good_conduct a-_b thumb_400 x2 a].each do |key|
+    it "accepts keys of a-z, 0-9 and _ starting with a letter" do
+      %w[medical registration_generated good_conduct a_b thumb_400 x2 a page_2].each do |key|
         expect(described_class.key_error(key)).to be_nil, key
+      end
+    end
+
+    it "agrees with KEY_FORMAT" do
+      keys = %w[a medical good_conduct page_2 a_1_b x2 _a a_ a__b 2x Medical registration-generated a.b a~b] +
+        ["", "a" * 40, "a" * 41]
+      keys.each do |key|
+        expect(key.match?(described_class::KEY_FORMAT)).to eq(described_class.key_error(key).nil?), key
       end
     end
 
@@ -86,11 +94,10 @@ describe Wsjrdp2027::DocumentFilename do
       expect(described_class.key_error("_a")).to eq(:invalid_characters)
       expect(described_class.key_error("a.b")).to eq(:invalid_characters)
       expect(described_class.key_error("a~b")).to eq(:invalid_characters)
-      expect(described_class.key_error("a--b")).to eq(:double_separator)
+      expect(described_class.key_error("registration-generated")).to eq(:invalid_characters)
+      expect(described_class.key_error("page-2")).to eq(:invalid_characters)
       expect(described_class.key_error("a__b")).to eq(:double_separator)
-      expect(described_class.key_error("a-")).to eq(:trailing_separator)
       expect(described_class.key_error("a_")).to eq(:trailing_separator)
-      expect(described_class.key_error("page-2")).to eq(:trailing_number)
     end
   end
 

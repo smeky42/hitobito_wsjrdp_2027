@@ -40,10 +40,11 @@ of document it is and which of several (0 where there is one), e.g.
 
 A key (`key`, `secondary_key`, `derivation_key`):
 
-- consists of `a-z`, `0-9`, `-` and `_` and starts with a letter;
+- consists of `a-z`, `0-9` and `_` and starts with a letter -- `-` separates
+  the parts of a file name and is never part of a key;
 - is at most 40 characters long;
-- contains no `--` and no `__`;
-- ends neither in `-` or `_` nor in `-<digits>`.
+- contains no `__`;
+- does not end in `_`.
 
 The model checks this (`DocumentFilename.key_error`); the file name relies on
 it.
@@ -136,10 +137,10 @@ Keys of a rule, all optional:
 
 The registration uploads (`contract`, `sepa`, `medical`, `photo_permission`,
 `passport`, `data_agreement`, `recommendation`, `good_conduct`,
-`registration-generated`) are kinds of `Person`, each with its column of
+`registration_generated`) are kinds of `Person`, each with its column of
 `people`: PDFs only, read by
 `person` and `update` (`contract` and `sepa` also by `finance_audit`),
-written and hidden by `log`; `registration-generated` is written only by the
+written and hidden by `log`; `registration_generated` is written only by the
 system.
 
 ## Upload root and folders
@@ -172,15 +173,15 @@ Examples (after `2026-10-11-14-03-07`):
 
 ```
 --791-medical.pdf
---791-registration-generated.pdf
+--791-registration_generated.pdf
 _1--791-deregistration-2--signed_form-3.pdf
 --791-deregistration-2--signed_form-3~thumb_400.png
 --791-medical---2.pdf
 ```
 
 With only `key` set this is the name the registration uploads have. Every
-name parses back (`DocumentFilename.parse`): keys contain no `.`, `~` or
-`--`, and none ends in `-<digits>`.
+name parses back (`DocumentFilename.parse`): keys contain no `-`, `.` or
+`~`.
 
 The extension:
 

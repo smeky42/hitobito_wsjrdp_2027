@@ -20,7 +20,7 @@ module Wsjrdp::TagSelectHelper
   # The access entries of the document lists (Wsjrdp2027::DocumentAccess);
   # other entries of their form can be typed in.
   ACCESS_ENTRIES = (%w[person log update] + Wsjrdp2027::DocumentAccess::FINANCE_ENTRIES).freeze
-  ACCESS_ENTRY_PATTERN = "^[a-z](?:[a-z0-9_]*[a-z0-9])?$"
+  ACCESS_ENTRY_PATTERN = WsjrdpDocumentKind::ENTRY_JS_PATTERN
 
   # options: [[value, description], ...]; a selected value not among them is
   # added at the end.
