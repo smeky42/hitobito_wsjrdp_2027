@@ -299,16 +299,11 @@ module Wsjrdp2027::Person::JamboreeData
       attribute attr, :boolean
     end
 
+    # Comfort answers keep false too; never answered (a missing key) reads as
+    # comfortable, true, which is not stored.
     COMFORT_ATTRS.each do |attr|
-      store_accessor :jamboree_data, attr
-      define_method(attr) do
-        value = ActiveModel::Type::Boolean.new.cast(read_store_attribute(:jamboree_data, attr))
-        value.nil? ? true : value
-      end
-      define_method(:"#{attr}=") do |value|
-        value = ActiveModel::Type::Boolean.new.cast(value)
-        value.nil? ? jamboree_data.delete(attr.to_s) : write_store_attribute(:jamboree_data, attr, value)
-      end
+      jsonb_accessor :jamboree_data, attr, cast: :boolean, delete_on_blank: false, default: true
+      attribute attr, :boolean
     end
 
     # true, false, or nil while unanswered; a blank answer removes the key.

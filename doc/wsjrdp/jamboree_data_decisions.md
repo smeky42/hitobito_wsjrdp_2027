@@ -157,7 +157,8 @@ The person log writes every answer of this page (the keys of
 `jamboree_data` and `shirt_size`, `uniform_size`, `uniform_long_sleeve`,
 `uniform_order`, `headgear`, `diet`) as stored, with its label in brackets
 where the label differs: `severe [Schwere anaphylaktische Reaktion
-(lebensbedrohlich)]`, `true [Langarm]`, `2027-07-30 [30.07.2027]`; a free text
+(lebensbedrohlich)]`, `true [Langarm]`, `false [unwohl]`, `2027-07-30
+[30.07.2027]`; a free text
 as it is, and a value labelled just Ja or Nein too (`true`, `false`, `no`);
 a country as its code alone (`DE`)
 (`Wsjrdp2027::PaperTrail::VersionDecorator#jamboree_change`). An

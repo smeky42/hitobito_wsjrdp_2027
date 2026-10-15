@@ -11,12 +11,16 @@ module WsjrdpJsonbHelper
   extend ActiveSupport::Concern
   include ActiveRecord::Store
 
+  # jsonb_accessor's `default:` when none is given (nil is a default of its own).
+  NOT_GIVEN = Object.new.freeze
+
   module ClassMethods
     # cast: :boolean -- values are cast with ActiveModel::Type::Boolean before
     # the blank check, so form params ("1"/"0"/"true"/"false") behave like real
     # booleans. Combined with delete_on_blank (false.blank? is true), clearing
     # a boolean flag REMOVES the key from the JSONB: absent == false == the
-    # default. Also defines a `<key>?` predicate.
+    # default. Also defines a `<key>?` predicate. With delete_on_blank: false a
+    # false is stored as false instead.
     #
     # cast: :date -- values are cast with ActiveModel::Type::Date (a Date, an
     # ISO string or a form's "dd.mm.yyyy") and stored as an ISO string; the
@@ -28,7 +32,17 @@ module WsjrdpJsonbHelper
     #
     # cast: :countries -- the same for each entry of a comma-separated list
     # (Wsjrdp::CountryLookup.codes_of, "Deutsch, Elbisch" => "DE, Elbisch").
-    def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil, cast: nil)
+    #
+    # default -- what the reader answers for an absent key or a stored null,
+    # for any cast; it is never stored. Not given: false with cast: :boolean,
+    # else nil. An explicit default: nil lets a boolean reader tell an absent
+    # key (never answered) from a stored false.
+    def jsonb_accessor(store_attribute, key, prefix: nil, suffix: nil, strip: false, delete_on_blank: true, created_at_key: nil, updated_at_key: nil, cast: nil, default: NOT_GIVEN)
+      absent = if default.equal?(NOT_GIVEN)
+        (cast == :boolean) ? false : nil
+      else
+        default
+      end
       accessor_prefix =
         case prefix
         when String, Symbol
@@ -77,23 +91,29 @@ module WsjrdpJsonbHelper
             write_store_attribute(store_attribute, key, value)
           end
         end
-        # A boolean key answers true or false, never nil: an absent key is
-        # what "false" looks like in the store, and a reader that returned nil
-        # for it would render as an empty field instead of "nein". The cast
-        # also protects against a value some other path wrote as a string --
-        # "0" is false here, where a bare !! would call it true.
+        # A boolean key answers true or false, by default never nil: an absent
+        # key is what "false" looks like in the store, and a reader that
+        # returned nil for it would render as an empty field instead of
+        # "nein". The cast also protects against a value some other path
+        # wrote as a string -- "0" is false here, where a bare !! would call it
+        # true. Every reader answers `absent` for an absent key or a stored
+        # null.
         if cast == :boolean
           read_as_boolean = lambda do |record|
-            !!ActiveModel::Type::Boolean.new.cast(
-              record.send(:read_store_attribute, store_attribute, key)
-            )
+            stored = record.send(:read_store_attribute, store_attribute, key)
+            stored.nil? ? absent : !!ActiveModel::Type::Boolean.new.cast(stored)
           end
           define_method(:"#{accessor_key}") { read_as_boolean.call(self) }
           define_method(:"#{accessor_key}?") { read_as_boolean.call(self) }
-        end
-        if cast == :date
+        elsif cast == :date
           define_method(:"#{accessor_key}") do
-            ActiveModel::Type::Date.new.cast(read_store_attribute(store_attribute, key))
+            stored = read_store_attribute(store_attribute, key)
+            stored.nil? ? absent : ActiveModel::Type::Date.new.cast(stored)
+          end
+        elsif !default.equal?(NOT_GIVEN)
+          define_method(:"#{accessor_key}") do
+            stored = read_store_attribute(store_attribute, key)
+            stored.nil? ? absent : stored
           end
         end
       end

@@ -200,13 +200,13 @@
         }
       .wsjrdp-comfort-block
         - Wsjrdp2027::Person::JamboreeData::COMFORT_ATTRS.each do |attr|
-          - comfort_value = @person.public_send(attr)
+          - selected = @person.public_send(attr)
           .wsjrdp-comfort-row
             %div= Person.human_attribute_name(attr)
             .btn-group.wsjrdp-comfort-group{role: "group", "aria-label": Person.human_attribute_name(attr)}
               - comfort_options.each do |value, label|
                 - id = "person_#{attr}_#{value}"
-                = f.radio_button attr, value, id: id, class: "btn-check", autocomplete: "off", checked: value == comfort_value
+                = f.radio_button attr, value, id: id, class: "btn-check", autocomplete: "off", checked: value == selected
                 %label.btn.btn-sm.btn-outline-primary{for: id}= label
       - if @person.jamboree_data_adult?
         = f.labeled_input_field :prior_wsj_experience
