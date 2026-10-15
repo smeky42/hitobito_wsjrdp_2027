@@ -34,6 +34,11 @@ describe WsjrdpDocumentKind do
   it "checks keys, rights entries and file restrictions" do
     expect(problems(key: "Letter")).to eq([:key])
     expect(problems(secondary_key: "page-2")).to eq([:secondary_key])
+    %w[finance_ _log fin__audit Log a-b].each do |entry|
+      expect(problems(readable_by: ["log", entry])).to eq([:readable_by]), entry
+    end
+    expect(problems(readable_by: ["a" * 30])).to be_empty
+    expect(problems(readable_by: ["a" * 31])).to eq([:readable_by])
     expect(problems(readable_by: %w[log finance_]))
       .to eq([:readable_by])
     expect(problems(content_types: %w[application/pdf image/* pdf])).to eq([:content_types])

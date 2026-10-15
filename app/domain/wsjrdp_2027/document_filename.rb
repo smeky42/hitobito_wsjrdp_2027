@@ -20,9 +20,8 @@ module Wsjrdp2027
   #   find, else none.
   #
   # With only key set this is the name of the registration uploads, e.g.
-  # "2026-10-11-14-03-07--791-medical.pdf". Keys contain no "." and the
-  # separators "--" and "~" never occur inside a key, so every name parses
-  # back (parse).
+  # "2026-10-11-14-03-07--791-medical.pdf". Keys contain no "-", "." or "~",
+  # so every name parses back (parse).
   module DocumentFilename
     TIMESTAMP_FORMAT = "%Y-%m-%d-%H-%M-%S"
     KEY_MAX_LENGTH = 40
@@ -67,23 +66,29 @@ module Wsjrdp2027
     NAME_FORMAT = /\A(?<timestamp>\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})(?:_(?<suffix>[1-9]\d*))?--(?<subject_id>\d+)-(?<keys>[^.]+)(?:\.(?<ext>.+))?\z/
     PART_FORMAT = /\A(?<key>.*?)(?:-(?<number>[1-9]\d*))?\z/
     EXTENSION_FORMAT = /\A[a-z0-9]+(?:\.[a-z0-9]+)*\z/
+    # A key: a letter, then letters and digits with at most one "_" before
+    # each -- so no "_" at either end and no "__" -- at most KEY_MAX_LENGTH
+    # characters. KEY_PATTERN without anchors and length, as an HTML pattern
+    # takes it.
+    KEY_PATTERN = "[a-z](?:_?[a-z0-9])*"
+    KEY_FORMAT = /\A(?=.{1,#{KEY_MAX_LENGTH}}\z)#{KEY_PATTERN}\z/
 
     module_function
 
-    # Whether key may be a key, a secondary_key or a derivation_key: a-z,
-    # 0-9, "-" and "_", starting with a letter, at most 40 characters, no
-    # "--" or "__", no "-" or "_" at the end and no "-<digits>" at the end.
-    def valid_key?(key) = key_error(key).nil?
+    # Whether key may be a key, a secondary_key or a derivation_key
+    # (KEY_FORMAT). "-" is the separator of the name's parts and never part
+    # of a key.
+    def valid_key?(key) = key.to_s.match?(KEY_FORMAT)
 
-    # Why key is no valid key (a symbol), nil when it is one.
+    # Why key is no valid key (a symbol), nil when it is one -- KEY_FORMAT
+    # rule by rule, so that a message can say which one is broken.
     def key_error(key)
       key = key.to_s
       if key.empty? then :blank
       elsif key.length > KEY_MAX_LENGTH then :too_long
-      elsif !key.match?(/\A[a-z][a-z0-9_-]*\z/) then :invalid_characters
-      elsif key.include?("--") || key.include?("__") then :double_separator
-      elsif key.end_with?("-", "_") then :trailing_separator
-      elsif key.match?(/-\d+\z/) then :trailing_number
+      elsif !key.match?(/\A[a-z][a-z0-9_]*\z/) then :invalid_characters
+      elsif key.include?("__") then :double_separator
+      elsif key.end_with?("_") then :trailing_separator
       end
     end
 

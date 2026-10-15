@@ -103,10 +103,9 @@ de:
         wsjrdp_document:
           key_blank: darf nicht leer sein.
           key_too_long: darf höchstens 40 Zeichen lang sein.
-          key_invalid_characters: muss mit einem Kleinbuchstaben beginnen und darf nur a–z, 0–9, - und _ enthalten.
-          key_double_separator: darf weder -- noch __ enthalten.
-          key_trailing_separator: darf nicht auf - oder _ enden.
-          key_trailing_number: darf nicht auf -<Zahl> enden.
+          key_invalid_characters: muss mit einem Kleinbuchstaben beginnen und darf nur a–z, 0–9 und _ enthalten.
+          key_double_separator: darf keinen doppelten Unterstrich (__) enthalten.
+          key_trailing_separator: darf nicht auf _ enden.
           attributes:
             base:
               slot_taken: Es gibt schon ein aktuelles Dokument dieser Art; ersetze es stattdessen.
@@ -118,10 +117,9 @@ de:
         wsjrdp_document_kind:
           key_blank: darf nicht leer sein.
           key_too_long: darf höchstens 40 Zeichen lang sein.
-          key_invalid_characters: muss mit einem Kleinbuchstaben beginnen und darf nur a–z, 0–9, - und _ enthalten.
-          key_double_separator: darf weder -- noch __ enthalten.
-          key_trailing_separator: darf nicht auf - oder _ enden.
-          key_trailing_number: darf nicht auf -<Zahl> enden.
+          key_invalid_characters: muss mit einem Kleinbuchstaben beginnen und darf nur a–z, 0–9 und _ enthalten.
+          key_double_separator: darf keinen doppelten Unterstrich (__) enthalten.
+          key_trailing_separator: darf nicht auf _ enden.
           invalid_entries: "enthält ungültige Einträge: %{entries}"
           not_a_list: muss eine Liste von Regeln sein.
           invalid_rule: "Regel %{number} ist ungültig (%{problem})."

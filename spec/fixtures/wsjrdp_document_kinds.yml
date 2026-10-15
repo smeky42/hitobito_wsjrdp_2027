@@ -115,7 +115,7 @@ good_conduct:
 
 registration_generated:
   subject_type: Person
-  key: registration-generated
+  key: registration_generated
   people_column_name: generated_registration_pdf
   secondary_key: ""
   label: "Anmeldung (erzeugt)"

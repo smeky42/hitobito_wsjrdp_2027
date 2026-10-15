@@ -34,7 +34,12 @@
 #   missing_tag     {"tag" => ..., "from_status" => [...], "remove_on_upload" => bool}:
 #                   the tag marks the document missing from these statuses on
 class WsjrdpDocumentKind < ActiveRecord::Base
-  ENTRY_FORMAT = /\A[a-z](?:[a-z0-9_]*[a-z0-9])?\z/
+  # An access entry (person, log, finance_audit, ...): formed like a key
+  # (Wsjrdp2027::DocumentFilename::KEY_PATTERN), at most ENTRY_MAX_LENGTH
+  # characters. ENTRY_JS_PATTERN is the same for a JavaScript RegExp.
+  ENTRY_MAX_LENGTH = 30
+  ENTRY_FORMAT = /\A(?=.{1,#{ENTRY_MAX_LENGTH}}\z)#{Wsjrdp2027::DocumentFilename::KEY_PATTERN}\z/
+  ENTRY_JS_PATTERN = "^(?=.{1,#{ENTRY_MAX_LENGTH}}$)#{Wsjrdp2027::DocumentFilename::KEY_PATTERN}$"
   CONTENT_TYPE_FORMAT = %r{\A[a-z0-9][a-z0-9.+-]*/(?:\*|[a-z0-9][a-z0-9.+-]*)\z}
   EXTENSION_FORMAT = /\A[a-z0-9]+(?:\.[a-z0-9]+)*\z/
   RULE_KEYS = %w[roles offer_to not_for_status required missing_tag].freeze
