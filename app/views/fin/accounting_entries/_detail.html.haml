@@ -28,7 +28,7 @@
 -# AccountingEntry) -- neither renders a link that could only answer 403.
 - person_val = e.subject.is_a?(Person) ? assoc_link(e.subject) : e.subject_type
 - source = e.direct_debit_pre_notification_id ? "SEPA-Einzug" : (e.camt_transaction_id ? "Kontoauszug" : (e.moss_booking_id ? "Moss" : nil))
-.bk-item-detail.bk-item-detail-plain
+.bk-item-detail
   -# Grid: Buchungsdatum / Valuta / Beschreibung (2 cols) first, then amount/meta.
   - head_row = [["Buchungsdatum", e.booking_date&.strftime("%d.%m.%Y")], ["Valuta", e.value_date&.strftime("%d.%m.%Y")], ["Beschreibung", e.description, 2]]
   - meta = [["Betrag", "#{cents_to_eur_display_or_nil(e.amount_cents)} €", 1, :end]]

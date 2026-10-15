@@ -882,6 +882,35 @@ never touch the row set). Consequently:
 - keys that are not on the rendered page are ignored, and their number is
   bounded so a hand-written URL cannot grow without limit.
 
+#### Open rows: the look
+
+An open row, its sub-rows and its detail read as one block
+(`shared/wsjrdp/_expandable_table_styles`, "the open group"):
+
+- a **4px edge** on the left, from the row down to the detail's end — painted
+  over the first cell and as a strip of the detail, so no content moves;
+- the row on a very light **background** (`--exp-open-bg`, Bootstrap's
+  gray-100), its sub-rows on half of it (`--exp-open-sub-bg`);
+- the detail ends with a **1px line** in the edge's colour over a soft
+  **shadow**; the shadow falls into 10px of room of its own under the detail,
+  never onto the next row;
+- the detail keeps **10px** above and below its content (`--exp-detail-pad-y`).
+
+Under the pointer, an open group **mixes** instead of switching colour: its
+rows 40% their own background and 60% the hover colour, the edge and the end
+line 40% the edge and 60% `--exp-hover-edge`. Only the rows trigger it —
+hovering the detail changes nothing.
+
+"Open" is the head row's `aria-expanded`, which Bootstrap flips as soon as the
+detail starts to open or close. All selectors name the group's direct rows, so
+a table nested inside a detail draws its own open groups only.
+
+The colours are custom properties of the `table.bookings-table`
+(`--exp-edge`, default `--bs-primary`; `--exp-open-bg`; `--exp-hover-edge`).
+A group may set `--exp-edge` on its `tbody` (through `group_class`) — the Moss
+transactions do, so an open group's edge takes its kind's colour
+(`shared/wsjrdp/_moss_kind_styles`).
+
 #### Nesting: a table inside a detail row
 
 A table embedded in another table's detail is its **own** declared table with its

@@ -14,7 +14,7 @@
 - tx = transaction
 - currency = tx.currency.presence || "EUR"
 = render "shared/wsjrdp/expandable_table_styles"
-.bk-item-detail.bk-item-detail-plain
+.bk-item-detail
   - head = [["Art", moss_kind_label(tx.type)],
       ["Status (Moss)", [tx.moss_transaction_state, tx.invoice_status].compact_blank.join(" · ")],
       ["Betrag", moss_amount_display(tx.signed_total_base_amount, currency), 1, :end]]

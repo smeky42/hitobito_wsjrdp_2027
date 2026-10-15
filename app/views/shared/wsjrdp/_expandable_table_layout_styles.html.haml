@@ -14,7 +14,7 @@
 -#  it show through: the page's, with the row's own colour on top
 -#  (--bs-table-bg, which Bootstrap's contextual rows set), so a coloured row
 -#  stays coloured; Bootstrap's hover and the group's hover still paint over
--#  it; an open row's tint where the theme has one. While the table is
+-#  it; an open row takes the open background (--exp-open-bg). While the table is
 -#  scrolled sideways (.exp-scrolled-x, set by
 -#  shared/wsjrdp/_expandable_table_layout_js) the last sticky column casts a
 -#  shadow onto the cells passing under it. The table keeps its borders with
@@ -29,6 +29,6 @@
     background-color: var(--bs-body-bg, #fff); background-image: linear-gradient(var(--bs-table-bg), var(--bs-table-bg)); }
   .bookings-table > thead > tr > .exp-sticky { z-index: 2; }
   .bookings-table > tbody > tr.exp-row[aria-expanded="true"] > .exp-sticky {
-    background: var(--bs-secondary-bg, var(--bs-body-bg, #fff)); }
+    background: var(--exp-open-bg, var(--bs-body-bg, #fff)); }
   .exp-table-wrap.exp-scrolled-x > .bookings-table > * > tr > .exp-sticky-last {
     box-shadow: inset 0 0 0 9999px var(--bs-table-accent-bg, transparent), 6px 0 6px -4px rgba(0, 0, 0, .18); }
