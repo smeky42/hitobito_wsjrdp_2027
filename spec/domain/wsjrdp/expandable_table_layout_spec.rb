@@ -147,4 +147,31 @@ describe Wsjrdp::ExpandableTableLayout do
       expect(described_class.sticky_lefts(columns, width)).to eq({})
     end
   end
+
+  describe ".narrow_css" do
+    it "collapses the narrow columns below the narrowest width, in the table's own container" do
+      css = described_class.narrow_css("dk", min_rem: 35.75, mobile_rem: 0, narrow_rem: 3.5, narrow_phone_rem: 3.5)
+      expect(css).to start_with("@container exp-dk (width < 35.75rem) {")
+      expect(css).to include('[data-exptbl="dk"] > table { --exp-nn: 3.5rem; }')
+      expect(css).to include('[data-exptbl="dk"] > table > * > tr > .exp-no-narrow {')
+      expect(css).to include("> .exp-detail > .exp-narrow-only")
+      expect(css).not_to include("@media")
+    end
+
+    it "reckons on a phone without the columns a phone does without" do
+      css = described_class.narrow_css("dk", min_rem: 35.75, mobile_rem: 7.75, narrow_rem: 7.5, narrow_phone_rem: 3.5)
+      expect(css).to include("@media (min-width: 768px) { @container exp-dk (width < 35.75rem) " \
+        '{ [data-exptbl="dk"] > table { --exp-nn: 7.5rem; }')
+      expect(css).to include("@media (max-width: 767.98px) { @container exp-dk (width < 28rem) " \
+        '{ [data-exptbl="dk"] > table { --exp-nn: 3.5rem; }')
+    end
+  end
+
+  describe "#table_style with columns a narrow table does without" do
+    it "takes their widths out of the narrowest width" do
+      style = described_class.new(columns: [col("a", "8rem", "10rem")], min_rem: 11.5, gap_keys: [],
+        grow_max: "2rem", gap_max: "0px", narrow_rem: 3.5).table_style
+      expect(style).to include("min-width: calc(11.5rem - var(--exp-nn, 0rem))")
+    end
+  end
 end

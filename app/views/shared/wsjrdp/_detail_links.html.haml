@@ -18,18 +18,21 @@
 -#  row without that target simply shows one group less -- and a row with no
 -#  target at all renders nothing here.
 -#
--#  Locals: row, detail_page (->(row){ path } or nil), detail_links
+-#  With narrow_only the "Detailseite" group shows only in a narrow table
+-#  (the widget's .exp-narrow-only, detail_page narrow_only).
+-#
+-#  Locals: row, detail_page (->(row){ path } or nil), narrow_only, detail_links
 -#    ([{label:, icon:, title:, title_new_tab:, url: ->(row){ url }}]).
 - groups = Array(detail_links).filter_map do |cfg|
   - url = cfg[:url].call(row)
   - cfg.merge(url: url) if url.present?
 - if detail_page && (page_url = detail_page.call(row)).present?
   - groups += [{label: "Detailseite", icon: :eye, title: "Detailseite öffnen",
-      title_new_tab: "Detailseite in neuem Tab öffnen", url: page_url}]
+      title_new_tab: "Detailseite in neuem Tab öffnen", url: page_url, narrow_only: local_assigns[:narrow_only]}]
 - if groups.any?
   .exp-detail-links.d-flex.justify-content-end.align-items-center.gap-2
     - groups.each do |group|
-      .btn-group.btn-group-sm{ role: "group" }
+      .btn-group.btn-group-sm{ role: "group", class: ("exp-narrow-only-group" if group[:narrow_only]) }
         = link_to group[:url], class: "btn btn-outline-primary",
           title: group[:title], "aria-label": group[:title] do
           = icon(group[:icon])

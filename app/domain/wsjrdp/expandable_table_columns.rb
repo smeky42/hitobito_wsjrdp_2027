@@ -25,7 +25,12 @@
 #   end
 #
 # `css_prefix:` derives each column's css_class as "<prefix>-<key>" unless the
-# column declares one itself.
+# column declares one itself. `merge_header` gives a merged column header
+# layouts (Wsjrdp::ExpandableTableHeaderLayout): its headers on several rows,
+# the most compact layout that fits shown:
+#
+#   c.merge_header "Name", [%w[label], %w[key secondary_key]]
+#   c.merge_header "Name", layouts: [[%w[label key secondary_key]], [%w[label], %w[key secondary_key]]]
 class Wsjrdp::ExpandableTableColumns
   include Enumerable
 
@@ -37,18 +42,36 @@ class Wsjrdp::ExpandableTableColumns
     def initialize(css_prefix: nil)
       @css_prefix = css_prefix
       @columns = []
+      @merge_headers = {}
     end
 
     def column(**options)
       options[:css_class] ||= "#{@css_prefix}-#{options[:key]}" if @css_prefix
       @columns << Wsjrdp::ExpandableTableColumn.new(**options)
     end
+
+    # The header layouts of a merged column: one layout, or several from the
+    # most compact to the most stacked.
+    def merge_header(merge, layout = nil, layouts: nil)
+      @merge_headers[merge.to_s] = layouts || [layout]
+    end
+
+    # The columns, those of a merge with header layouts carrying them.
+    def finished_columns
+      layouts = @merge_headers.to_h do |merge, given|
+        members = @columns.select { |col| col.merge == merge }.map(&:key)
+        raise ArgumentError, "merge_header #{merge}: no column has this merge" if members.empty?
+
+        [merge, Wsjrdp::ExpandableTableHeaderLayout.new(merge, given, members: members)]
+      end
+      @columns.map { |col| layouts[col.merge] ? col.with(merge_layouts: layouts[col.merge]) : col }
+    end
   end
 
   def self.define(css_prefix: nil)
     builder = Builder.new(css_prefix: css_prefix)
     yield builder
-    new(builder.columns)
+    new(builder.finished_columns)
   end
 
   def initialize(columns)

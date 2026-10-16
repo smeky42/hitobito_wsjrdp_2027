@@ -107,7 +107,12 @@ columns menu), `group` (a heading over the header: neighbouring shown columns of
 the same group share one cell of an extra header row, e.g. "Rolle" over "WSJ"
 and "Kontingent"), `numeric` (right-align), `mobile` (`false` for a column a phone does
 without: under the md breakpoint, 768px, its header, cells and footer collapse
-to nothing; it stays in the columns menu), `width` (for the fixed table
+to nothing and its width leaves the table's narrowest width; it stays in the
+columns menu), `narrow` (`false` for a column the table does without where it
+would otherwise scroll sideways: while its container is narrower than the
+table's narrowest width -- a container query per table,
+`Wsjrdp::ExpandableTableLayout.narrow_css` -- it collapses like a `mobile: false`
+column and its width leaves the narrowest width), `width` (for the fixed table
 layout), `sort` (how it sorts — an SQL expression for a relation, a
 `->(row){ comparable }` extractor for an array), `sort_first` and
 `sort_variants` (§2, sortable headers), `default` (shown before the user picks
@@ -198,7 +203,10 @@ against the size container, whole pixels):
    widening, and the filter and the toolbar stop with it.
 
 A column is `width + min(target_grow * c1, span) [+ grow * c2] [+ gap]`
-wide. `target_width` does not go with `merge`.
+wide. A merged column's part takes a target like any other column: each
+part widens by its own target, and the merged cell spans them, so it is
+their sum. In a table with targets the parts keep their own widths;
+`merge_share` does not split them.
 
 ```ruby
 c.column key: "subject", label: "Person", width: "8rem", target_width: "13rem", truncate: true, sticky: true
@@ -232,6 +240,46 @@ last sticky column casts a shadow while the table is scrolled.
 The CSS and the script for these live in their own partials
 (`shared/wsjrdp/_expandable_table_layout_styles`, `…_layout_js`), rendered
 only by a table that uses an option.
+
+#### Header layouts: `merge_header`
+
+A merged column's headers can stand on several rows, e.g. "Bezeichnung"
+over "Schlüssel" and "Unterschlüssel". The layout is given once, at the
+collection (`Wsjrdp::ExpandableTableHeaderLayout`):
+
+```ruby
+c.merge_header NAME, [%w[label], %w[key secondary_key]]              # one layout
+c.merge_header NAME, layouts: [
+  [%w[label key secondary_key]],                                     # one row when it fits
+  [%w[label], %w[key secondary_key]],                                # two rows
+  {rows: [%w[label], %w[key secondary_key]], wrap: true}             # headers may wrap
+]
+```
+
+A layout is its rows, a row the headers in it. Every header is a cell of a
+real header row (`Wsjrdp::ExpandableTableHeader`), sortable as always, and
+covers a stretch of the merged column: from its own column to the one
+before the next header of the row, the first from the merged column's
+start, the last to its end -- so a row has no holes. An entry may be a key
+or `{key:, align:, span:}`: `align` ("start", "center", "end") overrides the
+default (first start, last end, others centred), `span` the number of
+columns it covers from its own. A row `{cells: [...], flow: true, justify:
+"start" | "center" | "between", separator: " · "}` sets its headers one
+after the other in ONE cell across the merged column. A hidden column drops
+out of its row; a row left empty is left out.
+
+The table has as many header rows as its deepest run; every other column's
+header, and a shallower run's first row, reach down so that every run ends
+in the last row. A column group (`group:`) is two rows, its name over its
+columns.
+
+Several layouts make several VARIANTS of the header, from the most compact
+to the most stacked; variant k takes every merged column's k-th layout (its
+last when it has fewer). All are rendered; the script
+(`shared/wsjrdp/_expandable_table_header_js`) shows the first whose headers
+fit without wrapping and chooses again whenever the table's wrapper changes
+its width; without it the last variant shows. A layout with `wrap: true`
+lets its headers wrap with hyphenation and always fits -- the last resort.
 
 That renders a table with a clickable row per record; clicking a row expands an
 inline **detail** (Bootstrap collapse, several can be open at once). `row_key`
@@ -994,6 +1042,11 @@ Moss — and not even then for a top-up, the one Moss kind without a derivable
 record page, see `MossTopUp#moss_record_url`). `icon:` is a FontAwesome 5 name
 without the `fa-` prefix; `title:` and
 `title_new_tab:` are the tooltip and the aria-label of the two halves.
+
+`t.detail_page(narrow_only: true)` shows the primary link only where the table
+would scroll sideways (the same container query as `narrow: false`) -- for a
+table whose page link is otherwise a column of its own with `narrow: false`.
+Without further links the whole header line shows only there.
 
 Declaring a link makes a table **expandable** even when it has no detail at all:
 the detail row is then the slim header-line bar alone. With a **direct** detail

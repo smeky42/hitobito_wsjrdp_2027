@@ -117,6 +117,61 @@ describe Wsjrdp::ExpandableTableHelper do
     end
   end
 
+  describe "a merged column with a target" do
+    let(:merged_columns) do
+      Wsjrdp::ExpandableTableColumns.define(css_prefix: "mcol") do |c|
+        c.column key: "name", abbr: "nm", label: "Name", merge: "NAME", width: "8rem", target_width: "11rem",
+          default: true
+        c.column key: "kind", abbr: "kd", label: "Art", merge: "NAME", width: "5rem", default: true
+        c.column key: "note", abbr: "nt", label: "Notiz", width: "6rem", default: true
+      end
+    end
+
+    it "widens its part towards the target, the merged cell spanning both" do
+      _html, doc = render_table(merged_columns, selection: false, gaps: false)
+      expect(doc.css("colgroup col").pluck(:style))
+        .to eq(["width: calc(8rem + min(1 * var(--exp-c1), 3rem))", "width: 5rem", "width: 6rem"])
+      expect(doc.at_css("tr.exp-row td[data-colkey='name']")[:colspan]).to eq("2")
+    end
+  end
+
+  describe "a merged column with header layouts" do
+    let(:layout_columns) do
+      Wsjrdp::ExpandableTableColumns.define(css_prefix: "hcol") do |c|
+        c.column key: "id", abbr: "id", label: "ID", width: "4rem", default: true
+        c.column key: "name", abbr: "nm", label: "Name", merge: "NAME", width: "6rem", sort: "name", default: true
+        c.column key: "kind", abbr: "kd", label: "Art", merge: "NAME", width: "2rem", sort: "kind", default: true
+        c.column key: "note", abbr: "nt", label: "Notiz", merge: "NAME", width: "5rem", default: true
+        c.merge_header "NAME", layouts: [[%w[name kind note]], [%w[name], %w[kind note]],
+          {rows: [%w[name], %w[kind note]], wrap: true}]
+      end
+    end
+
+    it "renders every variant, the last shown, and the script that picks one" do
+      html, doc = render_table(layout_columns, selection: true, gaps: false)
+      rows = doc.css("thead tr")
+      expect(doc.at_css("table")["data-head-variants"]).to eq("3")
+      expect(rows.pluck("data-variant")).to eq(%w[0 1 1 2 2])
+      expect(rows.select { |tr| tr[:class].to_s.include?("exp-hv-on") }.pluck("data-variant")).to eq(%w[2 2])
+
+      upper, lower = rows.select { |tr| tr["data-variant"] == "1" }
+      expect(upper.css("th").map { |th| [th["data-colkey"], th[:colspan], th[:rowspan]] })
+        .to eq([[nil, nil, "2"], ["id", nil, "2"], ["name", "3", nil]])
+      expect(lower.css("th").map { |th| [th["data-colkey"], th[:colspan]] }).to eq([["kind", "2"], ["note", nil]])
+      expect(lower.at_css("th[data-colkey='kind'] a.exp-sort")).to be_present
+      expect(doc.css("tr[data-variant='2'] th.exp-head-wrap").pluck("data-colkey")).to eq(%w[name kind note])
+      expect(doc.css("colgroup col").size).to eq(5)
+      expect(html).to include("window.__expHeaderVariants")
+    end
+
+    it "keeps a table without layouts on one row, without the script" do
+      html, doc = render_table(plain_columns)
+      expect(doc.css("thead tr").size).to eq(1)
+      expect(doc.at_css("table")["data-head-variants"]).to be_nil
+      expect(html).not_to include("window.__expHeaderVariants")
+    end
+  end
+
   describe "a table without them" do
     it "renders as it always did: no layout styles, no script, no style on a cell" do
       html, doc = render_table(plain_columns)
