@@ -41,16 +41,20 @@ module Wsjrdp::Filtering
   #   members as sub-variants (e.g. the text search over Buchungstext /
   #   Belege / both, or an amount next to its absolute value). The first
   #   declared member is the group's default.
+  # operator_labels: {operator key => {label:, label_many:}} -- the
+  #   attribute's own wording of an operator where the type's does not fit
+  #   (a person "ist eine von", not "ist eines von").
   # sign: :signed or :absolute -- marks the two members of an amount's sign
   #   pair (the signed column and its ABS() twin). The editor renders such a
   #   group as a ± / |x| toggle instead of the sub-variant dropdown; the
   #   pairing itself is checked at declaration time (Schema.define).
   class Attribute
     attr_reader :key, :short_key, :label, :group, :type, :column, :options,
-      :variant_group, :operand_min, :sign
+      :variant_group, :operand_min, :sign, :operator_labels
 
     def initialize(key:, label:, type:, column:, operators:, pickable: nil, short_key: key,
-      group: nil, options: nil, catalog: true, variant_group: nil, operand_min: nil, sign: nil)
+      group: nil, options: nil, catalog: true, variant_group: nil, operand_min: nil, sign: nil,
+      operator_labels: {})
       @key = key.to_sym
       @short_key = short_key.to_sym
       @label = label
@@ -62,6 +66,7 @@ module Wsjrdp::Filtering
       @variant_group = variant_group
       @operand_min = operand_min
       @sign = sign&.to_sym
+      @operator_labels = operator_labels.to_h { |k, labels| [k.to_sym, labels.to_h.symbolize_keys.slice(:label, :label_many)] }
       @operators = operators.map(&:to_sym).index_with { |k| type.operator(k) }
       @declared_pickable = pickable&.map(&:to_sym)
       validate_pickable!
@@ -112,7 +117,9 @@ module Wsjrdp::Filtering
     def as_json(*)
       {key: key, label: label, group: group, variant_group: variant_group, sign: sign,
        type: type.key, control: type.control, operand_min: operand_min,
-       operators: operators.map { |o| o.as_json.merge(pickable: pickable?(o.key)) },
+       operators: operators.map { |o|
+         o.as_json.merge(@operator_labels.fetch(o.key, {})).merge(pickable: pickable?(o.key))
+       },
        options: options&.descriptor}
     end
 
@@ -126,7 +133,7 @@ module Wsjrdp::Filtering
       self.class.new(key: key, label: label, type: type, column: column,
         operators: operators, pickable: pickable, short_key: short_key, group: group,
         options: @options, catalog: @catalog, variant_group: variant_group,
-        operand_min: operand_min, sign: sign)
+        operand_min: operand_min, sign: sign, operator_labels: operator_labels)
     end
 
     # Host-authored like the operator list itself, so an operator that is

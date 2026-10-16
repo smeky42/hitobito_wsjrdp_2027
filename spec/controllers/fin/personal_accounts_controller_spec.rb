@@ -495,10 +495,11 @@ describe Fin::PersonalAccountsController do
       get :index, params: {f: "!(!(!(ms,in,active)))"}
 
       expect(chip_buttons.size).to eq(1)
-      expect(chip_buttons.pluck("class")).to all(eq("flt-chip pane-opener"))
+      expect(chip_buttons.pluck("class")).to all(eq("flt-chip pane-opener wsjrdp-html-tip"))
       expect(chip_buttons.pluck("type")).to all(eq("button"))
       expect(chip_buttons.pluck("data-pane-target")).to all(eq(pane_id))
-      expect(chip_buttons.pluck("title")).to all(eq("Filter öffnen"))
+      expect(chip_buttons.pluck("title")).to all(end_with("— Filter öffnen"))
+      expect(chip_buttons.pluck("data-bs-title")).to all(include("Klicken: Filter öffnen"))
     end
 
     # The preset toggle already shows that slot, so a chip would say it twice.

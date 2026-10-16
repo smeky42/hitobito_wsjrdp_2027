@@ -298,6 +298,19 @@ describe Wsjrdp::FilterChips do
       expect(build([slot], presets: [preset([slot], active: true)])).to be_empty
     end
 
+    it "sets an option's prefix apart and spells it out in the text" do
+      catalog = CHIP_CATALOG.merge(attributes: CHIP_CATALOG[:attributes].map { |attribute|
+        next attribute unless attribute[:key] == :cost_center
+
+        attribute.merge(options: {mode: "inline", values: [["3150", "Kostenstelle A", "KST 3150"]]})
+      })
+      chip = described_class.new(catalog: catalog, user_slots: [[["cost_center", "in", "3150", "9"]]]).chips.first
+
+      expect(chip.text).to eq "Kostenstelle ist eines von KST 3150 Kostenstelle A, 9"
+      expect(chip.parts.first.operands).to eq [["KST 3150", "Kostenstelle A"], [nil, "9"]]
+      expect(chip.parts.first.operator).to eq "ist eines von"
+    end
+
     it "counts the conditions over ALL chips" do
       chips = build([[["cost_center", "in", "3150"], ["amount", "nonzero"]],
         [["booking_date", "gte", "2026-05-01"]]])

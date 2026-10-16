@@ -52,6 +52,23 @@ describe Wsjrdp::Filtering do
   end
   let(:schema) { template.bind(base) }
 
+  # An attribute may word an operator its own way, and an option may carry a
+  # prefix the picker sets apart.
+  it "words an operator per attribute and passes an option's prefix on" do
+    options = Wsjrdp::Filtering::Options.values(-> { [[42, "Ada Muster", "YP #42"], ["7", "Bea"]] })
+    attribute = Wsjrdp::Filtering::Attribute.new(key: :person, label: "Person",
+      type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in], column: :person_id, options: options,
+      operator_labels: {in: {label_many: "ist eine von"}})
+
+    operators = attribute.as_json[:operators].to_h { |operator| [operator[:key], operator[:label_many]] }
+    expect(operators).to eq(in: "ist eine von", not_in: "ist keines von")
+    expect(attribute.as_json[:options][:values]).to eq([["42", "Ada Muster", "YP #42"], %w[7 Bea]])
+    expect(attribute.with_operators(%i[in]).as_json[:operators].first[:label_many]).to eq("ist eine von")
+    expect(attribute.as_json[:options]).not_to have_key(:id_search)
+    ids = Wsjrdp::Filtering::Options.values(-> { [[42, "Ada"]] }, id_search: true)
+    expect(ids.descriptor).to eq(mode: "inline", values: [%w[42 Ada]], id_search: true)
+  end
+
   it "has a globally unique operator vocabulary" do
     vocabulary = Wsjrdp::Filtering::OPERATOR_VOCABULARY
     expect(vocabulary.values.uniq.size).to eq(vocabulary.size)
