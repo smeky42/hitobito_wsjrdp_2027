@@ -70,11 +70,15 @@
       -# A button, not a link: it changes nothing on the server, it only opens
       -# the pane next to it. `.pane-opener` is the open-only control of
       -# shared/wsjrdp/_collapsible_panes -- see the header above.
+      -# Its words, an option's prefix set apart; the tooltip lists every
+      -# operand (the plain text is the title where it does not come up).
       - if openable
-        %button.flt-chip.pane-opener{type: "button", data: {pane_target: pane_id},
-          title: "Filter öffnen"}= chip.text
+        %button.flt-chip.pane-opener.wsjrdp-html-tip{type: "button", title: "#{chip.text} — Filter öffnen",
+          data: {pane_target: pane_id, bs_title: et_filter_chip_tip(chip, hint: "Klicken: Filter öffnen")}}
+          = et_filter_chip_content(chip)
       - else
-        %span.flt-chip= chip.text
+        %span.flt-chip.wsjrdp-html-tip{title: chip.text, data: {bs_title: et_filter_chip_tip(chip)}}
+          = et_filter_chip_content(chip)
 - elsif presets.empty? && !state.filter.fixed?
   -# Case 1: neither a Schnellauswahl, nor a pinned condition, nor one of the
   -# user's own -- say so, rather than leaving the left half of the line blank.
@@ -134,3 +138,9 @@
     /* "Kein Filter aktiv" -- the .text-muted.fst-italic.small utilities do the
        rest; only the size is nudged to match the chips. */
     .flt-nofilter { font-size: .8rem; }
+    /* An option's prefix (a person's role and id), muted and light -- in the
+       chips here and in the builder's, and in their tooltips. */
+    .flt-opt-prefix { color: var(--bs-secondary-color, #6c757d); font-weight: 300; }
+    .tooltip .flt-opt-prefix { color: inherit; opacity: .75; }
+    .tooltip:has(.flt-tip) .tooltip-inner { max-width: 28rem; text-align: left; }
+    .flt-tip .flt-tip-operand { padding-left: .6rem; }

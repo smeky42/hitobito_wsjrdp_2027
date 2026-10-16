@@ -388,7 +388,7 @@ describe Fin::WsjrdpFinAccountsController do
       get :show, params: {id: wallet.id, f: "!(!(!(amt,ge,100)))"}
       expect(rendered_kinds).to eq([Fin::MossKinds.css_class("MossTopUp")])
       expect(chip_texts).to eq(["Betrag ≥ 100"])
-      expect(doc.css(".flt-applied .flt-chip").pluck("class")).to all(eq("flt-chip pane-opener"))
+      expect(doc.css(".flt-applied .flt-chip").pluck("class")).to all(eq("flt-chip pane-opener wsjrdp-html-tip"))
     end
 
     # The pressed button already shows that slot, so the kind gets no chip --

@@ -28,9 +28,18 @@ module Wsjrdp::Filtering
       })
     end
 
-    # From an arbitrary lambda returning [[value, label], ...].
-    def self.values(callable)
-      new(-> { callable.call.map { |v, l| [v.to_s, (l || v).to_s] } })
+    # From an arbitrary lambda returning [[value, label], ...] -- or [value,
+    # label, prefix]: a prefix shown muted and light before the label (a
+    # person's role and id before the name), searched and spelled out with it.
+    # id_search: the values are ids; a search of digits looks for them only
+    # (shared/wsjrdp/_chips_combobox_js).
+    def self.values(callable, id_search: false)
+      new(-> {
+        callable.call.map do |v, l, prefix|
+          pair = [v.to_s, (l || v).to_s]
+          prefix.nil? ? pair : pair << prefix.to_s
+        end
+      }, id_search: id_search)
     end
 
     # Merge several Options. On duplicate values the first INFORMATIVE label
@@ -50,8 +59,9 @@ module Wsjrdp::Filtering
       })
     end
 
-    def initialize(pairs_proc)
+    def initialize(pairs_proc, id_search: false)
       @pairs_proc = pairs_proc
+      @id_search = id_search
     end
 
     def pairs
@@ -61,7 +71,7 @@ module Wsjrdp::Filtering
     # Catalog form. Inline only for now; a {mode: "remote", endpoint: ...}
     # variant can be added when an option set outgrows inline shipping.
     def descriptor
-      {mode: "inline", values: pairs}
+      {mode: "inline", values: pairs, **(@id_search ? {id_search: true} : {})}
     end
   end
 end

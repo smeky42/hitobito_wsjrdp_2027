@@ -1656,6 +1656,24 @@ Driven by the reconciliation page but landing mostly in shared code:
   - `Fin::MossTransactionsFilterSchema::AMOUNT_ANY`, the multi-column decimal
     type behind "Betrag (alle Ebenen)", implements the same six comparisons
     with the same labels as `Types::DECIMAL`, each ORing across its columns.
+- **`operator_labels:`** words an operator per attribute where the type's
+  wording does not fit: `operator_labels: {in: {label_many: "ist eine von"}}`
+  for a person. The catalog carries the attribute's wording; chips, tooltips
+  and the editor read it from there.
+- **Option prefixes**: `Options.values` takes `[value, label, prefix]` as
+  well. The prefix (a person's role and id, "YP 123") stands muted and light
+  before the label in the picker's list, its chips and the filter's chips, is
+  searched along with the label and is spelled out in plain text ("YP 123
+  Ada Muster"). The picker marks where the search matches (as tom-select
+  does). With `Options.values(..., id_search: true)` (the values are ids,
+  e.g. people) a search of digits looks for the values only and marks the id
+  in the prefix, the option of exactly that id first ("7": 7, then 70, 107);
+  "#7" finds just that id, and the search field says so. Elsewhere digits are
+  text like any other (an account "0420" is found as typed).
+- **Chip tooltips**: the builder's chips and the filter line's chips carry an
+  HTML tooltip (`shared/wsjrdp/_html_tooltip_js`): the attribute and operator,
+  then every operand on a line of its own, then what a click does -- so a chip
+  cut short still says everything.
 - **`operand_min:`** is generic attribute metadata: an absolute member declares
   `operand_min: 0` and the editor's number input gets `min="0"`. It is guidance
   only — the server does not re-validate the sign, because a negative bound on

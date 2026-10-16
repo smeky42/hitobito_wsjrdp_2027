@@ -14,6 +14,8 @@
 - @wsjrdp_chips_combobox_styles_emitted = true
 :css
   .wcc-field { flex: 1 1 20rem; min-width: min(20rem, 100%); }
+  .wcc-line { display: flex; align-items: flex-end; gap: .5rem; }
+  .wcc-line > .wcc-box { flex: 1 1 auto; min-width: 0; }
   .wcc-box { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center;
     border: 1px solid var(--bs-border-color); border-radius: .35rem;
     background: var(--bs-body-bg); padding: .25rem .35rem; cursor: text; }
@@ -32,6 +34,10 @@
     font-size: .85rem; cursor: pointer; text-align: left; }
   .wcc-row .wcc-tick { width: 1rem; flex: 0 0 auto; color: var(--bs-success); }
   .wcc-row .wcc-text { flex: 1 1 auto; text-align: left; }
+  .wcc-prefix { color: var(--bs-secondary-color, #6c757d); font-weight: 300; }
+  /* Where the search matches, as tom-select marks it (.highlight). */
+  .wcc-match { background: rgba(255, 237, 40, .4); border-radius: 1px; }
+  .wcc-row.sel .wcc-text .wcc-prefix { font-weight: 300; }
   .wcc-row:hover { background: var(--bs-secondary-bg); }
   .wcc-row.hl { background: var(--bs-primary); color: #fff; }
   .wcc-row.hl .wcc-tick { color: #fff; }

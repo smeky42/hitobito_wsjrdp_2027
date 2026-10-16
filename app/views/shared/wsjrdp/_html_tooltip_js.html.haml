@@ -8,6 +8,7 @@
 -#  Bootstrap tooltips with HTML content for any element with the class
 -#  wsjrdp-html-tip: its data-bs-title is the tooltip's HTML (sanitized by
 -#  Bootstrap), its title the plain text where the tooltip does not come up.
+-#  It comes up after a short pause, like a title's, and goes on a click.
 -#  The tooltip is created on the first hover, delegated from the document, so
 -#  it works in turbo frames and after Turbo visits as well; the core's tooltip
 -#  setup runs only once on DOMContentLoaded. Inside a tooltip,
@@ -21,19 +22,69 @@
   (function () {
     if (window.__wsjrdpHtmlTooltip) return;
     window.__wsjrdpHtmlTooltip = true;
+    // Like a plain title tooltip: up after a short pause on the element, away
+    // at once when the pointer leaves or clicks.
+    var DELAY = 500;
     function tooltipClass() {
       return (window.jQuery && window.jQuery.fn.tooltip) ? window.jQuery.fn.tooltip.Constructor : null;
     }
-    function show(e) {
-      var el = e.target.closest && e.target.closest(".wsjrdp-html-tip");
-      var Tip = tooltipClass();
-      if (!el || !Tip || Tip.getInstance(el)) return;
-      Tip.getOrCreateInstance(el, {html: true, placement: "top", container: "body"}).show();
+    var pending = null;
+    // After a click no tooltip comes up until the pointer has moved off the
+    // tooltips' elements -- the click may have redrawn the element right
+    // under it, and the redraw's own mouseovers (on whatever lies there for
+    // a moment) do not count: they come at the click's position.
+    var blocked = null;
+    function moved(e) {
+      return Math.abs(e.clientX - blocked.x) + Math.abs(e.clientY - blocked.y) > 3;
     }
-    document.addEventListener("mouseover", show);
-    document.addEventListener("focusin", show);
-    // A tooltip left open must not end up in Turbo's page snapshot.
-    document.addEventListener("turbo:before-cache", function () {
+    function cancel() {
+      if (pending) clearTimeout(pending.timer);
+      pending = null;
+    }
+    // The first hover makes the tooltip, which then answers hover and focus
+    // itself, with the same pause.
+    function enter(e) {
+      var el = e.target.closest && e.target.closest(".wsjrdp-html-tip");
+      if (blocked) {
+        if (!el && e.type === "mouseover" && moved(e)) blocked = null;
+        return;
+      }
+      var Tip = tooltipClass();
+      if (!el || !Tip || Tip.getInstance(el) || (pending && pending.el === el)) return;
+      cancel();
+      pending = {el: el, timer: setTimeout(function () {
+        pending = null;
+        if (!el.isConnected) return;
+        Tip.getOrCreateInstance(el, {html: true, placement: "top", container: "body",
+          delay: {show: DELAY, hide: 0}}).show();
+      }, e.type === "focusin" ? 0 : DELAY)};
+    }
+    function leave(e) {
+      if (pending && !(e.relatedTarget && pending.el.contains(e.relatedTarget))) cancel();
+    }
+    // A click hides every tooltip -- also one whose element the click is
+    // about to replace (a filter chip opening its editor), which would
+    // otherwise stay behind, stuck at the page's corner.
+    function hideAll(e) {
+      cancel();
+      blocked = {x: (e && e.clientX) || 0, y: (e && e.clientY) || 0};
+      var Tip = tooltipClass();
+      document.querySelectorAll(".wsjrdp-html-tip").forEach(function (el) {
+        // Gone with its pending show, made again on the next hover.
+        var tip = Tip && Tip.getInstance(el);
+        if (tip) tip.dispose();
+      });
       document.querySelectorAll(".tooltip").forEach(function (tip) { tip.remove(); });
+    }
+    document.addEventListener("mouseover", enter);
+    document.addEventListener("focusin", enter);
+    document.addEventListener("mouseout", leave);
+    document.addEventListener("mousedown", hideAll, true);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") hideAll(); });
+    // A pointer that moves on, off every tooltip's element, ends the block.
+    document.addEventListener("mousemove", function (e) {
+      if (blocked && moved(e) && !(e.target.closest && e.target.closest(".wsjrdp-html-tip"))) blocked = null;
     });
+    // A tooltip left open must not end up in Turbo's page snapshot.
+    document.addEventListener("turbo:before-cache", function () { hideAll(); blocked = null; });
   })();

@@ -59,7 +59,14 @@ class Wsjrdp::FilterChips
   #   conditions  its conditions worded one by one -- what `text` joins with OR
   #   slot        the raw slot, so a chip can act on itself (removing it is
   #               SlotEquality.remove_slots(user_slots, [slot]) re-encoded)
-  Chip = Data.define(:text, :conditions, :slot)
+  #   parts       its conditions as Parts, for a chip that sets an option's
+  #               prefix apart and a tooltip that lists every operand
+  Chip = Data.define(:text, :conditions, :slot, :parts)
+
+  # One condition in pieces: the attribute's and the operator's label, the
+  # operands as [prefix, text] (prefix nil but for an option that has one)
+  # and the word between them (RANGE_JOIN or LIST_JOIN).
+  Part = Data.define(:label, :operator, :operands, :join)
 
   # The operator the members of a quick-select group share their slot under.
   GROUP_OPERATOR = "in"
@@ -119,10 +126,11 @@ class Wsjrdp::FilterChips
     slots.filter_map { |slot|
       next if group_slot?(slot, group_values)
 
-      conditions = Array(slot).map { |condition| condition_text(condition) }.freeze
-      next if conditions.empty? # a slot without conditions has nothing to say
+      parts = Array(slot).map { |condition| condition_part(condition) }.freeze
+      next if parts.empty? # a slot without conditions has nothing to say
 
-      Chip.new(text: conditions.join(OR_JOIN), conditions: conditions, slot: slot)
+      conditions = parts.map { |part| part_text(part) }.freeze
+      Chip.new(text: conditions.join(OR_JOIN), conditions: conditions, slot: slot, parts: parts)
     }.freeze
   end
 
@@ -176,14 +184,24 @@ class Wsjrdp::FilterChips
   # and its "+n" for long operand lists are the builder's chip LAYOUT, not the
   # wording -- `condFullText` has neither), and no trailing blank in the
   # unknown-attribute fallback.
-  def condition_text(condition)
+  def condition_part(condition)
     key, operator_key, *operands = Array(condition)
     attribute = @attributes[key.to_s]
-    return join_parts(key, operator_key, operands.map(&:to_s).join(LIST_JOIN)) unless attribute
+    unless attribute
+      return Part.new(label: key.to_s, operator: operator_key.to_s, operands: operands.map { |o| [nil, o.to_s] },
+        join: LIST_JOIN)
+    end
 
     operator = find_operator(attribute, operator_key)
-    join_parts(attribute[:label], operator_label(operator, operator_key, operands),
-      operands_text(attribute, operator, operands))
+    range = operator && operator[:arity].to_s == "two"
+    shown = range ? operands.first(2) : operands
+    Part.new(label: attribute[:label].to_s, operator: operator_label(operator, operator_key, operands),
+      operands: shown.map { |operand| operand_parts(attribute, operand) }, join: range ? RANGE_JOIN : LIST_JOIN)
+  end
+
+  # A condition's wording in one line (see above).
+  def part_text(part)
+    join_parts(part.label, part.operator, part.operands.map { |operand| join_parts(*operand) }.join(part.join))
   end
 
   def join_parts(*parts) = parts.map(&:to_s).reject(&:empty?).join(" ")
@@ -199,32 +217,22 @@ class Wsjrdp::FilterChips
     label.to_s
   end
 
-  def operands_text(attribute, operator, operands)
-    return "" if operands.empty?
-    return range_text(attribute, operands) if operator && operator[:arity].to_s == "two"
-
-    operands.map { |operand| operand_text(attribute, operand) }.join(LIST_JOIN)
-  end
-
-  def range_text(attribute, operands)
-    operands.first(2).map { |operand| operand_text(attribute, operand) }.join(RANGE_JOIN)
-  end
-
-  # One operand, mirroring the builder's `fmtOperandFull` -- the untruncated
-  # variant of `fmtOperand` -- which dispatches on the attribute's CONTROL.
-  def operand_text(attribute, operand)
+  # One operand as [prefix, text], mirroring the builder's `fmtOperandFull`
+  # -- the untruncated variant of `fmtOperand` -- which dispatches on the
+  # attribute's CONTROL; only an option can have a prefix.
+  def operand_parts(attribute, operand)
     case attribute[:control].to_s
-    when "multiselect", "select" then option_label(attribute, operand)
-    when "date_range" then date_text(operand)
-    when "number_range" then operand.is_a?(Numeric) ? number_text(operand) : operand.to_s
-    else operand.to_s
+    when "multiselect", "select" then option_parts(attribute, operand)
+    when "date_range" then [nil, date_text(operand)]
+    when "number_range" then [nil, operand.is_a?(Numeric) ? number_text(operand) : operand.to_s]
+    else [nil, operand.to_s]
     end
   end
 
-  def option_label(attribute, operand)
-    pair = Array(attribute.dig(:options, :values))
+  def option_parts(attribute, operand)
+    _value, label, prefix = Array(attribute.dig(:options, :values))
       .find { |value, _| value.to_s == operand.to_s }
-    pair ? pair.last.to_s : operand.to_s
+    label ? [prefix&.to_s, label.to_s] : [nil, operand.to_s]
   end
 
   # ISO -> German, the two forms the date control emits ("2026-05-01" from a day

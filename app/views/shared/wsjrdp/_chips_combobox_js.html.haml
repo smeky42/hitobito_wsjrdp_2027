@@ -11,13 +11,22 @@
 -#  below. It is the multiselect control of the generic filter builder
 -#  (shared/wsjrdp/filtering/_builder, doc/wsjrdp/generic_filter_builder.md) and
 -#  the chips control of any `select[multiple][data-chips-combobox]` elsewhere.
+-#  The search matches the labels (and prefixes) and marks where (.wcc-match,
+-#  as tom-select does). With opts.idSearch (an option set of ids, e.g.
+-#  people) a search of digits only matches the values, the id in the prefix
+-#  marked, the option whose value is exactly those digits first; "#7" finds
+-#  just the option of value 7. Elsewhere digits are text like any other.
 -#
 -#  window.WsjrdpChipsCombobox:
 -#    KEY_HINT              the keyboard hints as one line of text
 -#    create(host, opts)    build a field into `host`, return its api
--#      opts.values         [[value, label], ...] -- all options, in list order
+-#      opts.values         [[value, label], ...] -- all options, in list order;
+-#                          [value, label, prefix] puts a prefix, muted and
+-#                          light, before the label (searched along with it)
 -#      opts.selected       the selected values; used BY REFERENCE and mutated in
 -#                          place, so it can BE the caller's model (default [])
+-#      opts.idSearch       true -> a search of digits matches the values only
+-#                          (the exact one first), "#<digits>" exactly
 -#      opts.placeholder    search placeholder (default "Suchen…")
 -#      opts.ariaLabel      aria-label of the search input
 -#      opts.manyHint       text under the box while more than one value is
@@ -82,6 +91,34 @@
         for (var i = 0; i < values.length; i++) if (values[i][0] === String(v)) return values[i][1];
         return String(v);
       }
+      // `text` with the ranges [start, end) marked (.wcc-match).
+      function marked(text, ranges) {
+        var frag = document.createDocumentFragment();
+        var at = 0;
+        (ranges || []).forEach(function (r) {
+          if (r[0] > at) frag.appendChild(document.createTextNode(text.slice(at, r[0])));
+          frag.appendChild(el("span", "wcc-match", text.slice(r[0], r[1])));
+          at = r[1];
+        });
+        if (at < text.length) frag.appendChild(document.createTextNode(text.slice(at)));
+        return frag;
+      }
+      // An option's label, its prefix before it (.wcc-prefix), the search's
+      // matches marked; a value the options do not carry as itself.
+      function pairNode(pair, hit) {
+        var span = el("span");
+        if (pair[2]) {
+          var prefix = span.appendChild(el("span", "wcc-prefix"));
+          prefix.appendChild(marked(pair[2], hit && hit.prefix));
+          prefix.appendChild(document.createTextNode(" "));
+        }
+        span.appendChild(marked(pair[1], hit && hit.label));
+        return span;
+      }
+      function labelNode(v) {
+        for (var i = 0; i < values.length; i++) if (values[i][0] === String(v)) return pairNode(values[i]);
+        return pairNode([v, String(v)]);
+      }
       function selected(v) { return sel.indexOf(v) >= 0; }
       function syncManyHint() {
         manyHint.textContent = (sel.length > 1 && opts.manyHint) ? opts.manyHint : "";
@@ -100,7 +137,7 @@
         box.querySelectorAll(".wcc-chip").forEach(function (c) { c.remove(); });
         sel.forEach(function (v) {
           var chip = el("span", "wcc-chip");
-          chip.appendChild(el("span", null, label(v)));
+          chip.appendChild(labelNode(v));
           var x = el("button", "wcc-x");
           x.type = "button";
           x.title = "Entfernen";
@@ -117,13 +154,55 @@
       function visibleRows() {
         return Array.prototype.filter.call(list.children, function (r) { return r.style.display !== "none"; });
       }
+      // Every occurrence of q in text, ignoring case, as [start, end).
+      function occurrences(text, q) {
+        var ranges = [];
+        var lower = text.toLowerCase();
+        for (var i = lower.indexOf(q); q && i >= 0; i = lower.indexOf(q, i + q.length)) ranges.push([i, i + q.length]);
+        return ranges;
+      }
+      // Where an option matches the search: {prefix: ranges, label: ranges},
+      // null for no match. With idSearch digits are looked for in the values
+      // only, and "#7" finds the option whose value is exactly 7 -- an id too
+      // short to stand out among the others' digits. The value is marked
+      // where the prefix (or else the label) shows it.
+      function hitOf(pair, q) {
+        if (!q) return {};
+        var exact = opts.idSearch ? /^#(\d+)$/.exec(q) : null;
+        if (exact || (opts.idSearch && /^\d+$/.test(q))) {
+          var at = exact ? (pair[0] === exact[1] ? 0 : -1) : pair[0].indexOf(q);
+          if (at < 0) return null;
+          var len = exact ? pair[0].length : q.length;
+          var inPrefix = pair[2] ? pair[2].lastIndexOf(pair[0]) : -1;
+          var inLabel = pair[1].lastIndexOf(pair[0]);
+          if (inPrefix >= 0) return {prefix: [[inPrefix + at, inPrefix + at + len]]};
+          return inLabel >= 0 ? {label: [[inLabel + at, inLabel + at + len]]} : {};
+        }
+        var hit = {prefix: pair[2] ? occurrences(pair[2], q) : [], label: occurrences(pair[1], q)};
+        if (hit.prefix.length || hit.label.length) return hit;
+        // A search across prefix and label ("yp 39 mar") matches unmarked.
+        return ((pair[2] ? pair[2] + " " : "") + pair[1]).toLowerCase().indexOf(q) >= 0 ? {} : null;
+      }
+      var shownQuery = "";
       function syncList() {
-        var q = input.value.toLowerCase();
+        var q = input.value.trim().toLowerCase();
+        var requery = q !== shownQuery;
+        shownQuery = q;
         Array.prototype.forEach.call(list.children, function (row) {
-          row.style.display = row.dataset.text.indexOf(q) >= 0 ? "" : "none";
+          var hit = requery || q ? hitOf(row.pair, q) : {};
+          row.style.display = hit ? "" : "none";
+          if (hit && requery) row.querySelector(".wcc-text").replaceChildren(pairNode(row.pair, hit));
           row.classList.toggle("sel", selected(row.dataset.value));
           row.querySelector(".wcc-tick").textContent = selected(row.dataset.value) ? "✓" : "";
         });
+        // With idSearch the option whose value is exactly the typed digits
+        // comes first, so a short id is one ↵ away; else the given order.
+        if (requery && opts.idSearch) {
+          var exactRow = /^\d+$/.test(q) && Array.prototype.find.call(list.children, function (row) { return row.dataset.value === q; });
+          Array.prototype.slice.call(list.children)
+            .sort(function (a, b) { return (b === exactRow) - (a === exactRow) || a.order - b.order; })
+            .forEach(function (row) { list.appendChild(row); });
+        }
         var rows = visibleRows();
         if (highlight >= rows.length) highlight = rows.length - 1;
         rows.forEach(function (row, i) { row.classList.toggle("hl", i === highlight); });
@@ -131,9 +210,11 @@
       values.forEach(function (pair) {
         var row = el("div", "wcc-row");
         row.dataset.value = pair[0];
-        row.dataset.text = String(pair[1]).toLowerCase();
+        row.pair = [String(pair[0]), String(pair[1]), pair[2] ? String(pair[2]) : ""];
+        row.order = list.children.length;
         row.appendChild(el("span", "wcc-tick", ""));
-        row.appendChild(el("span", "wcc-text", pair[1]));
+        var text = row.appendChild(el("span", "wcc-text"));
+        text.appendChild(pairNode(pair));
         row.addEventListener("mousedown", function (e) { e.preventDefault(); }); // keep input focus
         row.addEventListener("click", function () {
           // Same as picking the row with Enter: the typed search is consumed.
@@ -177,7 +258,12 @@
       });
       box.addEventListener("click", function () { input.focus(); });
       box.appendChild(input);
-      field.appendChild(box);
+      // The box stands in a line of its own (.wcc-line), so a host can put
+      // controls after it that keep to the line of the search input -- the
+      // box's last line (the filter builder's ✓ and ×).
+      var line = el("div", "wcc-line");
+      line.appendChild(box);
+      field.appendChild(line);
       field.appendChild(manyHint);
       field.appendChild(list);
       if (opts.keyHint) field.appendChild(el("div", "wcc-key-hint", KEY_HINT));

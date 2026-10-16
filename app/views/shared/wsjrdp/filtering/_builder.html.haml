@@ -285,10 +285,20 @@
         if (a && a.variant_group) return variantMembers(a.variant_group)[0].key;
         return attrKey;
       }
-      function optionLabel(attr, v) {
+      // An option is [value, label] or [value, label, prefix]: the prefix
+      // stands muted and light before the label (.flt-opt-prefix).
+      function optionPair(attr, v) {
         var values = attr.options && attr.options.values;
-        if (values) for (var i = 0; i < values.length; i++) if (values[i][0] === String(v)) return values[i][1];
-        return String(v);
+        if (values) for (var i = 0; i < values.length; i++) if (values[i][0] === String(v)) return values[i];
+        return null;
+      }
+      function optionLabel(attr, v) {
+        var pair = optionPair(attr, v);
+        return pair ? pair[1] : String(v);
+      }
+      function optionText(attr, v) {
+        var pair = optionPair(attr, v);
+        return pair ? (pair[2] ? pair[2] + " " + pair[1] : pair[1]) : String(v);
       }
       function el(tag, cls, text) {
         var node = document.createElement(tag);
@@ -304,7 +314,7 @@
       }
       function shorten(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
       function fmtOperand(attr, v) {
-        if (attr.control === "multiselect" || attr.control === "select") return shorten(optionLabel(attr, v), 28);
+        if (attr.control === "multiselect" || attr.control === "select") return shorten(optionText(attr, v), 28);
         if (attr.control === "date_range") {
           var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v));
           if (m) return m[3] + "." + m[2] + "." + m[1];
@@ -317,7 +327,10 @@
       }
       function condText(cond) {
         var attr = attrByKey(cond[0]);
-        if (!attr) return {label: cond[0], op: cond[1], operands: cond.slice(2).join(", ")};
+        if (!attr) {
+          var raw = cond.slice(2).join(", ");
+          return {label: cond[0], op: cond[1], operands: raw, node: document.createTextNode(raw)};
+        }
         var op = opByKey(attr, cond[1]);
         var operands = cond.slice(2);
         // "ist eines von" etc. makes the ANY-of semantics of a multi-select visible
@@ -327,13 +340,77 @@
         else if (op && op.arity === "two") shown = fmtOperand(attr, operands[0]) + " – " + fmtOperand(attr, operands[1]);
         else if (operands.length > 2) shown = fmtOperand(attr, operands[0]) + " +" + (operands.length - 1);
         else shown = operands.map(function (v) { return fmtOperand(attr, v); }).join(", ");
-        return {label: attr.label, op: opLabel, operands: shown};
+        return {label: attr.label, op: opLabel, operands: shown, node: operandsNode(attr, op, operands, true)};
+      }
+      // The operands as nodes, an option's prefix muted (.flt-opt-prefix);
+      // `short` cuts a label to 28 characters and a list after the first.
+      function operandNode(attr, v, short) {
+        var pair = (attr.control === "multiselect" || attr.control === "select") ? optionPair(attr, v) : null;
+        if (!pair || !pair[2]) return document.createTextNode(short ? fmtOperand(attr, v) : fmtOperandFull(attr, v));
+        var span = el("span");
+        span.appendChild(el("span", "flt-opt-prefix", pair[2]));
+        span.appendChild(document.createTextNode(" " + (short ? shorten(pair[1], 28) : pair[1])));
+        return span;
+      }
+      function operandsNode(attr, op, operands, short) {
+        var node = el("span");
+        if (!attr || !operands.length) return node;
+        var join = (op && op.arity === "two") ? " – " : ", ";
+        var shown = (op && op.arity === "two") ? operands.slice(0, 2) : operands;
+        if (short && !(op && op.arity === "two") && operands.length > 2) shown = operands.slice(0, 1);
+        shown.forEach(function (v, i) {
+          if (i) node.appendChild(document.createTextNode(join));
+          node.appendChild(operandNode(attr, v, short));
+        });
+        if (shown.length < operands.length && !(op && op.arity === "two")) {
+          node.appendChild(document.createTextNode(" +" + (operands.length - 1)));
+        }
+        return node;
+      }
+      // The HTML of a chip's tooltip (shared/wsjrdp/_html_tooltip_js): the
+      // attribute and operator, then every operand on a line of its own, an
+      // option's prefix muted; `hint` muted at the end.
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c];
+        });
+      }
+      function condTipHtml(cond, hint) {
+        var attr = attrByKey(cond[0]);
+        var html;
+        if (!attr) {
+          html = "<div><b>" + escapeHtml(cond[0]) + "</b> " + escapeHtml(cond[1]) + "</div>";
+        } else {
+          var op = opByKey(attr, cond[1]);
+          var operands = cond.slice(2);
+          var opLabel = op ? ((operands.length > 1 && op.label_many) ? op.label_many : op.label) : cond[1];
+          html = "<div><b>" + escapeHtml(attr.label) + "</b> " + escapeHtml(opLabel) + "</div>";
+          if (op && op.arity === "two") {
+            if (operands.length) html += "<div class=\"flt-tip-operand\">" + escapeHtml(fmtOperandFull(attr, operands[0]) +
+              " – " + fmtOperandFull(attr, operands[1])) + "</div>";
+          } else {
+            operands.forEach(function (v) {
+              var pair = (attr.control === "multiselect" || attr.control === "select") ? optionPair(attr, v) : null;
+              var text = (pair && pair[2])
+                ? "<span class=\"flt-opt-prefix\">" + escapeHtml(pair[2]) + "</span> " + escapeHtml(pair[1])
+                : escapeHtml(fmtOperandFull(attr, v));
+              html += "<div class=\"flt-tip-operand\">" + text + "</div>";
+            });
+          }
+        }
+        if (hint) html += "<div class=\"wsjrdp-tip-muted mt-1\">" + escapeHtml(hint) + "</div>";
+        return "<div class=\"flt-tip\">" + html + "</div>";
+      }
+      function setChipTip(chip, cond, plain, hint) {
+        chip.title = plain;
+        chip.classList.add("wsjrdp-html-tip");
+        chip.setAttribute("data-bs-title", condTipHtml(cond, hint));
       }
       // Full, untruncated operand text for the hover tooltip (condFullText):
       // option labels and long value lists are shown in full, so a chip that is
       // too small to display everything still explains itself completely.
       function fmtOperandFull(attr, v) {
-        if (attr.control === "multiselect" || attr.control === "select") return optionLabel(attr, v);
+        if (attr.control === "multiselect" || attr.control === "select") return optionText(attr, v);
         return fmtOperand(attr, v);
       }
       function condFullText(cond) {
@@ -621,11 +698,11 @@
       function readonlyChip(cond, suffix) {
         var t = condText(cond);
         var chip = el("span", "flt-chip");
-        chip.title = condFullText(cond) + (suffix || "");
+        setChipTip(chip, cond, condFullText(cond) + (suffix || ""), (suffix || "").replace(/^ — /, ""));
         var text = el("span", "flt-chip-text");
         text.appendChild(el("span", "fw-semibold", t.label + " "));
         text.appendChild(el("span", "flt-op", t.op + (t.operands ? " " : "")));
-        if (t.operands) text.appendChild(el("span", null, t.operands));
+        if (t.operands) text.appendChild(t.node);
         chip.appendChild(text);
         return chip;
       }
@@ -691,11 +768,11 @@
             if (ci > 0) row.appendChild(el("span", "flt-or", "oder"));
             var t = condText(cond);
             var chip = el("span", "flt-chip");
-            chip.title = condFullText(cond) + " — Klicken zum Bearbeiten";
+            setChipTip(chip, cond, condFullText(cond) + " — Klicken zum Bearbeiten", "Klicken zum Bearbeiten");
             var text = el("span", "flt-chip-text");
             text.appendChild(el("span", "fw-semibold", t.label + " "));
             text.appendChild(el("span", "flt-op", t.op + (t.operands ? " " : "")));
-            if (t.operands) text.appendChild(el("span", null, t.operands));
+            if (t.operands) text.appendChild(t.node);
             chip.appendChild(text);
             var x = el("button", "flt-x");
             x.type = "button";
@@ -923,7 +1000,10 @@
         cancel.addEventListener("click", cancelEditor);
         icons.appendChild(ok);
         icons.appendChild(cancel);
-        grid.appendChild(icons);
+        // After a chips field's box, on the line of its search input; else
+        // after the inputs.
+        var boxLine = zone.querySelector(".wcc-line");
+        (boxLine || grid).appendChild(icons);
 
         var hints = el("div", "flt-hints", hint);
         grid.appendChild(hints);
@@ -1027,6 +1107,8 @@
         var op = opByKey(attr, editor.opKey);
         WsjrdpChipsCombobox.create(zone, {
           values: (attr.options && attr.options.values) || [],
+          idSearch: !!(attr.options && attr.options.id_search),
+          placeholder: (attr.options && attr.options.id_search) ? "Suchen… (#7: genau ID 7)" : undefined,
           selected: editor.sel,
           ariaLabel: attr.label + " suchen",
           manyHint: (op && op.many_hint) || null,
