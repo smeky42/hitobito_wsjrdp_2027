@@ -211,6 +211,19 @@ describe Wsjrdp2027::RegistrationDocuments do
 
     expect([0.85, 12.34, 252, 3780].map(&format)).to eq(["850 ms", "12,3 s", "4 min 12 s", "1 h 3 min"])
   end
+  it "names a new generated registration PDF with its key, read back without the legacy mapping" do
+    name = described_class.generated_registration_filename(person, at: Time.zone.local(2026, 10, 17, 10, 15))
+    expect(name).to eq("2026-10-17-10-15-00--#{person.id}-registration_generated.pdf")
+    expect(Wsjrdp2027::DocumentFilename.parse(name)).to include(key: "registration_generated", subject_id: person.id)
+
+    file(name)
+    person.update_columns(generated_registration_pdf: "#{prefix}/#{name}")
+    chain = scan.chain(person.id, "registration_generated")
+    expect(chain.entries.map(&:filename)).to eq([name])
+    expect(chain.entries.first).to have_attributes(status: "current", exists: true,
+      set_at: Time.zone.local(2026, 10, 17, 10, 15))
+  end
+
   it "reads the legacy name of the generated registration PDF as the key registration_generated" do
     name = "2025-06-28-14-38-32--#{person.id}-registration-generated.pdf"
     file(name)

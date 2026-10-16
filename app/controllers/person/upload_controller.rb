@@ -32,8 +32,7 @@ class Person::UploadController < ApplicationController
       pdf = Wsjrdp2027::Export::Pdf::Registration.new_pdf(@person, false)
 
       folder = generate_file_path
-      date = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
-      name = "#{date}--#{@person.id}-registration-generated.pdf"
+      name = Wsjrdp2027::RegistrationDocuments.generated_registration_filename(@person)
       full_name = folder + name
       FileUtils.mkdir_p(folder) unless File.directory?(folder)
 

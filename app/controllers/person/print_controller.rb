@@ -139,8 +139,7 @@ class Person::PrintController < ApplicationController
   end
 
   def file_name
-    date = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
-    "#{date}--#{@person.id}-registration-generated.pdf"
+    Wsjrdp2027::RegistrationDocuments.generated_registration_filename(@person)
   end
 
   def file_folder
