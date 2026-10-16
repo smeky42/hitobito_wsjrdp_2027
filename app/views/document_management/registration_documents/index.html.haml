@@ -1,0 +1,121 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Anmelde-Dokumente (second tab of the Dokumentenverwaltung): the counts per
+-#  key, the rights the new rows get (those of the kinds, shown only),
+-#  registering the chosen chains or all of them; the chains (one person, one
+-#  key) as an expandable table with the CNF filter and a selection across
+-#  pages, each with its files as detail; the last runs and the findings the
+-#  scan could not place (DocumentManagement::RegistrationDocumentsController).
+- scope = "document_management.registration_documents"
+- keys = Wsjrdp2027::RegistrationDocuments::KEYS
+- title(t("document_management.tabs.registration_documents"))
+-# A column head with its meaning as a tooltip.
+- header = ->(column) { content_tag(:span, t("#{scope}.headers.#{column}.label"), title: t("#{scope}.headers.#{column}.tip")) }
+
+#main
+  %h1= t("document_management.tabs.registration_documents")
+  %p.text-muted= t("#{scope}.lead")
+
+  = render "progress"
+
+  .table-responsive
+    %table.table.table-sm.align-middle.w-auto#registration-documents-counts
+      %thead
+        %tr
+          %th.align-bottom{rowspan: 2}= header.call(:key)
+          %th.text-center.ps-3.border-start{colspan: 4}= header.call(:people)
+          %th.text-center.ps-3.border-start{colspan: 3}= header.call(:files)
+        %tr
+          %th.text-end.ps-3.border-start= header.call(:people_total)
+          - DocumentManagement::RegistrationDocumentsController::STATES.each do |state|
+            %th.text-end.ps-3= header.call(state)
+          %th.text-end.ps-3.border-start= header.call(:files_total)
+          %th.text-end.ps-3= header.call(:registered)
+          %th.text-end.ps-3= header.call(:missing)
+      %tbody
+        - keys.each do |key|
+          - row = counts[key] || {chains: 0, files: 0, registered: 0, missing: 0, states: {}}
+          %tr
+            %td.font-monospace.text-nowrap= key
+            %td.text-end.ps-3.border-start= row[:chains]
+            - DocumentManagement::RegistrationDocumentsController::STATES.each do |state|
+              %td.text-end.ps-3= row[:states].fetch(state.to_sym, 0)
+            %td.text-end.ps-3.border-start= row[:files]
+            %td.text-end.ps-3= row[:registered]
+            %td.text-end.ps-3{class: ("text-danger" if row[:missing].positive?)}= row[:missing]
+
+  %details#registration-documents-rights.mb-3
+    %summary= t("#{scope}.rights.title")
+    %p.small.text-muted.mt-2
+      = t("#{scope}.rights.lead")
+      = link_to t("#{scope}.rights.kinds_link"), document_management_document_kinds_path
+    %table.table.table-sm.align-middle.w-auto
+      %thead
+        %tr
+          %th= t("#{scope}.columns.key")
+          - Wsjrdp2027::RegistrationDocuments::LISTS.each do |list|
+            %th= t("document_management.lists.#{list}")
+      %tbody
+        - keys.each do |key|
+          - rights = Wsjrdp2027::RegistrationDocuments.rights_for(key, kinds)
+          %tr
+            %td.font-monospace.text-nowrap
+              = key
+              - unless kinds[key]
+                %span.text-muted.small= t("#{scope}.rights.no_kind")
+            - Wsjrdp2027::RegistrationDocuments::LISTS.each do |list|
+              %td.font-monospace.small= rights[list].presence&.join(", ") || "—"
+
+  = form_with url: document_management_register_documents_path, method: :post, local: true,
+    id: "registration-documents-form", data: {turbo: false} do
+    -# The table's view (filter, sort, page) goes along, so the redirect
+    -# comes back to it and "alle Seiten" means the filter's chains.
+    - table_state.wire_params.each do |name, value|
+      = hidden_field_tag name, value, id: nil
+    .d-flex.flex-wrap.gap-2.mb-3
+      -# Both go to the form's own URL and name what to do in `operation`:
+      -# the CSRF token of a form is bound to its URL (per_form_csrf_tokens), so a
+      -# button with another formaction would be refused.
+      = button_tag t("#{scope}.register_button"), type: "submit", name: "operation", value: "register",
+        class: "btn btn-sm btn-primary"
+      = button_tag t("#{scope}.register_all_button"), type: "submit", name: "operation", value: "register_all",
+        class: "btn btn-sm btn-outline-primary", data: {confirm: t("#{scope}.register_all_confirm")}
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows chains, id: "rc"
+    - t.columns registration_chain_table_columns(people_by_id), menu: true
+    - t.row_key { |chain| chain.id }
+    - t.detail { |chain| render "chain_files", chain: chain }
+    -# No "Alle": every row renders its files, 12 000 chains would be megabytes.
+    - t.paging per_options: [25, 50, 100, 200]
+    - t.filter apply_url: document_management_apply_registration_documents_path
+    - t.selection({name: "chain_ids[]", id_field: ->(chain) { chain.id }, form: "registration-documents-form",
+        all_param: "select_all", total_count: chains.total_count})
+
+  %p.small.text-muted.mt-2#registration-documents-shown= t("#{scope}.shown", count: chains.total_count)
+
+  - if runs.any?
+    %h2.h5.mt-4= t("#{scope}.runs")
+    %table.table.table-sm.w-auto#registration-documents-runs
+      %tbody
+        - runs.each do |run|
+          %tr
+            %td.text-nowrap= document_time(run.created_at)
+            %td= run.message
+
+  - if scan.anomalies.any?
+    %details.mt-4#registration-documents-anomalies
+      %summary= t("#{scope}.anomalies.title", count: scan.anomalies.size)
+      %table.table.table-sm.mt-2
+        %tbody
+          - scan.anomalies.each do |anomaly|
+            %tr
+              %td= t("#{scope}.anomalies.#{anomaly.kind}")
+              %td.font-monospace.small= anomaly.path
+              %td= anomaly.person_id
+              %td= anomaly.detail

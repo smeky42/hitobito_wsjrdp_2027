@@ -728,3 +728,40 @@ Die Routen-Helfer: `fin_admin_path`, `fin_admin_finance_groups_path` (GET) und
 Filter-Builders) und als einzige Member-Route des Bereichs
 `fin_admin_payment_reference_path` (GET `…/:id`, nur Ziffern) für die Seite
 eines Codes.
+
+## 9. Dokumente (Hauptpunkt) und Dokumentenverwaltung (Einstellungen)
+
+Beides nur für Admins (`:manage_documents` auf `WsjrdpDocument`,
+`Wsjrdp2027::Ability#define_document_abilities`).
+
+- **Hauptpunkt Dokumente** zwischen Finanzen und Kontingent
+  (`Wsjrdp2027::NavigationHelper::WSJRDP_MAIN_DOCUMENTS`): führt auf
+  `/documents` und ist für `documents` und
+  `document_management/document_kinds` aktiv, nicht für
+  `registration_documents`. Bereichs-Sheet `Sheet::Documents`, ohne linke
+  Unter-Navigation; seine Tabs sind die einzige Navigation.
+- **Einstellungen → Dokumentenverwaltung**: der Eintrag kommt über den
+  Core-Hook `render_extensions(:admin_nav_main)`
+  (`shared/_admin_nav_main_wsjrdp_2027`); `Wsjrdp2027::NavigationHelper`
+  ergänzt `active_for` des Hauptpunkts Einstellungen um
+  `document_management` und `inactive_for` um `document_kinds`.
+  Bereichs-Sheet `Sheet::DocumentManagement` (erbt von `Sheet::Admin`, also
+  mit der linken Navigation der Einstellungen).
+
+| Bereich | Tab | URL | Controller | Sheet |
+|---|---|---|---|---|
+| Einstellungen | Übersicht | `/document_management` | `DocumentManagementController` | `Sheet::DocumentManagement` |
+| Einstellungen | Anmelde-Dokumente | `/document_management/registration_documents` | `DocumentManagement::RegistrationDocumentsController` | `Sheet::DocumentManagement::RegistrationDocument` |
+| Dokumente | Alle | `/documents`, Detail `/documents/:id/details` | `DocumentManagement::DocumentsController` | `Sheet::DocumentManagement::Document` |
+| Dokumente | Nach Person und Art | `/documents/by_person_and_kind`, Detail `/documents/by_person_and_kind/:id` | `DocumentManagement::DocumentGroupsController` | `Sheet::DocumentManagement::DocumentGroup` |
+| Dokumente | Arten | `/document_management/document_kinds`, Seite/Formular `/document_management/document_kinds/:id`, `new` | `DocumentManagement::DocumentKindsController` | `Sheet::DocumentManagement::DocumentKind` |
+
+Die Tab-Sheets hängen wie bei den Zahlungscodes mit `parent_sheet` und
+`always_render_parent` an ihrem Bereichs-Sheet: Anmelde-Dokumente erbt von
+`Sheet::Admin`, die Tabs des Hauptpunkts erben von
+`Sheet::DocumentManagement::DocumentsTab` (ohne linke Navigation,
+`left_nav?` false). `/documents/:id` bleibt der
+Download der Datei (`Wsjrdp::DocumentsController`), die Detailseite ist
+`/documents/:id/details`. Was die Tabs Anmelde-Dokumente und Dokument-Arten
+tun, steht in `doc/wsjrdp/documents.md`, Abschnitte „Registration documents“
+und „Document management“.

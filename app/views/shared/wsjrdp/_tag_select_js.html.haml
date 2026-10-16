@@ -14,7 +14,11 @@
 -#  The chips are small and the placeholder disappears once something is
 -#  chosen, so the field stays one line in a narrow column; the list opens
 -#  at least 24rem wide, every entry on one line with its description in a
--#  column of its own.
+-#  column of its own. It is as tall as its entries where the screen has
+-#  room below the field (at least TomSelect's 200px).
+-#
+-#  With data-source the suggestions come from a JSON script of the page
+-#  ([[value, description], ...]); data-max-options limits the matches shown.
 -#
 -#  WsjrdpTagSelect.activate(root) enhances the selects in root that are not
 -#  enhanced yet; it runs on load, after every Turbo visit and in every turbo
@@ -22,6 +26,8 @@
 - return if @wsjrdp_tag_select_js_emitted
 - @wsjrdp_tag_select_js_emitted = true
 :css
+  /* As wide as its column, never wider. */
+  .ts-wrapper.wsjrdp-tag-select { width: 100% !important; min-width: 0; }
   .ts-wrapper.wsjrdp-tag-select .ts-control { padding: .2rem 2rem .2rem .35rem; gap: .2rem; min-height: calc(1.5em + .5rem + 2px); }
   .ts-wrapper.wsjrdp-tag-select .ts-control > .item { font-size: .8125rem; line-height: 1.4;
     margin: 0; padding: 0 0 0 .4rem; border-radius: .25rem; }
@@ -32,27 +38,42 @@
   .ts-dropdown.wsjrdp-tag-select-dropdown .create { padding: .3rem .6rem; }
   .wsjrdp-tag-option { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: .75rem; align-items: baseline; }
   .wsjrdp-tag-option > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wsjrdp-tag-option > .wsjrdp-tag-description { color: var(--bs-gray-600, #6c757d); font-size: .8125rem; }
+  /* Long values (content types): a wider list and value column. */
+  .ts-dropdown.wsjrdp-tag-select-wide { min-width: 36rem; }
+  .ts-dropdown.wsjrdp-tag-select-wide .wsjrdp-tag-option { grid-template-columns: minmax(0, 1fr) 9rem; }
+  .ts-dropdown.wsjrdp-tag-select-wide .wsjrdp-tag-option > span:first-child { white-space: normal; overflow-wrap: anywhere; }
+  .wsjrdp-tag-option > .wsjrdp-tag-description { color: var(--bs-gray-600, #6c757d); font-size: .8125rem;
+    white-space: normal; }
 :javascript
   (function () {
     if (window.WsjrdpTagSelect) return
+
+    // The list as tall as its entries, as far as the screen has room below it.
+    function fitHeight(dropdown) {
+      const content = dropdown && dropdown.querySelector(".ts-dropdown-content")
+      if (!content) return
+      const room = window.innerHeight - content.getBoundingClientRect().top - 8
+      content.style.maxHeight = `${Math.max(200, Math.min(content.scrollHeight, room))}px`
+    }
 
     function activate(root) {
       (root || document).querySelectorAll("select[data-wsjrdp-tag-select]").forEach((select) => {
         if (select.tomselect || select.closest("template")) return
         const pattern = select.dataset.createPattern ? new RegExp(select.dataset.createPattern) : null
-        new TomSelect(select, {
+        const tom = new TomSelect(select, {
           plugins: {remove_button: {title: "Entfernen"}},
           create: pattern ? (input) => ({value: input, text: input}) : false,
           createFilter: pattern ? (input) => pattern.test(input) : null,
           persist: false,
-          maxOptions: null,
+          maxOptions: select.dataset.maxOptions ? Number(select.dataset.maxOptions) : null,
           hidePlaceholder: true,
           placeholder: select.dataset.placeholder,
           wrapperClass: "ts-wrapper wsjrdp-tag-select",
-          dropdownClass: "ts-dropdown wsjrdp-tag-select-dropdown",
+          dropdownClass: "ts-dropdown wsjrdp-tag-select-dropdown" + (select.dataset.source ? " wsjrdp-tag-select-wide" : ""),
           searchField: ["text", "description"],
           onItemAdd() { this.setTextboxValue(""); this.refreshOptions(false) },
+          onDropdownOpen(dropdown) { fitHeight(dropdown) },
+          onType() { fitHeight(this.dropdown) },
           render: {
             option: (data, escape) =>
               `<div class="wsjrdp-tag-option"><span class="font-monospace" title="${escape(data.text)}">${escape(data.text)}</span>` +
@@ -63,6 +84,15 @@
             no_results: () => '<div class="no-results">Keine Treffer</div>'
           }
         })
+        // A long list of suggestions from the JSON of the response
+        // (shared/wsjrdp/_tag_select_sources); chosen
+        // values already stand as options.
+        const source = select.dataset.source && document.getElementById(select.dataset.source)
+        if (source) {
+          JSON.parse(source.textContent).forEach(([value, description]) => {
+            if (!tom.options[value]) tom.addOption({value, text: value, description})
+          })
+        }
       })
     }
 

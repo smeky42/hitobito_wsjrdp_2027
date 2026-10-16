@@ -1,0 +1,164 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The form of a kind of document, on its page, in its row's detail and for a
+-#  new one (DocumentManagement::DocumentKindsController): label, keys (fixed
+-#  once documents have them), the rights as tag selects
+-#  (Wsjrdp::TagSelectHelper), the files it accepts, the role rules as one card
+-#  per rule (_rule; the order of the cards is the order of the rules, moved
+-#  with the arrows -- _form_js) and additional_info, shown only and only when
+-#  there is some.
+-#
+-#  Locals: url, method.
+- scope = "document_management.document_kinds"
+- fixed = kind.persisted? && used?(kind)
+- deletable = kind.persisted? && !fixed
+- dom = "kind-#{kind.id || "new"}"
+- count = kind.persisted? ? document_counts[[kind.subject_type_was, kind.key_was, kind.secondary_key_was]].to_i : 0
+
+.document-kind-form{id: "#{dom}-form"}
+  - if kind.errors.any?
+    .alert.alert-danger.document-kind-errors
+      %ul.mb-0
+        - kind.errors.full_messages.each do |message|
+          %li= message
+
+  = render "shared/wsjrdp/tag_select_sources"
+  = form_with url: url, method: method, scope: :kind, data: {turbo: false} do |f|
+    = hidden_field_tag :return_to, return_to, id: nil if return_to
+    %fieldset.mb-3
+      %legend= t("#{scope}.sections.description")
+      .kind-fields
+        %div{style: "grid-column: span 2"}
+          = f.label :label, t("#{scope}.attributes.label"), class: "form-label small mb-0 d-block required", for: "#{dom}-label"
+          = f.text_field :label, value: kind.label, class: "form-control form-control-sm", required: true, id: "#{dom}-label"
+        %div
+          = f.label :position, t("#{scope}.attributes.position"), class: "form-label small mb-0 d-block", for: "#{dom}-position"
+          = f.number_field :position, value: kind.position, class: "form-control form-control-sm", id: "#{dom}-position"
+      .mt-2
+        = f.label :description, t("#{scope}.attributes.description"), class: "form-label small mb-0 d-block", for: "#{dom}-description"
+        = f.text_area :description, value: kind.description, rows: 2, class: "form-control form-control-sm", id: "#{dom}-description"
+
+    %fieldset.mb-3
+      %legend= t("#{scope}.sections.keys")
+      -# First the keys, which documents of the kind fix; then what the kind
+      -# belongs to and the column of people that holds its upload. The
+      -# characters of a key: Wsjrdp2027::DocumentFilename.key_error, checked
+      -# while typing as well (_key_field).
+      .kind-fields
+        = render "key_field", f: f, attribute: :key, value: kind.key, dom: dom, fixed: fixed, required: !fixed,
+          label: t("#{scope}.attributes.key")
+        = render "key_field", f: f, attribute: :secondary_key, value: kind.secondary_key, dom: dom, fixed: fixed,
+          required: false, label: t("#{scope}.attributes.secondary_key")
+      %p.small.text-muted.mt-1.mb-0= t("#{scope}.keys_hint_html")
+      -# Whether documents fix the keys, as a quiet note box.
+      - if kind.persisted?
+        .kind-note.mt-2.mb-2
+          = icon(:"info-circle")
+          = fixed ? t("#{scope}.keys_fixed", count: count) : t("#{scope}.unused")
+      .kind-fields
+        %div
+          = f.label :subject_type, t("#{scope}.attributes.subject_type"), class: "form-label small mb-0 d-block", for: "#{dom}-subject_type"
+          = f.select :subject_type, Wsjrdp2027::DocumentSubjects.types, {selected: kind.subject_type},
+            class: "form-select form-select-sm", disabled: fixed, id: "#{dom}-subject_type"
+        %div
+          = f.label :people_column_name, t("#{scope}.attributes.people_column_name_html"), class: "form-label small mb-0 d-block", for: "#{dom}-people_column_name"
+          = f.select :people_column_name, WsjrdpDocumentKind.people_columns, {include_blank: t("#{scope}.no_people_column"), selected: kind.people_column_name},
+            class: "form-select form-select-sm font-monospace", id: "#{dom}-people_column_name"
+
+    %fieldset.mb-3
+      %legend= t("#{scope}.sections.rights")
+      %p.small.text-muted.mb-1= t("#{scope}.rights_hint_html")
+      .kind-fields.kind-wide
+        - WsjrdpDocumentKind::LISTS.each do |list|
+          %div
+            %label.form-label.small.mb-0.d-block{for: "#{dom}-#{list}"}= t("document_management.lists.#{list}")
+            = wsjrdp_access_entries_select("kind[#{list}][]", kind.public_send(list), id: "#{dom}-#{list}")
+      - if kind.persisted?
+        .kind-note.mt-2
+          = icon(:"info-circle")
+          = t("#{scope}.changes_hint")
+
+    %fieldset.mb-3
+      %legend= t("#{scope}.sections.files")
+      %p.small.text-muted.mb-1= t("#{scope}.files_hint")
+      -# Whole file kinds at once; the form's script marks how much of each is
+      -# chosen and shows below what the kind accepts (_form_js).
+      .kind-file-kinds.mb-2{data: {kind_file_kinds: true}}
+        %span.small.text-muted.me-1= t("#{scope}.file_kinds.add")
+        - Wsjrdp2027::DocumentFileKinds.all.each do |file_kind|
+          -# The chip adds all of the kind (all chosen: takes it out); its x,
+          -# there once something is chosen, takes all of it out.
+          %span.kind-file-kind{data: {kind_file_kind: file_kind.slice(:label, :types, :extensions, :groups).to_json}}
+            %button.kind-file-kind-add{type: "button", data: {kind_file_kind_action: "toggle"}}
+              = icon(file_kind[:icon])
+              = file_kind[:label]
+              %span.kind-file-kind-partial= t("#{scope}.file_kinds.partial")
+            %button.kind-file-kind-clear{type: "button", data: {kind_file_kind_action: "clear"},
+              title: t("#{scope}.file_kinds.clear", label: file_kind[:label]),
+              "aria-label": t("#{scope}.file_kinds.clear", label: file_kind[:label])}
+              = icon(:times)
+      .kind-fields.kind-wide
+        %div
+          = f.label :content_types, t("#{scope}.attributes.content_types"), class: "form-label small mb-0 d-block", for: "#{dom}-content_types"
+          = wsjrdp_content_types_select("kind[content_types][]", kind.content_types, id: "#{dom}-content_types")
+        %div
+          = f.label :extensions, t("#{scope}.attributes.extensions"), class: "form-label small mb-0 d-block", for: "#{dom}-extensions"
+          = wsjrdp_extensions_select("kind[extensions][]", kind.extensions, id: "#{dom}-extensions")
+      .kind-max-size.mt-2
+        = f.label :max_upload_size_mb, t("#{scope}.attributes.max_upload_size_mb"), class: "form-label small mb-0 d-block", for: "#{dom}-max_upload_size_mb"
+        = f.number_field :max_upload_size_mb, value: kind.max_upload_size_mb, min: 1, id: "#{dom}-max_upload_size_mb",
+          class: "form-control form-control-sm", placeholder: Settings.documents&.max_upload_size_mb
+        .small.text-muted.mt-1= t("#{scope}.max_size_hint", size: Settings.documents&.max_upload_size_mb || 20)
+      .kind-accepted.mt-2{data: {kind_accepted: true,
+        labels: {heading: t("#{scope}.file_kinds.accepted"), any: t("#{scope}.file_kinds.any"),
+                 chosen: t("#{scope}.file_kinds.chosen"), both: t("#{scope}.file_kinds.both"),
+                 nothing: t("#{scope}.file_kinds.nothing"), bad_extensions: t("#{scope}.file_kinds.bad_extensions"),
+                 bad_types: t("#{scope}.file_kinds.bad_types"), missing: t("#{scope}.file_kinds.missing")}.to_json,
+        file_kinds: Wsjrdp2027::DocumentFileKinds.all.map { |k| {label: k[:label], extensions: k[:extensions]} }.to_json}}
+
+    %fieldset.mb-3{data: {kind_rules: true}}
+      %legend= t("#{scope}.sections.role_rules")
+      %p.small.text-muted.mb-2= t("#{scope}.rules_hint")
+      %div{data: {kind_rules_list: true}}
+        - rules = Array(kind.role_rules)
+        - rules.each_with_index do |rule, index|
+          = render "rule", rule: rule, index: index, number: index + 1, first: index.zero?, last: index == rules.size - 1, dom: dom
+      %p.small.text-muted{data: {kind_rules_empty: true}, hidden: rules.any?}= t("#{scope}.no_rules")
+      -# The tags people carry, suggested for a rule's missing tag (free text too).
+      %datalist{id: "#{dom}-person-tags"}
+        - person_tags.each do |name|
+          %option{value: name}
+      %template{data: {kind_rule_template: true}}
+        = render "rule", rule: {}, index: "__INDEX__", number: "", first: false, last: true, dom: dom
+      %button.btn.btn-sm.btn-outline-primary{type: "button", data: {kind_rule_action: "add"}}
+        = icon(:plus)
+        = t("#{scope}.add_rule")
+
+    -# additional_info, shown only, and only when there is some.
+    - if kind.additional_info.present?
+      %fieldset.mb-3
+        %legend= t("#{scope}.attributes.additional_info")
+        %pre.kind-additional-info= JSON.pretty_generate(kind.additional_info)
+
+    -# Delete stands beside Save, for a kind without documents only; it
+    -# submits the form of its own below (forms do not nest), which asks
+    -# first (data-confirm on the form: rails-ujs leaves buttons with a form
+    -# attribute alone).
+    .d-flex.flex-wrap.gap-2.align-items-center
+      = f.submit t("#{scope}.save"), class: "btn btn-sm btn-primary"
+      - if deletable
+        %button.btn.btn-sm.btn-danger{type: "submit", form: "#{dom}-destroy"}
+          = icon(:"trash-alt")
+          = t("#{scope}.destroy_button")
+      - unless kind.persisted?
+        = link_to t("global.button.cancel"), document_management_document_kinds_path, class: "btn btn-sm btn-link"
+
+  - if deletable
+    = form_with url: document_management_document_kind_path(kind), method: :delete, id: "#{dom}-destroy",
+      data: {turbo: false, confirm: t("#{scope}.destroy_confirm", label: kind.label)} do
+      -# Submitted by the delete button beside Save.

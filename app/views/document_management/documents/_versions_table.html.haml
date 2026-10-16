@@ -1,0 +1,36 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The versions of a document or a document group (documents/_detail,
+-#  document_groups/_detail): an expandable table
+-#  (DocumentManagement::DocumentVersionsColumns, the controller's
+-#  DocumentManagement::VersionsTable), each version opening its document's
+-#  page without its own versions (?versions=none), and below it the
+-#  comparison of the two versions L and R pick (_preview). The shown
+-#  document, if any, is highlighted.
+-#
+-#  Locals: versions (in their order), pair (the comparison's left and right
+-#  document, each possibly nil), preview_id, shown (the shown document or
+-#  nil), with_numbers (a column with each version's numbers, for a group of
+-#  several combinations)
+- author_ids = versions.select { |version| version.author_type == "Person" }.map(&:author_id).uniq
+- people = Person.where(id: author_ids).index_by(&:id)
+%h3.h6= t("document_management.document.versions")
+.document-versions-table
+  = wsjrdp_expandable_table do |t|
+    - t.rows document_versions_rows(versions), id: "dv"
+    - t.columns document_version_table_columns(pair, preview_id, people: people,
+        with_numbers: local_assigns[:with_numbers]), menu: true
+    -# Fills the width: Von (and Dateiname) widen first, then the gaps.
+    - t.gaps max: "2rem", grow_max: "12rem"
+    - t.row_key { |document| document.id }
+    - t.row_class { |document| "table-active" if document == local_assigns[:shown] }
+    - t.detail_page(column: true) { |document| document_management_document_path(document) }
+    - t.detail_src { |document| document_management_document_path(document, versions: "none") }
+    - t.footer { |col| document_version_compare_clear(col, pair, preview_id) }
+= render "document_management/documents/preview", document: local_assigns[:shown], versions: versions, pair: pair,
+  preview_id: preview_id

@@ -1,0 +1,127 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The kind's form: the rule cards, their role pills and square checkboxes,
+-#  also in a narrow table cell.
+- return if @wsjrdp_document_kind_form_styles_emitted
+- @wsjrdp_document_kind_form_styles_emitted = true
+:css
+  /* Hitobito pulls a fieldset 20px out to both sides; inside a table's
+     detail that runs past the cell (a scroll bar). The form's sections stay
+     within the form, and in a detail the form keeps a margin of its own. */
+  .document-kind-form fieldset { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+  turbo-frame > .document-kind-form { padding: .75rem 1rem; }
+  /* A checkbox stays a square of 1em whatever the browser makes of the
+     surrounding layout: every size pinned, nothing to stretch it. */
+  .document-kind-form .form-check-input:not(.btn-check) { flex: none; box-sizing: border-box;
+    width: 1em; min-width: 1em; max-width: 1em; height: 1em; min-height: 1em; max-height: 1em;
+    aspect-ratio: 1 / 1; padding: 0; }
+  /* "Dokument-Art" before a kind's name in the heading of its page. */
+  .kind-eyebrow { color: var(--bs-gray-500, #adb5bd); font-weight: 300; margin-right: .2em; }
+  /* A key's length: quiet, as small as the label. */
+  .document-kind-form .kind-key-count { color: var(--bs-gray-500, #adb5bd); font-size: .75rem;
+    font-variant-numeric: tabular-nums; }
+  .document-kind-form .kind-key-problems:not(:empty) { margin-top: .2rem; }
+  .document-kind-form .kind-rule { border: 1px solid var(--bs-border-color); border-radius: .5rem;
+    padding: .6rem .75rem; margin-bottom: .5rem; background: var(--bs-body-bg); }
+  .document-kind-form .kind-rule-number { font-weight: 600; min-width: 1.2em; line-height: calc(1.5em + .2rem + 2px); }
+  .document-kind-form .kind-rule-head { flex: 1 1 auto; min-width: 0; gap: .25rem .5rem; }
+  .document-kind-form .kind-rule .btn-group { flex: none; }
+  .document-kind-form .kind-rule-roles .btn { --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .6rem; }
+  /* A role pill is filled only while chosen. Bootstrap fills an outline
+     button on hover AND while its .btn-check has the focus -- which it keeps
+     after a click --, so a pill just unchosen would still look chosen. Here
+     an unchosen pill is tinted on hover only; the focus shows as a ring
+     alone -- after a click as well, so that Tab and Space go on from a
+     visible place. */
+  .document-kind-form .kind-rule-roles .btn-check:not(:checked):focus + .btn {
+    background-color: transparent; color: var(--bs-primary); border-color: var(--bs-primary); }
+  .document-kind-form .kind-rule-roles .btn-check:not(:checked) + .btn:hover {
+    background-color: rgba(var(--bs-primary-rgb), .12); color: var(--bs-primary);
+    border-color: var(--bs-primary); }
+  .document-kind-form .kind-rule-roles .btn-check:focus + .btn {
+    box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .45); }
+  .document-kind-form .kind-rule-roles .btn-check:not(:focus) + .btn { box-shadow: none; }
+  /* The fields of a rule: three columns, the checkboxes in the last, level
+     with the inputs; on a narrow card one field per line. */
+  .document-kind-form .kind-rule { container-type: inline-size; }
+  .document-kind-form .kind-rule-grid { display: grid; gap: .5rem .75rem; max-width: 60rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(7rem, 13rem); align-items: start; }
+  .document-kind-form .kind-rule-check { margin-top: 1.5rem; }
+  @container (max-width: 36rem) {
+    .document-kind-form .kind-rule-grid { grid-template-columns: minmax(0, 1fr); }
+    .document-kind-form .kind-rule-check { margin-top: 0; }
+  }
+  /* The checkbox labels of a rule wrap in their column. */
+  .document-kind-form .kind-rule-grid .form-check-label { white-space: normal; }
+  .document-kind-form .kind-fields > div > select.form-select { width: 100%; }
+  /* The rights, and the types and extensions, share the whole width, each
+     field at least 19.5rem, and wrap onto further lines only below that;
+     the size limit stands in a line of its own. */
+  .document-kind-form .kind-fields.kind-wide { max-width: none;
+    grid-template-columns: repeat(auto-fit, minmax(min(19.5rem, 100%), 1fr)); }
+  .document-kind-form .kind-max-size { max-width: 19.5rem; }
+  /* A quiet note box, e.g. whether documents fix the keys. */
+  .document-kind-form .kind-note { display: flex; gap: .4rem; align-items: baseline; font-size: .8rem;
+    color: var(--bs-gray-700, #495057); background: var(--bs-gray-100, #f8f9fa);
+    border: 1px solid var(--bs-gray-300, #dee2e6); border-radius: .4rem; padding: .35rem .6rem; }
+  .document-kind-form .kind-note i { color: var(--bs-gray-500, #adb5bd); }
+  /* The file kinds: filled while all of a kind is chosen, outlined while a
+     part is; what the kind accepts below the fields. */
+  .document-kind-form .kind-file-kind { display: inline-flex; align-items: center; font-size: .8rem;
+    margin: 0 .25rem .3rem 0; border-radius: 1rem; border: 1px solid var(--bs-gray-400, #ced4da); }
+  .document-kind-form .kind-file-kind button { border: 0; background: transparent; color: inherit; font: inherit; }
+  .document-kind-form .kind-file-kind-add { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .6rem;
+    border-radius: 1rem; }
+  .document-kind-form .kind-file-kind-add:hover { background: rgba(var(--bs-primary-rgb), .08); }
+  .document-kind-form .kind-file-kind.is-full { background: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
+  .document-kind-form .kind-file-kind.is-full .kind-file-kind-add:hover { background: rgba(255, 255, 255, .15); }
+  .document-kind-form .kind-file-kind.is-partial { border-color: var(--bs-primary); color: var(--bs-primary); }
+  .document-kind-form .kind-file-kind-partial { display: none; font-size: .7rem; opacity: .8; }
+  .document-kind-form .kind-file-kind.is-partial .kind-file-kind-partial { display: inline; }
+  /* The x sits in the centre of the chip's right half circle: the chip is
+     1.4rem high inside, so a 1rem circle keeps .2rem to every edge. */
+  .document-kind-form .kind-file-kind-clear { display: none; width: 1rem; height: 1rem; margin: 0 .2rem 0 -.3rem; padding: 0;
+    border-radius: 50%; line-height: 0; align-items: center; justify-content: center; }
+  .document-kind-form .kind-file-kind-clear i { display: block; font-size: .6rem; line-height: 1; }
+  .document-kind-form .kind-file-kind.is-full .kind-file-kind-clear,
+  .document-kind-form .kind-file-kind.is-partial .kind-file-kind-clear { display: inline-flex; }
+  .document-kind-form .kind-file-kind.is-partial .kind-file-kind-clear { background: rgba(var(--bs-primary-rgb), .12); }
+  .document-kind-form .kind-file-kind.is-full .kind-file-kind-clear { background: rgba(255, 255, 255, .25); }
+  .document-kind-form .kind-file-kind-clear:hover { outline: 1px solid currentColor; }
+  .document-kind-form .kind-accepted { font-size: .8rem; border: 1px solid var(--bs-gray-300, #dee2e6); border-radius: .4rem;
+    padding: .4rem .6rem; background: var(--bs-gray-100, #f8f9fa); }
+  .document-kind-form .kind-accepted:empty { display: none; }
+  .document-kind-form .kind-accepted-item { display: inline-block; padding: 0 .5rem; margin: .1rem .25rem .1rem 0;
+    border-radius: 1rem; background: #d1e7dd; color: #0f5132; }
+  .document-kind-form .kind-accepted-warn { color: #b02a37; margin-top: .25rem; }
+  .ts-wrapper.wsjrdp-tag-select .ts-control > .item.is-never { background: #f8d7da; color: #842029; }
+  .document-kind-form .kind-fields { display: grid; gap: .5rem .75rem; max-width: 60rem;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); align-items: start; }
+  .document-kind-form .ts-wrapper.form-select { padding: 0; }
+  .document-kind-form legend { font-size: 1rem; font-weight: 600; margin-bottom: .25rem; }
+  .document-kind-form pre.kind-additional-info { font-size: .8rem; background: var(--bs-gray-200, #e9ecef);
+    padding: .4rem .6rem; border-radius: .25rem; margin: 0; }
+  /* The tooltip of a file kind (_form_js): a block per type, its
+     extensions as chips below it, chosen ones green. */
+  .kind-file-kind-tip { position: absolute; z-index: 1080; max-width: min(38rem, calc(100vw - 1rem));
+    background: var(--bs-body-bg, #fff); color: var(--bs-body-color, #212529); border: 1px solid var(--bs-gray-300, #dee2e6);
+    border-radius: .5rem; padding: .5rem .65rem; font-size: .75rem; line-height: 1.45;
+    box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .12); pointer-events: none; }
+  .kind-file-kind-tip .tip-head { display: flex; justify-content: space-between; gap: 1rem; font-weight: 600; margin-bottom: .2rem; }
+  .kind-file-kind-tip .tip-state { font-weight: 400; color: var(--bs-gray-600, #6c757d); }
+  .kind-file-kind-tip .tip-group { margin-top: .35rem; }
+  .kind-file-kind-tip .tip-type { font-family: var(--bs-font-monospace); word-break: break-all; }
+  .kind-file-kind-tip .tip-mark { display: inline-block; width: 1em; }
+  .kind-file-kind-tip .tip-mark.is-on { color: #198754; }
+  .kind-file-kind-tip .tip-mark.is-off { color: var(--bs-gray-500, #adb5bd); }
+  .kind-file-kind-tip .tip-exts { padding-left: 1.2em; }
+  .kind-file-kind-tip .tip-ext { display: inline-block; font-family: var(--bs-font-monospace); font-size: .7rem; padding: 0 .3rem;
+    border-radius: .25rem; margin: .15rem .2rem 0 0; border: 1px solid var(--bs-gray-400, #ced4da); }
+  .kind-file-kind-tip .tip-ext.is-on { background: #d1e7dd; border-color: #a3cfbb; color: #0f5132; }
+  .kind-file-kind-tip .tip-label { color: var(--bs-gray-600, #6c757d); font-size: .7rem; }
+  .kind-file-kind-tip .tip-foot { color: var(--bs-gray-600, #6c757d); font-size: .7rem; margin-top: .35rem; }

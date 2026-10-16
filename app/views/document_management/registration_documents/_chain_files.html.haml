@@ -1,0 +1,42 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The files of one chain, oldest first: when and by whom set, where the scan
+-#  found them, the status they get and the document they are registered as.
+-#
+-#  Locals: chain (Wsjrdp2027::RegistrationDocuments::Chain)
+- scope = "document_management.registration_documents"
+- people = Person.where(id: chain.entries.select { |entry| entry.author_type == "Person" }.map(&:author_id).compact.uniq).index_by(&:id)
+%table.table.table-sm.mb-0{id: "chain-#{chain.id}-files"}
+  %thead
+    %tr
+      %th= t("#{scope}.entry.set_at")
+      %th= t("#{scope}.entry.file")
+      %th= t("#{scope}.entry.source")
+      %th= t("#{scope}.entry.author")
+      %th= t("#{scope}.entry.status")
+      %th= t("#{scope}.entry.document")
+  %tbody
+    - chain.entries.each do |entry|
+      %tr
+        %td.text-nowrap= document_time(entry.set_at)
+        %td.font-monospace.small
+          = entry.filename
+          - unless entry.exists
+            %span.text-danger= t("document_management.file_statuses.missing")
+        %td= t("#{scope}.sources.#{entry.source}")
+        %td
+          - author = entry.author_type == "Person" && people[entry.author_id]
+          = author ? "#{author} (#{author.id})" : (entry.author_id ? "#{entry.author_type} ##{entry.author_id}" : "—")
+        %td= t("document_management.statuses.#{entry.status}")
+        %td
+          - if entry.document
+            = link_to("##{entry.document.id}", document_management_document_path(entry.document), data: {turbo_frame: "_top"})
+            - unless entry.in_sync?
+              %span.text-warning= t("#{scope}.out_of_sync")
+          - else
+            %span.text-muted —

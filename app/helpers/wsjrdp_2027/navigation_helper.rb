@@ -31,6 +31,19 @@ module Wsjrdp2027::NavigationHelper
     inactive_for: %w[fin/ae fin/pn /people]
   }
 
+  # The documents and their kinds (Sheet::Documents), for admins: /documents
+  # and /document_management/document_kinds. The rest of /document_management
+  # belongs to Einstellungen (shared/_admin_nav_main_wsjrdp_2027); the
+  # fragment "documents" would match its registration_documents too.
+  WSJRDP_MAIN_DOCUMENTS = {
+    label: :documents,
+    url: :document_management_documents_path,
+    icon_name: "file-alt",
+    if: ->(_) { can?(:manage_documents, WsjrdpDocument) },
+    active_for: %w[documents document_management/document_kinds],
+    inactive_for: %w[registration_documents]
+  }
+
   WSJRDP_MAIN_CONTINGENT = {
     label: :contingent,
     url: :contingent_contingent_path,
@@ -50,11 +63,20 @@ module Wsjrdp2027::NavigationHelper
     if NavigationHelper::MAIN.find_index { |e| e[:label] == :finance }.nil?
       NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_FIN)
     end
+    if NavigationHelper::MAIN.find_index { |e| e[:label] == :documents }.nil?
+      NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_DOCUMENTS)
+    end
     if NavigationHelper::MAIN.find_index { |e| e[:label] == :contingent }.nil?
       NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_CONTINGENT)
     end
     # Einstellungen also for the wagon's page Ländercodes.
     admin = NavigationHelper::MAIN.find { |e| e[:label] == :admin }
     admin[:active_for] = admin[:active_for] | %w[country_codes] if admin
+    # And for the Dokumentenverwaltung, apart from the kinds of document,
+    # which belong to the main section Dokumente.
+    if admin
+      admin[:active_for] = admin[:active_for] | %w[document_management]
+      admin[:inactive_for] = Array(admin[:inactive_for]) | %w[document_kinds]
+    end
   end
 end

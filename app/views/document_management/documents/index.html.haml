@@ -1,0 +1,31 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Alle (first tab of the main section Dokumente): every document as an
+-#  expandable table. Its filter, presets, sort and page size come from the
+-#  controller's policy; a row opens the document's page (show) as its lazy
+-#  detail.
+
+- title(t("document_management.tabs.documents"))
+= render "document_management/documents/list_styles"
+
+#main
+  %h1= t("document_management.tabs.documents")
+  %p.text-muted= t("document_management.documents.lead")
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows documents, id: "doc"
+    - t.columns document_table_columns(people_by_id), menu: true
+    - t.gaps max: "1.5rem", grow_max: "5rem"
+    - t.row_key { |document| document.id }
+    - t.detail_page(column: true) { |document| document_management_document_path(document) }
+    - t.detail_src { |document| document_management_document_path(document) }
+    - t.paging
+    - t.filter apply_url: document_management_apply_documents_path
+
+  %p.text-muted.small.mt-2#documents-shown
+    = t("document_management.documents.shown", count: documents.total_count)

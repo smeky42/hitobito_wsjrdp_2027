@@ -1,0 +1,266 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The progress of a tracked job (Wsjrdp::TrackedJob): waiting, scanning, the
+-#  counters done with a bar, elapsed time and an estimate of the rest; a run
+-#  that died (stale) or that the worker threw away before it started (lost)
+-#  as a warning; when a run ends, its message. It asks the progress endpoint
+-#  every second while a run waits or works, else every 10 seconds, so a run
+-#  started elsewhere shows up too (the job writes its state every second,
+-#  .status). Any number of these may stand on a page, each with its own id.
+-#
+-#  Between two answers the display moves on by itself, so it runs smoothly:
+-#  the clock ticks locally, the counters count up at the pace of the last 15
+-#  seconds (never past the totals, never backwards); the bar and its
+-#  percentage glide towards them, eased strongly (BAR_EASE), so the answers'
+-#  steps do not show; the rest is the server's estimate, counted down and
+-#  eased. "Abbrechen" cancels the run, which stops after the item at hand, or
+-#  takes a waiting run out of the queue.
+-#
+-#  While a run works, the box has two lines: the title with the share done
+-#  and "Abbrechen", then the bar and the figures in columns -- the counters,
+-#  time so far, rest. Digits are tabular and every number has its width
+-#  reserved, so nothing shifts as the numbers change.
+-#
+-#  Locals:
+-#    job           -- the Wsjrdp::TrackedJob subclass (status, figures, texts)
+-#    id            -- the box's DOM id
+-#    progress_url  -- the JSON status (Wsjrdp::TrackedJobEndpoints)
+-#    cancel_url    -- where "Abbrechen" posts; nil: no cancelling
+-#    figures       -- the counters shown as columns (default: job.figures);
+-#                     elapsed time and rest always follow
+-#    bar           -- the counter the bar and share follow (default: job.pace)
+-#    texts         -- texts that override the job's for this box
+-#    reload        -- false: no "Seite neu laden" link once a run is done
+- figures = Array(local_assigns[:figures] || job.figures).map(&:to_s)
+- bar = (local_assigns[:bar] || job.pace).to_s
+- reload = local_assigns.fetch(:reload, true)
+- text = ->(key, **options) { t("#{job.i18n_scope}.progress.#{key}", default: :"wsjrdp.tracked_job.progress.#{key}", **options) }
+- keys = %w[waiting scanning running since finished reload cancel_confirm cancel cancelling elapsed rest]
+- texts = keys.index_with { |key| text.call(key) }
+- texts["stale"] = text.call("stale", since: "%{since}")
+- texts["lost"] = text.call("lost", since: "%{since}")
+- figures.each { |figure| texts["figure_#{figure}"] = text.call("figures.#{figure}") }
+- texts.merge!(local_assigns[:texts].to_h.transform_keys(&:to_s))
+- status = job.status
+.tracked-job-progress.alert.alert-info{id: id, hidden: !%w[waiting running stale lost].include?(status["state"]),
+  data: {url: progress_url, status: status.to_json, texts: texts.to_json, cancel_url: cancel_url,
+    figures: figures.to_json, bar: bar, reload: reload.to_s}}
+  .d-flex.align-items-baseline.gap-3
+    .flex-grow-1
+      %span.tracked-job-progress-text{style: "font-weight: 500"}
+      %span.tracked-job-progress-share{hidden: true}
+        &middot;
+        -# No reserved width: nothing after it could shift.
+        %span.tracked-job-progress-share-value
+        \ %
+      %span.tracked-job-progress-cancelling.ms-2{hidden: true}= texts["cancelling"]
+    - if cancel_url
+      %button.btn.btn-sm.btn-outline-danger.tracked-job-cancel{type: "button", hidden: true}= texts["cancel"]
+  .progress.mt-2{role: "progressbar", hidden: true, style: "height: 0.5rem"}
+    .progress-bar{style: "width: 0%"}
+  .tracked-job-progress-figures.mt-2{hidden: true, style: "--tjp-columns: #{figures.size + 2}"}
+    - figures.each do |figure|
+      %div
+        .small.text-muted= texts["figure_#{figure}"]
+        %span.tjp-n{data: {figure: figure}}
+        %span{data: {total: figure}}
+    - %w[elapsed rest].each do |figure|
+      %div
+        .small.text-muted= texts[figure]
+        %span.tjp-n{data: {figure: figure}}
+
+- unless @wsjrdp_tracked_job_progress_emitted
+  - @wsjrdp_tracked_job_progress_emitted = true
+  :css
+    .tracked-job-progress { font-variant-numeric: tabular-nums; }
+    .tracked-job-progress .tjp-n { display: inline-block; text-align: right; }
+    .tracked-job-progress .tracked-job-progress-figures:not([hidden]) {
+      display: grid; grid-template-columns: repeat(var(--tjp-columns), minmax(0, 1fr)); gap: 0.5rem; }
+
+:javascript
+  (function () {
+    var box = document.getElementById(#{id.to_json});
+    if (!box || box.dataset.polling) return;
+    box.dataset.polling = "1";
+    var texts = JSON.parse(box.dataset.texts);
+    var names = JSON.parse(box.dataset.figures);
+    var barName = box.dataset.bar;
+    // BAR_EASE: the bar closes the gap to its target with a time constant of
+    // this many ms -- strong easing, so it moves evenly, never in jumps.
+    var ACTIVE_POLL = 1000, IDLE_POLL = 10000, WINDOW = 15000, BAR_EASE = 2500;
+    var active = ["waiting", "running"];
+    var seenActive = false;
+    var latest = null, receivedAt = 0, samples = [], shown = null, remaining = null, startedAt = null;
+    var drawnAt = null, barShare = null;
+    var text = box.querySelector(".tracked-job-progress-text");
+    var shareBox = box.querySelector(".tracked-job-progress-share");
+    var shareValue = shareBox.querySelector(".tracked-job-progress-share-value");
+    var cancellingNote = box.querySelector(".tracked-job-progress-cancelling");
+    var figures = box.querySelector(".tracked-job-progress-figures");
+    var figure = function (name) { return figures.querySelector('[data-figure="' + name + '"]'); };
+    var total = function (name) { return figures.querySelector('[data-total="' + name + '"]'); };
+    var bar = box.querySelector(".progress");
+    var barFill = bar.querySelector(".progress-bar");
+    var cancelButton = box.querySelector(".tracked-job-cancel");
+    var number = function (n) { return Math.floor(n || 0).toLocaleString("de-DE"); };
+    // Seconds and minutes after a larger unit take two places (a figure space
+    // pads a single digit), so "1 min 9 s" is as wide as "1 min 10 s".
+    var pad = function (n) { return (n < 10 ? " " : "") + n; };
+    var duration = function (s) {
+      if (s == null) return "";
+      s = Math.max(0, Math.round(s));
+      if (s < 60) return s + " s";
+      if (s < 3600) return Math.floor(s / 60) + " min " + pad(s % 60) + " s";
+      return Math.floor(s / 3600) + " h " + pad(Math.round((s % 3600) / 60)) + " min";
+    };
+    // Counting: the run works, past its scan.
+    var counting = function () {
+      return latest && latest.state === "running" && latest.phase && latest.phase !== "scan" && latest.phase !== "unknown";
+    };
+    var counted = names.indexOf(barName) >= 0 ? names : names.concat([barName]);
+    var values = function (done) {
+      var result = {};
+      counted.forEach(function (name) { result[name] = done[name] || 0; });
+      return result;
+    };
+    // Each counter per millisecond over the last WINDOW.
+    var rates = function () {
+      var result = {};
+      counted.forEach(function (name) { result[name] = 0; });
+      if (samples.length < 2) return result;
+      var first = samples[0], last = samples[samples.length - 1], dt = last.t - first.t;
+      if (dt < 1000) return result;
+      counted.forEach(function (name) { result[name] = (last.v[name] - first.v[name]) / dt; });
+      return result;
+    };
+    var accept = function (status) {
+      latest = status;
+      receivedAt = performance.now();
+      // The run's start on the local clock, fixed once: the clock then ticks
+      // evenly instead of following every answer's latency.
+      if (status.elapsed_seconds == null) startedAt = null;
+      else if (startedAt == null) startedAt = receivedAt - status.elapsed_seconds * 1000;
+      if (!counting()) { samples = []; shown = null; remaining = null; barShare = null; return; }
+      var now = values(status.done || {});
+      samples.push({t: receivedAt, v: now});
+      while (samples.length > 2 && receivedAt - samples[0].t > WINDOW) samples.shift();
+      if (!shown) shown = values(status.done || {});
+      counted.forEach(function (name) { shown[name] = Math.max(shown[name], now[name]); });
+    };
+    var draw = function () {
+      var status = latest;
+      if (!status) return;
+      var now = performance.now();
+      if (cancelButton) cancelButton.hidden = active.indexOf(status.state) < 0 || !!status.cancelling;
+      box.classList.toggle("alert-warning", status.state === "stale" || status.state === "lost");
+      box.classList.toggle("alert-success", status.state === "idle" && status.last_status === "finished");
+      box.classList.toggle("alert-info", active.indexOf(status.state) >= 0);
+      bar.hidden = !counting();
+      figures.hidden = !counting();
+      shareBox.hidden = !counting();
+      cancellingNote.hidden = !(counting() && status.cancelling);
+      var elapsed = startedAt == null ? null : (now - startedAt) / 1000;
+      if (status.state === "waiting") {
+        box.hidden = false;
+        text.textContent = texts.waiting;
+      } else if (status.state === "running" && status.phase === "unknown") {
+        box.hidden = false;
+        text.textContent = texts.running + " · " + texts.since + " " + duration(elapsed);
+      } else if (status.state === "running" && !counting()) {
+        box.hidden = false;
+        text.textContent = texts.scanning;
+      } else if (counting()) {
+        var totals = status.totals || {}, rate = rates(), since = now - receivedAt;
+        // On at the measured pace, at most 4 s ahead of the last answer (a
+        // late answer does not stop the count; the real numbers catch up).
+        var ahead = Math.min(since, 4000);
+        var done = status.done || {};
+        counted.forEach(function (name) {
+          shown[name] = Math.min(totals[name] || 0, Math.max(shown[name], (done[name] || 0) + rate[name] * ahead));
+        });
+        var share = totals[barName] ? shown[barName] / totals[barName] : 0;
+        var dt = drawnAt == null ? 0 : now - drawnAt;
+        barShare = barShare == null ? share : barShare + (share - barShare) * (1 - Math.exp(-dt / BAR_EASE));
+        barShare = Math.min(1, Math.max(barShare, 0));
+        // The rest: the server's estimate (the pace since the work began),
+        // counted down locally and eased towards each new estimate over ~2 s.
+        if (status.remaining_seconds != null) {
+          var target = Math.max(0, status.remaining_seconds - since / 1000);
+          var step = drawnAt == null ? 1 : Math.min(1, (now - drawnAt) / 2000);
+          remaining = remaining == null ? target : remaining + (target - remaining) * step;
+        }
+        box.hidden = false;
+        text.textContent = texts.running;
+        shareValue.textContent = Math.floor(100 * barShare);
+        names.forEach(function (name) {
+          var value = figure(name), all = number(totals[name]);
+          // As wide as the total, so the number does not move as it grows.
+          value.style.minWidth = all.length + "ch";
+          value.textContent = number(shown[name]);
+          total(name).textContent = " / " + all;
+        });
+        figure("elapsed").textContent = duration(elapsed);
+        figure("rest").textContent = remaining == null ? "–" : duration(remaining);
+        barFill.style.width = (100 * barShare).toFixed(2) + "%";
+        drawnAt = now;
+      } else if (status.state === "stale" || status.state === "lost") {
+        box.hidden = false;
+        text.textContent = texts[status.state].replace("%{since}", new Date(status.since).toLocaleTimeString("de-DE"));
+      } else if (seenActive) {
+        var finished = status.last_status === "finished";
+        box.hidden = false;
+        box.classList.toggle("alert-warning", !finished);
+        if (!text.dataset.finished || text.dataset.finished !== String(status.entry_id)) {
+          text.dataset.finished = String(status.entry_id);
+          text.textContent = (finished ? texts.finished + " " : "") + (status.message || "") + " ";
+          if (box.dataset.reload === "true") {
+            var link = document.createElement("a");
+            link.href = window.location.href;
+            link.textContent = texts.reload;
+            text.appendChild(link);
+          }
+        }
+      }
+    };
+    var frame = function () {
+      if (!document.body.contains(box)) return;
+      draw();
+      window.requestAnimationFrame(frame);
+    };
+    var poll = function () {
+      if (!document.body.contains(box)) return;
+      fetch(box.dataset.url, {headers: {Accept: "application/json"}, credentials: "same-origin"})
+        .then(function (response) { return response.json(); })
+        .then(function (status) {
+          accept(status);
+          if (active.indexOf(status.state) >= 0) seenActive = true;
+          // Also here: a hidden tab gets no animation frames.
+          draw();
+          setTimeout(poll, active.indexOf(status.state) >= 0 ? ACTIVE_POLL : IDLE_POLL);
+        })
+        .catch(function () { setTimeout(poll, IDLE_POLL); });
+    };
+    if (cancelButton) {
+      cancelButton.addEventListener("click", function () {
+        if (!window.confirm(texts.cancel_confirm)) return;
+        cancelButton.disabled = true;
+        var token = document.querySelector("meta[name=csrf-token]");
+        fetch(box.dataset.cancelUrl, {method: "POST", credentials: "same-origin",
+          headers: {Accept: "application/json", "X-CSRF-Token": token ? token.content : ""}})
+          .then(function (response) { return response.json(); })
+          .then(function (status) { cancelButton.disabled = false; accept(status); draw(); })
+          .catch(function () { cancelButton.disabled = false; });
+      });
+    }
+    var initial = JSON.parse(box.dataset.status);
+    accept(initial);
+    if (active.indexOf(initial.state) >= 0) seenActive = true;
+    draw();
+    window.requestAnimationFrame(frame);
+    setTimeout(poll, active.indexOf(initial.state) >= 0 ? ACTIVE_POLL : IDLE_POLL);
+  })();

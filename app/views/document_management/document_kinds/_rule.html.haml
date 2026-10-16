@@ -1,0 +1,61 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One role rule of a kind's form as a card: the roles as toggle pills (none:
+-#  every role), arrows and remove in its head; who it is offered to, the
+-#  statuses it is not offered in, whether it is required; the tag that marks
+-#  the document missing (free text, the tags people carry suggested), from
+-#  which statuses on, and whether an upload removes it. Also the form's <template> for a new rule (index __INDEX__).
+-#  The fields stand in three columns, on a narrow card one per line.
+-#
+-#  Locals: rule (Hash), index, number, first, last, dom.
+- scope = "document_management.document_kinds.rule"
+- name = "kind[rules][#{index}]"
+- id = "#{dom}-rule-#{index}"
+- tag = rule["missing_tag"] || {}
+.kind-rule{data: {kind_rule: true}}
+  -# Number, the roles with their hint as one block, the buttons at the
+  -# right; on a narrow card the pills wrap within the block, the hint
+  -# right after them.
+  .d-flex.align-items-start.gap-2.mb-2
+    %span.kind-rule-number{data: {kind_rule_number: true}}= number
+    .kind-rule-head.d-flex.flex-wrap.align-items-center
+      .kind-rule-roles.d-flex.flex-wrap.gap-1{role: "group", "aria-label": t("#{scope}.roles")}
+        - WsjrdpDocumentKind.roles.each do |role|
+          = check_box_tag "#{name}[roles][]", role, Array(rule["roles"]).include?(role),
+            id: "#{id}-role-#{role}", class: "btn-check", autocomplete: "off"
+          %label.btn.btn-sm.btn-outline-primary.rounded-pill{for: "#{id}-role-#{role}"}= role
+      %span.small.text-muted= t("#{scope}.no_roles_all")
+    .ms-auto.btn-group.btn-group-sm
+      %button.btn.btn-outline-secondary{type: "button", data: {kind_rule_action: "up"}, disabled: first,
+        title: t("#{scope}.up"), "aria-label": t("#{scope}.up")}= icon(:"arrow-up")
+      %button.btn.btn-outline-secondary{type: "button", data: {kind_rule_action: "down"}, disabled: last,
+        title: t("#{scope}.down"), "aria-label": t("#{scope}.down")}= icon(:"arrow-down")
+      %button.btn.btn-outline-danger{type: "button", data: {kind_rule_action: "remove"},
+        title: t("#{scope}.remove"), "aria-label": t("#{scope}.remove")}= icon(:"trash-alt")
+  .kind-rule-grid
+    %div
+      %label.form-label.small.mb-0.d-block{for: "#{id}-offer_to"}= t("#{scope}.offer_to")
+      = wsjrdp_access_entries_select("#{name}[offer_to][]", rule["offer_to"], id: "#{id}-offer_to")
+    %div
+      %label.form-label.small.mb-0.d-block{for: "#{id}-not_for_status"}= t("#{scope}.not_for_status")
+      = wsjrdp_status_select("#{name}[not_for_status][]", rule["not_for_status"], id: "#{id}-not_for_status")
+    .form-check.kind-rule-check
+      = check_box_tag "#{name}[required]", "1", rule["required"] == true, id: "#{id}-required", class: "form-check-input"
+      %label.form-check-label.small{for: "#{id}-required"}= t("#{scope}.required")
+    %div
+      %label.form-label.small.mb-0.d-block{for: "#{id}-missing_tag"}= t("#{scope}.missing_tag")
+      = text_field_tag "#{name}[missing_tag]", tag["tag"], id: "#{id}-missing_tag",
+        class: "form-control form-control-sm", placeholder: t("#{scope}.tag"), list: "#{dom}-person-tags",
+        autocomplete: "off"
+    %div
+      %label.form-label.small.mb-0.d-block{for: "#{id}-from_status"}= t("#{scope}.from_status")
+      = wsjrdp_status_select("#{name}[missing_tag_from_status][]", tag["from_status"], id: "#{id}-from_status")
+    .form-check.kind-rule-check
+      = check_box_tag "#{name}[remove_on_upload]", "1", tag["remove_on_upload"] == true,
+        id: "#{id}-remove_on_upload", class: "form-check-input"
+      %label.form-check-label.small{for: "#{id}-remove_on_upload"}= t("#{scope}.remove_on_upload")

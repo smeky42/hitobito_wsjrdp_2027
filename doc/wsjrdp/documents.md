@@ -73,6 +73,20 @@ registration upload whose file is gone, so its chain of versions stays whole;
 its `byte_size` and `content_sha256` may be unknown. The download answers 404
 for a missing file.
 
+Two runs find it out again:
+
+- registering the registration uploads (below) checks the files of their
+  chains;
+- "Alle Dateien prüfen" on the overview of the Dokumentenverwaltung
+  (`DocumentManagementController#check_files`,
+  `Wsjrdp2027::CheckDocumentFilesJob`, `Wsjrdp2027::DocumentFileCheck`)
+  checks every row, whatever its kind and status, in the background: a row
+  whose file is gone becomes `missing`, one whose file is back `present`
+  with its size and SHA-256 (and its type, if it had none;
+  `Wsjrdp2027::DocumentFileData`). Every row checked gets
+  `file_checked_at`. A row with an empty path, or one the store refuses,
+  counts as missing. Each folder is listed once.
+
 ## Who may what
 
 Three lists name entries; one entry the viewer meets suffices:
@@ -181,7 +195,9 @@ _1--791-deregistration-2--signed_form-3.pdf
 
 With only `key` set this is the name the registration uploads have. Every
 name parses back (`DocumentFilename.parse`): keys contain no `-`, `.` or
-`~`.
+`~`. The generated registration PDFs keep their names with
+`registration-generated`; the registration scan reads that as the key
+`registration_generated` (`RegistrationDocuments::LEGACY_FILE_KEYS`).
 
 The extension:
 
@@ -240,3 +256,144 @@ the caller may read, `GET /api/documents/:id` shows one; both give the
 metadata, not the file. The list needs `filter[subject_id]`, as reading is
 checked document by document. An API key needs the scope `people:documents`
 and an acting person (`doc/wsjrdp/service_tokens.md`).
+
+## Document management
+
+For admins (`:manage_documents`) in two places (`doc/navigation.md`,
+section 9): the main section Dokumente with the tabs Alle, Nach Person und
+Art and Arten, and Einstellungen → Dokumentenverwaltung with the tabs
+Übersicht and Anmelde-Dokumente.
+
+- **Übersicht** (`/document_management`, Einstellungen): the starting point;
+  checks the files of all documents ("Missing files" above).
+- **Alle** (`/documents`, main section Dokumente): every document, whatever its status, as an
+  expandable table (`DocumentManagement::DocumentsColumns`,
+  `DocumentManagement::DocumentsFilterSchema`) with quick filters for the
+  status, a missing file and the origin. A row opens the document's page
+  (`/documents/:id/details`): keys, file, lists, versions and derivations.
+- **Nach Person und Art** (`/documents/by_person_and_kind`, main section
+  Dokumente, `DocumentManagement::DocumentGroupsController`): one row per
+  subject, key and secondary key -- a person's documents of one kind with
+  all their versions, whatever their numbers
+  (`DocumentManagement::DocumentGroups`) -- with the counts per status,
+  missing files and the time span; derivations are left out. "aktuell"
+  counts the combinations (key number and secondary key number) that have a
+  current document, e.g. `1/2`, with an icon as quiet as the file status: a
+  small grey tick for all, a yellow mark for some, a red one for none. Its
+  filter is the one of the documents, applied before grouping. A row opens
+  the group's page (`/documents/by_person_and_kind/:id`) as its detail: the
+  counts, the versions (with their numbers when there are several
+  combinations) with the comparison of two, and a link to them in Alle
+  (filters `subject_id`, `key`, `secondary_key`; `_none` stands for no
+  secondary key). The `:id` is the subject and the keys without numbers,
+  `<subject_type>-<subject_id>-<key>[--<secondary_key>]`, e.g.
+  `person-42-deregistration--signed_form`; `nil` for an empty type or id.
+  Only the canonical form is accepted.
+- **Anmelde-Dokumente** (`/document_management/registration_documents`,
+  Einstellungen): registering the registration uploads, below.
+- **Arten** (`/document_management/document_kinds`, main section
+  Dokumente): the kinds of
+  document ("Kinds of document") as an expandable table
+  (`DocumentManagement::DocumentKindsColumns`): label and keys sharing one
+  cell with a sortable header each (one block in the columns menu, each part
+  hidden on its own; the subject type is a column shown on demand), the rights a line per right with the same lists
+  sharing one, the accepted files as type families (the tooltip lists types
+  and extensions), the first two role rules written out, the number of
+  documents, and links to the kind's page (in this tab and in a new one). A row opens into the kind's form,
+  which is also the kind's page (`/document_management/document_kinds/:id`);
+  a save from a row goes back to the list as it was. The form gives the
+  rights, the "offered to" entries, the content types and the extensions as
+  tag selects (`Wsjrdp::TagSelectHelper`, TomSelect: the known entries with
+  their meaning -- content types and extensions from Marcel, sent once per
+  page as JSON --, other entries of the same form typed in). Above the
+  content types and extensions, file kinds (`Wsjrdp2027::DocumentFileKinds`:
+  PDF, Bilder, Word, ... -- label, icon and extensions, the types from
+  Marcel) add or take out all their types and extensions at once and show
+  whether all or a part of them is chosen; below the fields the form shows
+  what the kind accepts and marks extensions and types that are never
+  accepted (a type without a matching extension, or the other way round).
+  The role rules come as
+  one card per rule, in the order they apply: arrows move a card, "Regel
+  hinzufügen" adds one, the bin removes one. `additional_info` is shown, not
+  edited. The keys of a kind that documents have are fixed, and only a kind
+  without documents can be deleted. A change of the rights reaches only new
+  documents.
+
+## Registration documents
+
+The registration uploads -- the columns `people.upload_*_pdf` and
+`generated_registration_pdf`, keys as their file names carry them
+(`Wsjrdp2027::RegistrationDocuments::COLUMNS`) -- are registered as documents
+where their files lie; nothing is moved, and `people` is never changed.
+
+A **chain** is one person and one key: every file that column ever held,
+oldest first (`RegistrationDocuments::Scan`). It is built from
+
+- the PaperTrail versions of the person: when a path was set or the column
+  emptied, and by whom (`whodunnit`);
+- the column as it is now;
+- the files in the person's folder whose name is `<timestamp>--<id>-<key>.pdf`;
+- the rows already in `wsjrdp_documents`, by relative path.
+
+A file no version names is placed by the time of its name. Registering a
+chain (`RegistrationDocuments::Import`) writes one row per file, in order,
+each replacing the one before (`replaces_id`):
+
+| The file | Row |
+|---|---|
+| the column's | `current` |
+| followed by another | `superseded`, `superseded_at` when the next was set |
+| the last one after the column was emptied | `deleted`, `deleted_at` then, who emptied it in `additional_info.registration_upload.cleared_by` |
+| not on disk | as above, with `file_status` `missing`, no size and no checksum |
+
+`created_at` is when the file was set, `author` who set it, `origin`
+`import`; `additional_info.registration_upload` names the column and the
+source (`version`, `column`, `disk`). A present file gets its size, SHA-256
+and content type. The lists are those of the key's kind
+(`RegistrationDocuments.rights_for`), else the table's defaults.
+
+Registering is repeatable: a registered row only changes its status (and
+`file_status`), and files set since are appended to the chain. A chain is
+`new` (nothing registered), `partial` or `complete` (every file registered as
+the chain says).
+
+The tab shows per key the people (chains) by state and the files, registered
+and missing; the chains as an expandable table over the Array of chains,
+with the CNF filter in Ruby (`DocumentManagement::RegistrationChainsFilterSchema`,
+doc/wsjrdp/generic_filter_builder.md "Filtering arrays": person, person id,
+key, state, counts; quick filters for the state and a missing file), each with
+its files as detail; and what the scan cannot place (a file with another
+name, a folder without a person, ...). Files of documents stored otherwise in
+the same folder are left alone.
+
+- **Ausgewählte registrieren** registers the chosen chains -- across pages,
+  or with "alle Seiten" every chain of the filter. Up to 200 chains at once,
+  more in the background.
+- **Alle registrieren** registers every chain not `complete` in the
+  background (`Wsjrdp2027::RegisterDocumentsJob`).
+
+The tab shows the rights the new rows get per key, read only; they are
+changed in the tab Arten. A run in the background is a tracked job
+(`Wsjrdp::TrackedJob`, `doc/wsjrdp/tracked_jobs.md`): it is queued with its
+`HitobitoLogEntry` (category `documents`, `sub_category`
+`registration_documents_sync`, `RegisterDocumentsJob.entries`; also under
+Einstellungen → Hitobito Log), which it takes over as it starts and keeps up
+to date while it works -- the phase (`scan`, `register`), the totals of
+people, chains and files and how many of them are done. The tab's progress
+display (`shared/wsjrdp/_tracked_job_progress`) shows people and files,
+asks `/document_management/registration_documents/progress` and cancels
+through `/document_management/registration_documents/cancel`; a run stops
+after the chain at hand -- each chain is registered in a transaction of its
+own, so nothing is left half done, and registering again carries on from
+there. A run over all chains notes the files of the chains it leaves as
+they stand as checked (`Import#checked`). The entry ends with the counts
+(chains, created, updated, failed), the errors and the timing.
+
+`RegistrationDocuments.record!(person, people_column:, path:, author:,
+origin:)` keeps `wsjrdp_documents` in step when a column is set: it
+registers the column's file in place (`DocumentStore.register!`) as the
+current document of its key, with `additional_info.registration_upload`
+(column, source), and supersedes the one before; a path registered already
+answers its row. `RegistrationDocuments.clear!(person, people_column:, by:)`
+hides the current document of an emptied column. `key_for` and
+`people_column_for` map columns and keys.

@@ -66,6 +66,24 @@ class WsjrdpDocumentKind < ActiveRecord::Base
     find_by(subject_type: subject_type.to_s, key: key.to_s, secondary_key: secondary_key.to_s)
   end
 
+  # SQL of an expression over the kind of each row of wsjrdp_documents
+  # (e.g. "wsjrdp_document_kinds.label"), NULL for a document without a kind;
+  # (subject_type, key, secondary_key) is unique.
+  def self.document_column_sql(expression)
+    "(SELECT #{expression} FROM wsjrdp_document_kinds " \
+      "WHERE wsjrdp_document_kinds.subject_type = wsjrdp_documents.subject_type " \
+      "AND wsjrdp_document_kinds.key = wsjrdp_documents.key " \
+      "AND wsjrdp_document_kinds.secondary_key = wsjrdp_documents.secondary_key)"
+  end
+
+  # The kind's keys as one value: "<key>", or "<key>/<secondary_key>" when
+  # the secondary key is set; the same in SQL (KEYS_PATH_SQL, on the table
+  # wsjrdp_document_kinds).
+  def keys_path = [key, secondary_key.presence].compact.join("/")
+
+  KEYS_PATH_SQL = "CASE WHEN wsjrdp_document_kinds.secondary_key = '' THEN wsjrdp_document_kinds.key " \
+    "ELSE wsjrdp_document_kinds.key || '/' || wsjrdp_document_kinds.secondary_key END"
+
   def self.for_document(document)
     self.for(subject_type: document.subject_type, key: document.key, secondary_key: document.secondary_key)
   end

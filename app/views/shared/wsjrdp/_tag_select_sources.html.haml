@@ -1,0 +1,15 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The suggestions of the tag selects with a source (content types and
+-#  extensions, Wsjrdp::TagSelectHelper#wsjrdp_marcel_sources) as JSON
+-#  scripts, which shared/wsjrdp/_tag_select_js reads. Emitted once per
+-#  response.
+- return if @wsjrdp_tag_select_sources_emitted
+- @wsjrdp_tag_select_sources_emitted = true
+- wsjrdp_marcel_sources.each do |key, list|
+  %script{type: "application/json", id: "wsjrdp-tag-source-#{key}"}= list.to_json.html_safe

@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The progress of a registration in the background
+-#  (Wsjrdp2027::RegisterDocumentsJob): people and files done, elapsed time and
+-#  the rest (shared/wsjrdp/_tracked_job_progress).
+= render "shared/wsjrdp/tracked_job_progress", job: Wsjrdp2027::RegisterDocumentsJob,
+  id: "registration-documents-progress", figures: %w[people files],
+  progress_url: document_management_registration_documents_progress_path,
+  cancel_url: document_management_cancel_registration_documents_path
