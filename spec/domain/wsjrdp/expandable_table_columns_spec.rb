@@ -156,9 +156,27 @@ describe Wsjrdp::ExpandableTableColumns do
         header_label: nil, header_tooltip: nil, group: nil, grow: 0, tabular_nums: true, merge: nil, merge_share: 1,
         target_width: nil, target_grow: 0, truncate: false, sticky: false,
         merge_layouts: nil, header_align: nil, merged_cell: nil,
-        numeric: true, width: nil, mobile: true, narrow: true, css_class: "tblcol-amount",
+        numeric: true, width: nil, mobile: true, narrow: true, pinned: nil, visibility: :toggle,
+        visibility_default: nil, fallback: nil, css_class: "tblcol-amount",
         sort_key: "amount", sort_first: "asc", sort_variants: [], cell: cell
       )
+    end
+
+    describe "pinned and visibility" do
+      it "takes :start or :end, :toggle or :tristate with a default of three" do
+        col = Wsjrdp::ExpandableTableColumn.new(key: "x", pinned: :end, visibility: :tristate, default: :auto)
+        expect([col.pinned, col.visibility, col.default, col.default?]).to eq([:end, :tristate, :auto, true])
+        expect(Wsjrdp::ExpandableTableColumn.new(key: "x", visibility: :tristate, default: false).default?).to be false
+        expect(Wsjrdp::ExpandableTableColumn.new(key: "x", visibility: :tristate, default: true).default).to eq(:always)
+      end
+
+      it "refuses what does not fit" do
+        expect { Wsjrdp::ExpandableTableColumn.new(key: "x", pinned: :middle) }.to raise_error(ArgumentError, /pinned/)
+        expect { Wsjrdp::ExpandableTableColumn.new(key: "x", visibility: :tristate, default: :maybe) }
+          .to raise_error(ArgumentError, /tristate default/)
+        expect { Wsjrdp::ExpandableTableColumn.new(key: "x", pinned: :start, merge: "m") }
+          .to raise_error(ArgumentError, /merge or group/)
+      end
     end
 
     describe "sort variants" do

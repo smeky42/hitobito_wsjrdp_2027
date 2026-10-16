@@ -139,4 +139,9 @@ describe Wsjrdp::ExpandableTableHeaderLayout do
       end
     end.to raise_error(ArgumentError, /no column has this merge/)
   end
+
+  it "has one empty row for no columns" do
+    no_columns = Wsjrdp::ExpandableTableHeader.new(columns: [], header_align: ->(_col) {})
+    expect(no_columns.variants).to eq([[[]]])
+  end
 end

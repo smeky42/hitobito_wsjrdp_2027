@@ -81,7 +81,8 @@ class Wsjrdp::ExpandableTableHeader
 
   def rows_of_variant(index)
     blocks = @runs.map { |run| block_of(run, index) }
-    depth = blocks.map(&:size).max
+    # No columns: one empty row (the widget shows a hint instead of a table).
+    depth = blocks.map(&:size).max || 1
     rows = Array.new(depth) { [] }
     blocks.each do |block|
       extra = depth - block.size

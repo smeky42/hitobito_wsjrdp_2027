@@ -546,20 +546,34 @@ class Wsjrdp::TableState
     def width(key) = @widths[key.to_s]
   end
 
+  # A tristate column's third state in the cols param: "<abbr>.a" (".", like
+  # the links token's, is URL-safe and no token character).
+  AUTO = "auto"
+  AUTO_SUFFIX = ".a"
+
   attr_reader :policy, :sort_list, :hidden_sort_list, :column_states, :per_page, :per_value, :page,
-    :open_keys, :filter, :pane, :level, :view, :store_key, :sources
+    :open_keys, :filter, :pane, :level, :view, :links, :links_token, :store_key, :sources
 
   # `view` is the table's chosen view (the policy's `view: {values:}`), nil for
-  # a table that declares none. `hidden_sort_list` is the policy's
+  # a table that declares none. `links` is how its page link column shows --
+  # "auto", "always" or "never", from the cols param
+  # (Wsjrdp::TableStatePolicy::LINKS_TOKEN), nil without a token (the
+  # table's default then); `links_token` the token as it came.
+  # `default_columns?`: the columns are the table's defaults (nothing chosen,
+  # or "Standard-Spalten") -- a tristate column then starts in its own
+  # default. `hidden_sort_list` is the policy's
   # `sort: {hidden:}`, resolved.
   def initialize(policy:, store_key:, columns:, sort_list:, column_states:, per_page:, per_value:,
-    page:, open_keys:, filter:, pane:, level:, sources:, view: nil, hidden_sort_list: [])
+    page:, open_keys:, filter:, pane:, level:, sources:, view: nil, links_token: nil, default_columns: false,
+    hidden_sort_list: [])
     @policy = policy
     @store_key = store_key
     @columns = columns
     @sort_list = sort_list.map { |pair| pair.map(&:to_s).freeze }.freeze
     @hidden_sort_list = hidden_sort_list.map { |pair| pair.map(&:to_s).freeze }.freeze
-    @column_states = column_states.map { |key, active| [key.to_s, !!active].freeze }.freeze
+    # A column is shown (true), hidden (false) or "auto": a tristate column
+    # shown where there is room (ExpandableTableColumn visibility:).
+    @column_states = column_states.map { |key, active| [key.to_s, (active == AUTO) ? AUTO : !!active].freeze }.freeze
     @per_page = per_page
     @per_value = per_value.to_s
     @page = page
@@ -568,6 +582,9 @@ class Wsjrdp::TableState
     @pane = pane
     @level = level
     @view = view
+    @links_token = links_token
+    @default_columns = default_columns
+    @links = self.class.links_of(links_token)
     @sources = sources.freeze
     freeze
   end
@@ -577,6 +594,8 @@ class Wsjrdp::TableState
   end
 
   def prefix = @policy.prefix
+
+  def default_columns? = @default_columns
 
   def visible_column_keys = @column_states.filter_map { |key, active| key if active }
 
@@ -680,8 +699,37 @@ class Wsjrdp::TableState
     Wsjrdp::ExpandableTableSort.encode(list.map { |key, dir| [@policy.abbr_for(key), dir] }).to_s
   end
 
-  def encode_column_states(states)
-    states.map { |key, active| "#{active ? "" : "~"}#{@policy.abbr_for(key)}" }.join(",")
+  # The cols wire value of [key, active] pairs ("auto" as "<abbr>.a"), the
+  # links token (`links`: "auto", "always" or "never"; nil leaves it out)
+  # last.
+  def encode_column_states(states, links: @links_token && @links)
+    tokens = states.map do |key, active|
+      if active == AUTO
+        "#{@policy.abbr_for(key)}#{AUTO_SUFFIX}"
+      else
+        "#{active ? "" : "~"}#{@policy.abbr_for(key)}"
+      end
+    end
+    tokens << self.class.links_token_for(links) if links
+    tokens.join(",")
+  end
+
+  # "auto", "always" or "never" of a links token, nil without one.
+  def self.links_of(token)
+    case token
+    when nil then nil
+    when Wsjrdp::TableStatePolicy::LINKS_TOKEN then "always"
+    when "~#{Wsjrdp::TableStatePolicy::LINKS_TOKEN}", "~#{Wsjrdp::TableStatePolicy::LINKS_AUTO_TOKEN}" then "never"
+    else "auto"
+    end
+  end
+
+  def self.links_token_for(links)
+    case links.to_s
+    when "always" then Wsjrdp::TableStatePolicy::LINKS_TOKEN
+    when "never" then "~#{Wsjrdp::TableStatePolicy::LINKS_TOKEN}"
+    else Wsjrdp::TableStatePolicy::LINKS_AUTO_TOKEN
+    end
   end
 
   # The cookie a JS-written field (D2d: only `pane` today) lives in. The widget
@@ -727,6 +775,8 @@ class Wsjrdp::TableState
       @columns = build_column_set
       @sources = {}
       @stored = {}
+      @links_token = nil
+      @default_columns = false
     end
 
     def state
@@ -755,7 +805,8 @@ class Wsjrdp::TableState
         sort_list: values[:sort], column_states: values[:cols],
         per_page: values[:per_page][0], per_value: values[:per_page][1],
         page: values[:page], open_keys: values[:open], filter: values[:filter],
-        pane: values[:pane], level: values[:level], view: values[:view], sources: @sources,
+        pane: values[:pane], level: values[:level], view: values[:view], links_token: @links_token,
+        default_columns: @default_columns, sources: @sources,
         hidden_sort_list: hidden_sort_list)
     end
 
@@ -863,15 +914,25 @@ class Wsjrdp::TableState
       decoded = raw.split(",").filter_map do |token|
         token = token.strip
         next if token.empty?
-        active = !token.start_with?("~")
-        key = @columns.key_for(active ? token : token[1..])
-        key ? [key, active] : nil
+        # The page link column's token (LINKS_TOKEN), at any place.
+        if token.delete_prefix("~").start_with?(Wsjrdp::TableStatePolicy::LINKS_TOKEN)
+          @links_token = token if links_token?(token)
+          next
+        end
+        shown = !token.start_with?("~")
+        plain = shown ? token : token[1..]
+        auto = shown && plain.end_with?(AUTO_SUFFIX)
+        key = @columns.key_for(plain.delete_suffix(AUTO_SUFFIX))
+        if key
+          [key, auto ? AUTO : shown]
+        end
       end
       seen = decoded.map(&:first).to_set
       decoded + @columns.keys.reject { |key| seen.include?(key) }.map { |key| [key, false] }
     end
 
     def default_cols(value, _policy_field)
+      @default_columns = true
       shown = value.nil? ? nil : Array(value).map(&:to_s)
       return @columns.keys.map { |key| [key, true] } if shown.nil?
 
@@ -959,6 +1020,11 @@ class Wsjrdp::TableState
     def default_view(value, policy_field)
       values = Array(policy_field.options[:values])
       values.include?(value.to_s) ? value.to_s : values.first
+    end
+
+    def links_token?(token)
+      plain = token.delete_prefix("~")
+      [Wsjrdp::TableStatePolicy::LINKS_TOKEN, Wsjrdp::TableStatePolicy::LINKS_AUTO_TOKEN].include?(plain)
     end
 
     # D2e: the fixed slots always come from the policy; the user part only from

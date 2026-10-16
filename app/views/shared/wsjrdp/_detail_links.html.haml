@@ -21,7 +21,11 @@
 -#  With narrow_only the "Detailseite" group shows only in a narrow table
 -#  (the widget's .exp-narrow-only, detail_page narrow_only).
 -#
--#  Locals: row, detail_page (->(row){ path } or nil), narrow_only, detail_links
+-#  The columns' fallbacks (`fallbacks`, html of shared/wsjrdp/_expandable_table:
+-#  each marked data-exp-if-hidden, so it shows while its column does not)
+-#  stand left of the links.
+-#
+-#  Locals: row, detail_page (->(row){ path } or nil), narrow_only, fallbacks, detail_links
 -#    ([{label:, icon:, title:, title_new_tab:, url: ->(row){ url }}]).
 - groups = Array(detail_links).filter_map do |cfg|
   - url = cfg[:url].call(row)
@@ -29,8 +33,10 @@
 - if detail_page && (page_url = detail_page.call(row)).present?
   - groups += [{label: "Detailseite", icon: :eye, title: "Detailseite öffnen",
       title_new_tab: "Detailseite in neuem Tab öffnen", url: page_url, narrow_only: local_assigns[:narrow_only]}]
-- if groups.any?
-  .exp-detail-links.d-flex.justify-content-end.align-items-center.gap-2
+- fallbacks = local_assigns[:fallbacks]
+- if groups.any? || fallbacks.present?
+  .exp-detail-links.d-flex.flex-wrap.justify-content-end.align-items-center.gap-2
+    = fallbacks
     - groups.each do |group|
       .btn-group.btn-group-sm{ role: "group", class: ("exp-narrow-only-group" if group[:narrow_only]) }
         = link_to group[:url], class: "btn btn-outline-primary",

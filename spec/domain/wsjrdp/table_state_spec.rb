@@ -1428,6 +1428,46 @@ describe Wsjrdp::TableState do
     end
   end
 
+  # A tristate column's auto rides as "<abbr>.a".
+  describe "a column in auto" do
+    it "reads and writes <abbr>.a" do
+      state = resolve(policy, {"c" => "amt.a,~bdt,cc"})
+      expect(state.column_states.first).to eq(["signed_base_amount", "auto"])
+      expect(state.visible_column_keys).to include("signed_base_amount")
+      expect(state.wire(:cols)).to start_with("amt.a,~bdt,cc")
+    end
+  end
+
+  # How a page link column shows (t.detail_page column: true): a token of
+  # its own in the cols param.
+  describe "the links" do
+    it "reads _l (always), ~_l (never) and _l.a (auto) at any place of the cols, else nil" do
+      expect(resolve(policy).links).to be_nil
+      expect(resolve(policy, {"c" => "~_l,amt"}).links).to eq("never")
+      expect(resolve(policy, {"c" => "amt,_l"}).links).to eq("always")
+      expect(resolve(policy, {"c" => "_l.a,amt"}).links).to eq("auto")
+      expect(resolve(policy, {"c" => "amt,_lx"}).links).to be_nil
+      expect(resolve(policy, {"c" => "~_l,amt"}).visible_column_keys).to eq(["signed_base_amount"])
+    end
+
+    it "keeps the token last in the wire form, and leaves it out when none came" do
+      expect(resolve(policy, {"c" => "~_l,amt"}).wire(:cols)).to end_with(",~_l")
+      expect(resolve(policy, {"c" => "amt"}).wire(:cols)).not_to include("_l")
+      state = resolve(policy, {"c" => "amt"})
+      expect(state.encode_column_states([["signed_base_amount", true]], links: "auto")).to eq("amt,_l.a")
+    end
+
+    it "is remembered with the columns" do
+      resolve(policy, {"c" => "amt,_l"})
+      expect(resolve(policy).links).to eq("always")
+    end
+
+    it "refuses a column token starting with _" do
+      expect { Wsjrdp::TableStatePolicy.new(prefix: "", columns: {"amount" => "_n"}) }
+        .to raise_error(ArgumentError, /must not start with "_"/)
+    end
+  end
+
   describe "#paginate (D4 and the :all page size)" do
     let(:scope) { FakePagedScope.new(120) }
     let(:rows) { (1..120).to_a }

@@ -1,0 +1,20 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The checkbox of three states in the columns menu
+-#  (shared/wsjrdp/_expandable_table_columns_form), a tristate column's and
+-#  the page links': auto a white "A" in the filled box, always a tick, never
+-#  empty; after the label the state's name, muted.
+-#
+-#  Locals: mode ("auto", "always" or "never"), label
+%span.exp-cols-links-box{ class: ("on" unless mode == "never") }
+  - if mode == "auto"
+    %span.exp-cols-links-auto A
+  - elsif mode == "always"
+    = icon(:check)
+%span.small= label
+%span.small.exp-cols-links-state= {"auto" => "auto", "always" => "immer", "never" => "nie"}[mode]

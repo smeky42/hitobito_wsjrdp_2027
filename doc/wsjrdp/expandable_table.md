@@ -112,7 +112,13 @@ columns menu), `narrow` (`false` for a column the table does without where it
 would otherwise scroll sideways: while its container is narrower than the
 table's narrowest width -- a container query per table,
 `Wsjrdp::ExpandableTableLayout.narrow_css` -- it collapses like a `mobile: false`
-column and its width leaves the narrowest width), `width` (for the fixed table
+column and its width leaves the narrowest width), `pinned` (`:start` or
+`:end`: a column at a fixed place, first or last; in the columns menu without
+a drag handle, its place in the cols param ignored), `visibility`
+(`:tristate`: the columns menu cycles the column through auto -- shown where
+there is room, as with `narrow: false` --, always and never with a checkbox of
+three states; `default:` then is `:auto`, `:always` or `:never`; the cols
+param carries auto as `<abbr>.a`), `width` (for the fixed table
 layout), `sort` (how it sorts — an SQL expression for a relation, a
 `->(row){ comparable }` extractor for an array), `sort_first` and
 `sort_variants` (§2, sortable headers), `default` (shown before the user picks
@@ -1047,6 +1053,46 @@ without the `fa-` prefix; `title:` and
 would scroll sideways (the same container query as `narrow: false`) -- for a
 table whose page link is otherwise a column of its own with `narrow: false`.
 Without further links the whole header line shows only there.
+
+`t.detail_page(column: true)` adds that column itself: pinned last
+(`pinned: :end`), a compact double button (eye: this tab, arrow: a new tab)
+that keeps the row's height, giving way where the table would scroll. Its
+`fallback:` is the detail's "Detailseite" double link, shown wherever the
+column is not (see "Columns in the detail" below). With it the detail's header
+line floats at the right of the detail's content (`float:`, true by default
+with `column:`): the content flows past it rather than starting below it. A
+float never covers text -- a line or a box that does not fit beside it moves
+on or down -- so this needs no measuring; `float: false` keeps the line.
+
+#### Columns in the detail
+
+A row's detail can follow which columns are shown -- also those in auto,
+which the browser decides by the table's width, so the server cannot know.
+It is done in CSS, per table (`Wsjrdp::ExpandableTableLayout.marker_css`,
+scoped to the table's own details, not a nested table's):
+
+* **Markers (A).** Any element in a detail -- direct or lazy -- may carry
+  `data-exp-if-hidden="<key> ..."` (shown only while the column is not
+  shown: never, auto in a narrow table, `mobile: false` on a phone) or
+  `data-exp-if-shown="<key>"` (the other way round). The detail view needs to
+  know nothing about the table's state and puts such content where it wants:
+  a field in its list, a button.
+* **Fallbacks (B).** A column's `fallback:` -- `:cell` (its label and cell) or
+  `->(row) { html }` -- stands in for it at the right of the detail's header
+  line, marked `data-exp-if-hidden` with its key; a header line of nothing but
+  fallbacks shows while any of them does (`data-exp-if-any-hidden`).
+* **Detail link (C).** `t.detail_page(column: true)` is a pinned-last tristate
+  column whose fallback is the "Detailseite" double link.
+
+The columns menu lists that column last, fixed, as "Links": a checkbox of
+three states (`state.links`) that ride in the cols param, remembered with the
+columns, as a token of their own at any place -- `_l.a` auto, `_l` immer,
+`~_l` nie; without one the table's default, `t.detail_page(links:)`, auto
+unless given (column tokens may not start with `_`) -- **auto** (a white "A" in the filled box: the column where
+there is room, else the detail's link), **immer** (a tick: always the column,
+never the detail's link; a narrow table scrolls) and **nie** (empty: never
+the column, always the detail's link). The state is named muted after the
+label; a click goes on to the next one.
 
 Declaring a link makes a table **expandable** even when it has no detail at all:
 the detail row is then the slim header-line bar alone. With a **direct** detail

@@ -90,6 +90,53 @@ class Wsjrdp::ExpandableTableLayout
       "@media (max-width: 767.98px) { #{query.call(min_rem - mobile_rem, narrow_phone_rem)} }"
   end
 
+  # The styles of the detail's markers (doc/wsjrdp/expandable_table.md,
+  # "Columns in the detail"): an element in a row's detail with
+  # data-exp-if-hidden="<key> ..." shows only while (any of) those columns are
+  # not shown, one with data-exp-if-shown="<key>" only while it is shown;
+  # data-exp-if-any-hidden on the detail's header line shows it while any of
+  # the columns `fallback_keys` names is not shown. `modes`: key => "always"
+  # (shown), "never" (not shown) or "auto" (shown, but giving way where the
+  # table is narrower than `min_rem`); on a phone (below the md breakpoint)
+  # `phone_modes` and `phone_min_rem` instead, when given (a table with
+  # columns a phone does without). Scoped to this table's own details (@scope
+  # down to a nested table) and its container (exp-<id_prefix>).
+  def self.marker_css(id_prefix, modes:, min_rem:, fallback_keys: [], phone_modes: nil, phone_min_rem: nil)
+    body = ->(key_modes, min) { marker_rules(id_prefix, key_modes, min, fallback_keys) }
+    rules = if phone_modes
+      "@media (min-width: 768px) { #{body.call(modes, min_rem)} } " \
+        "@media (max-width: 767.98px) { #{body.call(phone_modes, phone_min_rem)} }"
+    else
+      body.call(modes, min_rem)
+    end
+    "@scope ([data-exptbl=\"#{id_prefix}\"]) to (.exp-table-wrap) { #{rules} }"
+  end
+
+  def self.marker_rules(id_prefix, modes, min_rem, fallback_keys)
+    hide = ->(selectors) { selectors.empty? ? "" : "#{selectors.join(", ")} { display: none !important; }" }
+    wide, narrow, always = [], [], []
+    modes.each do |key, mode|
+      hidden = ".exp-detail [data-exp-if-hidden~=\"#{key}\"]"
+      shown = ".exp-detail [data-exp-if-shown~=\"#{key}\"]"
+      case mode
+      when "always" then always << hidden
+      when "never" then always << shown
+      else
+        wide << hidden
+        narrow << shown
+      end
+    end
+    fallback_modes = fallback_keys.map { |key| modes.fetch(key, "never") }
+    bar = ".exp-detail [data-exp-if-any-hidden]"
+    if fallback_keys.any? && fallback_modes.none?("never")
+      fallback_modes.include?("auto") ? (wide << bar) : (always << bar)
+    end
+    query = ->(condition, selectors) { selectors.empty? ? "" : "@container exp-#{id_prefix} (#{condition}) { #{hide.call(selectors)} }" }
+    [hide.call(always), query.call("width >= #{num_s(min_rem)}rem", wide), query.call("width < #{num_s(min_rem)}rem", narrow)]
+      .reject(&:empty?).join(" ")
+  end
+  private_class_method :marker_rules
+
   def self.num_s(value)
     rounded = value.to_f.round(4)
     (rounded == rounded.to_i) ? rounded.to_i.to_s : rounded.to_s
