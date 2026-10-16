@@ -195,9 +195,10 @@ _1--791-deregistration-2--signed_form-3.pdf
 
 With only `key` set this is the name the registration uploads have. Every
 name parses back (`DocumentFilename.parse`): keys contain no `-`, `.` or
-`~`. The generated registration PDFs keep their names with
-`registration-generated`; the registration scan reads that as the key
-`registration_generated` (`RegistrationDocuments::LEGACY_FILE_KEYS`).
+`~`. A generated registration PDF is named with its key,
+`registration_generated` (`RegistrationDocuments.generated_registration_filename`);
+older ones keep their names with `registration-generated`, which the
+registration scan reads as that key (`RegistrationDocuments::LEGACY_FILE_KEYS`).
 
 The extension:
 

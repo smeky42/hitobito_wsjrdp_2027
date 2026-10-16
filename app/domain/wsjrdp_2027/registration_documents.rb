@@ -33,7 +33,7 @@ module Wsjrdp2027
   # emptied (the upload page, the generated registration PDF).
   module RegistrationDocuments
     # column => key; the key is the one the file names carry, apart from
-    # the generated registration PDF (LEGACY_FILE_KEYS).
+    # older generated registration PDFs (LEGACY_FILE_KEYS).
     COLUMNS = {
       "upload_contract_pdf" => "contract",
       "upload_sepa_pdf" => "sepa",
@@ -46,8 +46,9 @@ module Wsjrdp2027
       "generated_registration_pdf" => "registration_generated"
     }.freeze
     KEYS = COLUMNS.values.freeze
-    # Keys the file names carry that are no valid keys any more ("-" is
-    # the separator of a name's parts), with the key they stand for.
+    # Keys older file names carry that are no valid keys any more ("-" is
+    # the separator of a name's parts), with the key they stand for. New
+    # files are named with the key (generated_registration_filename).
     LEGACY_FILE_KEYS = {"registration-generated" => "registration_generated"}.freeze
     UPLOADS_MARKER = "/private/uploads/"
 
@@ -60,6 +61,13 @@ module Wsjrdp2027
     def key_for(people_column) = COLUMNS.fetch(people_column.to_s)
 
     def people_column_for(key) = COLUMNS.key(key.to_s) || raise(KeyError, "no column for #{key}")
+
+    # The file name of a newly generated registration PDF, named like any
+    # document ("2026-10-17-10-15-00--42-registration_generated.pdf").
+    def generated_registration_filename(person, at: Time.zone.now)
+      DocumentFilename.build(timestamp: at, subject_id: person.id, key: key_for("generated_registration_pdf"),
+        ext: "pdf")
+    end
 
     # The kinds of the keys, by key.
     def kinds = WsjrdpDocumentKind.where(subject_type: "Person", key: KEYS, secondary_key: "").index_by(&:key)
