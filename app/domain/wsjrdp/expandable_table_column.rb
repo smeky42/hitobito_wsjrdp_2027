@@ -50,7 +50,7 @@
 class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condensed_label,
   :header_label, :header_tooltip, :group, :grow, :target_width, :target_grow, :truncate, :sticky, :tabular_nums,
   :merge, :merge_share, :merge_layouts, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile,
-  :narrow, :css_class)
+  :narrow, :pinned, :visibility, :fallback, :css_class)
   SORT_DIRECTIONS = %w[asc desc].freeze
   # The form `width` and `target_width` take where widths are reckoned with
   # (target_width, sticky): rem, so the widget can add them up.
@@ -122,14 +122,32 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #                 otherwise scroll sideways: while its container is narrower
   #                 than the table's narrowest width, the column collapses like
   #                 one with mobile: false (.exp-no-narrow); it stays in the menu
+  #   pinned        :start or :end for a column at a fixed place, first or
+  #                 last (in declaration order among its kind): in the columns
+  #                 menu without a drag handle; its place in the cols param is
+  #                 ignored. Not with merge or group
+  #   visibility    :toggle (the default: shown or hidden) or :tristate: the
+  #                 columns menu cycles it through auto (shown where there is
+  #                 room -- narrow: false), always and never, a checkbox of
+  #                 three states; `default:` then says which of :auto, :always
+  #                 (or true) and :never (or false) it starts in. The cols
+  #                 param carries auto as "<abbr>.a". Not with merge or group
+  #   fallback      what stands in for the column in a row's detail while the
+  #                 column is not shown (never, or auto where the table is too
+  #                 narrow, or on a phone without mobile: false): :cell (its
+  #                 label and cell) or ->(row) { html }; at the right of the
+  #                 detail's header line (doc/wsjrdp/expandable_table.md,
+  #                 "Columns in the detail")
   def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, header_tooltip: nil,
     group: nil, grow: 0, target_width: nil, target_grow: nil, truncate: false, sticky: false,
     tabular_nums: nil, merge: nil, merge_share: 1, merge_layouts: nil, header_align: nil, numeric: false, width: nil, sort: nil,
-    sort_first: "asc", sort_variants: [], default: false, mobile: true, narrow: true, css_class: nil)
+    sort_first: "asc", sort_variants: [], default: false, mobile: true, narrow: true, pinned: nil,
+    visibility: :toggle, fallback: nil, css_class: nil)
     key = key.to_s
     target_grow = self.class.validate_target!(key, width, target_width, target_grow)
     self.class.validate_sticky!(key, width, merge, group, mobile && narrow) if sticky
     abbr = (abbr || key).to_s
+    pinned, visibility, default = self.class.validate_place!(key, pinned, visibility, default, merge, group)
     sort_first = self.class.validate_direction!(sort_first)
     variants = sort_variants.map do |variant|
       next variant if variant.is_a?(SortVariant)
@@ -146,7 +164,8 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
           sticky: sticky ? true : false, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
           merge_layouts: merge_layouts, header_align: header_align&.to_s, numeric: numeric, width: width,
           sort: sort, sort_first: sort_first, sort_variants: variants.freeze,
-          default: default, mobile: mobile, narrow: narrow, css_class: css_class)
+          default: default, mobile: mobile, narrow: narrow, pinned: pinned, visibility: visibility,
+          fallback: self.class.validate_fallback!(key, fallback), css_class: css_class)
   end
 
   def self.validate_direction!(dir)
@@ -182,9 +201,40 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
     raise ArgumentError, "column #{key}: sticky does not go with mobile: false or narrow: false" if mobile == false
   end
 
+  TRISTATE_DEFAULTS = {true => :always, false => :never, :auto => :auto, :always => :always, :never => :never}.freeze
+
+  # [pinned, visibility, default] checked: a tristate column's default as
+  # :auto, :always or :never.
+  def self.validate_place!(key, pinned, visibility, default, merge, group)
+    pinned = pinned&.to_sym
+    raise ArgumentError, "column #{key}: pinned must be :start or :end, not #{pinned.inspect}" unless [nil, :start, :end].include?(pinned)
+
+    visibility = visibility.to_sym
+    raise ArgumentError, "column #{key}: visibility must be :toggle or :tristate" unless %i[toggle tristate].include?(visibility)
+    if (pinned || visibility == :tristate) && (merge.present? || group.present?)
+      raise ArgumentError, "column #{key}: pinned and a tristate visibility do not go with merge or group"
+    end
+    return [pinned, visibility, default] unless visibility == :tristate
+
+    mode = TRISTATE_DEFAULTS[default.is_a?(String) ? default.to_sym : default]
+    raise ArgumentError, "column #{key}: a tristate default must be :auto, :always or :never" unless mode
+
+    [pinned, visibility, mode]
+  end
+
+  def self.validate_fallback!(key, fallback)
+    return fallback if fallback.nil? || fallback == :cell || fallback.respond_to?(:call)
+
+    raise ArgumentError, "column #{key}: fallback must be :cell or a lambda, not #{fallback.inspect}"
+  end
+
   def sortable? = !sort.nil?
 
-  def default? = !!default
+  # Shown before the user picks any -- a tristate column unless it starts
+  # in :never.
+  def default? = (visibility == :tristate) ? default != :never : !!default
+
+  def tristate? = visibility == :tristate
 
   # The column config Hash of shared/wsjrdp/_expandable_table. `sort_key:` is the
   # column's own key whenever it declares a sort -- that is what makes the header
@@ -197,7 +247,8 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
      tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, merge_layouts: merge_layouts,
      header_align: header_align,
      merged_cell: merged_cell,
-     numeric: numeric, width: width, mobile: mobile, narrow: narrow, css_class: css_class,
+     numeric: numeric, width: width, mobile: mobile, narrow: narrow, pinned: pinned, visibility: visibility,
+     visibility_default: (default.to_s if tristate?), fallback: fallback, css_class: css_class,
      sort_key: (key if sortable?), sort_first: sort_first,
      sort_variants: sort_variants.map { |v| {key: v.key, label: v.label, title: v.title, first: v.first} },
      cell: cell}

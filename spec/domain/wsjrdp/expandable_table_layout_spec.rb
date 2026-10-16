@@ -174,4 +174,28 @@ describe Wsjrdp::ExpandableTableLayout do
       expect(style).to include("min-width: calc(11.5rem - var(--exp-nn, 0rem))")
     end
   end
+
+  describe ".marker_css" do
+    it "hides a marker by its column's mode, auto by the table's container" do
+      css = described_class.marker_css("dk", modes: {"a" => "always", "n" => "never", "u" => "auto"}, min_rem: 30,
+        fallback_keys: %w[u])
+      expect(css).to start_with('@scope ([data-exptbl="dk"]) to (.exp-table-wrap) {')
+      expect(css).to include('.exp-detail [data-exp-if-hidden~="a"], .exp-detail [data-exp-if-shown~="n"] ' \
+        "{ display: none !important; }")
+      expect(css).to include('@container exp-dk (width >= 30rem) { .exp-detail [data-exp-if-hidden~="u"], ' \
+        ".exp-detail [data-exp-if-any-hidden] { display: none !important; } }")
+      expect(css).to include('@container exp-dk (width < 30rem) { .exp-detail [data-exp-if-shown~="u"]')
+    end
+
+    it "shows the header line of fallbacks while any of their columns is never shown" do
+      css = described_class.marker_css("dk", modes: {"a" => "always", "n" => "never"}, min_rem: 30, fallback_keys: %w[a n])
+      expect(css).not_to include("[data-exp-if-any-hidden]")
+    end
+
+    it "reckons on a phone without the columns a phone does without" do
+      css = described_class.marker_css("dk", modes: {"m" => "always"}, min_rem: 30, phone_modes: {"m" => "never"},
+        phone_min_rem: 20)
+      expect(css).to include('@media (max-width: 767.98px) { .exp-detail [data-exp-if-shown~="m"]')
+    end
+  end
 end

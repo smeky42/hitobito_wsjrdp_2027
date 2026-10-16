@@ -108,9 +108,25 @@ class Wsjrdp::ExpandableTableBuilder
   # narrow_only: true shows it only while the table is narrower than its
   # narrowest width (where its columns with `narrow: false` collapse) -- for
   # a table whose page link is a column of its own otherwise.
-  def detail_page(narrow_only: false, &block)
+  # column: true adds that column itself: last, always, a compact double
+  # button (keeping the row's height) that gives way where the table
+  # would scroll (`narrow: false`) -- the detail's link shows then instead
+  # (narrow_only).
+  # links: how that column shows until the columns menu says otherwise --
+  # "auto" (the default), "always" or "never".
+  # float: the detail's header line stands at the right of the detail's
+  # content, which flows past it, rather than taking a line of its own --
+  # true by default with `column:`; false keeps the line.
+  def detail_page(narrow_only: false, column: false, links: "auto", float: column, &block)
+    unless %w[auto always never].include?(links.to_s)
+      raise ArgumentError, "detail_page links: #{links.inspect} is not one of auto, always, never"
+    end
+
     @locals[:detail_page] = block
-    @locals[:detail_page_narrow_only] = narrow_only
+    @locals[:detail_page_narrow_only] = narrow_only || column
+    @locals[:detail_page_column] = column
+    @locals[:detail_page_links] = links.to_s
+    @locals[:detail_links_float] = float
   end
 
   # An ADDITIONAL double link in the detail's header line, left of the primary

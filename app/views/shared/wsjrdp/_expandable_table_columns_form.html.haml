@@ -11,13 +11,24 @@
 -#  bookmarkable -- never localStorage; whether it is also REMEMBERED is the
 -#  controller's policy, not this form's business. All other current params
 -#  (filter, sort, sibling tables) are carried along; this table's page resets.
--#  Locals: state (Wsjrdp::TableState), all_columns.
+-#  Below the columns, fixed as the last one, the page link column (t.detail_page
+-#  column: true) as "Links": a checkbox of three states -- auto (an "A",
+-#  shown where there is room), immer (a tick), nie (empty) -- named muted
+-#  after the label; a click goes on to the next state, which the cols param
+-#  carries as a token of its own (Wsjrdp::TableStatePolicy::LINKS_TOKEN).
+-#  Locals: state (Wsjrdp::TableState), all_columns, page_links (the state's
+-#  `links` for a table with a page link column, else nil).
 - state = local_assigns.fetch(:state)
 - prefix = state.prefix
 - all_columns = local_assigns.fetch(:all_columns)
 - states = et_column_states(state, all_columns)
 - cols_param = state.param_name(:cols)
 - form_id = "exp-cols-#{prefix.presence || "d"}"
+-# A tristate column's (and the page links') states: the next one a click
+-# goes on to, the checkbox's aria-checked, the words.
+- tristate_next = {"auto" => "always", "always" => "never", "never" => "auto"}
+- tristate_aria = {"auto" => "mixed", "always" => "true", "never" => "false"}
+- tristate_words = {"auto" => "auto", "always" => "immer", "never" => "nie"}
 - unless @wsjrdp_exp_cols_css
   - @wsjrdp_exp_cols_css = true
   :css
@@ -31,12 +42,27 @@
       font-size: 1.1rem; line-height: 1; }
     .exp-cols-item .form-check { margin: 0; min-height: auto; }
     .exp-cols-group { align-items: flex-start; border-color: var(--bs-border-color); }
+    .exp-cols-links { text-decoration: none; color: inherit; border-color: var(--bs-border-color);
+      background: var(--bs-tertiary-bg); text-align: left; font: inherit; }
+    .exp-cols-links:hover { color: inherit; }
+    .exp-cols-links-box { width: 1em; height: 1em; border-radius: .25em; flex: none; display: inline-flex;
+      align-items: center; justify-content: center; font-size: .875rem; line-height: 1;
+      border: 1px solid var(--bs-border-color); background: var(--bs-body-bg); color: #fff; }
+    .exp-cols-links-box.on { background: var(--bs-primary); border-color: var(--bs-primary); }
+    .exp-cols-links-box i { font-size: .6rem; }
+    .exp-cols-links-box .exp-cols-links-auto { font-size: .6rem; font-weight: 600; }
+    .exp-cols-links-state { margin-left: auto; color: var(--bs-secondary-color, #6c757d); font-weight: 300; }
+    .exp-cols-handle-none { visibility: hidden; }
+    .exp-cols-pinned { background: var(--bs-tertiary-bg); }
+    .exp-cols-tristate { display: inline-flex; align-items: center; gap: .5rem; flex: 1 1 auto; border: 0;
+      background: none; padding: 0; text-align: left; font: inherit; color: inherit; }
 = render "shared/wsjrdp/relaxed_query_js"
 = form_tag et_current_path, method: :get, class: "booking-scroll-form exp-cols-form", id: form_id do
   -# Carry every non-managed param through, including a host page param that is
   -# a nested hash (show[all]=1) and arrays -- see et_hidden_params.
   = et_hidden_params(et_carry_params(state, except: %i[cols page]))
-  = hidden_field_tag cols_param, et_encode_cols(state, states), id: "#{form_id}-input", class: "exp-cols-input"
+  = hidden_field_tag cols_param, et_encode_cols(state, states), id: "#{form_id}-input", class: "exp-cols-input",
+    data: { links: (state.links_token && Wsjrdp::TableState.links_token_for(state.links)) }
   %p.text-muted.small.mb-2 Ziehen zum Sortieren, Häkchen zum Ein-/Ausblenden.
   -# The columns of one group (a column's `group:`) or of one merged cell (its
   -# `merge:`) are ONE draggable block under the group's or merge key's name,
@@ -63,11 +89,35 @@
                 %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
       - else
         - col, active = unit[:cols].first
-        .exp-cols-item.exp-cols-col{ draggable: "true", class: ("col-selected" if active), data: { key: col[:key], abbr: (col[:abbr].presence || col[:key]) } }
-          %span.exp-cols-handle{ title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
-          .form-check
-            %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
-            %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
+        -# A pinned column (pinned:) stays at its place: no drag handle. A
+        -# tristate one (visibility: :tristate) has the checkbox of three
+        -# states; a click goes on to the next one.
+        - mode = et_column_mode(state, col, active)
+        - item_data = { key: col[:key], abbr: (col[:abbr].presence || col[:key]), pinned: col[:pinned] }
+        - if col[:visibility] == :tristate
+          - next_mode = tristate_next[mode]
+          - item_data = item_data.merge(mode: mode, next_mode: next_mode)
+        .exp-cols-item.exp-cols-col{ **(col[:pinned] ? {} : {draggable: "true"}), class: [("col-selected" if mode != "never"), ("exp-cols-pinned" if col[:pinned])].compact, data: item_data.compact }
+          %span.exp-cols-handle{ class: ("exp-cols-handle-none" if col[:pinned]), title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
+          - if col[:visibility] == :tristate
+            %button.exp-cols-tristate{ type: "button", role: "checkbox", "aria-checked": tristate_aria[mode],
+              title: "#{col[:label]}: #{tristate_words[mode]} – Klick: #{tristate_words[next_mode]}" }
+              = render "shared/wsjrdp/expandable_table_tristate_box", mode: mode, label: col[:label]
+          - else
+            .form-check
+              %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
+              %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
+  - if local_assigns[:page_links]
+    - tips = {"auto" => "Links anzeigen, wenn genug Platz", "always" => "Links immer anzeigen", "never" => "Links nie anzeigen"}
+    - next_links = tristate_next[page_links]
+    -# Not draggable: the column stays the last one. A click puts the next
+    -# state's token into the cols param and submits it, as a tick does.
+    %button.exp-cols-item.exp-cols-links.mt-1.w-100{ type: "button", role: "checkbox",
+      "aria-checked": tristate_aria[page_links],
+      title: "#{tips[page_links]} – Klick: #{tristate_words[next_links]}",
+      data: { links_next: Wsjrdp::TableState.links_token_for(next_links) } }
+      %span.exp-cols-handle.exp-cols-handle-none{ "aria-hidden": "true" } ⠿
+      = render "shared/wsjrdp/expandable_table_tristate_box", mode: page_links, label: "Links"
   .mt-2
     -# An explicitly EMPTY cols param, not a missing one: a blank value is the
     -# "back to the default columns" instruction that also beats a remembered
@@ -76,11 +126,21 @@
 
 :javascript
   (function () {
-    function encode(list) {
-      return Array.prototype.map.call(list.querySelectorAll(".exp-cols-col"), function (el) {
+    // The columns in order, ~ before a hidden one, a tristate column by its
+    // mode (auto "<abbr>.a", always "<abbr>", never "~<abbr>"), then the
+    // page link column's token (Wsjrdp::TableStatePolicy::LINKS_TOKEN), if
+    // any.
+    function encode(list, links) {
+      var tokens = Array.prototype.map.call(list.querySelectorAll(".exp-cols-col"), function (el) {
+        var mode = el.dataset.mode;
+        if (mode) return mode === "auto" ? el.dataset.abbr + ".a" : (mode === "never" ? "~" : "") + el.dataset.abbr;
         var chk = el.querySelector(".exp-cols-check");
         return (chk && chk.checked ? "" : "~") + el.dataset.abbr;
-      }).join(",");
+      });
+      var form = document.getElementById(list.dataset.form);
+      var token = links || (form && form.querySelector(".exp-cols-input").dataset.links);
+      if (token) tokens.push(token);
+      return tokens.join(",");
     }
     function initForm(list) {
       if (list.dataset.cinit) return;
@@ -88,8 +148,8 @@
       var form = document.getElementById(list.dataset.form);
       var input = form && form.querySelector(".exp-cols-input");
       if (!form || !input) return;
-      function submit() {
-        input.value = encode(list);
+      function submit(links) {
+        input.value = encode(list, links);
         // Navigate ourselves so "," and "~" stay literal in the URL: a browser
         // form GET would form-urlencode them (cols=nr,bez -> nr%2Cbez, ~art ->
         // %7Eart). wsjrdpRelaxedQuery serialises the form fields with those two
@@ -99,6 +159,15 @@
         if (window.Turbo && window.Turbo.visit) { window.Turbo.visit(dest); }
         else { window.location.assign(dest); }
       }
+      list.querySelectorAll(".exp-cols-tristate").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var item = button.closest(".exp-cols-col");
+          item.dataset.mode = item.dataset.nextMode;
+          submit();
+        });
+      });
+      var linksButton = form.querySelector(".exp-cols-links");
+      if (linksButton) linksButton.addEventListener("click", function () { submit(linksButton.dataset.linksNext); });
       list.querySelectorAll(".exp-cols-check").forEach(function (chk) {
         chk.addEventListener("change", function () {
           chk.closest(".exp-cols-col").classList.toggle("col-selected", chk.checked);
@@ -119,11 +188,14 @@
       list.addEventListener("dragover", function (e) {
         e.preventDefault();
         if (!dragging) return;
-        var after = null, all = Array.prototype.slice.call(list.querySelectorAll(".exp-cols-item:not(.dragging)"));
+        // Pinned columns stay where they are: a dragged one goes between
+        // the ones pinned at the start and those pinned at the end.
+        var after = null, all = Array.prototype.slice.call(list.querySelectorAll(".exp-cols-item:not(.dragging):not([data-pinned])"));
         for (var i = 0; i < all.length; i++) {
           var box = all[i].getBoundingClientRect();
           if (e.clientY < box.top + box.height / 2) { after = all[i]; break; }
         }
+        if (after == null) after = list.querySelector(".exp-cols-item[data-pinned=end]");
         if (after == null) list.appendChild(dragging);
         else if (after !== dragging) list.insertBefore(dragging, after);
       });

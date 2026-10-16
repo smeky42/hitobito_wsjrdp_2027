@@ -135,6 +135,21 @@ describe Wsjrdp::ExpandableTableBuilder do
     end
   end
 
+  describe "#detail_page with a column" do
+    it "takes the column's default, auto unless given" do
+      builder.detail_page(column: true) { |row| row }
+      expect(builder.to_locals).to include(detail_page_column: true, detail_page_links: "auto",
+        detail_page_narrow_only: true, detail_links_float: true)
+      builder.detail_page(column: true, links: "never") { |row| row }
+      expect(builder.to_locals[:detail_page_links]).to eq("never")
+    end
+
+    it "refuses an unknown default" do
+      expect { builder.detail_page(column: true, links: "sometimes") { |row| row } }
+        .to raise_error(ArgumentError, /links: "sometimes"/)
+    end
+  end
+
   describe "#detail_link" do
     def link(label, &block)
       builder.detail_link(label: label, icon: :wallet, title: "#{label} öffnen",

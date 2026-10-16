@@ -168,17 +168,60 @@ module Wsjrdp::ExpandableTableHelper
     by_key = columns.index_by { |col| col[:key].to_s }
     ordered = state.column_states.filter_map { |key, active| [by_key[key], active] if by_key[key] }
     seen = ordered.map { |col, _| col[:key].to_s }.to_set
-    ordered + columns.reject { |col| seen.include?(col[:key].to_s) }.map { |col| [col, false] }
+    ordered += columns.reject { |col| seen.include?(col[:key].to_s) }.map { |col| [col, false] }
+    # Pinned columns (pinned: :start / :end) at their place, in declaration
+    # order; the order the param gives them does not count.
+    pinned = ->(place) { columns.select { |col| col[:pinned] == place }.map { |col| ordered.find { |c, _| c.equal?(col) } } }
+    pinned.call(:start) + ordered.reject { |col, _| col[:pinned] } + pinned.call(:end)
   end
 
-  # The visible columns, in order.
+  # How a column shows: "always", "never" or -- a tristate column -- "auto".
+  # Before the user picks any columns a tristate column starts in its own
+  # default (visibility_default).
+  def et_column_mode(state, col, active)
+    if col[:visibility] == :tristate && state.default_columns?
+      col[:visibility_default]
+    elsif active == Wsjrdp::TableState::AUTO
+      (col[:visibility] == :tristate) ? "auto" : "always"
+    else
+      active ? "always" : "never"
+    end
+  end
+
+  # The visible columns, in order; a tristate column in auto gives way where
+  # the table would scroll (narrow: false), in always it does not.
   def et_visible_columns(state, all_columns)
-    et_column_states(state, all_columns).filter_map { |col, active| col if active }
+    et_column_states(state, all_columns).filter_map do |col, active|
+      mode = et_column_mode(state, col, active)
+      next if mode == "never"
+
+      (col[:visibility] == :tristate) ? col.merge(narrow: mode != "auto") : col
+    end
   end
 
-  # The `cols` wire value for a [column, active] list (used by the picker form).
+  # The fallbacks of a row's columns (a column's `fallback:`), each marked to
+  # show while its column is not (data-exp-if-hidden): :cell as the column's
+  # label and cell, a lambda as what it returns; blank ones left out.
+  def et_detail_fallbacks(columns, row)
+    items = columns.filter_map do |col|
+      html = if col[:fallback] == :cell
+        content = col[:cell].call(row)
+        safe_join([content_tag(:span, col[:label], class: "exp-fallback-label"), content], " ") if content.present?
+      else
+        col[:fallback].call(row)
+      end
+      content_tag(:span, html, class: "exp-fallback", data: {exp_if_hidden: col[:key]}) if html.present?
+    end
+    safe_join(items)
+  end
+
+  # The `cols` wire value for a [column, active] list (used by the picker form),
+  # a tristate column by its mode.
   def et_encode_cols(state, states)
-    state.encode_column_states(states.map { |col, active| [col[:key], active] })
+    state.encode_column_states(states.map do |col, active|
+      mode = et_column_mode(state, col, active)
+      [col[:key], (mode == "auto") ? Wsjrdp::TableState::AUTO : mode != "never"]
+    end)
   end
 
   private

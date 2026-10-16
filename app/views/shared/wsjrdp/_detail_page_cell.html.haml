@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The cell of the page link column (t.detail_page column: true): the row's
+-#  page as a compact double button -- in this tab, in a new one -- that
+-#  keeps the row's height. A link does not toggle the row
+-#  (shared/wsjrdp/_row_click_guard).
+-#
+-#  Locals: url (blank: an empty cell)
+- if url.present?
+  .btn-group.btn-group-sm.exp-page-link{ role: "group" }
+    = link_to url, class: "btn btn-outline-primary", title: "Detailseite öffnen",
+      "aria-label": "Detailseite öffnen", data: { turbo_frame: "_top" } do
+      = icon(:eye)
+    = link_to url, class: "btn btn-outline-primary", target: "_blank", rel: "noopener",
+      title: "Detailseite in neuem Tab öffnen", "aria-label": "Detailseite in neuem Tab öffnen" do
+      = icon(:"external-link-alt")

@@ -13,6 +13,10 @@
 - return if @wsjrdp_table_styles_emitted
 - @wsjrdp_table_styles_emitted = true
 :css
+  /* The columns menu's checkboxes stay square wherever the menu sits -- also
+     in a table's cell (a table nested in a detail), where the core sizes
+     `table tr :first-child input[type="checkbox"]` to 20px wide. */
+  .exp-cols-check { width: 1em !important; height: 1em !important; flex: none; }
   /* A column a phone does without (a column's `mobile: false`): under the md
      breakpoint (768px) its header, cells and footer collapse to nothing. The
      cells stay, so the fixed layout keeps every column in its place -- only
@@ -294,6 +298,29 @@
      bottom to the frame's own padding, giving the same gap. The links-only
      variant (a table with no detail at all) closes the bar to a slim strip. */
   .booking-detail.exp-detail-linkbar { padding: var(--exp-detail-pad-y, 1rem) 1rem 0; }
+  /* The page link column (t.detail_page column: true): a double button of
+     two 24px squares. A row's line is 21px; the -1.5px margins let the
+     buttons reach into the cell's padding, so the row keeps its height --
+     aligned to the line's top, as a middle alignment (by the baseline)
+     would still stretch it (and the core's margin under a button group is
+     gone). */
+  .exp-page-link { margin: -1.5px 0 !important; vertical-align: top; white-space: nowrap; }
+  .exp-page-link .btn { --bs-btn-padding-y: 0; --bs-btn-padding-x: 0; --bs-btn-font-size: .8rem;
+    display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem;
+    line-height: 1; }
+  /* The header line floated (t.detail_page float:): at the right, the detail's
+     content flowing past it instead of starting below it. A float never
+     covers text -- what does not fit beside it moves down --, and the detail
+     ends below it. */
+  .booking-detail.exp-detail-linkbar.exp-detail-linkbar-float { float: right; position: relative; z-index: 1;
+    padding: var(--exp-detail-pad-y, 1rem) 1rem 0 .75rem; background: transparent; }
+  .exp-detail-links-float { float: right; margin: 0 0 .5rem .75rem; }
+  .exp-detail-links-float > .exp-detail-links { margin-bottom: 0 !important; }
+  .exp-detail::after { content: ""; display: block; clear: both; }
+  /* A column's fallback in the detail's header line (fallback:): its label
+     muted, then its value, as small as the links beside it. */
+  .exp-fallback { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; white-space: nowrap; }
+  .exp-fallback-label { color: var(--bs-secondary-color, #6c757d); font-weight: 300; }
   .booking-detail.exp-detail-linkbar-only { padding: .5rem 1rem; }
   .booking-detail:not(.exp-detail-linkbar) > .exp-detail-links { margin-bottom: 1rem; }
   /* Grid labels in the detail views (booking + Beitragsbuchung): light weight so

@@ -117,6 +117,15 @@ class Wsjrdp::TableStatePolicy
     view: {short: "v", policy: :remember}
   }.freeze
 
+  # The page link column of a table with one (t.detail_page column: true)
+  # rides in the cols param under a token of its own, at any place: "_l"
+  # always, "~_l" never, "_l.a" auto -- where there is room, the detail's
+  # link standing in elsewhere; without the token the table's default
+  # (t.detail_page links:). URL-safe as it is: no character a URL encodes.
+  # Column tokens may therefore not start with "_" (see #validate_codec!).
+  LINKS_TOKEN = "_l"
+  LINKS_AUTO_TOKEN = "_l.a"
+
   # The fields whose param is NOT namespaced by the prefix. Namespacing keeps
   # SIBLING tables on one page apart -- but `level` crosses the table boundary:
   # the widget of the EMBEDDING table writes it into the lazy detail's frame URL,
@@ -172,6 +181,15 @@ class Wsjrdp::TableStatePolicy
     return token if TOKEN_FORMAT.match?(token)
 
     raise ArgumentError, "column token #{token.inspect} must match #{TOKEN_FORMAT.source}"
+  end
+
+  # A column's key or abbreviation: a token, and not one starting with "_",
+  # which the cols param keeps for its own (LINKS_TOKEN).
+  def self.validate_column_token!(token)
+    validate_token!(token)
+    return token unless token.start_with?("_")
+
+    raise ArgumentError, "column token #{token.inspect} must not start with \"_\" (kept for the cols param's own tokens)"
   end
 
   def field(name) = @fields.fetch(name.to_sym)
@@ -313,7 +331,7 @@ class Wsjrdp::TableStatePolicy
     end
     map = columns.is_a?(Hash) ? columns : Array(columns).to_h { |k| [k, k] }
     map = map.to_h { |key, abbr| [key.to_s, abbr.to_s] }.freeze
-    map.each { |key, abbr| [key, abbr].each { |token| self.class.validate_token!(token) } }
+    map.each { |key, abbr| [key, abbr].each { |token| self.class.validate_column_token!(token) } }
     @abbr_to_key = map.invert.freeze
     map
   end
