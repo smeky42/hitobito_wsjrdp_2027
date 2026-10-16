@@ -7,3 +7,9 @@
 
 - if can?(:country_codes, Person)
   = nav t('navigation.country_codes'), country_codes_path, %w(country_codes)
+
+-# Einstellungen: the Dokumentenverwaltung (overview, registration uploads),
+-# for admins (Sheet::DocumentManagement); the kinds of document belong to the
+-# main section Dokumente.
+- if can?(:manage_documents, WsjrdpDocument)
+  = nav t('document_management.title'), document_management_path, %w(document_management), %w(document_kinds)

@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A kind's page, and the lazy detail of its row in the Dokument-Arten list:
+-#  the form in both (the frame answers the id the requesting row names,
+-#  wsjrdp_detail_frame). A save from the row goes back to the list.
+- unless turbo_frame_request?
+  - title(kind.label_was.presence || kind.label)
+  = render "form_styles"
+  = render "shared/wsjrdp/tag_select_js"
+  = render "form_js"
+= wsjrdp_detail_frame("dk", kind.id) do
+  - unless turbo_frame_request?
+    -# What the page is, quietly before its name.
+    %h1
+      %span.kind-eyebrow= t("document_management.document_kinds.kind_eyebrow")
+      = kind.label_was.presence || kind.label
+  = render "form", url: document_management_document_kind_path(kind), method: :patch

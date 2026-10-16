@@ -123,10 +123,25 @@ de:
           invalid_entries: "enthält ungültige Einträge: %{entries}"
           not_a_list: muss eine Liste von Regeln sein.
           invalid_rule: "Regel %{number} ist ungültig (%{problem})."
+          invalid_json: ist kein gültiges JSON.
           not_for_subject: gibt es nur für Arten von Personen-Dokumenten.
           unknown_column: ist keine Upload-Spalte der Personen.
 
     attributes:
+      wsjrdp_document_kind:
+        subject_type: Gehört zu
+        key: Schlüssel
+        secondary_key: Unterschlüssel
+        label: Bezeichnung
+        readable_by: Lesen
+        writable_by: Schreiben
+        deletable_by: Löschen
+        content_types: Typen
+        extensions: Endungen
+        max_upload_size_mb: Höchstgröße
+        people_column_name: Spalte in people
+        role_rules: Regeln je Rolle
+        additional_info: Weitere Angaben
       service_token:
         layer: Ebene
         acting_person: Handelnde Person
@@ -1334,16 +1349,429 @@ de:
       impersonate_notice: "Die Person wird per E-Mail benachrichtigt."
       impersonate_start: "Imitieren"
 
+  document_management:
+    title: Dokumentenverwaltung
+    documents_title: Dokumente
+    lead: >-
+      Das Registrieren der Anmelde-Dokumente. Die gespeicherten Dokumente und die
+      Dokument-Arten stehen unter dem Hauptpunkt Dokumente.
+    tabs:
+      overview: Übersicht
+      documents: Alle
+      document_groups: Nach Person und Art
+      registration_documents: Anmelde-Dokumente
+      document_kinds: Arten
+    statuses:
+      current: aktuell
+      superseded: ersetzt
+      deleted: gelöscht
+    file_statuses:
+      present: vorhanden
+      missing: fehlt
+    origins:
+      ui: Oberfläche
+      api: API
+      import: Import
+    invalid_party: nicht gültig
+    unknown_kind: unbekannt
+    empty_key: (leer)
+    lists:
+      readable_by: Lesen
+      writable_by: Schreiben
+      deletable_by: Löschen
+    documents:
+      lead: Alle gespeicherten Dokumente, auch ersetzte und gelöschte.
+      shown:
+        one: 1 Dokument
+        other: "%{count} Dokumente"
+    file_check:
+      title: Dateien prüfen
+      lead: >-
+        Prüft für alle Dokumente, gleich welcher Art und welchen Status, ob ihre Datei
+        noch da ist: Eine verschwundene Datei wird als fehlend markiert, eine wieder
+        aufgetauchte bekommt Größe und Prüfsumme.
+      button: Alle Dateien prüfen (im Hintergrund)
+      confirm: Die Dateien aller Dokumente im Hintergrund prüfen?
+      enqueued: Die Prüfung aller Dateien läuft im Hintergrund.
+      running: Eine Prüfung läuft bereits.
+      runs: Letzte Prüfungen
+      log_queued: "Prüfung der Dateien (%{run}) eingereiht"
+      log_started: "Dateien werden geprüft (%{run}): Dokumente werden gelesen"
+      log_running: "Dateien werden geprüft: %{done} von %{total}"
+      log_message: >-
+        Dateien geprüft (%{run}): %{checked} geprüft, %{missing} jetzt fehlend,
+        %{back} wieder da, %{failed} fehlgeschlagen, Dauer %{duration}
+      log_cancelled: >-
+        Prüfung der Dateien (%{run}) abgebrochen von %{by} nach %{done} von %{total} Dateien:
+        %{missing} jetzt fehlend, %{back} wieder da, %{failed} fehlgeschlagen, Dauer %{duration}
+      log_skipped: "Prüfung der Dateien (%{run}) übersprungen: eine andere läuft bereits"
+      log_dequeued: "Prüfung der Dateien abgebrochen von %{by}, bevor sie begann"
+      log_failed: "Prüfung der Dateien (%{run}) abgebrochen: %{error}"
+      progress:
+        waiting: Die Prüfung wartet auf den Hintergrund-Prozess.
+        scanning: "Prüfung läuft: Dokumente werden gelesen …"
+        running: Prüfung läuft
+        finished: Prüfung abgeschlossen.
+        cancel_confirm: Die Prüfung abbrechen? Bereits geprüfte Dateien bleiben geprüft.
+      cancel:
+        requested: Die Prüfung wird nach dem aktuellen Block abgebrochen.
+        dequeued: Die wartende Prüfung wurde abgebrochen.
+        none: Es läuft keine Prüfung.
+    document_group:
+      current: Aktuell
+      current_all: "Alle %{count} Kombinationen haben ein aktuelles Dokument."
+      current_some: "%{current} von %{count} Kombinationen haben ein aktuelles Dokument."
+      current_none: "Keine der %{count} Kombinationen hat ein aktuelles Dokument."
+      numbers: Nummern
+      missing_files:
+        zero: Alle Dateien sind vorhanden.
+        one: Eine Datei fehlt.
+        other: "%{count} Dateien fehlen."
+      versions: Versionen
+      versions_value: "%{count} (aktuell %{current} · ersetzt %{superseded} · gelöscht %{deleted})"
+      missing: Datei fehlt
+      first_at: Erstes Hochgeladen
+      last_at: Letztes Hochgeladen
+    document_groups:
+      lead: >-
+        Die Dokumente je Person und Art, gleich welcher Nummern: eine Zeile mit allen
+        Versionen; „aktuell“ zählt die Kombinationen (Nummern) mit aktuellem Dokument.
+        Der Filter wählt die Dokumente, die mitzählen; eine Zeile ohne passendes
+        Dokument entfällt.
+      show_documents: Versionen unter „Alle“ zeigen
+      show_documents_new_tab: Versionen unter „Alle“ in neuem Tab zeigen
+      shown:
+        one: 1 Gruppe
+        other: "%{count} Gruppen"
+    document:
+      title: "Dokument #%{id}"
+      heading: Dokument
+      open: Datei öffnen
+      download: Herunterladen
+      file_present: Datei?
+      preview: Vorschau
+      compare: Vergleich
+      compare_left: Links im Vergleich
+      compare_right: Rechts im Vergleich
+      compare_clear_left: Auswahl links aufheben
+      compare_clear_right: Auswahl rechts aufheben
+      preview_columns: Nebeneinander
+      preview_rows: Untereinander
+      preview_swap: Tauschen
+      preview_same_content: Inhalt gleich
+      preview_different_content: Inhalt verschieden
+      preview_missing: Die Datei fehlt, es gibt keine Vorschau.
+      preview_unsupported: "Für %{type} gibt es keine Vorschau."
+      versions: Versionen
+      derivatives: Ableitungen
+      open_new_tab: Detailseite in neuem Tab öffnen
+      sort_by: "Nach „%{column}“ sortieren"
+      end:
+        superseded: Ersetzt
+        deleted: gelöscht
+        superseded_at: "ersetzt am %{time}"
+        deleted_at: "gelöscht am %{time}"
+      fields:
+        id: ID
+        subject: Person
+        kind: Art
+        key: Schlüssel
+        secondary_key: Unterschlüssel
+        derivation_key: Ableitung
+        status: Status
+        superseded_at: Ersetzt am
+        deleted_at: Gelöscht am
+        file_status: Datei
+        file_checked_at: Datei geprüft am
+        filename: Dateiname
+        content_type: Typ
+        byte_size: Größe
+        content_sha256: SHA-256
+        relative_storage_file_path: Ablage
+        origin: Herkunft
+        created_at: Hochgeladen
+        author: Von
+        document_date: Datum des Dokuments
+        lists: Rechte
+        comment: Kommentar
+    registration_documents:
+      lead: >-
+        Die Anmelde-Dokumente (Tab „Dokumente hochladen“) als Dokumente registrieren, dort wo
+        ihre Dateien liegen. Je Person und Art eine Kette: jede Datei, die die Spalte je hatte,
+        aus den Versionen, der Spalte und dem Ordner der Person. Fehlende Dateien bekommen eine
+        Zeile ohne Datei; die Personen werden nicht verändert.
+      register_button: Ausgewählte registrieren
+      register_all_button: Alle registrieren (im Hintergrund)
+      register_all_confirm: Alle noch nicht vollständig registrierten Anmelde-Dokumente im Hintergrund registrieren?
+      out_of_sync: abweichend
+      runs: Letzte Läufe
+      shown:
+        one: 1 Kette
+        other: "%{count} Ketten"
+      log_queued: "Registrierung der Anmelde-Dokumente (%{run}) eingereiht"
+      log_started: "Anmelde-Dokumente werden registriert (%{run}): Scan läuft"
+      log_running: "Anmelde-Dokumente werden registriert: %{done} von %{total} Personen"
+      log_failed: "Registrierung der Anmelde-Dokumente (%{run}) abgebrochen: %{error}"
+      log_cancelled: >-
+        Registrierung der Anmelde-Dokumente (%{run}) abgebrochen von %{by} nach %{done} von %{total} Personen:
+        %{chains} Ketten, %{created} neu, %{updated} geändert, %{failed} fehlgeschlagen, Dauer %{duration}
+      log_skipped: "Registrierung der Anmelde-Dokumente (%{run}) übersprungen: eine andere läuft bereits"
+      log_dequeued: "Registrierung der Anmelde-Dokumente abgebrochen von %{by}, bevor sie begann"
+      cancel:
+        requested: Die Registrierung wird nach der aktuellen Person abgebrochen.
+        dequeued: Die wartende Registrierung wurde abgebrochen.
+        none: Es läuft keine Registrierung.
+      progress:
+        waiting: Die Registrierung wartet auf den Hintergrund-Prozess.
+        scanning: "Registrierung läuft: Dateien und Versionen werden gelesen …"
+        running: Registrierung läuft
+        stale: "Die Registrierung läuft nicht mehr (letzte Meldung %{since}); ihr Prozess wurde beendet, bevor sie fertig war."
+        lost: >-
+          Die Registrierung von %{since} wurde verworfen, ohne zu starten: Der Hintergrund-Prozess
+          kennt sie nicht. Vermutlich läuft er mit altem Code und muss neu gestartet werden.
+        finished: Registrierung abgeschlossen.
+        cancel_confirm: Die Registrierung abbrechen? Bereits registrierte Ketten bleiben registriert.
+      log_message: >-
+        Anmelde-Dokumente registriert (%{run}): %{chains} Ketten, %{created} neu,
+        %{updated} geändert, %{failed} fehlgeschlagen, Dauer %{duration}
+      columns:
+        key: Art
+      states:
+        new: nicht registriert
+        partial: unvollständig
+        complete: vollständig
+      headers:
+        key:
+          label: Art
+          tip: Die Spalte des Tabs „Dokumente hochladen“, so wie die Dateinamen sie nennen.
+        people:
+          label: Personen
+          tip: Personen, die zu dieser Art je eine Datei hatten. Je Person bilden ihre Dateien dieser Art eine Kette, älteste zuerst.
+        people_total:
+          label: gesamt
+          tip: Alle Personen mit Dateien dieser Art.
+        new:
+          label: nicht registriert
+          tip: Von den Dateien der Person ist noch keine registriert.
+        partial:
+          label: unvollständig
+          tip: Schon registriert, aber nicht mehr auf dem Stand, z. B. nach einem neuen Upload. Erneutes Registrieren gleicht an.
+        complete:
+          label: vollständig
+          tip: Jede Datei der Person ist mit dem richtigen Status registriert.
+        files:
+          label: Dateien
+          tip: Jede Datei, die die Spalte je hatte, auch ältere, ersetzte Versionen.
+        files_total:
+          label: gesamt
+          tip: Alle Dateien dieser Art, auch ältere, ersetzte Versionen.
+        registered:
+          label: registriert
+          tip: Dateien, die schon eine Zeile in den Dokumenten haben.
+        missing:
+          label: fehlen
+          tip: In den Versionen oder der Spalte genannt, aber nicht mehr im Ordner. Sie bekommen eine Zeile ohne Datei.
+        state:
+          label: Stand
+          tip: "nicht registriert, unvollständig oder vollständig (wie oben)"
+      sources:
+        version: Version
+        column: Spalte
+        disk: Ordner
+      entry:
+        set_at: Hochgeladen
+        file: Datei
+        source: Quelle
+        author: Von
+        status: Status
+        document: Dokument
+      rights:
+        title: Rechte je Art
+        lead: >-
+          Die Zeilen, die ein Lauf neu anlegt, bekommen die Rechte ihrer Dokument-Art.
+          Bereits registrierte Zeilen behalten ihre Rechte.
+        kinds_link: Dokument-Arten bearbeiten
+        no_kind: "(keine Art: Voreinstellung)"
+      anomalies:
+        title: "Nicht zugeordnet (%{count})"
+        folder_name: Ordner ohne Personen-ID
+        temporary_file: Temporäre Datei
+        unexpected_name: Datei mit anderem Namen
+        other_person: Datei einer anderen Person
+        folder_without_person: Ordner ohne Person
+        person_missing: Person gibt es nicht mehr
+        outside_root: Pfad außerhalb der Ablage
+      register:
+        nothing_chosen: Bitte wähle mindestens eine Person aus.
+        enqueued: "%{count} Ketten werden im Hintergrund registriert."
+        running: Eine Registrierung läuft bereits.
+        registered: "%{chains} Ketten registriert: %{created} neu, %{updated} geändert, %{failed} fehlgeschlagen (%{duration})."
+      register_all:
+        enqueued: Die Registrierung aller Anmelde-Dokumente läuft im Hintergrund.
+        running: Eine Registrierung läuft bereits.
+    document_kinds:
+      kind_eyebrow: Dokument-Art
+      lead: >-
+        Die Arten von Dokumenten: welche Rechte ein neues Dokument bekommt, welche Dateien
+        es annimmt und für wen es angeboten wird oder Pflicht ist.
+      new: Neue Dokument-Art
+      save: Speichern
+      destroy_button: Dokument-Art löschen
+      destroy_confirm: "Die Dokument-Art „%{label}“ löschen?"
+      changes_hint: >-
+        Änderungen an den Rechten gelten nur für neue Dokumente; vorhandene Dokumente
+        behalten ihre Rechte.
+      key_problems:
+        too_long: "Höchstens %{max} Zeichen."
+        leading: Muss mit einem Kleinbuchstaben (a–z) beginnen.
+        characters: "Nicht erlaubt: %{chars} – nur a–z, 0–9 und _."
+        double_separator: Kein doppelter Unterstrich (__).
+        trailing_separator: Darf nicht auf _ enden.
+        space: Leerzeichen
+      keys_hint_html: >-
+        Ein Schlüssel besteht aus Kleinbuchstaben (<code>a</code>–<code>z</code>), Ziffern
+        (<code>0</code>–<code>9</code>) und Unterstrichen (<code>_</code>) und beginnt mit
+        einem Buchstaben. Nicht erlaubt sind ein <code>_</code> am Anfang oder Ende und ein
+        doppelter Unterstrich (<code>__</code>); höchstens 40 Zeichen. Kurz:
+        <code>[a-z](_?[a-z0-9])*</code>. Der Unterschlüssel darf leer sein.
+      keys_fixed:
+        one: Es gibt 1 Dokument dieser Art; ihre Schlüssel lassen sich nicht mehr ändern, und sie lässt sich nicht löschen.
+        other: Es gibt %{count} Dokumente dieser Art; ihre Schlüssel lassen sich nicht mehr ändern, und sie lässt sich nicht löschen.
+      unused: Es gibt noch keine Dokumente dieser Art.
+      any_file: jede Datei
+      rights_hint_html: >-
+        Auswählen oder eintippen. Admins haben immer vollen Zugriff auf alle Dokumente. Ein eigener Eintrag besteht aus Kleinbuchstaben
+        (<code>a</code>–<code>z</code>), Ziffern (<code>0</code>–<code>9</code>) und
+        Unterstrichen (<code>_</code>) und beginnt mit einem Buchstaben. Nicht erlaubt sind ein
+        <code>_</code> am Anfang oder Ende und ein doppelter Unterstrich (<code>__</code>);
+        höchstens 30 Zeichen. Kurz: <code>[a-z](_?[a-z0-9])*</code>.
+      files_hint: >-
+        Leer: keine eigene Einschränkung. Sind Typen und Endungen angegeben, müssen beide
+        passen. Vorschläge stammen aus Marcel; eigene Einträge lassen sich eintippen.
+      max_size_hint: "Leer: die allgemeine Grenze von %{size} MB."
+      file_kinds:
+        add: "Dateiarten hinzufügen:"
+        partial: teilweise
+        clear: "%{label} ganz abwählen"
+        chosen: "%{count} von %{total} gewählt"
+        both: Typ und Endung müssen beide passen.
+        accepted: "Angenommen werden:"
+        any: jede Datei
+        nothing: nichts
+        bad_extensions: "Endung ohne passenden Typ, wird nie angenommen:"
+        bad_types: "Typ ohne passende Endung, wird nie angenommen:"
+        missing: fehlt
+      rules_hint: >-
+        Für eine Person gilt die erste Regel, deren Rollen ihre Kontingent-Rolle enthalten.
+        Die Reihenfolge lässt sich mit den Pfeilen ändern.
+      no_rules: Keine Regeln -- die Art wird niemandem zum Hochladen angeboten.
+      add_rule: Regel hinzufügen
+      no_people_column: keine
+      sections:
+        keys: Schlüssel
+        description: Bezeichnung
+        rights: Rechte neuer Dokumente
+        files: Dateien
+        role_rules: Regeln je Rolle
+      attributes:
+        subject_type: Gehört zu
+        key: Schlüssel
+        secondary_key: Unterschlüssel
+        people_column_name_html: Spalte in Tabelle <code>people</code> (Upload-Pfad)
+        keys: Schlüssel
+        label: Bezeichnung
+        description: Beschreibung
+        position: Reihenfolge
+        content_types: Typen (MIME)
+        extensions: Endungen
+        max_upload_size_mb: Höchstens (MB)
+        files: Dateien
+        role_rules: Regeln je Rolle
+        additional_info: Weitere Angaben (additional_info, nur lesbar)
+        documents: Dokumente
+      rule:
+        roles: Rollen
+        no_roles_all: keine gewählt = alle Rollen
+        up: Regel nach oben
+        down: Regel nach unten
+        offer_to: Angeboten für
+        not_for_status: Nicht im Status
+        required: Pflicht
+        missing_tag: Tag, wenn es fehlt
+        tag: Tag
+        from_status: ab Status
+        remove_on_upload: Tag entfernen, wenn Dokument hochgeladen wird
+        remove: Regel entfernen
+      summary:
+        all_roles: alle Rollen
+        required: Pflicht
+        offered_to: angeboten für
+        not_offered: nicht angeboten
+        not_in: nicht in
+        from: ab
+        removed_on_upload: beim Hochladen entfernt
+        none: keine Regeln – wird nicht angeboten
+        more:
+          one: "+ 1 weitere Regel"
+          other: "+ %{count} weitere Regeln"
+      rights:
+        readable_by: lesen
+        writable_by: schreiben
+        deletable_by: löschen
+        system: nur System
+      files_tip:
+        more:
+          one: "+ 1 weiterer Typ"
+          other: "+ %{count} weitere Typen"
+        extensions: "weitere Endungen: %{list}"
+        only_extensions: "nur Endungen: %{list}"
+        max: "höchstens %{size} MB"
+        general_max: allgemeine Größengrenze
+      create:
+        created: "Dokument-Art „%{label}“ angelegt."
+      update:
+        updated: "Dokument-Art „%{label}“ gespeichert."
+      destroy:
+        destroyed: "Dokument-Art „%{label}“ gelöscht."
+        used: Es gibt Dokumente dieser Art; sie lässt sich nicht löschen.
   wsjrdp:
+    # The default texts of a tracked job's progress display
+    # (shared/wsjrdp/_tracked_job_progress); a job's own under
+    # <i18n_scope>.progress.* win.
+    tracked_job:
+      progress:
+        waiting: Der Lauf wartet auf den Hintergrund-Prozess.
+        scanning: "Der Lauf bereitet sich vor …"
+        running: Der Lauf arbeitet
+        stale: "Der Lauf arbeitet nicht mehr (letzte Meldung %{since}); sein Prozess wurde beendet, bevor er fertig war."
+        lost: >-
+          Der Lauf von %{since} wurde verworfen, ohne zu starten: Der Hintergrund-Prozess
+          kennt ihn nicht. Vermutlich läuft er mit altem Code und muss neu gestartet werden.
+        since: seit
+        elapsed: Laufzeit
+        rest: Rest etwa
+        finished: Lauf abgeschlossen.
+        reload: Seite neu laden
+        cancel: Abbrechen
+        cancel_confirm: Den Lauf abbrechen?
+        cancelling: wird abgebrochen …
+        figures:
+          files: Dateien
+          people: Personen
+      cancel:
+        requested: Der Lauf wird nach dem aktuellen Schritt abgebrochen.
+        dequeued: Der wartende Lauf wurde abgebrochen.
+        none: Es läuft kein Lauf.
     access_entries:
       placeholder: hinzufügen…
       status_placeholder: hinzufügen…
+      type_family: alle Typen dieser Familie
       person: die Person selbst
-      log: darf das Log der Person sehen
-      update: darf die Person bearbeiten
-      finance_read: Finanzstufe Read und höher
-      finance_audit: Finanzstufe Audit und höher
-      finance: Finanzstufe Write und höher
+      log: darf das Log der Person sehen (CMT-Leader)
+      update: darf die Person bearbeiten (z.B. ULs für ihre YPs)
+      finance_read: Finanzstufe Read und höher (z.B. eHoCs)
+      finance_audit: Finanzstufe Audit und höher (z.B. Kassenprüfer, rdp Vorstand)
+      finance: Finanzstufe Write und höher (Buchhaltung, Finanzteam)
       finance_manage: Finanzstufe Manage
     documents:
       show:
@@ -1683,6 +2111,7 @@ de:
 
   navigation:
     finance: Finanzen
+    documents: Dokumente
     country_codes: Ländercodes
     contingent: Kontingent
 

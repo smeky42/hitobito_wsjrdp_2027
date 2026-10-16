@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One version in the comparison (_preview): a line naming it, then its file
+-#  (_preview_file). The side (L or R) is filled in by the comparison's
+-#  javascript.
+-#
+-#  Locals: document (WsjrdpDocument)
+- scope = "document_management.document"
+- kind = document_preview_kind(document)
+.document-preview-pane
+  .document-preview-head
+    %span.document-preview-side
+    %span.font-monospace= "##{document.id}"
+    %span.document-preview-time= document_time(document.created_at)
+    %span{class: ("text-success" if document.status == WsjrdpDocument::CURRENT)}= document_status_label(document.status)
+    - unless kind == :missing
+      = link_to wsjrdp_document_path(document), class: "ms-auto", target: "_blank", rel: "noopener",
+        title: t("#{scope}.open"), "aria-label": t("#{scope}.open"), data: {turbo_frame: "_top"} do
+        = icon(:"external-link-alt")
+  = render "document_management/documents/preview_file", document: document, lazy: false

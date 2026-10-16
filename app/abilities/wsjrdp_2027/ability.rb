@@ -40,10 +40,12 @@ module Wsjrdp2027::Ability
   # :update) and hide (:destroy) it (Wsjrdp2027::DocumentAccess); the
   # AbilityDsl has no rule that reads a record's lists. Root already may
   # everything. Anybody may ask for a list, which holds only what they may
-  # read (DocumentResource).
+  # read (DocumentResource). The Dokumentenverwaltung (:manage_documents) is
+  # for admins.
   def define_document_abilities
     access = Wsjrdp2027::DocumentAccess.new(self)
     can(:index, WsjrdpDocument)
+    can(:manage_documents, WsjrdpDocument) if access.admin?
     can(:show, WsjrdpDocument) { |document| access.allowed?(:read, document) }
     can([:create, :update], WsjrdpDocument) { |document| access.allowed?(:write, document) }
     can(:destroy, WsjrdpDocument) { |document| access.allowed?(:delete, document) }

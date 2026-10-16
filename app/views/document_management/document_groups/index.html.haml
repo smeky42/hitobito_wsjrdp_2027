@@ -1,0 +1,32 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Nach Person und Art (second tab of the main section Dokumente): the
+-#  documents grouped by person, kind and numbers as an expandable table. Its
+-#  filter, presets, sort and page size come from the controller's policy; a
+-#  row opens the group's page (show) as its lazy detail.
+
+- title(t("document_management.tabs.document_groups"))
+= render "document_management/documents/list_styles"
+
+#main
+  %h1= t("document_management.tabs.document_groups")
+  %p.text-muted= t("document_management.document_groups.lead")
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows groups, id: "dgr"
+    - t.columns document_group_table_columns, menu: true
+    - t.row_key { |group| group.row_key }
+    -# A group whose type or keys no URL parameter can hold has no page.
+    - t.detail_if { |group| group.to_param.present? }
+    - t.detail_page(column: true) { |group| document_management_document_group_path(group) }
+    - t.detail_src { |group| document_management_document_group_path(group) }
+    - t.paging
+    - t.filter apply_url: document_management_apply_document_groups_path
+
+  %p.text-muted.small.mt-2#document-groups-shown
+    = t("document_management.document_groups.shown", count: groups.total_count)

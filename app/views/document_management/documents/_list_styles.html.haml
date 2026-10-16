@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The look of the tabs Alle and Nach Person und Art (documents/index,
+-#  document_groups/index): the status and the timestamps centred (their
+-#  headers through the columns' header_align); Person and Art in Alle
+-#  wrap where a narrow page squeezes them, between words; a word too long
+-#  for the column is hyphenated in Art, broken in Person (names are not
+-#  hyphenated).
+:css
+  #main td.dmcol-subject, #main td.dmcol-kind { overflow-wrap: break-word; }
+  #main td.dmcol-kind { hyphens: auto; }
+  #main td.dmcol-status, #main td.dmcol-created_at,
+  #main td.dgcol-first_at, #main td.dgcol-last_at { text-align: center; }

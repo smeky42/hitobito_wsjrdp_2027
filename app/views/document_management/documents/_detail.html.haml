@@ -1,0 +1,94 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One document, read-only: its file (a preview that opens below the
+-#  buttons and loads the file only then), keys, lists, its versions (the
+-#  documents it replaces and the ones replacing it) with a comparison that
+-#  sets two of them side by side, and derivations. The page's heading is an h1,
+-#  in a row's detail an h2. Links leave the frame.
+-#
+-#  Locals: document (WsjrdpDocument)
+- scope = "document_management.document"
+- people = Person.where(id: [document.subject_id, document.author_id].compact).index_by(&:id)
+- fields = [[:subject, document_subject(document, people)],
+  [:kind, document_kind_link(document)],
+  [:key, document_key_label(document)],
+  [:secondary_key, document_secondary_key_label(document)],
+  [:derivation_key, document.derivation_key],
+  [:status, document_status_label(document.status)],
+  [:superseded_at, document_time(document.superseded_at)],
+  [:deleted_at, document_time(document.deleted_at)],
+  [:file_status, document_file_status_label(document.file_status)],
+  [:file_checked_at, document_time(document.file_checked_at)],
+  [:filename, document.filename],
+  [:content_type, document.content_type],
+  [:byte_size, document.byte_size && number_to_human_size(document.byte_size)],
+  [:content_sha256, document.content_sha256 && content_tag(:span, document.content_sha256, class: "font-monospace small")],
+  [:relative_storage_file_path, content_tag(:span, document.relative_storage_file_path, class: "font-monospace small")],
+  [:origin, document_origin_label(document.origin)],
+  [:created_at, document_time(document.created_at)],
+  [:author, document_author(document, people)],
+  [:document_date, document.document_date && l(document.document_date)],
+  [:lists, document_lists(document)],
+  [:comment, document.comment.presence && auto_link_escaped_multiline(document.comment)]]
+
+= render "document_management/documents/preview_styles"
+.document-detail.bk-item-detail{id: "document-#{document.id}"}
+  = content_tag(turbo_frame_request? ? :h2 : :h1, class: ["d-flex align-items-baseline flex-wrap gap-2", turbo_frame_request? ? "h5 mt-0 mb-3" : nil].compact.join(" ")) do
+    %span.text-muted.fw-light= "#{t("#{scope}.heading")} ##{document.id}"
+    %span= document.filename
+  - unless document.file_missing?
+    - preview = "document-file-preview-#{document.id}"
+    - previewable = %i[frame image].include?(document_preview_kind(document))
+    .d-flex.flex-wrap.gap-2.mb-3#document-actions
+      - if previewable
+        %button.btn.btn-sm.btn-outline-primary.document-preview-toggle{type: "button", "data-bs-toggle": "collapse",
+          "data-bs-target": "##{preview}", "aria-expanded": "false", "aria-controls": preview}
+          = icon(:"chevron-down")
+          = t("#{scope}.preview")
+      = link_to wsjrdp_document_path(document), class: "btn btn-sm btn-outline-primary", target: "_blank", rel: "noopener", data: {turbo_frame: "_top"} do
+        = icon(:"external-link-alt")
+        = t("#{scope}.open")
+      = link_to wsjrdp_document_path(document, download: 1), class: "btn btn-sm btn-outline-primary", data: {turbo_frame: "_top"} do
+        = icon(:download)
+        = t("#{scope}.download")
+    - if previewable
+      .collapse.mb-3{id: preview}
+        = render "document_management/documents/preview_file", document: document, lazy: true
+      :javascript
+        (function () {
+          var preview = document.getElementById(#{preview.to_json});
+          if (!preview || preview.dataset.ready) return;
+          preview.dataset.ready = "1";
+          preview.addEventListener("show.bs.collapse", function (e) {
+            if (e.target !== preview) return;
+            preview.querySelectorAll("[data-src]").forEach(function (el) {
+              if (!el.getAttribute("src")) el.setAttribute("src", el.dataset.src);
+            });
+          });
+        })();
+
+  %dl.row.mb-3#document-fields
+    - fields.each do |key, value|
+      %dt.col-sm-4.col-lg-3.text-muted.fw-normal= t("#{scope}.fields.#{key}")
+      %dd.col-sm-8.col-lg-9.mb-1
+        - if value.present?
+          = value
+        - else
+          %span.text-muted —
+
+  -# The chain newest first: the documents replacing this one, it, the ones
+  -# it replaces.
+  - versions = (document.predecessors + [document] + WsjrdpDocument.where(replaces_id: document.id).order(:created_at, :id).to_a).reverse
+  - derivatives = document.derivatives.order(:created_at, :id).to_a
+  -# Not in the detail of a versions table (?versions=none, _versions_table).
+  - if versions.many? && params[:versions] != "none"
+    - pair = document_preview_pair(versions, params)
+    = render "document_management/documents/versions_table", versions: versions, pair: pair,
+      preview_id: "document-preview-#{document.id}", shown: document
+  - if derivatives.any?
+    = render "document_management/documents/rows_table", rows: derivatives

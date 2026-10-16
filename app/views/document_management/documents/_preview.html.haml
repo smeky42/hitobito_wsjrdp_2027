@@ -1,0 +1,127 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The comparison of two versions of a document (_detail). It shows once
+-#  both radio columns L and R of the versions table (_versions_table) are
+-#  picked, and goes again when a pick is taken back (the buttons below L
+-#  and R): the two side by side or one above the other, whether their
+-#  contents are the same (SHA-256), and a button that swaps them; the same
+-#  version on both sides shows it alone. Every version's pane (_preview_pane) waits in a template,
+-#  so a frame loads its file only once it is shown. On the page of its own
+-#  the picks go into the address (?left=&right=), so a comparison can be
+-#  passed on as a link.
+-#
+-#  Locals: document (nil on a page of several), versions, pair (the left and
+-#  right document, each possibly nil), preview_id (the comparison's id; by
+-#  default the one of `document`)
+- scope = "document_management.document"
+- preview = local_assigns[:preview_id] || "document-preview-#{document.id}"
+%section.document-preview{id: preview, hidden: pair.any?(&:nil?), data: {update_url: (!turbo_frame_request?).to_s}}
+  .document-preview-toolbar
+    %h3.h6= t("#{scope}.compare")
+    .btn-group.btn-group-sm{role: "group"}
+      %button.btn.btn-outline-secondary.active{type: "button", "aria-pressed": "true", data: {preview_layout: "columns"}}
+        = icon(:columns)
+        = t("#{scope}.preview_columns")
+      %button.btn.btn-outline-secondary{type: "button", "aria-pressed": "false", data: {preview_layout: "rows"}}
+        = icon(:"grip-lines")
+        = t("#{scope}.preview_rows")
+    %button.btn.btn-sm.btn-outline-secondary{type: "button", data: {preview_swap: ""}}
+      = icon(:"exchange-alt")
+      = t("#{scope}.preview_swap")
+    %span.badge.text-bg-success{hidden: true, data: {preview_same: ""}}= t("#{scope}.preview_same_content")
+    %span.badge.text-bg-warning{hidden: true, data: {preview_differ: ""}}= t("#{scope}.preview_different_content")
+  .document-preview-panes
+    .document-preview-slot{data: {slot: "left"}}
+    .document-preview-slot{data: {slot: "right"}}
+  - versions.each do |version|
+    %template{data: {doc: version.id, sha: version.content_sha256}}
+      = render "document_management/documents/preview_pane", document: version
+:javascript
+  (function () {
+    var id = #{preview.to_json};
+    var root = document.getElementById(id);
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = "1";
+    var panes = root.querySelector(".document-preview-panes");
+    var radios = function (side) {
+      return Array.from(document.querySelectorAll('input[data-preview="' + id + '"][data-preview-side="' + side + '"]'));
+    };
+    var picked = function (side) {
+      var radio = radios(side).find(function (r) { return r.checked; });
+      return radio ? radio.value : null;
+    };
+    var clears = Array.from(document.querySelectorAll('[data-preview="' + id + '"][data-preview-clear]'));
+    var template = function (doc) { return root.querySelector('template[data-doc="' + doc + '"]'); };
+    var fill = function (side, doc, label) {
+      var slot = root.querySelector('[data-slot="' + side + '"]');
+      slot.hidden = !doc;
+      if (!doc) { slot.replaceChildren(); delete slot.dataset.doc; return; }
+      if (slot.dataset.doc !== doc) {
+        slot.replaceChildren(template(doc).content.cloneNode(true));
+        slot.dataset.doc = doc;
+      }
+      var mark = slot.querySelector(".document-preview-side");
+      mark.textContent = label;
+      mark.hidden = !label;
+    };
+    var render = function () {
+      var left = picked("left"), right = picked("right"), single = left === right;
+      clears.forEach(function (button) { button.hidden = !picked(button.dataset.previewClear); });
+      var foot = clears.length && clears[0].closest("tfoot");
+      if (foot) foot.hidden = !left && !right;
+      var url = new URL(window.location.href);
+      if (!left || !right) {
+        root.hidden = true;
+        fill("left", null);
+        fill("right", null);
+        url.searchParams.delete("left");
+        url.searchParams.delete("right");
+        if (root.dataset.updateUrl === "true") window.history.replaceState(window.history.state, "", url);
+        return;
+      }
+      root.hidden = false;
+      fill("left", left, single ? "" : "L");
+      fill("right", single ? null : right, "R");
+      panes.classList.toggle("is-single", single);
+      var shaLeft = template(left).dataset.sha, shaRight = template(right).dataset.sha;
+      var known = !single && shaLeft && shaRight;
+      root.querySelectorAll("[data-preview-same]").forEach(function (b) { b.hidden = !(known && shaLeft === shaRight); });
+      root.querySelectorAll("[data-preview-differ]").forEach(function (b) { b.hidden = !(known && shaLeft !== shaRight); });
+      url.searchParams.set("left", left);
+      url.searchParams.set("right", right);
+      if (root.dataset.updateUrl === "true") window.history.replaceState(window.history.state, "", url);
+    };
+    radios("left").concat(radios("right")).forEach(function (r) { r.addEventListener("change", render); });
+    root.querySelectorAll("[data-preview-layout]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        panes.classList.toggle("is-rows", button.dataset.previewLayout === "rows");
+        root.querySelectorAll("[data-preview-layout]").forEach(function (b) {
+          b.classList.toggle("active", b === button);
+          b.setAttribute("aria-pressed", String(b === button));
+        });
+      });
+    });
+    clears.forEach(function (button) {
+      button.addEventListener("click", function () {
+        var side = button.dataset.previewClear;
+        radios("left").concat(radios("right")).forEach(function (r) {
+          if (r.dataset.previewSide === side) r.checked = false;
+        });
+        render();
+      });
+    });
+    root.querySelectorAll("[data-preview-swap]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var left = picked("left"), right = picked("right");
+        radios("left").forEach(function (r) { r.checked = r.value === right; });
+        radios("right").forEach(function (r) { r.checked = r.value === left; });
+        render();
+      });
+    });
+    render();
+  })();

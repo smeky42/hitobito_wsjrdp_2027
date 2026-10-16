@@ -1,0 +1,26 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A document's file as the preview shows it: in a frame (PDF, text) or as a
+-#  picture, or a note why there is none. A lazy one carries its address only
+-#  in data-src, which the page copies over once the preview opens.
+-#
+-#  Locals: document (WsjrdpDocument), lazy (true or false)
+- scope = "document_management.document"
+- path = wsjrdp_document_path(document)
+- source = lazy ? {data: {src: path}} : {src: path}
+- case document_preview_kind(document)
+- when :frame
+  %iframe.document-preview-frame{source, title: document.filename}
+- when :image
+  %img.document-preview-image{source, alt: document.filename}
+- when :missing
+  .document-preview-note= t("#{scope}.preview_missing")
+- else
+  .document-preview-note
+    = t("#{scope}.preview_unsupported", type: document.content_type.presence || "?")
+    = link_to t("#{scope}.download"), wsjrdp_document_path(document, download: 1), data: {turbo_frame: "_top"}

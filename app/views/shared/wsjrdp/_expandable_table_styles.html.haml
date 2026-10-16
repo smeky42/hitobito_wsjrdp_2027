@@ -352,13 +352,17 @@
      the line's frame downwards into one box.
      Colours use the Bootstrap tokens with the theme's own fallbacks (hitobito
      has no dark theme, so a single palette is enough). */
-  .flt-line { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem;
+  .flt-line { display: flex; align-items: flex-start; gap: .8rem;
     padding: .3rem .5rem; border: 1px solid var(--bs-border-color, #dee2e6);
     border-radius: 4px; background: var(--bs-tertiary-bg, #f8f9fa); }
-  .flt-line-left { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem;
-    min-width: 0; }
-  /* The toggle is the line's right end, however much (or little) is on the left. */
-  .flt-line > .pane-toggle { margin-left: auto; }
+  /* The left part wraps within itself, so it never pushes the toggle onto a
+     line of its own. It is at least as high as the toggle (a .btn-sm), so a
+     single line of lower chips still sits level with it. */
+  .flt-line-left { display: flex; align-items: center; align-content: center; flex-wrap: wrap;
+    gap: .8rem; flex: 1 1 auto; min-width: 0; min-height: calc(.875rem * 1.5 + .5rem + 2px); }
+  /* The toggle is the line's top right corner, however much (or little) is on
+     the left. */
+  .flt-line > .pane-toggle { flex: none; margin-left: auto; }
   /* Open: a light primary tint and the primary border, square at the bottom so
      the pane below continues the same box. The toggle's own pressed look comes
      from .btn.pane-toggle[aria-expanded="true"] in shared/wsjrdp/_collapsible_panes. */

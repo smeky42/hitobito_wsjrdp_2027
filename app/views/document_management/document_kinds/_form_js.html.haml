@@ -1,0 +1,307 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The role rules of a kind's form (document_management/document_kinds/_form):
+-#  one card per rule, in the order the rules apply. The buttons of a card
+-#  move it up or down or remove it; "Regel hinzufügen" adds a card from the
+-#  form's <template>, its __INDEX__ replaced by a new number. The params keep
+-#  the order of the cards, so moving a card is all a reordering needs. The
+-#  cards are numbered and the arrows at either end disabled after every
+-#  change.
+-#
+-#  The file kinds above the content types and extensions
+-#  ([data-kind-file-kind], Wsjrdp2027::DocumentFileKinds) add all their
+-#  types and extensions at once, or take them out again when all are chosen;
+-#  their x takes all of it out, whatever part is chosen;
+-#  each shows whether all, a part or none of it is chosen. Below the fields
+-#  [data-kind-accepted] shows what the kind accepts -- an upload must match
+-#  a type and an extension when both are given (WsjrdpDocumentKind#upload_error)
+-#  -- and which extensions and types are never accepted, marked red in the
+-#  fields as well. The type of an extension comes from Marcel, as the
+-#  extension suggestions carry it (shared/wsjrdp/_tag_select_sources).
+-#  A file kind's tooltip shows its types, each with its extensions below
+-#  it, and how much of it is chosen, kept up to date while it is open.
+-#  Above each key its length, below it what it breaks of the rules of a key.
+- return if @wsjrdp_document_kind_form_js_emitted
+- @wsjrdp_document_kind_form_js_emitted = true
+:javascript
+  (function () {
+    if (window.WsjrdpDocumentKindForm) return
+    let counter = 0
+
+    function renumber(list) {
+      const cards = Array.from(list.querySelectorAll(":scope > [data-kind-rule]"))
+      cards.forEach((card, index) => {
+        card.querySelector("[data-kind-rule-number]").textContent = index + 1
+        card.querySelector('[data-kind-rule-action="up"]').disabled = index === 0
+        card.querySelector('[data-kind-rule-action="down"]').disabled = index === cards.length - 1
+      })
+      const empty = list.parentElement.querySelector("[data-kind-rules-empty]")
+      if (empty) empty.hidden = cards.length > 0
+    }
+
+    function add(rules) {
+      const template = rules.querySelector("template[data-kind-rule-template]")
+      const list = rules.querySelector("[data-kind-rules-list]")
+      counter += 1
+      const html = template.innerHTML.replaceAll("__INDEX__", `n${Date.now()}${counter}`)
+      list.insertAdjacentHTML("beforeend", html)
+      const card = list.lastElementChild
+      if (window.WsjrdpTagSelect) window.WsjrdpTagSelect.activate(card)
+      renumber(list)
+    }
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-kind-rule-action]")
+      if (!button) return
+      const rules = button.closest("[data-kind-rules]")
+      if (!rules) return
+      event.preventDefault()
+      const action = button.dataset.kindRuleAction
+      if (action === "add") return add(rules)
+
+      const card = button.closest("[data-kind-rule]")
+      const list = card.parentElement
+      if (action === "up" && card.previousElementSibling) list.insertBefore(card, card.previousElementSibling)
+      if (action === "down" && card.nextElementSibling) list.insertBefore(card.nextElementSibling, card)
+      if (action === "remove") card.remove()
+      renumber(list)
+      if (action !== "remove") button.focus()
+    })
+
+    // --- file kinds and what the kind accepts -----------------------------
+    let extensionTypes = null
+    function typeOf(extension) {
+      if (!extensionTypes) {
+        const source = document.getElementById("wsjrdp-tag-source-extensions")
+        extensionTypes = new Map(source ? JSON.parse(source.textContent) : [])
+      }
+      return extensionTypes.get(extension)
+    }
+    const matches = (pattern, type) =>
+      !!type && (pattern.endsWith("/*") ? type.startsWith(pattern.slice(0, -1)) : pattern === type)
+
+    function fileSelects(form) {
+      return {types: form.querySelector('select[name="kind[content_types][]"]'),
+              extensions: form.querySelector('select[name="kind[extensions][]"]')}
+    }
+    const chosen = (select) => select ? Array.from(select.selectedOptions, (o) => o.value).filter(Boolean) : []
+
+    function analyse(types, extensions) {
+      const badExtensions = types.length
+        ? extensions.filter((ext) => !types.some((pattern) => matches(pattern, typeOf(ext)))) : []
+      const badTypes = extensions.length
+        ? types.filter((pattern) => !extensions.some((ext) => matches(pattern, typeOf(ext)))) : []
+      return {badExtensions, badTypes, okExtensions: extensions.filter((ext) => !badExtensions.includes(ext))}
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div")
+      div.textContent = text
+      return div.innerHTML
+    }
+
+    function refresh(form) {
+      const box = form.querySelector("[data-kind-accepted]")
+      const selects = fileSelects(form)
+      if (!box || !selects.types || !selects.extensions) return
+      const types = chosen(selects.types), extensions = chosen(selects.extensions)
+      const result = analyse(types, extensions)
+      const labels = JSON.parse(box.dataset.labels)
+
+      form.querySelectorAll("[data-kind-file-kind]").forEach((button) => {
+        const kind = JSON.parse(button.dataset.kindFileKind)
+        const all = kind.types.length + kind.extensions.length
+        const count = kind.types.filter((t) => types.includes(t)).length +
+          kind.extensions.filter((e) => extensions.includes(e)).length
+        button.classList.toggle("is-full", count === all)
+        button.classList.toggle("is-partial", count > 0 && count < all)
+      })
+      if (tipButton && form.contains(tipButton)) tip.innerHTML = tipHtml(tipButton)
+
+      let accepted
+      if (!types.length && !extensions.length) {
+        accepted = [labels.any]
+      } else if (!extensions.length) {
+        accepted = types
+      } else {
+        const rest = new Set(result.okExtensions)
+        accepted = JSON.parse(box.dataset.fileKinds).flatMap((kind) => {
+          const own = kind.extensions.filter((ext) => rest.has(ext))
+          own.forEach((ext) => rest.delete(ext))
+          return own.length ? [`${kind.label} (${own.map((ext) => "." + ext).join(" ")})`] : []
+        }).concat(Array.from(rest, (ext) => "." + ext))
+      }
+      let html = `<div>${escapeHtml(labels.heading)} ` + (accepted.length
+        ? accepted.map((item) => `<span class="kind-accepted-item">${escapeHtml(item)}</span>`).join("")
+        : escapeHtml(labels.nothing)) + "</div>"
+      if (result.badExtensions.length) {
+        html += `<div class="kind-accepted-warn">${escapeHtml(labels.bad_extensions)} ` + result.badExtensions
+          .map((ext) => "." + ext + " (" + labels.missing + " " + (typeOf(ext) || "?") + ")").map(escapeHtml).join(", ") + "</div>"
+      }
+      if (result.badTypes.length) {
+        html += `<div class="kind-accepted-warn">${escapeHtml(labels.bad_types)} ` +
+          result.badTypes.map(escapeHtml).join(", ") + "</div>"
+      }
+      box.innerHTML = html
+
+      const mark = (select, bad) => {
+        if (!select.tomselect) return
+        select.tomselect.control.querySelectorAll(".item").forEach((item) =>
+          item.classList.toggle("is-never", bad.includes(item.dataset.value)))
+      }
+      mark(selects.types, result.badTypes)
+      mark(selects.extensions, result.badExtensions)
+    }
+
+    // The tooltip of a file kind: a block per type with its extensions, the
+    // chosen ones marked.
+    let tip = null, tipButton = null
+    function tipHtml(button) {
+      const form = button.closest(".document-kind-form")
+      const kind = JSON.parse(button.dataset.kindFileKind)
+      const labels = JSON.parse(form.querySelector("[data-kind-accepted]").dataset.labels)
+      const selects = fileSelects(form)
+      const types = chosen(selects.types), extensions = chosen(selects.extensions)
+      const total = kind.types.length + kind.extensions.length
+      const count = kind.types.filter((t) => types.includes(t)).length +
+        kind.extensions.filter((e) => extensions.includes(e)).length
+      const mark = (on) => `<span class="tip-mark ${on ? "is-on" : "is-off"}">${on ? "✓" : "○"}</span>`
+      const state = labels.chosen.replace("%{count}", count).replace("%{total}", total)
+      return `<div class="tip-head"><span>${escapeHtml(kind.label)}</span><span class="tip-state">${escapeHtml(state)}</span></div>` +
+        kind.groups.map((group) =>
+          `<div class="tip-group"><div class="tip-type">${mark(types.includes(group.type))}${escapeHtml(group.type)}</div>` +
+          `<div class="tip-exts">` + group.extensions.map((ext) =>
+            `<span class="tip-ext ${extensions.includes(ext) ? "is-on" : ""}">.${escapeHtml(ext)}</span>`).join("") +
+          (group.label ? ` <span class="tip-label">${escapeHtml(group.label)}</span>` : "") + "</div></div>").join("") +
+        `<div class="tip-foot">${escapeHtml(labels.both)}</div>`
+    }
+    function showTip(button) {
+      if (!tip) {
+        tip = document.createElement("div")
+        tip.className = "kind-file-kind-tip"
+        tip.id = "kind-file-kind-tip"
+        tip.setAttribute("role", "tooltip")
+        document.body.appendChild(tip)
+      }
+      tipButton = button
+      tip.innerHTML = tipHtml(button)
+      tip.hidden = false
+      button.setAttribute("aria-describedby", tip.id)
+      const rect = button.getBoundingClientRect()
+      const left = Math.min(rect.left, document.documentElement.clientWidth - tip.offsetWidth - 8)
+      tip.style.left = `${Math.max(8, left) + window.scrollX}px`
+      tip.style.top = `${rect.bottom + 6 + window.scrollY}px`
+    }
+    function hideTip() {
+      if (tip) tip.hidden = true
+      if (tipButton) tipButton.removeAttribute("aria-describedby")
+      tipButton = null
+    }
+    document.addEventListener("mouseover", (event) => {
+      const button = event.target.closest && event.target.closest("[data-kind-file-kind]")
+      if (button && button !== tipButton) showTip(button)
+    })
+    document.addEventListener("mouseout", (event) => {
+      const button = event.target.closest && event.target.closest("[data-kind-file-kind]")
+      if (button && !button.contains(event.relatedTarget)) hideTip()
+    })
+    document.addEventListener("focusin", (event) => {
+      const button = event.target.closest && event.target.closest("[data-kind-file-kind]")
+      if (button) showTip(button)
+    })
+    document.addEventListener("focusout", (event) => {
+      if (event.target.closest && event.target.closest("[data-kind-file-kind]")) hideTip()
+    })
+    document.addEventListener("turbo:before-cache", hideTip)
+
+    // Adds all types and extensions of a file kind -- or takes them out:
+    // with its x, or when all are chosen.
+    function toggleFileKind(chip, action) {
+      const form = chip.closest(".document-kind-form")
+      const kind = JSON.parse(chip.dataset.kindFileKind)
+      const selects = fileSelects(form)
+      const remove = action === "clear" || chip.classList.contains("is-full")
+      ;[[selects.types, kind.types], [selects.extensions, kind.extensions]].forEach(([select, values]) => {
+        const tom = select.tomselect
+        values.forEach((value) => {
+          if (tom) {
+            if (remove) tom.removeItem(value, true)
+            else {
+              if (!tom.options[value]) tom.addOption({value, text: value})
+              tom.addItem(value, true)
+            }
+          } else {
+            let option = Array.from(select.options).find((o) => o.value === value)
+            if (!option && !remove) option = select.appendChild(new Option(value, value))
+            if (option) option.selected = !remove
+          }
+        })
+      })
+      refresh(form)
+    }
+
+    function refreshAll(root) {
+      setTimeout(() => (root || document).querySelectorAll(".document-kind-form").forEach(refresh), 0)
+    }
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-kind-file-kind-action]")
+      if (!button) return
+      event.preventDefault()
+      toggleFileKind(button.closest("[data-kind-file-kind]"), button.dataset.kindFileKindAction)
+    })
+    document.addEventListener("change", (event) => {
+      const select = event.target.closest && event.target.closest('select[name="kind[content_types][]"], select[name="kind[extensions][]"]')
+      if (select) refresh(select.closest(".document-kind-form"))
+    })
+    // A key's length above its field and what it breaks of the rules of a
+    // key below it (document_management/document_kinds/_key_field). The
+    // rules of Wsjrdp2027::DocumentFilename.key_error, all that apply.
+    function checkKey(box) {
+      const field = box.querySelector("[data-kind-key-field]")
+      const value = field.value
+      const max = Number(box.dataset.max)
+      const messages = JSON.parse(box.dataset.messages)
+      const count = box.querySelector("[data-kind-key-count]")
+      count.textContent = `${value.length}/${max}`
+      count.hidden = value === ""
+      count.classList.toggle("text-danger", value.length > max)
+      const problems = []
+      if (value !== "") {
+        if (value.length > max) problems.push(messages.too_long)
+        if (!/^[a-z]/.test(value)) problems.push(messages.leading)
+        const chars = [...new Set(value.slice(/^[a-z]/.test(value) ? 0 : 1).match(/[^a-z0-9_]/g) || [])]
+        if (chars.length) {
+          const shown = chars.map((char) => (char === " " ? messages.space : `„${char}“`)).join(" ")
+          problems.push(messages.characters.replace("%{chars}", shown))
+        }
+        if (value.includes("__")) problems.push(messages.double_separator)
+        if (value.length > 1 && value.endsWith("_")) problems.push(messages.trailing_separator)
+      }
+      const list = box.querySelector("[data-kind-key-problems]")
+      list.replaceChildren(...problems.map((text) => Object.assign(document.createElement("div"), {textContent: text})))
+      field.classList.toggle("is-invalid", problems.length > 0)
+    }
+    function checkKeys(root) {
+      (root || document).querySelectorAll("[data-kind-key]").forEach(checkKey)
+    }
+    document.addEventListener("input", (event) => {
+      const box = event.target.closest && event.target.closest("[data-kind-key]")
+      if (box) checkKey(box)
+    })
+    document.addEventListener("turbo:load", () => checkKeys(document))
+    document.addEventListener("turbo:frame-load", (event) => checkKeys(event.target))
+    if (document.readyState !== "loading") checkKeys(document)
+    else document.addEventListener("DOMContentLoaded", () => checkKeys(document))
+    document.addEventListener("turbo:load", () => refreshAll(document))
+    document.addEventListener("turbo:frame-load", (event) => refreshAll(event.target))
+    if (document.readyState !== "loading") refreshAll(document)
+    else document.addEventListener("DOMContentLoaded", () => refreshAll(document))
+
+    window.WsjrdpDocumentKindForm = {renumber, refresh}
+  })()

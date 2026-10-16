@@ -38,5 +38,17 @@ module Wsjrdp2027
     def known?(type) = KINDS.key?(type.to_s)
 
     def fetch(type) = KINDS.fetch(type.to_s)
+
+    # The kind's name in a URL, the model's Rails param key ("person" for
+    # Person, "event_course" for Event::Course), and back; nil for a type or
+    # token that is no kind. Only the kinds' own names are constantized, never
+    # what a request brings.
+    def param_for(type) = params.key(type.to_s)
+
+    def type_for_param(token) = params[token.to_s]
+
+    def params
+      @params ||= KINDS.keys.index_by { |type| type.constantize.model_name.param_key }.freeze
+    end
   end
 end

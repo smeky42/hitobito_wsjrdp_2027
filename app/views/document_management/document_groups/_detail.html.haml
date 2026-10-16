@@ -1,0 +1,54 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One document group (DocumentManagement::DocumentGroups::Group), read-only:
+-#  the person, the kind, the keys and the counts, a link to the versions in
+-#  the tab Alle, and the versions with the comparison of two of them
+-#  (documents/_versions_table). The page's heading is an h1,
+-#  in a row's detail an h2. Links leave the frame.
+-#
+-#  Locals: group
+- scope = "document_management.document_group"
+- fields_scope = "document_management.document.fields"
+- versions = group.versions.to_a
+- pair = document_preview_pair(versions, params)
+- preview_id = "document-group-preview-#{group.row_key}"
+- fields = [[t("#{fields_scope}.subject"), document_group_subject(group)],
+  [t("#{fields_scope}.kind"), document_group_kind(group)],
+  [t("#{fields_scope}.key"), content_tag(:span, group.key, class: "font-monospace")],
+  [t("#{fields_scope}.secondary_key"), document_group_secondary_key(group)],
+  [t("#{scope}.current"), document_group_current(group)],
+  [t("#{scope}.versions"), t("#{scope}.versions_value", count: group.count, current: group.current,
+    superseded: group.superseded, deleted: group.deleted)],
+  [t("#{scope}.missing"), (content_tag(:span, group.missing, class: "text-danger") if group.missing.positive?)],
+  [t("#{scope}.first_at"), document_time(group.first_at)],
+  [t("#{scope}.last_at"), document_time(group.last_at)]]
+= render "document_management/documents/preview_styles"
+.document-group-detail.bk-item-detail{id: "document-group-#{group.row_key}"}
+  = content_tag(turbo_frame_request? ? :h2 : :h1, document_group_title(group),
+    class: turbo_frame_request? ? "h5 mt-0 mb-3" : "mb-2")
+  -# A double button: in this tab, and in a new one.
+  .d-flex.flex-wrap.gap-2.mb-3#document-group-actions
+    - documents_path = document_group_documents_path(group)
+    .btn-group.btn-group-sm{role: "group"}
+      = link_to documents_path, class: "btn btn-outline-primary", data: {turbo_frame: "_top"} do
+        = icon(:list)
+        = t("document_management.document_groups.show_documents")
+      = link_to documents_path, class: "btn btn-outline-primary", target: "_blank", rel: "noopener",
+        title: t("document_management.document_groups.show_documents_new_tab"),
+        "aria-label": t("document_management.document_groups.show_documents_new_tab") do
+        = icon(:"external-link-alt")
+  %dl.row.mb-3#document-group-fields
+    - fields.each do |label, value|
+      %dt.col-sm-4.col-lg-3.text-muted.fw-normal= label
+      %dd.col-sm-8.col-lg-9.mb-1
+        - if value.present?
+          = value
+        - else
+          %span.text-muted —
+  = render "document_management/documents/versions_table", versions: versions, pair: pair,
+    preview_id: preview_id, with_numbers: group.combinations > 1

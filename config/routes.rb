@@ -33,6 +33,36 @@ Rails.application.routes.draw do
     # Einstellungen > Ländercodes (CountryCodesController).
     get "country_codes" => "country_codes#index", :as => :country_codes
     post "country_codes/migrate" => "country_codes#migrate", :as => :migrate_country_codes
+    # For admins: the main section Dokumente (every document, also grouped by
+    # kind, and the kinds of document) and the Dokumentenverwaltung in
+    # Einstellungen (the overview, registering the registration uploads).
+    get "document_management" => "document_management#index", :as => :document_management
+    # Checking the files of all documents (Wsjrdp2027::CheckDocumentFilesJob).
+    scope "document_management/check_files", controller: "document_management" do
+      post "/" => :check_files, :as => :document_management_check_files
+      get "progress" => :check_files_progress, :as => :document_management_check_files_progress
+      post "cancel" => :check_files_cancel, :as => :document_management_cancel_check_files
+    end
+    get "documents" => "document_management/documents#index", :as => :document_management_documents
+    post "documents/apply" => "document_management/documents#apply", :as => :document_management_apply_documents
+    get "documents/:id/details" => "document_management/documents#show", :as => :document_management_document
+    get "documents/by_person_and_kind" => "document_management/document_groups#index", :as => :document_management_document_groups
+    post "documents/by_person_and_kind/apply" => "document_management/document_groups#apply",
+      :as => :document_management_apply_document_groups
+    # One group, by DocumentManagement::DocumentGroups::Group#to_param.
+    get "documents/by_person_and_kind/:id" => "document_management/document_groups#show",
+      :as => :document_management_document_group
+    scope "document_management/registration_documents", controller: "document_management/registration_documents" do
+      get "/" => :index, :as => :document_management_registration_documents
+      post "apply" => :apply, :as => :document_management_apply_registration_documents
+      get "progress" => :progress, :as => :document_management_registration_documents_progress
+      post "cancel" => :cancel, :as => :document_management_cancel_registration_documents
+      post "register" => :register, :as => :document_management_register_documents
+      post "register_all" => :register_all, :as => :document_management_register_all_documents
+    end
+    scope "document_management", module: "document_management", as: "document_management" do
+      resources :document_kinds, except: [:edit]
+    end
 
     resources :documents, only: [:show, :create], controller: "wsjrdp/documents", as: :wsjrdp_documents
 

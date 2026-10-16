@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A key of a kind's form: the label with the key's length against the limit
+-#  at its right (quiet, hidden while the field is empty, red past the
+-#  limit), the field, and below it in red what the key breaks of the rules
+-#  of Wsjrdp2027::DocumentFilename.key_error, each rule a line; the field is
+-#  marked as well. The form's script keeps them up to date while typing. No
+-#  maxlength: a pasted key shows how much too long it is instead of being
+-#  cut.
+-#
+-#  Locals: f, attribute, value, dom, fixed, required, label.
+- scope = "document_management.document_kinds.key_problems"
+- max = Wsjrdp2027::DocumentFilename::KEY_MAX_LENGTH
+- id = "#{dom}-#{attribute}"
+- problems = %w[too_long leading characters double_separator trailing_separator space]
+- messages = problems.to_h { |problem| [problem, t("#{scope}.#{problem}", max: max, chars: "%{chars}")] }
+%div{data: {kind_key: true, max: max, messages: messages.to_json}}
+  .d-flex.align-items-baseline.gap-2
+    = f.label attribute, label, class: ["form-label", "small", "mb-0", ("required" if required)].compact, for: id
+    %span.kind-key-count.ms-auto{data: {kind_key_count: true}, hidden: value.to_s.empty?, "aria-live": "polite"}
+      = "#{value.to_s.length}/#{max}"
+  = f.text_field attribute, value: value, class: "form-control form-control-sm font-monospace",
+    disabled: fixed, required: required, pattern: Wsjrdp2027::DocumentFilename::KEY_PATTERN, id: id,
+    "aria-describedby": "#{id}-problems", data: {kind_key_field: true}
+  .kind-key-problems.small.text-danger{id: "#{id}-problems", data: {kind_key_problems: true}, "aria-live": "polite"}

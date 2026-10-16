@@ -1,0 +1,80 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The derivations of a document (_detail), which keep their own names: a
+-#  plain table, each row linking its document. Words stay whole (a narrow
+-#  detail scrolls the table sideways), only a file name breaks anywhere.
+-#
+-#  One column holds when a row was replaced and deleted (document_ended);
+-#  its header's two halves, "Ersetzt" and "gelöscht", sort the rows by
+-#  either -- newest first, then oldest first, then back to the given order
+-#  -- in the browser, rows without the date last.
+-#
+-#  Locals: rows
+- scope = "document_management.document"
+%h3.h6= t("#{scope}.derivatives")
+.table-responsive.document-rows
+  %table.table.table-sm.align-middle#document-derivatives
+    %thead
+      %tr
+        %th= t("#{scope}.fields.id")
+        %th= t("#{scope}.fields.created_at")
+        %th= t("#{scope}.fields.filename")
+        %th= t("#{scope}.fields.status")
+        %th.text-nowrap
+          - %w[superseded deleted].each_with_index do |field, index|
+            - if index.positive?
+              %span.text-muted /
+            %button.btn.btn-link.p-0.document-rows-sort{type: "button", data: {sort: field},
+              title: t("#{scope}.sort_by", column: t("#{scope}.end.#{field}")) }
+              = t("#{scope}.end.#{field}")
+              %span.document-rows-sort-mark{"aria-hidden": "true"} ⇅
+        %th.text-center= t("#{scope}.file_present")
+        %th
+    %tbody
+      - rows.each_with_index do |row, order|
+        %tr{data: {order: order, superseded: row.superseded_at&.iso8601, deleted: row.deleted_at&.iso8601}.compact}
+          %td.font-monospace.text-nowrap
+            = link_to(row.id, document_management_document_path(row), data: {turbo_frame: "_top"})
+          %td{style: "font-variant-numeric: tabular-nums"}= document_time(row.created_at)
+          %td.font-monospace.document-rows-filename= row.filename
+          %td.text-nowrap{class: ("text-success" if row.status == WsjrdpDocument::CURRENT)}= document_status_label(row.status)
+          %td.text-nowrap{style: "font-variant-numeric: tabular-nums"}= document_ended(row)
+          %td.text-center= document_file_status_icon(row.file_status)
+          %td.text-end
+            = link_to document_management_document_path(row), target: "_blank", rel: "noopener",
+              title: t("#{scope}.open_new_tab"), "aria-label": t("#{scope}.open_new_tab") do
+              = icon(:"external-link-alt")
+:javascript
+  (function () {
+    if (window.WsjrdpDocumentRowsSort) return
+    window.WsjrdpDocumentRowsSort = true
+    var marks = {"": "⇅", desc: "↓", asc: "↑"}
+    document.addEventListener("click", function (event) {
+      var button = event.target.closest && event.target.closest(".document-rows-sort")
+      if (!button) return
+      var table = button.closest("table")
+      var key = button.dataset.sort
+      var dir = table.dataset.sortKey !== key ? "desc" : (table.dataset.sortDir === "desc" ? "asc" : "")
+      table.dataset.sortKey = dir ? key : ""
+      table.dataset.sortDir = dir
+      var body = table.tBodies[0]
+      var rows = Array.from(body.rows)
+      rows.sort(function (a, b) {
+        if (!dir) return a.dataset.order - b.dataset.order
+        var x = a.dataset[key] || "", y = b.dataset[key] || ""
+        if (!x || !y) return (!x - !y) || (a.dataset.order - b.dataset.order)
+        return (dir === "asc" ? 1 : -1) * x.localeCompare(y) || (a.dataset.order - b.dataset.order)
+      })
+      rows.forEach(function (row) { body.appendChild(row) })
+      table.querySelectorAll(".document-rows-sort").forEach(function (b) {
+        var on = dir && b.dataset.sort === key
+        b.querySelector(".document-rows-sort-mark").textContent = marks[on ? dir : ""]
+        b.classList.toggle("is-sorted", !!on)
+      })
+    })
+  })()

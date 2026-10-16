@@ -1,0 +1,37 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Übersicht, the first tab of the Dokumentenverwaltung: the area's starting
+-#  point, and checking the files of all documents in the background
+-#  (DocumentManagementController#check_files) with its progress and its last
+-#  runs.
+- scope = "document_management.file_check"
+
+- title(t("document_management.tabs.overview"))
+
+#main
+  %h1= t("document_management.tabs.overview")
+  %p.text-muted#document-management-lead= t("document_management.lead")
+
+  %section#document-file-check.mt-4
+    %h2.h5= t("#{scope}.title")
+    %p.text-muted= t("#{scope}.lead")
+    = render "shared/wsjrdp/tracked_job_progress", job: Wsjrdp2027::CheckDocumentFilesJob,
+      id: "document-file-check-progress",
+      progress_url: document_management_check_files_progress_path,
+      cancel_url: document_management_cancel_check_files_path
+    = button_to t("#{scope}.button"), document_management_check_files_path, method: :post,
+      class: "btn btn-sm btn-outline-primary", form: {class: "mb-3", data: {turbo: false}},
+      data: {confirm: t("#{scope}.confirm")}
+    - if check_runs.any?
+      %h3.h6.mt-3= t("#{scope}.runs")
+      %table.table.table-sm.w-auto#document-file-check-runs
+        %tbody
+          - check_runs.each do |run|
+            %tr
+              %td.text-nowrap{style: "font-variant-numeric: tabular-nums"}= document_time(run.created_at)
+              %td= run.message

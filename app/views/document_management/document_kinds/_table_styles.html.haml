@@ -1,0 +1,43 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The cells of the Dokument-Arten list (DocumentManagement::DocumentKindsHelper):
+-#  rights entries and rule parts as small chips, a line per right with its
+-#  verb muted and light before the entries, the files' tooltip left-aligned and wider.
+:css
+  /* The merged name cell: the label hyphenated where it must break, a long
+     key broken anywhere. */
+  #main .dk-name-label { hyphens: auto; }
+  #main .dk-name-keys { overflow-wrap: anywhere; }
+  /* The label's header over the keys' without a line between them: one
+     heading for the merged column. */
+  #main [data-exptbl="dk"] thead tr.exp-col-groups > th[data-colkey="label"] { border-bottom-width: 0;
+    padding-bottom: 0; }
+  #main .dk-entry { display: inline-block; font-family: var(--bs-font-monospace); font-size: .8rem;
+    padding: 0 .3rem; border-radius: .25rem; background: var(--bs-gray-200, #e9ecef); margin: 0 .1rem .15rem 0; white-space: nowrap; }
+  /* A line per right: the verb, then the entries, wrapping like text. */
+  #main .dk-rights-line { line-height: 1.7; }
+  #main .dk-rights-line + .dk-rights-line { margin-top: .1rem; }
+  #main .dk-verb { font-size: .75rem; font-weight: 300; color: var(--bs-gray-600, #6c757d); margin-right: .15rem; }
+  #main .dk-system { font-size: .8rem; font-style: italic; color: var(--bs-gray-600, #6c757d); }
+  #main .dk-rule { font-size: .85rem; line-height: 1.6; }
+  #main .dk-rule + .dk-rule { margin-top: .2rem; }
+  #main .dk-role { display: inline-block; font-size: .75rem; font-weight: 600; padding: 0 .4rem; border-radius: 1rem;
+    border: 1px solid var(--bs-primary); color: var(--bs-primary); }
+  #main .dk-required { display: inline-block; font-size: .75rem; padding: 0 .35rem; border-radius: .25rem;
+    background: var(--bs-primary); color: #fff; }
+  #main .dk-tag { display: inline-block; font-size: .8rem; padding: 0 .35rem; border-radius: .25rem;
+    background: var(--bs-warning-bg-subtle, #fff3cd); color: var(--bs-warning-text-emphasis, #664d03); }
+  /* A status: outlined, not filled -- apart from the filled rights entries
+     and the round role chips. */
+  #main .dk-status { display: inline-block; font-family: var(--bs-font-monospace); font-size: .8rem;
+    padding: 0 .3rem; border: 1px solid var(--bs-gray-400, #ced4da); border-radius: .25rem; line-height: 1.35;
+    white-space: nowrap; cursor: help; }
+  #main .dk-files { white-space: nowrap; cursor: help; font-size: 1.05rem; }
+  .tooltip:has(.dk-files-tip) .tooltip-inner { max-width: 28rem; text-align: left; }
+  .dk-files-tip > div { white-space: nowrap; }
+  #main td.dkcol-files { text-align: center; }

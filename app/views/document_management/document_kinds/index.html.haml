@@ -1,0 +1,36 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Dokument-Arten (a tab of the main section Dokumente): the kinds of document
+-#  as an expandable table; a row opens into the kind's form (show, lazily),
+-#  the last column links the kind's page (DocumentManagement::DocumentKindsController).
+-#  The scripts of the form are rendered here, outside the rows' frames.
+- scope = "document_management.document_kinds"
+- title(t("document_management.tabs.document_kinds"))
+= render "form_styles"
+= render "table_styles"
+= render "shared/wsjrdp/html_tooltip_js"
+= render "shared/wsjrdp/tag_select_js"
+= render "form_js"
+
+#main
+  %h1= t("document_management.tabs.document_kinds")
+  %p.text-muted= t("#{scope}.lead")
+  %p= link_to t("#{scope}.new"), new_document_management_document_kind_path, class: "btn btn-sm btn-primary"
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows kinds, id: "dk"
+    - t.columns document_kind_table_columns, menu: true
+    - t.row_key { |record| record.id }
+    - t.detail_src { |record| document_management_document_kind_path(record) }
+    -# The kind's page: a column of its own; where the table would scroll
+    -# sideways, the double button of the detail.
+    - t.detail_page(column: true) { |record| document_management_document_kind_path(record) }
+    -# Rights and rules widen to their targets, the rules then on to one line
+    -# per rule (up to 25rem past the target, 49rem in all), then the gaps
+    -# (DocumentManagement::DocumentKindsColumns).
+    - t.gaps max: "1.5rem", grow_max: "25rem"

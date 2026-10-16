@@ -28,6 +28,10 @@ module HitobitoWsjrdp2027
       # be defined before admin_only_assignment exists.
       Role.include Wsjrdp2027::Role
 
+      # The runs of registering the registration uploads
+      # (Wsjrdp2027::RegisterDocumentsJob) are logged under this category.
+      HitobitoLogEntry.categories |= %w[documents]
+
       # Own permissions, extending the core's Role::Permissions (the
       # core keeps that constant mutable precisely to allow this). Our
       # finance access adds :finance_read, :finance_audit and
