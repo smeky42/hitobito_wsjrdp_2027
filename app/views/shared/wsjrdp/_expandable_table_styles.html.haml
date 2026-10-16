@@ -16,13 +16,21 @@
   /* A column a phone does without (a column's `mobile: false`): under the md
      breakpoint (768px) its header, cells and footer collapse to nothing. The
      cells stay, so the fixed layout keeps every column in its place -- only
-     their width, padding and content go. */
+     their width, padding and content go; --exp-nm takes their widths out of
+     the table's narrowest width. */
   @media (max-width: 767.98px) {
+    .bookings-table { --exp-nm: var(--exp-nm-w, 0rem); }
     .bookings-table col.exp-no-mobile { width: 0 !important; }
     .bookings-table .exp-no-mobile { width: 0 !important; padding: 0 !important; font-size: 0; line-height: 0;
       overflow: hidden; }
     .bookings-table .exp-no-mobile > * { display: none; }
   }
+  /* What shows only in a table narrower than its narrowest width (detail_page
+     narrow_only): hidden here, shown by the table's own container query
+     (shared/wsjrdp/_expandable_table, narrow_css). A page link among others
+     keeps its group, hidden with the same query. */
+  .exp-narrow-only, .exp-narrow-only-group { display: none !important; }
+  .exp-narrow-only > .exp-detail-links { margin-bottom: 1rem; }
   /* A column group's name over a bracket line that spans exactly its columns
      (shared/wsjrdp/_expandable_table, a column's `group:`). */
   .exp-col-groups th.exp-col-group { padding-top: 0; }
@@ -56,6 +64,16 @@
      with the extra air of a numeric column. */
   .bookings-table th.exp-merge-head.text-end { padding-right: 4px; }
   .bookings-table th.exp-merge-head.text-end.exp-gap { padding-right: calc(4px + var(--exp-g, 0px)); }
+  /* Header layouts (Wsjrdp::ExpandableTableHeader): of several variants only
+     the one the script picks shows; a wrapping layout lets its headers break
+     with hyphenation; a flow cell sets its headers one after the other. */
+  .bookings-table > thead > tr.exp-hv:not(.exp-hv-on) { display: none; }
+  .bookings-table th.exp-head-wrap, .bookings-table th.exp-head-wrap .exp-sort { white-space: normal !important; hyphens: auto; }
+  .exp-head-flow-items { display: flex; flex-wrap: nowrap; align-items: baseline; gap: .1rem .6rem; }
+  .exp-head-wrap .exp-head-flow-items { flex-wrap: wrap; }
+  .exp-head-justify-center { justify-content: center; }
+  .exp-head-justify-between { justify-content: space-between; }
+  .exp-head-flow-sep { color: var(--bs-secondary-color, #6c757d); font-weight: normal; }
   /* Digits of one width in the same font (a column's `tabular_nums:`, on by
      default for numeric columns): figures line up digit under digit. */
   .bookings-table td.exp-tnum { font-variant-numeric: tabular-nums; }

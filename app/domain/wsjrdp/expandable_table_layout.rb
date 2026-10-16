@@ -61,12 +61,52 @@ class Wsjrdp::ExpandableTableLayout
     end
   end
 
+  # The styles of a table narrower than its narrowest width, where it would
+  # scroll sideways: a container query on its wrapper (container-name
+  # exp-<id_prefix>) that collapses the columns with `narrow: false` (their
+  # widths, --exp-nn, leave the narrowest width) and shows what only a narrow
+  # table shows (detail_page narrow_only: .exp-narrow-only, and a page link
+  # among others, .exp-narrow-only-group). The narrowest width is min_rem,
+  # on a phone (below the md breakpoint) without the mobile: false columns
+  # (mobile_rem); the collapsing columns' widths there are narrow_phone_rem,
+  # the mobile: false ones being gone already. Selectors through the table's
+  # own children, so a table nested in a detail is not touched.
+  def self.narrow_css(id_prefix, min_rem:, mobile_rem:, narrow_rem:, narrow_phone_rem:)
+    table = "[data-exptbl=\"#{id_prefix}\"] > table"
+    detail = "#{table} > tbody > tr > td > .exp-detail"
+    rules = ->(collapsed) {
+      "#{table} { --exp-nn: #{num_s(collapsed)}rem; } " \
+        "#{table} > colgroup > col.exp-no-narrow { width: 0 !important; } " \
+        "#{table} > * > tr > .exp-no-narrow { width: 0 !important; padding: 0 !important; font-size: 0; " \
+        "line-height: 0; overflow: hidden; } " \
+        "#{table} > * > tr > .exp-no-narrow > * { display: none; } " \
+        "#{detail} > .exp-narrow-only, #{detail} > .booking-detail > .exp-narrow-only { display: block !important; } " \
+        "#{detail} > .booking-detail > .exp-detail-links > .exp-narrow-only-group { display: inline-flex !important; }"
+    }
+    query = ->(min, collapsed) { "@container exp-#{id_prefix} (width < #{num_s(min)}rem) { #{rules.call(collapsed)} }" }
+    return query.call(min_rem, narrow_rem) unless mobile_rem.positive?
+
+    "@media (min-width: 768px) { #{query.call(min_rem, narrow_rem)} } " \
+      "@media (max-width: 767.98px) { #{query.call(min_rem - mobile_rem, narrow_phone_rem)} }"
+  end
+
+  def self.num_s(value)
+    rounded = value.to_f.round(4)
+    (rounded == rounded.to_i) ? rounded.to_i.to_s : rounded.to_s
+  end
+  private_class_method :num_s
+
   # columns: the shown columns (the widget's Hashes), min_rem: the sum of
-  # their widths (with the selection column's), gap_keys: the columns with a
+  # their widths (with the selection column's), mobile_rem: the sum of the
+  # widths of those with `mobile: false` (a phone leaves them out: the styles
+  # set --exp-nm to --exp-nm-w there), narrow_rem: of those with `narrow:
+  # false` (a narrow table leaves them out: --exp-nn), gap_keys: the columns with a
   # gap at their right, grow_max / gap_max: the gaps' (CSS lengths).
-  def initialize(columns:, min_rem:, gap_keys:, grow_max:, gap_max:)
+  def initialize(columns:, min_rem:, gap_keys:, grow_max:, gap_max:, mobile_rem: 0, narrow_rem: 0)
     @columns = columns
     @min_rem = min_rem
+    @mobile_rem = mobile_rem
+    @narrow_rem = narrow_rem
     @gap_keys = gap_keys
     @grow_max = grow_max
     @gap_max = gap_max
@@ -90,9 +130,10 @@ class Wsjrdp::ExpandableTableLayout
   # The table's style: the three levels, the target columns' sum and the
   # table's width.
   def table_style
-    ["--exp-c1: #{c1_expression}", "--exp-c2: #{c2_expression}", "--exp-t: #{targets_expression}",
-      "--exp-g: #{gap_expression}", "min-width: #{num(@min_rem)}rem",
-      "width: calc(#{num(@min_rem)}rem + var(--exp-t) + #{num(@grow_weight)} * var(--exp-c2) + " \
+    [*(["--exp-nm-w: #{num(@mobile_rem)}rem"] if @mobile_rem.positive?),
+      "--exp-c1: #{c1_expression}", "--exp-c2: #{c2_expression}", "--exp-t: #{targets_expression}",
+      "--exp-g: #{gap_expression}", "min-width: #{min_expression}",
+      "width: calc(#{min_expression} + var(--exp-t) + #{num(@grow_weight)} * var(--exp-c2) + " \
         "#{@gap_keys.size} * var(--exp-g))"].join("; ")
   end
 
@@ -123,7 +164,14 @@ class Wsjrdp::ExpandableTableLayout
 
   def span_of(col) = col[:target_width].to_f - col[:width].to_f
 
-  def room = "(100cqw - #{num(@min_rem)}rem)"
+  def room = "(100cqw - #{min_expression})"
+
+  # The narrowest width: the widths' sum, on a phone and in a narrow table
+  # without the columns they do without.
+  def min_expression
+    parts = [("var(--exp-nm, 0rem)" if @mobile_rem.positive?), ("var(--exp-nn, 0rem)" if @narrow_rem.positive?)].compact
+    parts.empty? ? "#{num(@min_rem)}rem" : "calc(#{num(@min_rem)}rem - #{parts.join(" - ")})"
+  end
 
   # The level's lines, one per phase of the water level (see above).
   def level_lines
@@ -179,8 +227,5 @@ class Wsjrdp::ExpandableTableLayout
   def floor_px(value) = value.floor
 
   # A number as CSS wants it: no trailing ".0".
-  def num(value)
-    rounded = value.to_f.round(4)
-    (rounded == rounded.to_i) ? rounded.to_i.to_s : rounded.to_s
-  end
+  def num(value) = self.class.send(:num_s, value)
 end

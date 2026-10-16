@@ -7,44 +7,31 @@
 -#
 -#  ONE header cell of shared/wsjrdp/_expandable_table: the column's label (a
 -#  header_label may break into lines), its sort link or fixed arrow, its rank
--#  and its sort variant chips. rowspan: 2 for a column outside any group when
--#  the table has column groups.
+-#  and its sort variant chips (shared/wsjrdp/_expandable_table_th_content).
+-#  rowspan and colspan place it in a header of several rows
+-#  (Wsjrdp::ExpandableTableHeader); align overrides the column's alignment,
+-#  wrap lets the text wrap (with hyphenation), gap_key names the column whose
+-#  gap the cell carries (the rightmost it covers).
 -#  Locals: col, state, condensed, sort_links, sort_names, multi_sort,
--#  show_ranks, sort_list, rowspan, gap_keys and col_width (optional; the
+-#  show_ranks, sort_list, rowspan, colspan, align, wrap, gap_key, gap_keys
+-#  and col_width (optional; the
 -#  growing gaps and columns of the table), header_align (optional; the
 -#  header's alignment, nil for the column's own), sticky_classes and
 -#  sticky_style (optional; a sticky column's classes and left offset).
-- label = (condensed && col[:condensed_label]) || col[:header_label] || col[:label]
--# A header_label may break into lines ("Beitrag\nRegulär").
-- label = safe_join(label.to_s.split("\n"), tag.br) if label.to_s.include?("\n")
 - gap_keys = local_assigns.fetch(:gap_keys, [])
 - col_width = local_assigns.fetch(:col_width, ->(c) { c[:width] })
-- align = local_assigns.fetch(:header_align, ->(_c) {}).call(col)
+- align = local_assigns[:align] || local_assigns.fetch(:header_align, ->(_c) {}).call(col)
 - align_class = align ? "text-#{align}" : ("text-end" if col[:numeric])
 - sticky_classes = local_assigns.fetch(:sticky_classes, ->(_c) { [] })
 - sticky_style = local_assigns.fetch(:sticky_style, ->(_c) {})
-- style = [("width: #{col_width.call(col)}" if col[:width] && !condensed), sticky_style.call(col)].compact.join("; ").presence
-%th.text-nowrap.exp-col{ class: [col[:css_class], align_class, ("exp-merge-head" if col[:merge].present?), ("exp-gap" if gap_keys.include?(col[:key])), ("exp-no-mobile" if col[:mobile] == false), *sticky_classes.call(col)].compact, style: style, rowspan: local_assigns[:rowspan], data: { colkey: col[:key] }, **(col[:header_tooltip] ? {title: col[:header_tooltip]} : {}) }
-  - variants = Array(col[:sort_variants])
-  - level = (et_sort_level_of_column(state, col[:key]) if show_ranks)
-  - if sort_links && col[:sort_key]
-    = et_sort_link(state, col[:sort_key], label, first: col[:sort_first] || "asc", names: sort_names, multi: multi_sort)
-  - else
-    -# A fixed sort (D8.8) is rendered without a link -- as a
-    -# courtesy, not as the protection: the ORDER BY comes from the
-    -# state either way.
-    = label
-    - if col[:sort_key] && (fixed_dir = Wsjrdp::ExpandableTableSort.dir_of(sort_list, col[:sort_key]))
-      = et_sort_arrow(fixed_dir)
-  - if level
-    = et_sort_rank_box(state, level, names: sort_names, removable: sort_links)
-  - if variants.any?
-    -# The column's sort variants, one chip each ("ist ⇅").
-    .exp-sort-chips
-      - variants.each do |variant|
-        - if sort_links
-          = et_sort_link(state, variant[:key], variant[:label], first: variant[:first], names: sort_names, multi: multi_sort, css_class: "exp-sort-chip")
-        - elsif (fixed_dir = Wsjrdp::ExpandableTableSort.dir_of(sort_list, variant[:key]))
-          %span.exp-sort-chip.exp-sort-active
-            = variant[:label]
-            = et_sort_arrow(fixed_dir)
+- colspan = local_assigns[:colspan].to_i
+- gap_key = local_assigns[:gap_key] || col[:key]
+-# A cell across several columns has no width of its own: the colgroup has
+-# the widths.
+- style = [("width: #{col_width.call(col)}" if col[:width] && !condensed && colspan <= 1), sticky_style.call(col)].compact.join("; ").presence
+-# Only what is set: Hamlit writes rowspan="" for a nil.
+- spans = {rowspan: (local_assigns[:rowspan] if local_assigns[:rowspan].to_i > 1), colspan: (colspan if colspan > 1)}.compact
+%th.text-nowrap.exp-col{ class: [col[:css_class], align_class, ("exp-merge-head" if col[:merge].present?), ("exp-head-wrap" if local_assigns[:wrap]), ("exp-gap" if gap_keys.include?(gap_key)), ("exp-no-mobile" if col[:mobile] == false), ("exp-no-narrow" if col[:narrow] == false), *sticky_classes.call(col)].compact, style: style, **spans, data: { colkey: col[:key] }, **(col[:header_tooltip] ? {title: col[:header_tooltip]} : {}) }
+  = render "shared/wsjrdp/expandable_table_th_content", col: col, state: state, condensed: condensed,
+    sort_links: sort_links, sort_names: sort_names, multi_sort: multi_sort, show_ranks: show_ranks,
+    sort_list: sort_list

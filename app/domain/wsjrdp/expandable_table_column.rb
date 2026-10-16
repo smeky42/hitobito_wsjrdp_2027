@@ -49,8 +49,8 @@
 # sideways.
 class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condensed_label,
   :header_label, :header_tooltip, :group, :grow, :target_width, :target_grow, :truncate, :sticky, :tabular_nums,
-  :merge, :merge_share, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile,
-  :css_class)
+  :merge, :merge_share, :merge_layouts, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile,
+  :narrow, :css_class)
   SORT_DIRECTIONS = %w[asc desc].freeze
   # The form `width` and `target_width` take where widths are reckoned with
   # (target_width, sticky): rem, so the widget can add them up.
@@ -84,6 +84,9 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #   merge_share   a merged column's share of the merged width (the sum of
   #                 the shown merged columns' widths), so their headers spread
   #                 as wanted: 1 (the default) for all splits it evenly
+  #   merge_layouts the header layouts of the column's merge
+  #                 (Wsjrdp::ExpandableTableHeaderLayout), set by the
+  #                 collection's merge_header -- not given to a column
   #   header_align  "start", "center" or "end" for the header; nil keeps the
   #                 default -- in a merged run the headers spread like
   #                 space-between (first at the start, last at the end, the
@@ -115,13 +118,17 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #   mobile        false for a column a phone does without: under the md
   #                 breakpoint (768px) its header, cells and footer collapse to
   #                 nothing (the styles' .exp-no-mobile); it stays in the menu
+  #   narrow        false for a column the table does without where it would
+  #                 otherwise scroll sideways: while its container is narrower
+  #                 than the table's narrowest width, the column collapses like
+  #                 one with mobile: false (.exp-no-narrow); it stays in the menu
   def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, header_tooltip: nil,
     group: nil, grow: 0, target_width: nil, target_grow: nil, truncate: false, sticky: false,
-    tabular_nums: nil, merge: nil, merge_share: 1, header_align: nil, numeric: false, width: nil, sort: nil,
-    sort_first: "asc", sort_variants: [], default: false, mobile: true, css_class: nil)
+    tabular_nums: nil, merge: nil, merge_share: 1, merge_layouts: nil, header_align: nil, numeric: false, width: nil, sort: nil,
+    sort_first: "asc", sort_variants: [], default: false, mobile: true, narrow: true, css_class: nil)
     key = key.to_s
-    target_grow = self.class.validate_target!(key, width, target_width, target_grow, merge)
-    self.class.validate_sticky!(key, width, merge, group, mobile) if sticky
+    target_grow = self.class.validate_target!(key, width, target_width, target_grow)
+    self.class.validate_sticky!(key, width, merge, group, mobile && narrow) if sticky
     abbr = (abbr || key).to_s
     sort_first = self.class.validate_direction!(sort_first)
     variants = sort_variants.map do |variant|
@@ -137,9 +144,9 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
           condensed_label: condensed_label, header_label: header_label, header_tooltip: header_tooltip, group: group,
           grow: grow, target_width: target_width&.to_s, target_grow: target_grow, truncate: truncate ? true : false,
           sticky: sticky ? true : false, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
-          header_align: header_align&.to_s, numeric: numeric, width: width,
+          merge_layouts: merge_layouts, header_align: header_align&.to_s, numeric: numeric, width: width,
           sort: sort, sort_first: sort_first, sort_variants: variants.freeze,
-          default: default, mobile: mobile, css_class: css_class)
+          default: default, mobile: mobile, narrow: narrow, css_class: css_class)
   end
 
   def self.validate_direction!(dir)
@@ -151,7 +158,7 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
 
   # The target_grow a column gets: the given one, 1 for a target wider than
   # the width, else 0. Raises for a target the widget cannot reckon with.
-  def self.validate_target!(key, width, target_width, target_grow, merge)
+  def self.validate_target!(key, width, target_width, target_grow)
     if target_width.nil?
       raise ArgumentError, "column #{key}: target_grow needs a target_width" unless target_grow.nil?
 
@@ -162,7 +169,6 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
     end
     span = target_width.to_f - width.to_f
     raise ArgumentError, "column #{key}: target_width #{target_width} is narrower than width #{width}" if span.negative?
-    raise ArgumentError, "column #{key}: target_width does not go with merge" if merge.present?
     return 0 if span.zero? && target_grow.nil?
     raise ArgumentError, "column #{key}: target_grow must be above 0, not #{target_grow.inspect}" unless target_grow.nil? || target_grow.to_f.positive?
 
@@ -173,7 +179,7 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
     raise ArgumentError, "column #{key}: a sticky column needs a width in rem" unless width.to_s.match?(REM_WIDTH)
     raise ArgumentError, "column #{key}: sticky does not go with merge" if merge.present?
     raise ArgumentError, "column #{key}: sticky does not go with group" if group.present?
-    raise ArgumentError, "column #{key}: sticky does not go with mobile: false" if mobile == false
+    raise ArgumentError, "column #{key}: sticky does not go with mobile: false or narrow: false" if mobile == false
   end
 
   def sortable? = !sort.nil?
@@ -188,9 +194,10 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
     {key: key, abbr: abbr, label: label, condensed_label: condensed_label,
      header_label: header_label, header_tooltip: header_tooltip, group: group, grow: grow,
      target_width: target_width, target_grow: target_grow, truncate: truncate, sticky: sticky,
-     tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, header_align: header_align,
+     tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, merge_layouts: merge_layouts,
+     header_align: header_align,
      merged_cell: merged_cell,
-     numeric: numeric, width: width, mobile: mobile, css_class: css_class,
+     numeric: numeric, width: width, mobile: mobile, narrow: narrow, css_class: css_class,
      sort_key: (key if sortable?), sort_first: sort_first,
      sort_variants: sort_variants.map { |v| {key: v.key, label: v.label, title: v.title, first: v.first} },
      cell: cell}

@@ -105,8 +105,12 @@ class Wsjrdp::ExpandableTableBuilder
   # row's own page. The block returns the path; a blank one renders no link for
   # that row. Declaring it (or a #detail_link) makes the table expandable even
   # without a detail -- the detail row then holds the header line alone.
-  def detail_page(&block)
+  # narrow_only: true shows it only while the table is narrower than its
+  # narrowest width (where its columns with `narrow: false` collapse) -- for
+  # a table whose page link is a column of its own otherwise.
+  def detail_page(narrow_only: false, &block)
     @locals[:detail_page] = block
+    @locals[:detail_page_narrow_only] = narrow_only
   end
 
   # An ADDITIONAL double link in the detail's header line, left of the primary

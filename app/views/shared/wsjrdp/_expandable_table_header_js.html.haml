@@ -1,0 +1,61 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Picks the header variant of a table with several (data-head-variants,
+-#  Wsjrdp::ExpandableTableHeader): the first, most compact one whose headers
+-#  fit without wrapping, else the last; again whenever the table's wrapper
+-#  changes its size. A header of a wrapping layout always fits. Without
+-#  this the server's choice stays: the last variant.
+:javascript
+  (function () {
+    if (window.__expHeaderVariants) return;
+    window.__expHeaderVariants = true;
+    function rows(table, variant) {
+      return Array.prototype.filter.call(table.tHead.rows, function (tr) { return tr.dataset.variant === String(variant); });
+    }
+    function show(table, variant) {
+      Array.prototype.forEach.call(table.tHead.rows, function (tr) {
+        tr.classList.toggle("exp-hv-on", tr.dataset.variant === String(variant));
+      });
+    }
+    function fits(table, variant) {
+      return rows(table, variant).every(function (tr) {
+        return Array.prototype.every.call(tr.cells, function (th) {
+          return th.classList.contains("exp-head-wrap") || th.scrollWidth <= th.clientWidth + 1;
+        });
+      });
+    }
+    function choose(table) {
+      var count = Number(table.dataset.headVariants);
+      for (var variant = 0; variant < count; variant++) {
+        show(table, variant);
+        if (variant === count - 1 || fits(table, variant)) return;
+      }
+    }
+    function setup(root) {
+      (root || document).querySelectorAll("table[data-head-variants]").forEach(function (table) {
+        if (table.__expHeaderVariants) return;
+        table.__expHeaderVariants = true;
+        choose(table);
+        if (window.ResizeObserver) {
+          var width = null;
+          new ResizeObserver(function (entries) {
+            var now = Math.round(entries[0].contentRect.width);
+            if (now === width) return;
+            width = now;
+            choose(table);
+          }).observe(table.closest(".exp-table-wrap") || table.parentElement);
+        }
+      });
+    }
+    window.__expHeaderVariantsSetup = setup;
+    document.addEventListener("turbo:load", function () { setup(); });
+    document.addEventListener("turbo:frame-load", function (e) { setup(e.target); });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setup(); });
+    else setup();
+  })();
+  if (window.__expHeaderVariantsSetup) window.__expHeaderVariantsSetup();

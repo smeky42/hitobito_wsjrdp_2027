@@ -166,7 +166,7 @@
 - sticky_style = ->(col) { (left = sticky_lefts[col[:key]]) ? "left: #{left}" : nil }
 -# Only a sticky cell gets a style: Hamlit writes style="" for a nil.
 - sticky_attrs = ->(col) { (style = sticky_style.call(col)) ? {style: style} : {} }
-- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1), ("exp-no-mobile" if run.first[:mobile] == false), ("exp-truncate" if run.first[:truncate] && !condensed), *sticky_classes.call(run.first)].compact }
+- run_classes = ->(run) { [run.first[:css_class], ("text-end text-nowrap" if run.first[:numeric]), ("exp-gap" if gap_keys.include?(run.last[:key])), ("exp-tnum" if run.first[:tabular_nums]), ("exp-merged" if run.size > 1), ("exp-no-mobile" if run.first[:mobile] == false), ("exp-no-narrow" if run.first[:narrow] == false), ("exp-truncate" if run.first[:truncate] && !condensed), *sticky_classes.call(run.first)].compact }
 - run_cell = ->(run, row) { run.first[:merged_cell] ? run.first[:merged_cell].call(row, run.map { |c| c[:key] }) : run.first[:cell].call(row) }
 -# A merged run shares its width (the sum of its shown columns' widths) out by
 -# `merge_share` -- evenly by default --, so its headers spread regularly.
@@ -192,6 +192,20 @@
 - gap_max = gaps ? gaps[:max] : "0px"
 - grow_max = gaps ? gaps[:grow_max] : "100cqw"
 - min_rem = columns.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 } + (selection ? 2.0 : 0)
+-# A phone does without the columns with `mobile: false`: under the md
+-# breakpoint the styles set --exp-nm to their widths (--exp-nm-w), so the
+-# table's narrowest width and its room leave them out.
+- mobile_rem = columns.select { |c| c[:mobile] == false }.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 }
+-# A table narrower than its narrowest width would scroll sideways; there the
+-# columns with `narrow: false` collapse (--exp-nn, their widths) and the
+-# detail page's double link with narrow_only shows -- a container query per
+-# table (narrow_css below), against the narrowest width with every column
+-# (on a phone: without those with `mobile: false`).
+- narrow_rem = columns.select { |c| c[:narrow] == false }.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 }
+- narrow_phone_rem = columns.select { |c| c[:narrow] == false && c[:mobile] != false }.sum { |c| (c[:width].to_s[/[\d.]+/]&.to_f) || 8.0 }
+- min_parts = [("var(--exp-nm, 0rem)" if mobile_rem.positive?), ("var(--exp-nn, 0rem)" if narrow_rem.positive?)].compact
+- min_expr = min_parts.any? ? "calc(#{min_rem}rem - #{min_parts.join(" - ")})" : "#{min_rem}rem"
+- mobile_style = mobile_rem.positive? ? "--exp-nm-w: #{mobile_rem}rem; " : ""
 -# With capped gaps the table stops widening at a known width; the filter and
 -# the toolbar above it stop there too, so the column menu sits at the table's
 -# right edge and the filter pane is never wider than the table.
@@ -200,7 +214,7 @@
 -# towards their targets first, then the growing columns past them, then the
 -# gaps -- Wsjrdp::ExpandableTableLayout. A table without targets keeps the
 -# reckoning above.
-- target_layout = (Wsjrdp::ExpandableTableLayout.new(columns: columns, min_rem: min_rem, gap_keys: gap_keys, grow_max: grow_max, gap_max: gap_max) if !condensed && columns.any? { |col| Wsjrdp::ExpandableTableLayout.target_column?(col) })
+- target_layout = (Wsjrdp::ExpandableTableLayout.new(columns: columns, min_rem: min_rem, mobile_rem: mobile_rem, narrow_rem: narrow_rem, gap_keys: gap_keys, grow_max: grow_max, gap_max: gap_max) if !condensed && columns.any? { |col| Wsjrdp::ExpandableTableLayout.target_column?(col) })
 - if target_layout
   - growing = true
   - col_width = target_layout.method(:col_width)
@@ -298,52 +312,67 @@
             = render "shared/wsjrdp/expandable_table_columns_form", state: state, all_columns: all_columns
           = render "shared/wsjrdp/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
 
-  .table-responsive.exp-table-wrap{ class: ("bk-condensed-wrap" if condensed), data: { exptbl: id_prefix, open_param: param } }
-    - table_style = condensed ? nil : "min-width: #{min_rem}rem"
+  - header = Wsjrdp::ExpandableTableHeader.new(columns: columns, header_align: header_align)
+  - narrow_css = (Wsjrdp::ExpandableTableLayout.narrow_css(id_prefix, min_rem: min_rem, mobile_rem: mobile_rem, narrow_rem: narrow_rem, narrow_phone_rem: narrow_phone_rem) if !condensed && (narrow_rem.positive? || local_assigns[:detail_page_narrow_only]))
+  - if narrow_css
+    %style= narrow_css.html_safe
+  .table-responsive.exp-table-wrap{ class: ("bk-condensed-wrap" if condensed), style: ("container-name: exp-#{id_prefix}" if narrow_css), data: { exptbl: id_prefix, open_param: param } }
+    - table_style = condensed ? nil : "#{mobile_style}min-width: #{min_expr}"
     - if target_layout
       - table_style = target_layout.table_style
     - elsif growing
-      - room = "(100cqw - #{min_rem}rem)"
+      - room = "(100cqw - #{min_expr})"
       - c_expr = grow_weight.positive? ? "clamp(0px, round(down, #{room} / #{grow_weight}, 1px), #{grow_max})" : "0px"
       - g_expr = gap_count.positive? ? "clamp(0px, round(down, (#{room} - #{grow_weight} * var(--exp-c)) / #{gap_count}, 1px), #{gap_max})" : "0px"
-      - table_style = "--exp-c: #{c_expr}; --exp-g: #{g_expr}; min-width: #{min_rem}rem; width: calc(#{min_rem}rem + #{grow_weight} * var(--exp-c) + #{gap_count} * var(--exp-g))"
-    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: [("bookings-table-condensed" if condensed), ("exp-has-sticky" if sticky_lefts.any?)].compact, style: table_style }
-      -# Column groups (a column's `group:`): the group's name over a bracket
-      -# that spans exactly its columns, whose headers form a second row; every
-      -# other header spans both rows, bottom-aligned with them. The fixed table
-      -# layout takes its widths from the first row, which then holds the group
-      -# cells -- so the widths go into a colgroup.
-      - grouped = columns.any? { |col| col[:group].present? }
+      - table_style = "--exp-c: #{c_expr}; --exp-g: #{g_expr}; #{mobile_style}min-width: #{min_expr}; width: calc(#{min_expr} + #{grow_weight} * var(--exp-c) + #{gap_count} * var(--exp-g))"
+    %table.table.table-hover.align-middle.mb-0.bookings-table{ class: [("bookings-table-condensed" if condensed), ("exp-has-sticky" if sticky_lefts.any?)].compact, style: table_style, data: (header.variants? ? { head_variants: header.variants.size } : {}) }
+      -# The header rows (Wsjrdp::ExpandableTableHeader): a column group's name
+      -# over a bracket that spans its columns, a merged column's headers in
+      -# the rows of its header layout; a run with fewer rows reaches down, so
+      -# every run ends in the last row. A merged column with several layouts
+      -# makes several VARIANTS of the header; all are rendered, the script
+      -# (shared/wsjrdp/_expandable_table_header_js) shows the first whose
+      -# headers fit, the last one without it. The fixed table layout takes its
+      -# widths from the first row, which then holds spanning cells -- so the
+      -# widths go into a colgroup.
+      - grouped = header.any_multi_row?
       - th_locals = {state: state, condensed: condensed, sort_links: sort_links, sort_names: sort_names, multi_sort: multi_sort, show_ranks: show_ranks, sort_list: sort_list, gap_keys: gap_keys, col_width: col_width, header_align: header_align, sticky_classes: sticky_classes, sticky_style: sticky_style}
       - if (grouped || growing) && !condensed
         %colgroup
           - if selection
             %col{ style: "width: 2rem" }
           - columns.each do |col|
-            %col{ class: ("exp-no-mobile" if col[:mobile] == false), style: ("width: #{col_width.call(col)}" if col[:width]) }
+            %col{ class: [("exp-no-mobile" if col[:mobile] == false), ("exp-no-narrow" if col[:narrow] == false)].compact.presence, style: ("width: #{col_width.call(col)}" if col[:width]) }
       %thead
-        - if grouped
-          %tr.exp-col-groups
-            - if selection
-              %th.bk-select-cell{ rowspan: 2, **sticky_selection_attrs }
-                %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
-            - columns.chunk_while { |a, b| a[:group].present? && a[:group] == b[:group] }.each do |run|
-              - if run.first[:group].present?
-                -# The gap after the group stays out of the bracket.
-                %th.exp-col-group.text-center.small.fw-normal.border-bottom-0.pb-0{ colspan: run.size, class: ("exp-gap" if gap_keys.include?(run.last[:key])) }
-                  .exp-col-group-bracket= run.first[:group]
-              - else
-                = render "shared/wsjrdp/expandable_table_th", col: run.first, rowspan: 2, **th_locals
-          %tr
-            - columns.select { |col| col[:group].present? }.each do |col|
-              = render "shared/wsjrdp/expandable_table_th", col: col, **th_locals
-        - else
-          %tr
-            - if selection
-              %th.bk-select-cell{ style: ["width: 2rem", ("left: 0px" if sticky_selection)].compact.join("; "), class: ("exp-sticky" if sticky_selection) }
-                %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
-            - columns.each do |col|
-              = render "shared/wsjrdp/expandable_table_th", col: col, **th_locals
+        - header.variants.each_with_index do |header_rows, variant|
+          - header_rows.each_with_index do |cells, row_index|
+            %tr{ class: [("exp-col-groups" if row_index < header_rows.size - 1), ("exp-hv" if header.variants?), ("exp-hv-on" if header.variants? && variant == header.variants.size - 1)].compact.presence, data: (header.variants? ? { variant: variant } : {}) }
+              - if selection && row_index.zero?
+                - if header_rows.size > 1
+                  %th.bk-select-cell{ rowspan: header_rows.size, **sticky_selection_attrs }
+                    %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+                - else
+                  %th.bk-select-cell{ style: ["width: 2rem", ("left: 0px" if sticky_selection)].compact.join("; "), class: ("exp-sticky" if sticky_selection) }
+                    %input.form-check-input.bk-select-all{ type: "checkbox", "aria-label": "Alle auf dieser Seite aus-/abwählen" }
+              - cells.each do |cell|
+                - spans = {rowspan: (cell.rowspan if cell.rowspan > 1), colspan: (cell.colspan if cell.colspan > 1)}.compact
+                - case cell.kind
+                - when :group
+                  -# The gap after the group stays out of the bracket.
+                  %th.exp-col-group.text-center.small.fw-normal.border-bottom-0.pb-0{ **spans, class: ("exp-gap" if gap_keys.include?(cell.last_key)) }
+                    .exp-col-group-bracket= cell.label
+                - when :flow
+                  -# Several headers one after the other in one cell across the
+                  -# merged column.
+                  %th.text-nowrap.exp-col.exp-merge-head.exp-head-flow{ **spans, class: [("exp-head-wrap" if cell.wrap), ("exp-gap" if gap_keys.include?(cell.last_key))].compact, data: { colkey: cell.column[:key] } }
+                    .exp-head-flow-items{ class: "exp-head-justify-#{cell.justify}" }
+                      - cell.headers.each_with_index do |col, index|
+                        - if index.positive? && cell.separator.present?
+                          %span.exp-head-flow-sep= cell.separator
+                        %span.exp-head-flow-item{ data: { colkey: col[:key] }, **(col[:header_tooltip] ? {title: col[:header_tooltip]} : {}) }
+                          = render "shared/wsjrdp/expandable_table_th_content", col: col, state: state, condensed: condensed, sort_links: sort_links, sort_names: sort_names, multi_sort: multi_sort, show_ranks: show_ranks, sort_list: sort_list
+                - else
+                  = render "shared/wsjrdp/expandable_table_th", col: cell.column, rowspan: cell.rowspan, colspan: cell.colspan, align: cell.align, wrap: cell.wrap, gap_key: cell.last_key, **th_locals
       - if rows.blank?
         %tbody
           %tr
@@ -397,7 +426,11 @@
             %tr.exp-detail-row{ class: ("exp-open" if is_open) }
               %td.p-0{ colspan: cols_count }
                 .collapse.exp-detail{ id: detail_id, class: ("show" if is_open), data: { "exp-key": key } }
-                  - links_html = has_detail_links ? render("shared/wsjrdp/detail_links", row: row, detail_page: detail_page, detail_links: detail_links) : nil
+                  - links_html = has_detail_links ? render("shared/wsjrdp/detail_links", row: row, detail_page: detail_page, detail_links: detail_links, narrow_only: local_assigns[:detail_page_narrow_only]) : nil
+                  -# A page link shown only in a narrow table (detail_page
+                  -# narrow_only) and no other link: the whole header line
+                  -# shows only there.
+                  - links_narrow_only = local_assigns[:detail_page_narrow_only] && detail_links.empty?
                   - if detail_src
                     -# The header line stays OUTSIDE the turbo frame, above it: it
                     -# is there the moment the row opens, while the frame still
@@ -406,7 +439,7 @@
                     -# direct detail's .booking-detail.p-3 gives it, so the line
                     -# sits in the same place in both modes.
                     - if links_html.present?
-                      .booking-detail.exp-detail-linkbar= links_html
+                      .booking-detail.exp-detail-linkbar{ class: ("exp-narrow-only" if links_narrow_only) }= links_html
                     -# The detail's nesting level travels in the frame URL so the
                     -# lazily-rendered partial knows it sits inside a table row.
                     - src = detail_src.call(row)
@@ -420,7 +453,10 @@
                       .booking-detail.p-3.text-center.text-muted.small Wird geladen …
                   - elsif detail
                     .booking-detail.p-3
-                      = links_html
+                      - if links_narrow_only && links_html.present?
+                        .exp-narrow-only= links_html
+                      - else
+                        = links_html
                       - if detail_top && (top_html = detail_top.call(row)).present?
                         .mb-3= top_html
                       -# Detail lambdas may take (row) or (row, table_context).
@@ -430,7 +466,7 @@
                   - elsif links_html.present?
                     -# Links only (the Moss wallet): the detail row is the slim
                     -# header-line bar, nothing below it.
-                    .booking-detail.exp-detail-linkbar.exp-detail-linkbar-only= links_html
+                    .booking-detail.exp-detail-linkbar.exp-detail-linkbar-only{ class: ("exp-narrow-only" if links_narrow_only) }= links_html
 
       - if footer && rows.present?
         %tfoot
@@ -438,7 +474,7 @@
             - if selection
               %td.bk-select-cell{ **sticky_selection_attrs }
             - columns.each do |col|
-              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-no-mobile" if col[:mobile] == false), ("exp-truncate" if col[:truncate] && !condensed), *sticky_classes.call(col)].compact, **sticky_attrs.call(col), data: { colkey: col[:key] } }= footer.call(col)
+              %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-no-mobile" if col[:mobile] == false), ("exp-no-narrow" if col[:narrow] == false), ("exp-truncate" if col[:truncate] && !condensed), *sticky_classes.call(col)].compact, **sticky_attrs.call(col), data: { colkey: col[:key] } }= footer.call(col)
 
   - if paging_bottom_html.present?
     .mt-2= paging_bottom_html
@@ -446,3 +482,5 @@
 = render "shared/wsjrdp/expandable_table_js"
 - if layout_features
   = render "shared/wsjrdp/expandable_table_layout_js"
+- if header.variants?
+  = render "shared/wsjrdp/expandable_table_header_js"

@@ -155,8 +155,8 @@ describe Wsjrdp::ExpandableTableColumns do
         key: "amount", abbr: "amt", label: "Betrag", condensed_label: nil,
         header_label: nil, header_tooltip: nil, group: nil, grow: 0, tabular_nums: true, merge: nil, merge_share: 1,
         target_width: nil, target_grow: 0, truncate: false, sticky: false,
-        header_align: nil, merged_cell: nil,
-        numeric: true, width: nil, mobile: true, css_class: "tblcol-amount",
+        merge_layouts: nil, header_align: nil, merged_cell: nil,
+        numeric: true, width: nil, mobile: true, narrow: true, css_class: "tblcol-amount",
         sort_key: "amount", sort_first: "asc", sort_variants: [], cell: cell
       )
     end
@@ -253,8 +253,9 @@ describe Wsjrdp::ExpandableTableColumn do
       expect { column(target_width: "13rem") }.to raise_error(ArgumentError, /must be rem/)
     end
 
-    it "refuses a target on a merged column" do
-      expect { column(width: "8rem", target_width: "13rem", merge: "name") }.to raise_error(ArgumentError, /merge/)
+    it "takes a target on a merged column" do
+      expect(column(width: "8rem", target_width: "13rem", merge: "name"))
+        .to have_attributes(target_width: "13rem", target_grow: 1, merge: "name")
     end
 
     it "takes truncate and sticky as booleans" do
