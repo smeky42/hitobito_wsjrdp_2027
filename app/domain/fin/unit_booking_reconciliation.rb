@@ -23,7 +23,8 @@
 #                booking naming the unit, or the unit's booking naming where
 #                the cost belongs
 #   open         it does not, the unit's own cost center, no secondary cost
-#                center -- what the page lists, and what #assign! writes to
+#                center -- what the page's table starts with (its liftable
+#                pins, Fin::UnitBookingsController)
 #
 # Every relation is built on the account joins the Unit-Budget expression
 # names (DatevBooking.with_unit_budget_accounts); a host that needs the
@@ -153,20 +154,46 @@ class Fin::UnitBookingReconciliation
       .where.not(number: Fin::CostCentersController::HIDDEN_COST_CENTER_NUMBER).order(:number).to_a
   end
 
-  # Sets the secondary cost center of the OPEN bookings among `ids` -- an id
-  # of any other booking is ignored -- and answers how many changed. A number
-  # that names no assignable cost center raises.
+  # Sets the secondary cost center of the bookings `ids` -- whatever they
+  # carried -- and answers how many changed. A number that names no assignable
+  # cost center raises.
   def assign!(ids, cost_center_number)
-    target = assignable_cost_centers.find { |cost_center| cost_center.number == cost_center_number.to_s }
-    raise ArgumentError, "#{cost_center_number.inspect} ist keine zuweisbare Kostenstelle" unless target
+    target = assignable_cost_center!(cost_center_number)
 
-    update(open.where(id: Array(ids)), secondary_cost_center_number: target.number)
+    update(DatevBooking.where(id: Array(ids)), secondary_cost_center_number: target.number)
   end
 
-  # Takes the secondary cost center off the ASSIGNED bookings among `ids` --
-  # an id of any other booking is ignored -- and answers how many changed.
+  # The assignable cost center of a number; raises for any other.
+  def assignable_cost_center!(number)
+    target = assignable_cost_centers.find { |cost_center| cost_center.number == number.to_s }
+    raise ArgumentError, "#{number.inspect} ist keine zuweisbare Kostenstelle" unless target
+
+    target
+  end
+
+  # Marks the bookings among `ids` as counting against the Unit-Budget -- their
+  # own `is_unit_budget`, which decides before the accounts and the cost
+  # center -- and answers how many changed. Only a booking on a unit's own
+  # cost center can count against a unit's budget (the budget assignment
+  # follows the primary cost center), so the others are left alone, as are
+  # the ones marked already.
+  def mark_unit_budget!(ids)
+    update(markable(DatevBooking.where(id: Array(ids))), is_unit_budget: true)
+  end
+
+  # The bookings of `relation` that #mark_unit_budget! marks.
+  def markable(relation)
+    unmarked(relation).where(cost_center_number: unit_numbers)
+  end
+
+  # The bookings of `relation` not marked as Unit-Budget yet.
+  def unmarked(relation) = relation.where("datev_bookings.is_unit_budget IS DISTINCT FROM TRUE")
+
+  # Takes the secondary cost center off the bookings among `ids` that carry
+  # one, and answers how many changed.
   def clear!(ids)
-    update(assigned.where(id: Array(ids)), secondary_cost_center_number: nil)
+    update(DatevBooking.where(id: Array(ids)).where.not(secondary_cost_center_number: nil),
+      secondary_cost_center_number: nil)
   end
 
   private

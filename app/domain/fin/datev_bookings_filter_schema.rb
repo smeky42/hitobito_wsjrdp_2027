@@ -61,6 +61,11 @@ module Fin::DatevBookingsFilterSchema
     [["true", "ja"], ["false", "nein"]]
   })
 
+  UNIT_COST_CENTERS_SQL = "SELECT number FROM wsjrdp_cost_centers WHERE is_unit_cost_center"
+  UNIT_COST_CENTER_SQL = "COALESCE(datev_bookings.cost_center_number IN (#{UNIT_COST_CENTERS_SQL}), FALSE)"
+  ANY_UNIT_COST_CENTER_SQL = "COALESCE(datev_bookings.cost_center_number IN (#{UNIT_COST_CENTERS_SQL}) " \
+                             "OR datev_bookings.secondary_cost_center_number IN (#{UNIT_COST_CENTERS_SQL}), FALSE)"
+
   # THE Schnellauswahl over the resolved Unit-Budget answer (doc/fin/unit_budget.md):
   # Alle / Nur Unit-Budget / Ohne Unit-Budget, an exclusive preset group
   # (doc/wsjrdp/expandable_table.md, "Presets"). A cost center's detail bookings
@@ -166,6 +171,17 @@ module Fin::DatevBookingsFilterSchema
       operators: %i[in not_in],
       column: ->(_t) { Arel.sql(DatevBooking::EFFECTIVE_IS_UNIT_BUDGET_SQL) },
       options: UNIT_BUDGET_OPTIONS
+    # Whether the primary cost center, and whether either cost center, is a
+    # unit's own (is_unit_cost_center, doc/fin/unit_budget.md): what the
+    # Unit-Buchungen page pins its rows with. Never NULL -- a booking without a
+    # cost center, or with a number no cost center has, answers `nein`.
+    s.attribute key: :unit_cost_center, short_key: :ucc, label: "Kostenstelle ist Unit-Kostenstelle?",
+      group: "Kostenrechnung", type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
+      column: ->(_t) { Arel.sql(UNIT_COST_CENTER_SQL) }, options: UNIT_BUDGET_OPTIONS
+    s.attribute key: :any_unit_cost_center, short_key: :uccx,
+      label: "Kostenstelle oder sekundäre Kostenstelle ist Unit-Kostenstelle?", group: "Kostenrechnung",
+      type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in],
+      column: ->(_t) { Arel.sql(ANY_UNIT_COST_CENTER_SQL) }, options: UNIT_BUDGET_OPTIONS
     s.attribute key: :sphere, short_key: :sph, label: "Sphäre", group: "Kostenrechnung",
       type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in present blank],
       column: :sphere_number, options: SPHERE_OPTIONS
