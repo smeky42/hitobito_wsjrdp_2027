@@ -1,0 +1,415 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Look and behaviour of the bulk-action bars (shared/wsjrdp/_expandable_table_bulk_bar),
+-#  once per page. The box of the actions sticks to the top of its table's scope
+-#  while the page scrolls, and once the table's header row has gone under it,
+-#  a copy of that row stands right below it (the table scrolls sideways in a
+-#  box of its own, where the real row cannot stick): same widths, same
+-#  sideways scroll, its sort links and its page box working. The script keeps the bar's sum, every action's hint and whether the
+-#  actions may be opened (not without a selection) in step with
+-#  the selection (exptbl:selection-change, window.wsjrdpSelection.read), loads
+-#  the rows the action would touch into the open panel (the form posted to its
+-#  data-preview-url with the action and its value, once per selection and
+-#  value) and runs an action from its
+-#  panel's button: it posts the action's key and its param (the other actions'
+-#  selects disabled), adds the remembered ids of other pages, fires
+-#  "exptbl:bulk-submit" and forgets the selection once the form is on its way.
+-#  For an all-pages selection the count and the sum come from the form's
+-#  data-<atom>-count / data-<atom>-sum ("all" for every row). While the split
+-#  loads, a selection wholly on this page shows its rows at once, taken from
+-#  the table (the shown columns' text). The rows scroll
+-#  in a box of their own; on a low window the box gets smaller, on a very low
+-#  one the count stands alone.
+- return if @wsjrdp_bulk_bar_emitted
+- @wsjrdp_bulk_bar_emitted = true
+:css
+  .bk-bulk-box { position: sticky; top: 0; z-index: 6; background: var(--bs-body-bg, #fff);
+    border: 1px solid #9ec5fe; border-radius: .375rem; padding: .375rem .5rem;
+    box-shadow: 0 2px 6px rgba(13, 110, 253, .08); }
+  .bk-bulk-quick { padding: .375rem .5rem 0; }
+  .bk-bulk-foot { padding: .25rem 0 0 .5rem; margin-bottom: .5rem; }
+  .bk-bulk-status { color: var(--bs-secondary-color, #6c757d); column-gap: 1.5rem; row-gap: .25rem; }
+  .bk-bulk-status .bk-bulk-count { white-space: nowrap; }
+  .bk-bulk-status .bk-select-clear { white-space: nowrap; }
+  /* "Alle N auswählen" is an offer, not a warning: the blue of a link not yet
+     followed, not the wagon's red, and no underline. */
+  .bk-bulk-status .bk-select-all-pages { white-space: nowrap; color: #0d6efd; text-decoration: none; }
+  .bk-bulk-status .bk-select-all-pages:hover { color: #0a58ca; }
+  .bk-bulk-status .bk-select-all-pages:empty { display: none; }
+  /* The copy of the header row: a sticky line of no height right above the
+     table, its row hanging down over the table while it is shown. */
+  .bk-float-head { position: sticky; top: var(--bk-box-h, 0px); z-index: 5; height: 0; }
+  .bk-float-head-inner { overflow: hidden; background: var(--bs-body-bg, #fff);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .06); }
+  .bk-float-head[hidden] { display: none; }
+  .bk-float-head table { margin: 0; table-layout: fixed; }
+  /* The menus of the bar hold forms (a label, a select, a hint), so they are
+     light panels -- not the wagon's coloured navigation dropdowns. */
+  .dropdown-menu.bk-bulk-popover { min-width: min(24rem, 92vw); max-width: min(40rem, 92vw);
+    background-color: var(--bs-body-bg, #fff); color: var(--bs-body-color, #212529);
+    border: 1px solid var(--bs-border-color, #dee2e6); box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15); }
+  .dropdown-menu.bk-bulk-popover .dropdown-item { color: var(--bs-body-color, #212529); }
+  .dropdown-menu.bk-bulk-popover .dropdown-item:hover,
+  .dropdown-menu.bk-bulk-popover .dropdown-item:focus { background-color: var(--bs-tertiary-bg, #f1f3f5); }
+  /* A panel with the rows takes the room of a small table. */
+  .dropdown-menu.bk-bulk-popover:has(.bk-bulk-preview) { width: min(40rem, 92vw); }
+  .dropdown-item + .bk-bulk-menu-section { border-top: 1px solid var(--bs-border-color, #dee2e6); }
+  .bk-bulk-menu-section:not(:has(.bk-bulk-panel:not([hidden]))) { display: none; }
+  .bk-bulk-preview-list { max-height: min(16rem, 35vh); overflow: auto;
+    border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .25rem; }
+  .bk-bulk-preview-list thead th { position: sticky; top: 0; background: var(--bs-body-bg, #fff);
+    box-shadow: inset 0 -1px 0 var(--bs-border-color, #dee2e6); white-space: nowrap; }
+  .bk-bulk-preview-list td { vertical-align: top; }
+  @media (max-height: 640px) { .bk-bulk-preview-list { max-height: 8rem; } }
+  @media (max-height: 480px) { .bk-bulk-preview-list { display: none; } }
+:javascript
+  (function () {
+    if (window.__bkBulkBar) return;
+    window.__bkBulkBar = true;
+    var money = new Intl.NumberFormat("de-DE", {style: "currency", currency: "EUR"});
+
+    function scopeOf(el) { return el.closest(".bk-select-scope"); }
+    function statusOf(form) { var scope = scopeOf(form); return scope && scope.querySelector(".bk-bulk-status"); }
+    function bulkForms(root) { return (root || document).querySelectorAll("form.bk-bulk-form"); }
+    function atomTotal(form, atoms, what) {
+      return atoms.reduce(function (a, at) { return a + (parseInt(form.dataset[at + what], 10) || 0); }, 0);
+    }
+    // The selection's count and sum (cents), over all pages.
+    function figures(form) {
+      var scope = scopeOf(form);
+      var sel = (scope && window.wsjrdpSelection) ? window.wsjrdpSelection.read(scope) : null;
+      if (!sel) return {count: 0, sum: 0};
+      if (sel.mode === "all") {
+        if (sel.all === "1") {
+          var bar = statusOf(form);
+          return {count: parseInt(form.dataset.allCount || (bar && bar.dataset.total), 10) || 0,
+                  sum: parseInt(form.dataset.allSum, 10) || 0};
+        }
+        return {count: atomTotal(form, sel.atoms, "Count"), sum: atomTotal(form, sel.atoms, "Sum")};
+      }
+      return {count: sel.count, sum: sel.sum};
+    }
+    function target(form, key) {
+      var select = form.querySelector('select[data-bulk-param-for="' + key + '"]');
+      if (!select) return "";
+      var option = select.options[select.selectedIndex];
+      return option ? option.text : select.value;
+    }
+    function hintFor(form, el, count) {
+      var text = (count === 1) ? el.dataset.hintOne : el.dataset.hintMany;
+      return (text || "").replace("%{count}", count).replace("%{target}", target(form, el.dataset.bulkAction));
+    }
+    function update(form) {
+      var f = figures(form);
+      var status = statusOf(form);
+      var sum = status && status.querySelector(".bk-bulk-sum");
+      if (sum) sum.textContent = (form.dataset.sum === "true" && f.count) ? ("Σ " + money.format(f.sum / 100)) : "";
+      form.querySelectorAll("[data-bulk-action]").forEach(function (el) { el.title = hintFor(form, el, f.count); });
+      // Without a selection the actions stay where they are, disabled; an open
+      // panel closes.
+      form.querySelectorAll(".dropdown-toggle").forEach(function (toggle) {
+        if (!f.count && toggle.classList.contains("show")) {
+          toggle.classList.remove("show");
+          toggle.setAttribute("aria-expanded", "false");
+          var menu = toggle.parentElement.querySelector(".dropdown-menu");
+          if (menu) menu.classList.remove("show");
+        }
+        toggle.disabled = !f.count;
+      });
+      // The sentence of a panel with its rows loaded counts those (loadPanel).
+      form.querySelectorAll("[data-bulk-hint-for]").forEach(function (hint) {
+        var el = form.querySelector('[data-bulk-action="' + hint.dataset.bulkHintFor + '"]');
+        var panel = hint.closest("[data-bulk-panel]");
+        var head = panel && panel.bkPreviewKey && panel.querySelector("[data-bulk-affected]");
+        if (el) hint.textContent = hintFor(form, el, head ? (parseInt(head.dataset.bulkAffected, 10) || 0) : f.count);
+      });
+    }
+    function updateAll(root) { bulkForms(root).forEach(update); }
+
+    // The rows the selection resolves to, in every preview box of the form:
+    // loaded from data-preview-url with the form's own fields (the selection
+    // as the action would post it), once per selection.
+    function selectionKey(form) {
+      var scope = scopeOf(form);
+      var sel = (scope && window.wsjrdpSelection) ? window.wsjrdpSelection.read(scope) : null;
+      return JSON.stringify([sel, scope && scope.dataset.filterSig]);
+    }
+    // The rows of each open panel: per action and its chosen value, loaded
+    // from data-preview-url with the form's own fields (the selection as the
+    // action would post it), again when the selection or the value changed.
+    function loadPreview(form) {
+      form.querySelectorAll(".bk-bulk-popover.show [data-bulk-panel]:not([hidden])").forEach(function (panel) {
+        loadPanel(form, panel);
+      });
+    }
+    function loadPanel(form, panel) {
+      var url = form.dataset.previewUrl;
+      var boxes = panel.querySelectorAll(".bk-bulk-preview");
+      if (!url || !boxes.length) return;
+      var action = panel.dataset.bulkPanel;
+      var select = panel.querySelector("select[data-bulk-param-for]");
+      var key = JSON.stringify([selectionKey(form), action, select ? select.value : null]);
+      if (panel.bkPreviewKey === key) return;
+      panel.bkPreviewKey = key;
+      // The panel's button waits for the rows: the panel is the confirmation,
+      // and it confirms what it shows. It stays off when the action touches
+      // none of them, or when the rows did not load.
+      var run = panel.querySelector("[data-bulk-action]");
+      if (run) run.disabled = true;
+      var scope = scopeOf(form);
+      if (scope && window.wsjrdpSelection) window.wsjrdpSelection.injectRemembered(scope, form);
+      var quick = pageRowsPreview(scope);
+      boxes.forEach(function (box) {
+        box.innerHTML = quick || '<div class="small text-muted">Wird geladen …</div>';
+      });
+      var body = new FormData(form);
+      body.set("bulk_action", action);
+      if (select) body.set(select.name, select.value);
+      // The form's own token is bound to the form's action (per-form CSRF
+      // tokens); the preview is another address, so the page's token goes
+      // along in the header.
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      var headers = {"Accept": "text/html", "X-Requested-With": "XMLHttpRequest"};
+      if (meta) headers["X-CSRF-Token"] = meta.content;
+      fetch(url, {method: "POST", body: body, credentials: "same-origin", headers: headers})
+        .then(function (response) {
+          return response.text().then(function (text) {
+            return {ok: response.ok, status: response.status, plain: /^text\/plain/.test(response.headers.get("Content-Type") || ""),
+                    text: text};
+          });
+        })
+        .then(function (answer) {
+          if (panel.bkPreviewKey !== key) return;
+          if (!answer.ok) panel.bkPreviewKey = null;
+          boxes.forEach(function (box) {
+            if (answer.ok) {
+              box.innerHTML = answer.text;
+              // The panel's sentence counts the rows the action touches.
+              var head = box.querySelector("[data-bulk-affected]");
+              var hint = panel.querySelector("[data-bulk-hint-for]");
+              var affected = head ? (parseInt(head.dataset.bulkAffected, 10) || 0) : 0;
+              if (head && hint && run) hint.textContent = hintFor(form, run, affected);
+              if (run) run.disabled = affected === 0;
+              return;
+            }
+            // A refusal of the host is a sentence (plain text); anything else
+            // is not shown as it came.
+            box.innerHTML = '<div class="small text-danger"></div>';
+            box.firstChild.textContent = (answer.plain && answer.text.length < 300) ? answer.text
+              : "Die Vorschau ließ sich nicht laden (" + answer.status + "). Bitte die Seite neu laden.";
+          });
+        })
+        .catch(function () {
+          if (panel.bkPreviewKey !== key) return;
+          panel.bkPreviewKey = null;
+          boxes.forEach(function (box) { box.textContent = "Die Vorschau ließ sich nicht laden."; });
+        });
+    }
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, function (c) {
+        return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c];
+      });
+    }
+    // The selected rows at once, while the action's split loads: when every
+    // selected row is on this page, a small table of them with the table's
+    // shown columns (the cells' text), "wird geprüft" above it. Nothing
+    // otherwise (an all-pages selection, or ids from other pages).
+    function pageRowsPreview(scope) {
+      if (!scope || !window.wsjrdpSelection) return null;
+      var sel = window.wsjrdpSelection.read(scope);
+      var checked = Array.prototype.slice.call(scope.querySelectorAll("tbody.exp-group > tr.exp-row .bk-select-check:checked"));
+      if (sel.mode !== "ids" || !sel.count || checked.length !== sel.count) return null;
+      var wrap = scope.querySelector(".exp-table-wrap > table > thead");
+      if (!wrap) return null;
+      var keys = [], labels = {};
+      wrap.querySelectorAll("th[data-colkey]").forEach(function (th) {
+        var key = th.dataset.colkey;
+        if (keys.indexOf(key) >= 0 || th.offsetParent === null) return;
+        keys.push(key);
+        labels[key] = th.textContent.replace(/[⇅↑↓]/g, "").replace(/\s+/g, " ").trim();
+      });
+      var rows = checked.map(function (check) {
+        var tr = check.closest("tr");
+        return "<tr>" + keys.map(function (key) {
+          var td = tr.querySelector('td[data-colkey="' + key + '"]');
+          return "<td>" + escapeHtml(td ? td.textContent.replace(/\s+/g, " ").trim() : "") + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+      return '<div class="small text-muted mb-1">' + checked.length + " ausgewählt – wird geprüft …</div>" +
+        '<div class="bk-bulk-preview-list"><table class="table table-sm small mb-0"><thead><tr>' +
+        keys.map(function (key) { return "<th>" + escapeHtml(labels[key]) + "</th>"; }).join("") +
+        "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+    }
+    function anyPanelOpen(form) {
+      return !!form.querySelector(".bk-bulk-popover.show");
+    }
+
+    document.addEventListener("exptbl:selection-change", function (e) {
+      var form = e.target.querySelector && e.target.querySelector("form.bk-bulk-form");
+      if (!form) return;
+      update(form);
+      if (anyPanelOpen(form)) loadPreview(form);
+    });
+    // A panel opens: its rows. Under "Weitere" an item shows its panel.
+    document.addEventListener("shown.bs.dropdown", function (e) {
+      var form = e.target.closest && e.target.closest("form.bk-bulk-form");
+      if (form) { update(form); loadPreview(form); }
+    });
+    document.addEventListener("change", function (e) {
+      var form = e.target.closest && e.target.closest("form.bk-bulk-form");
+      if (form && e.target.tagName === "SELECT") { update(form); loadPreview(form); }
+    });
+    document.addEventListener("click", function (e) {
+      // The quick-select: none, every row, or an atom's rows added / alone.
+      var quick = e.target.closest && e.target.closest(".bk-bulk-quick [data-quick-mode]");
+      if (quick) {
+        e.preventDefault();
+        var quickScope = scopeOf(quick);
+        if (!quickScope || !window.wsjrdpSelection) return;
+        var mode = quick.dataset.quickMode;
+        if (mode === "none") window.wsjrdpSelection.clear(quickScope);
+        else if (mode === "all") window.wsjrdpSelection.setAll(quickScope, "1");
+        else window.wsjrdpSelection.setCriteria(quickScope, [quick.dataset.quickAtom], mode);
+        return;
+      }
+      var show = e.target.closest && e.target.closest("form.bk-bulk-form [data-bulk-show]");
+      if (show) {
+        e.preventDefault();
+        var menu = show.closest(".dropdown-menu");
+        menu.querySelectorAll("[data-bulk-panel]").forEach(function (panel) {
+          panel.hidden = panel.dataset.bulkPanel !== show.dataset.bulkShow;
+        });
+        var showForm = show.closest("form.bk-bulk-form");
+        update(showForm);
+        loadPreview(showForm);
+        return;
+      }
+      var el = e.target.closest && e.target.closest("form.bk-bulk-form [data-bulk-action]");
+      if (!el) return;
+      e.preventDefault();
+      var form = el.closest("form.bk-bulk-form");
+      var key = el.dataset.bulkAction;
+      var f = figures(form);
+      if (!f.count) { alert("Bitte zuerst " + (form.dataset.nounMany || "Zeilen") + " auswählen."); return; }
+      // The panel with its hint and its rows is the confirmation.
+      form.querySelector(".bk-bulk-action").value = key;
+      form.querySelectorAll("select[data-bulk-param-for]").forEach(function (select) {
+        select.disabled = select.dataset.bulkParamFor !== key;
+      });
+      var scope = scopeOf(form);
+      if (scope && window.wsjrdpSelection) window.wsjrdpSelection.injectRemembered(scope, form);
+      form.dispatchEvent(new CustomEvent("exptbl:bulk-submit", {bubbles: true, detail: {action: key}}));
+      if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+      if (scope && window.wsjrdpSelection) window.wsjrdpSelection.forget(scope);
+    });
+    // The header row below the box: a copy, shown once the real row has gone
+    // under the box and while the table still reaches below it.
+    function headParts(box) {
+      var scope = scopeOf(box);
+      var wrap = scope && scope.querySelector(".exp-table-wrap");
+      var table = wrap && wrap.querySelector(":scope > table");
+      var thead = table && table.querySelector(":scope > thead");
+      return thead ? {scope: scope, wrap: wrap, table: table, thead: thead} : null;
+    }
+    function buildFloatHead(box) {
+      var parts = headParts(box);
+      if (!parts) return null;
+      var holder = parts.scope.querySelector(":scope > .bk-float-head");
+      if (!holder) {
+        holder = document.createElement("div");
+        holder.className = "bk-float-head";
+        holder.hidden = true;
+        holder.setAttribute("aria-hidden", "true");
+        holder.innerHTML = '<div class="bk-float-head-inner"></div>';
+        parts.wrap.parentNode.insertBefore(holder, parts.wrap);
+      }
+      var table = parts.table.cloneNode(false);
+      table.removeAttribute("id");
+      table.style.minWidth = "";
+      var head = parts.thead.cloneNode(true);
+      head.querySelectorAll("[id]").forEach(function (el) { el.removeAttribute("id"); });
+      // The page box of the copy works the real one.
+      head.querySelectorAll(".bk-select-all").forEach(function (input) {
+        input.classList.remove("bk-select-all");
+        input.classList.add("bk-select-all-copy");
+      });
+      table.appendChild(head);
+      var inner = holder.firstElementChild;
+      inner.innerHTML = "";
+      inner.appendChild(table);
+      holder.bkParts = parts;
+      sizeFloatHead(holder);
+      return holder;
+    }
+    function sizeFloatHead(holder) {
+      var parts = holder.bkParts;
+      var inner = holder.firstElementChild;
+      var copy = inner.querySelector("table");
+      if (!parts || !copy) return;
+      inner.style.width = parts.wrap.clientWidth + "px";
+      copy.style.width = parts.table.getBoundingClientRect().width + "px";
+      var real = parts.thead.querySelectorAll("th");
+      copy.querySelectorAll("thead th").forEach(function (th, i) {
+        var w = real[i] ? real[i].getBoundingClientRect().width : 0;
+        th.style.width = th.style.minWidth = th.style.maxWidth = w + "px";
+      });
+      inner.scrollLeft = parts.wrap.scrollLeft;
+      var realBox = parts.thead.querySelector(".bk-select-all");
+      var copyBox = copy.querySelector(".bk-select-all-copy");
+      if (realBox && copyBox) { copyBox.checked = realBox.checked; copyBox.indeterminate = realBox.indeterminate; }
+    }
+    function placeFloatHead(box) {
+      var holder = box.bkFloatHead;
+      if (!holder || !holder.isConnected) holder = box.bkFloatHead = buildFloatHead(box);
+      if (!holder) return;
+      var parts = holder.bkParts;
+      var boxBottom = box.getBoundingClientRect().bottom;
+      holder.parentNode.style.setProperty("--bk-box-h", box.offsetHeight + "px");
+      var head = parts.thead.getBoundingClientRect();
+      var show = head.top < boxBottom && parts.table.getBoundingClientRect().bottom > boxBottom + head.height;
+      if (show && holder.hidden) sizeFloatHead(holder);
+      holder.hidden = !show;
+    }
+    function placeAll() { document.querySelectorAll("form.bk-bulk-box").forEach(placeFloatHead); }
+    var placing = false;
+    function schedule() {
+      if (placing) return;
+      placing = true;
+      setTimeout(function () { placing = false; placeAll(); }, 16);
+    }
+    window.addEventListener("scroll", schedule, {passive: true});
+    window.addEventListener("resize", function () {
+      document.querySelectorAll("form.bk-bulk-box").forEach(function (box) { box.bkFloatHead = buildFloatHead(box); });
+      schedule();
+    });
+    document.addEventListener("scroll", function (e) {
+      var wrap = e.target.classList && e.target.classList.contains("exp-table-wrap") ? e.target : null;
+      var holder = wrap && wrap.parentNode.querySelector(":scope > .bk-float-head");
+      if (holder) holder.firstElementChild.scrollLeft = wrap.scrollLeft;
+    }, true);
+    document.addEventListener("change", function (e) {
+      if (!(e.target.classList && e.target.classList.contains("bk-select-all-copy"))) return;
+      var holder = e.target.closest(".bk-float-head");
+      var real = holder && holder.bkParts && holder.bkParts.thead.querySelector(".bk-select-all");
+      if (real) real.click();
+    });
+    document.addEventListener("exptbl:selection-change", function (e) {
+      var holder = e.target.querySelector && e.target.querySelector(":scope > .bk-float-head");
+      if (holder) sizeFloatHead(holder);
+    });
+
+    function rebuild(root) {
+      (root || document).querySelectorAll("form.bk-bulk-box").forEach(function (box) {
+        box.bkFloatHead = buildFloatHead(box);
+      });
+      schedule();
+    }
+    document.addEventListener("turbo:load", function () { updateAll(); rebuild(); });
+    document.addEventListener("turbo:frame-load", function (e) { updateAll(e.target); rebuild(e.target); });
+    setTimeout(function () { updateAll(); rebuild(); }, 0);
+  })();

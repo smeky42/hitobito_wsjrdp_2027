@@ -1,0 +1,37 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The rows a bulk action will touch, as the bar's menus show them
+-#  (Wsjrdp::BulkActionable#render_bulk_preview, shared/wsjrdp/_expandable_table_bulk_bar):
+-#  how many, then a small table of at most the preview's limit with the
+-#  host's columns and the action's extra ones (what changes), then how many
+-#  more there are; below, the selected rows the action leaves alone -- a line
+-#  each, a warning with its rows. The menu scrolls each table in a box of its
+-#  own.
+-#
+-#  Locals: rows, count (the rows the action touches), noun ({one:, many:}),
+-#  columns (->(view) { column Hashes with :key, :label, :cell }),
+-#  extra_columns ([{label:, cell:}]), groups ([{text:, warning:, count:, rows:}])
+- cols = columns.call(self) + Array(local_assigns[:extra_columns])
+- groups = Array(local_assigns[:groups])
+.bk-bulk-preview-head.small.fw-semibold.mb-1{data: {bulk_affected: count}}
+  = "Betrifft #{count} #{(count == 1) ? noun[:one] : noun[:many]}"
+- if rows.any?
+  = render "shared/wsjrdp/expandable_table_bulk_preview_rows", rows: rows, cols: cols
+  - if count > rows.size
+    .small.text-muted.mt-1= "… und #{count - rows.size} weitere"
+- groups.each do |group|
+  - if group[:warning]
+    .alert.alert-warning.small.py-2.px-2.mt-2.mb-0
+      .fw-semibold.mb-1
+        = icon(:"exclamation-triangle")
+        = group[:text]
+      = render "shared/wsjrdp/expandable_table_bulk_preview_rows", rows: group[:rows], cols: cols
+      - if group[:count] > group[:rows].size
+        .small.text-muted.mt-1= "… und #{group[:count] - group[:rows].size} weitere"
+  - else
+    .small.text-muted.mt-1= group[:text]

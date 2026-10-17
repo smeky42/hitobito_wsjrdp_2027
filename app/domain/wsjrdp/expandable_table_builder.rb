@@ -227,6 +227,32 @@ class Wsjrdp::ExpandableTableBuilder
     @locals[:selection] = config
   end
 
+  # The bar of bulk actions over the selected rows (Wsjrdp::BulkActions,
+  # shared/wsjrdp/_expandable_table_bulk_bar): always there, its actions
+  # disabled without a selection, so the table never moves; its box of
+  # actions and the table's header row stay at the top while the page
+  # scrolls; it says
+  # how many rows are selected (and their sum with `sum: true`, from the rows'
+  # `amount`), offers the first `inline` actions as buttons and the others
+  # under "Weitere", and posts the chosen action with the selection to `url`.
+  # Every action opens a panel -- its select, its hint, with `preview_url` the
+  # rows it will touch (Wsjrdp::BulkActionable#render_bulk_preview) -- whose
+  # button runs it. It is the form the selection's checkboxes name
+  # (selection[:form]).
+  # `totals`: {"all" => [count, sum_cents], "<atom>" => [count, sum_cents]} for
+  # an all-pages selection; `frame`: the turbo frame the answer goes to. Needs
+  # #selection; a host that hands the selection in a Hash may put these under
+  # its :bulk_actions key instead.
+  #
+  # `quickselect`: {"<atom>" => label, ...}, the quick-select over all pages
+  # below the actions (counts from `totals`). With the bar the table's top
+  # paging stands below it, right above the table.
+  def bulk_actions(actions, url:, preview_url: nil, inline: 3, totals: {}, sum: false, frame: "_top",
+    quickselect: nil)
+    @locals[:bulk_actions] = {actions: actions, url: url, preview_url: preview_url, inline: inline,
+                              totals: totals, sum: sum, frame: frame, quickselect: quickselect}
+  end
+
   # Compact in-detail rendering mode.
   def condensed(value = true)
     @locals[:condensed] = value
@@ -282,6 +308,7 @@ class Wsjrdp::ExpandableTableBuilder
   def to_locals
     validate_filter_presets!
     validate_sub_rows!
+    validate_bulk_actions!
     @locals
   end
 
@@ -298,6 +325,15 @@ class Wsjrdp::ExpandableTableBuilder
 
     raise ArgumentError, "table #{state.store_key.inspect} (prefix #{state.prefix.inspect}) " \
                          "declares filter presets in its policy AND in the view -- declare them once"
+  end
+
+  # The bulk-action bar acts on the selected rows, so it needs a selection --
+  # and its form is the one the selection's checkboxes name.
+  def validate_bulk_actions!
+    return if @locals[:bulk_actions].nil?
+
+    form = @locals[:selection].is_a?(Hash) && @locals[:selection][:form]
+    raise ArgumentError, "expandable_table declares bulk_actions but no selection with a form" if form.blank?
   end
 
   # Sub-rows are rendered cell by cell, so the two halves belong together: the

@@ -41,7 +41,7 @@
 -#    footer    -- ->(col){ html } one cell of a footer row (a sum row) under
 -#                 the rows, per visible column [t.footer]
 -#  Optional feature locals (see the guide): multi_sort, pagination, per_options,
--#    columns_menu, summary, selection, filter, condensed.
+-#    columns_menu, summary, selection, bulk_actions, filter, condensed.
 - state = local_assigns.fetch(:state)
 - prefix = state.prefix
 - id_prefix = local_assigns.fetch(:id_prefix, prefix.presence || "exp")
@@ -127,6 +127,10 @@
 -# filter changes. :narrow (keep the still-matching rows) is a planned option --
 -# accepted here but not implemented yet.
 - raise NotImplementedError, "expandable_table selection on_filter_change: :narrow is not implemented yet" if selection && selection[:on_filter_change].to_s == "narrow"
+-# The bulk-action bar (t.bulk_actions, or the selection Hash's :bulk_actions):
+-# it takes the place of the selection's bar in the toolbar, as a line of its
+-# own right above the table, so it can stay at the top while the table scrolls.
+- bulk_actions = selection && (local_assigns[:bulk_actions] || selection[:bulk_actions])
 - pagination = local_assigns.fetch(:pagination, nil)
 -# per_options is set by t.paging (with the builder's default list when the host
 -# names none), so its presence IS "this table has paging". The two lines differ:
@@ -253,7 +257,15 @@
 - paging_bottom_html = (render "shared/wsjrdp/expandable_table_paging", state: state, pagination: pagination, per_options: per_options, place: :bottom) if per_options
 -# The filter has its OWN two lines above the toolbar (the filter line and the
 -# pane between it and the toolbar), so it does not make a toolbar by itself.
-- has_toolbar = columns_menu || paging_top_html.present? || summary || view || (selection && selection[:all_param]) || sort_bar
+- has_toolbar = (columns_menu && !bulk_actions) || (paging_top_html.present? && !bulk_actions) || summary || view || (selection && selection[:all_param] && !bulk_actions) || sort_bar
+-# The column hamburger: in the toolbar, or -- with a bulk-action bar -- at the
+-# right of the bar's line of how many rows are selected and the paging.
+- tools_html = capture do
+  - if columns_menu
+    .exp-tools{ role: "group", "aria-label": "Tabelle einstellen" }
+      - menu = capture do
+        = render "shared/wsjrdp/expandable_table_columns_form", state: state, all_columns: all_columns, page_links: page_links
+      = render "shared/wsjrdp/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
 
 = render "shared/wsjrdp/expandable_table_styles"
 - if layout_features
@@ -316,14 +328,17 @@
                   aria: { pressed: (state.view == value.to_s).to_s }
         - if summary
           .text-muted.small= summary
-        - if paging_top_html.present?
+        - if paging_top_html.present? && !bulk_actions
           = paging_top_html
-        - if selection && selection[:all_param]
+        - if selection && selection[:all_param] && !bulk_actions
           .bk-select-bar.small{ style: "display: none", data: { total: selection[:total_count] } }
             %span.bk-select-info.text-muted
             %a.bk-select-all-pages.ms-2{ href: "#" }
             %a.bk-select-clear.ms-2{ href: "#" } Auswahl aufheben
             %input{ type: "hidden", name: selection[:all_param], value: "", form: selection[:form], class: "bk-select-all-field" }
+            -# only_selected: the switch that shows the chosen rows alone.
+            - if selection[:only_selected]
+              .d-inline-block.ms-3.align-middle= render "shared/wsjrdp/table_only_selected_switch", form_id: selection[:form]
       -# Between them, right-aligned next to the hamburger: the "Sortiert nach"
       -# bar.
       - if sort_bar
@@ -332,12 +347,15 @@
       -# hamburger; the filter toggle sits in the filter line above
       -# (shared/wsjrdp/filtering/_line), where it does not move when the pane
       -# opens. The group stays, so a further toolbar control would join it.
-      - if columns_menu
-        .exp-tools{ role: "group", "aria-label": "Tabelle einstellen" }
-          - menu = capture do
-            = render "shared/wsjrdp/expandable_table_columns_form", state: state, all_columns: all_columns, page_links: page_links
-          = render "shared/wsjrdp/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
+      - unless bulk_actions
+        = tools_html
 
+  -# With a bulk-action bar the paging and the column hamburger move from the
+  -# toolbar into the bar: the paging below its line of how many rows are
+  -# selected, the hamburger at the right of both.
+  - if bulk_actions
+    = render "shared/wsjrdp/expandable_table_bulk_bar", selection: selection, bulk: bulk_actions,
+      paging_html: paging_top_html, tools_html: tools_html
   - header = Wsjrdp::ExpandableTableHeader.new(columns: columns, header_align: header_align)
   - narrow_css = (Wsjrdp::ExpandableTableLayout.narrow_css(id_prefix, min_rem: min_rem, mobile_rem: mobile_rem, narrow_rem: narrow_rem, narrow_phone_rem: narrow_phone_rem) if !condensed && (narrow_rem.positive? || detail_page_narrow_only))
   - if narrow_css

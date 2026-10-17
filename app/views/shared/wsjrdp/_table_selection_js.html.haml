@@ -12,7 +12,9 @@
 -#  changes (sessionStorage map { id => amount_cents }) and cleared when the
 -#  filter changes. A .bk-select-bar shows how many are selected on this page and
 -#  overall, offers "select all rows (all pages)" once a full page is picked, and
--#  a "clear" link whenever anything is selected. The all-pages mode is stored as
+-#  a "clear" link whenever anything is selected. The bar of bulk actions
+-#  (.bk-bulk-bar, shared/wsjrdp/_expandable_table_bulk_bar) stays, with
+-#  "0 ausgewählt." and without its "clear" link, so the table never moves. The all-pages mode is stored as
 -#  `all` ("1" or a comma-joined atom string); the count shown then comes from
 -#  the linked form's data-<atom>-count. window.wsjrdpSelection exposes read / clear /
 -#  setAll / injectRemembered for the connect dialogs.
@@ -120,14 +122,25 @@
         return;
       }
       var remembered = Object.keys(state(scope).sel).length;
+      var keep = bar.classList.contains("bk-bulk-bar");
+      if (remembered === 0 && keep) {
+        info.textContent = "0 ausgewählt.";
+        if (allLink) allLink.textContent = "";
+        if (clearLink) clearLink.style.display = "none";
+        return;
+      }
       if (remembered === 0) { bar.style.display = "none"; return; }
       bar.style.display = "";
       info.textContent = (onPage === remembered)
         ? (remembered + " ausgewählt.")
         : (onPage + " auf dieser Seite · " + remembered + " insgesamt ausgewählt.");
       if (allLink) {
-        allLink.textContent = (all && all.checked && total && parseInt(total, 10) > remembered)
-          ? ("Alle " + total + " auswählen (auch andere Seiten)") : "";
+        // The bar of bulk actions offers every row as soon as one is selected,
+        // the plain bar once the whole page is.
+        var offerAll = total && parseInt(total, 10) > remembered && (keep || (all && all.checked));
+        allLink.textContent = offerAll
+          ? (keep ? ("Alle " + total + " auswählen (alle Seiten)") : ("Alle " + total + " auswählen (auch andere Seiten)"))
+          : "";
       }
       if (clearLink) clearLink.style.display = "";
     }
