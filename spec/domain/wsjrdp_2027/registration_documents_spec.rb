@@ -128,6 +128,35 @@ describe Wsjrdp2027::RegistrationDocuments do
       "id" => people(:admin).id)
   end
 
+  it "clears the times of a document that is current again" do
+    file(first)
+    register
+    expect(documents.sole).to have_attributes(status: "deleted", superseded_at: nil)
+    expect(documents.sole.deleted_at).to be_present
+
+    version("upload_medical_pdf", nil, first, Time.zone.local(2025, 6, 28, 14, 38, 33))
+    person.update_columns(upload_medical_pdf: "#{prefix}/#{first}")
+    register
+    expect(documents.sole).to have_attributes(status: "current", deleted_at: nil, superseded_at: nil)
+  end
+
+  it "makes one chain of an older generated registration PDF named with a dash and a newer one" do
+    older = "2025-06-28-14-38-32--#{person.id}-registration-generated.pdf"
+    newer = described_class.generated_registration_filename(person, at: Time.zone.local(2026, 10, 17, 10, 15))
+    file(older)
+    file(newer)
+    version("generated_registration_pdf", nil, older, Time.zone.local(2025, 6, 28, 14, 38, 33))
+    version("generated_registration_pdf", older, newer, Time.zone.local(2026, 10, 17, 10, 15, 1))
+    person.update_columns(generated_registration_pdf: "#{prefix}/#{newer}")
+
+    chain = scan.chain(person.id, "registration_generated")
+    expect(chain.entries.map(&:filename)).to eq([older, newer])
+    expect(chain.entries.map(&:status)).to eq(%w[superseded current])
+    register([chain])
+    expect(documents.map(&:key).uniq).to eq(["registration_generated"])
+    expect(documents.last.replaces_id).to eq(documents.first.id)
+  end
+
   it "checks a registered file again on every run: missing, back with its data, gone again" do
     version("upload_medical_pdf", nil, first, Time.zone.local(2025, 6, 28, 14, 38, 33))
     register
