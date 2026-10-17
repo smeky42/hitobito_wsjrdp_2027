@@ -143,6 +143,19 @@ describe "Dokumentenverwaltung", type: :request do
       expect(html).to have_css("td.dmcol-status span.text-success", text: "aktuell")
       expect(html).to have_css("td.dmcol-file_status span[title='vorhanden'] .text-muted")
 
+      unknown.update_columns(content_type: "multipart/appledouble")
+      known.update_columns(author_type: "Person", author_id: people(:cmt_leader).id)
+      get "/documents"
+      expect(html).to have_css("td.dmcol-content_type span[title='PDF – application/pdf']", text: "PDF")
+      expect(html).to have_css("td.dmcol-content_type span.text-muted[title='multipart/appledouble']",
+        text: "appledouble")
+      expect(html).to have_css("td.dmcol-author a", text: people(:cmt_leader).to_s)
+      expect(html).to have_no_css("td.dmcol-filename")
+
+      unknown.update_columns(content_type: "")
+      get "/documents"
+      expect(html.all("td.dmcol-content_type").map { |cell| cell.text.strip }).to contain_exactly("PDF", "")
+
       unknown.update_columns(file_status: WsjrdpDocument::FILE_MISSING)
       get "/documents"
       expect(html).to have_css("td.dmcol-file_status span[title='fehlt'] .text-danger")

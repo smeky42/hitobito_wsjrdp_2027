@@ -13,8 +13,13 @@
 # by an SQL expression.
 #
 # Where the table would scroll sideways (a phone, a narrow window) ID, Datei?,
-# Größe and Hochgeladen give way (narrow: false) -- a document's page and its
-# row's detail show them -- and Person, Art and Status remain.
+# Dateiname, Typ, Größe, Hochgeladen and Von give way (narrow: false) -- a document's
+# page and its row's detail show them -- and Person, Art and Status remain.
+#
+# The table grows with the page: Person, Art, Dateiname (in the columns menu)
+# and Von first widen to their targets, then on by up to 12rem per unit of
+# their grow weight (t.gaps in documents/index), Dateiname twice as fast;
+# then the gaps grow.
 module DocumentManagement::DocumentsColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "dmcol") do |c|
     c.column key: "id", abbr: "id", label: "ID", numeric: true, width: "4rem", narrow: false,
@@ -23,7 +28,7 @@ module DocumentManagement::DocumentsColumns
     # their targets: Person to 17rem, where 95% of the people's names fit
     # (33 characters), Art to 16rem, where every real kind's label fits
     # ("Nachweis über ein Führungszeugnis", 251px with the padding). Then they
-    # grow on by up to 5rem each (t.gaps in documents/index) for the longer
+    # grow on by up to 12rem each (t.gaps in documents/index) for the longer
     # names, then the gaps grow.
     c.column key: "subject", abbr: "sj", label: "Person", width: "8rem", target_width: "17rem", grow: 1,
       sort: "wsjrdp_documents.subject_id", default: true
@@ -43,10 +48,13 @@ module DocumentManagement::DocumentsColumns
       sort: "wsjrdp_documents.status", default: true
     c.column key: "file_status", abbr: "fs", label: "Datei?", width: "4.5rem", numeric: true, narrow: false,
       sort: "wsjrdp_documents.file_status", default: true
-    c.column key: "filename", abbr: "fn", label: "Dateiname", width: "16rem",
-      sort: "LOWER(wsjrdp_documents.filename)"
-    c.column key: "content_type", abbr: "ct", label: "Typ", width: "10rem",
-      sort: "wsjrdp_documents.content_type"
+    # 24rem: 90% of the file names fit (51 characters).
+    c.column key: "filename", abbr: "fn", label: "Dateiname", width: "10rem", target_width: "24rem", grow: 2,
+      narrow: false, sort: "LOWER(wsjrdp_documents.filename)"
+    # An icon and a short name (DocumentsHelper#document_type_cell); the
+    # content type is the tooltip.
+    c.column key: "content_type", abbr: "ct", label: "Typ", width: "6rem", narrow: false,
+      sort: "wsjrdp_documents.content_type", default: true
     c.column key: "byte_size", abbr: "bs", label: "Größe", numeric: true, width: "6rem", narrow: false,
       sort: "wsjrdp_documents.byte_size", sort_first: "desc", default: true
     c.column key: "origin", abbr: "or", label: "Herkunft", width: "6rem",
@@ -54,7 +62,8 @@ module DocumentManagement::DocumentsColumns
     c.column key: "created_at", abbr: "ca", label: "Hochgeladen", width: "8.5rem",
       tabular_nums: true, header_align: "center", narrow: false,
       sort: "wsjrdp_documents.created_at", sort_first: "desc", default: true
-    c.column key: "author", abbr: "au", label: "Von", width: "11rem",
-      sort: "wsjrdp_documents.author_id"
+    # Right after Hochgeladen; widens like Person for long names.
+    c.column key: "author", abbr: "au", label: "Von", width: "8rem", target_width: "15rem", grow: 1,
+      narrow: false, sort: "wsjrdp_documents.author_id", default: true
   end
 end

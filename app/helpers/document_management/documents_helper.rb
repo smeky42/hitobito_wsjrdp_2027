@@ -26,7 +26,7 @@ module DocumentManagement::DocumentsHelper
       "status" => ->(document) { document_status_cell(document.status) },
       "file_status" => ->(document) { document_file_status_icon(document.file_status) },
       "filename" => ->(document) { document.filename },
-      "content_type" => ->(document) { document.content_type },
+      "content_type" => ->(document) { document_type_cell(document.content_type) },
       "byte_size" => ->(document) { document.byte_size && number_to_human_size(document.byte_size) },
       "origin" => ->(document) { document_origin_label(document.origin) },
       "created_at" => ->(document) { document_time(document.created_at) },
@@ -60,7 +60,7 @@ module DocumentManagement::DocumentsHelper
       "file_status" => ->(document) { document_file_status_icon(document.file_status) },
       "author" => ->(document) { document_author(document, people) },
       "filename" => ->(document) { document.filename },
-      "content_type" => ->(document) { document.content_type },
+      "content_type" => ->(document) { document_type_cell(document.content_type) },
       "byte_size" => ->(document) { document.byte_size && number_to_human_size(document.byte_size) },
       "origin" => ->(document) { document_origin_label(document.origin) }
     }
@@ -136,6 +136,24 @@ module DocumentManagement::DocumentsHelper
       [t("#{scope}.key"), document_part(document.key, document.key_number)],
       [t("#{scope}.secondary_key"), document_part(document.secondary_key, document.secondary_key_number) || "—"]]
       .map { |label, value| "#{label}: #{value}" }.join("\n")
+  end
+
+  # The Typ cell: the icon of the type's file kind and its short name
+  # (Wsjrdp2027::DocumentFileKinds), with the type -- after its name, if it
+  # has one -- as tooltip. A type without a short name shows its subtype,
+  # muted, cut off with an ellipsis where the column is too narrow; a
+  # document without a type leaves the cell empty.
+  def document_type_cell(content_type)
+    return nil if content_type.blank?
+
+    kinds = Wsjrdp2027::DocumentFileKinds
+    short = kinds.short_label_for(content_type)
+    name = kinds::TYPE_LABELS[content_type]
+    content_tag(:span, class: ["d-inline-flex align-items-center gap-1 mw-100", ("text-muted" unless short)],
+      title: name ? "#{name} – #{content_type}" : content_type) do
+      safe_join([icon(kinds.icon_for(content_type)),
+        content_tag(:span, short || content_type.split("/", 2).last, class: "text-truncate", style: "min-width: 0")])
+    end
   end
 
   # The status, "aktuell" in green.
