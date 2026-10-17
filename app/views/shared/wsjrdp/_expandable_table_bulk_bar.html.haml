@@ -1,0 +1,113 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The bar of bulk actions over a table's selected rows (t.bulk_actions,
+-#  Wsjrdp::BulkActions; doc/wsjrdp/expandable_table.md, "Bulk actions"). It is
+-#  the selection's bar (shared/wsjrdp/_table_selection_js writes how many are
+-#  selected into .bk-select-info, offers "all pages" and "Auswahl aufheben")
+-#  and the form the selection's checkboxes name. It sits on a line of its own
+-#  right above the table (and above the table's top paging): the box of the
+-#  actions; below it, with `quickselect`, the quick-select over all pages
+-#  ("Keine", "Alle (N)", per atom "+ <label>" and "nur (N)", the counts from
+-#  `totals`); then a small line with how many are selected, their sum, "Alle
+-#  N auswählen (alle Seiten)" once a row is selected, "Auswahl aufheben" and,
+-#  with the selection's `only_selected`, at its right the switch that shows
+-#  the chosen rows alone.
+-#  The box of the actions stays at the top of the table while the page
+-#  scrolls, the table's header row right below it. The bar is always
+-#  there -- "0 ausgewählt." without "Auswahl aufheben" and the actions
+-#  disabled without a selection --, so selecting the first
+-#  row or taking the last one off never moves the table.
+-#
+-#  The first `inline` actions are buttons, the others under "Weitere". Every
+-#  action opens its panel (shared/wsjrdp/_expandable_table_bulk_action): the
+-#  param's select if it has one, the live hint, with `preview_url` the rows
+-#  the selection resolves to (Wsjrdp::BulkActionable#render_bulk_preview,
+-#  loaded when a panel opens and again after the selection changed) and the
+-#  button that runs it. The actions the user may not run (`authorize`) are
+-#  left out. Running one posts `bulk_action`, the action's param (the other
+-#  actions' selects are disabled) and the selection -- the remembered ids of
+-#  other pages are added first --, and fires "exptbl:bulk-submit" (bubbling,
+-#  on the form, detail.action), for a page that wants to remember how it
+-#  looked.
+-#
+-#  Locals: selection (the table's selection config), bulk ({actions:, url:,
+-#  preview_url:, inline:, totals:, sum:, frame:, quickselect:}), paging_html
+-#  (the table's top paging), tools_html (the column hamburger)
+- actions = bulk.fetch(:actions).select { |action| action.authorize.nil? || can?(*action.authorize) }
+- form_id = selection.fetch(:form)
+- inline_count = bulk.fetch(:inline, 3)
+- noun = bulk.fetch(:actions).noun
+- preview_url = bulk[:preview_url]
+- totals = bulk.fetch(:totals, {})
+- quickselect = bulk[:quickselect]
+- totals_data = bulk.fetch(:totals, {}).flat_map { |key, (count, sum)| [["#{key}-count", count], ["#{key}-sum", sum]] }.to_h
+= render "shared/wsjrdp/expandable_table_bulk_bar_js"
+-# The box of the actions: the form, which stays at the top of the table while
+-# the page scrolls (with the table's header row below it,
+-# _expandable_table_bulk_bar_js).
+= form_tag bulk.fetch(:url), method: :post, id: form_id,
+  class: "bk-bulk-form bk-bulk-box small d-flex flex-wrap align-items-center gap-2",
+  data: totals_data.merge(turbo_frame: bulk.fetch(:frame, "_top"), sum: bulk.fetch(:sum, false).to_s,
+    noun_one: noun[:one], noun_many: noun[:many], preview_url: preview_url) do
+  = hidden_field_tag :bulk_action, "", id: nil, class: "bk-bulk-action"
+  - actions.first(inline_count).each do |action|
+    = render "shared/wsjrdp/expandable_table_bulk_action", action: action, as: :bar, form_id: form_id,
+      preview: preview_url.present?
+  - more = actions.drop(inline_count)
+  - if more.any?
+    .dropdown.d-inline-block
+      %button.btn.btn-sm.btn-outline-secondary.dropdown-toggle{type: "button", aria: {expanded: "false"}, disabled: true,
+        data: {bs_toggle: "dropdown", bs_auto_close: "outside"}}
+        = icon(:"ellipsis-h")
+        Weitere
+      .dropdown-menu.bk-bulk-popover
+        - more.each do |action|
+          = render "shared/wsjrdp/expandable_table_bulk_action", action: action, as: :item, form_id: form_id,
+            preview: false
+        - more.each do |action|
+          = render "shared/wsjrdp/expandable_table_bulk_action", action: action, as: :menu_panel,
+            form_id: form_id, preview: preview_url.present?
+-# The quick-select over all pages.
+- if quickselect
+  .bk-bulk-quick.small.d-flex.flex-wrap.align-items-center.gap-2
+    - if quickselect
+      - all_count = totals.dig("all", 0) || selection[:total_count]
+      %span.text-muted Auswählen (alle Seiten):
+      .btn-group.btn-group-sm{role: "group", "aria-label": "Auswahl aufheben oder alles auswählen"}
+        %button.btn.btn-outline-secondary.text-nowrap{type: "button", title: "Auswahl aufheben",
+          data: {quick_mode: "none"}} Keine
+        %button.btn.btn-outline-secondary.text-nowrap{type: "button", data: {quick_mode: "all"},
+          title: "Alle #{all_count} #{noun[:many]} auswählen (alle Seiten)"}= "Alle (#{all_count})"
+      - quickselect.each do |key, label|
+        .btn-group.btn-group-sm{role: "group", "aria-label": label}
+          %button.btn.btn-outline-primary.text-nowrap{type: "button", data: {quick_mode: "add", quick_atom: key},
+            title: "#{label} zur Auswahl hinzufügen", "aria-label": "#{label} zur Auswahl hinzufügen"}
+            = safe_join([icon(:plus), label], " ")
+          %button.btn.btn-outline-primary.text-nowrap{type: "button", data: {quick_mode: "only", quick_atom: key},
+            title: "Nur #{label} auswählen (ersetzt die Auswahl)", "aria-label": "Nur #{label} auswählen"}
+            = "nur (#{totals.dig(key, 0).to_i})"
+-# A small line of its own: how many are selected, their sum, "all pages",
+-# "Auswahl aufheben" and the switch "nur Gewählte anzeigen" -- the
+-# selection's bar (.bk-select-bar) --, below it the table's top paging, and at
+-# the right of both the column hamburger.
+.bk-bulk-foot.d-flex.justify-content-between.align-items-end.gap-2
+  .flex-grow-1{style: "min-width: 0"}
+    .bk-select-bar.bk-bulk-bar.bk-bulk-status.small.d-flex.flex-wrap.align-items-baseline{data: {total: selection[:total_count]}}
+      - if selection[:all_param]
+        %input.bk-select-all-field{type: "hidden", name: selection[:all_param], value: "", form: form_id}
+      %span.bk-bulk-count
+        %span.bk-select-info 0 ausgewählt.
+        %span.bk-bulk-sum
+      - if selection[:all_param]
+        %a.bk-select-all-pages{href: "#"}
+      %a.bk-select-clear{href: "#", style: "display: none"} Auswahl aufheben
+      - if selection[:only_selected]
+        .ms-auto= render "shared/wsjrdp/table_only_selected_switch", form_id: form_id
+    - if local_assigns[:paging_html].present?
+      .exp-paging-below-bulk.mt-1= paging_html
+  = local_assigns[:tools_html]

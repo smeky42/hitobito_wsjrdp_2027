@@ -47,8 +47,12 @@ the two real consumers as worked examples, and finally the full local reference.
   and `app/views/shared/wsjrdp/_expandable_table_sort_bar.html.haml`
 - Detail nesting: `app/domain/wsjrdp/table_context.rb` (`Wsjrdp::TableContext`)
 - Sub-partials: `_expandable_table_paging`, `_expandable_table_columns_form`,
-  `_table_selection_js`, `_table_hamburger`, `_expandable_table_styles`,
-  `_expandable_table_js`, `filtering/_builder`
+  `_table_selection_js`, `_expandable_table_bulk_bar` (with
+  `_expandable_table_bulk_action`, `_expandable_table_bulk_bar_js`),
+  `_table_hamburger`, `_expandable_table_styles`, `_expandable_table_js`,
+  `filtering/_builder`
+- Bulk actions: `app/domain/wsjrdp/bulk_actions.rb` (`Wsjrdp::BulkActions`),
+  `app/controllers/concerns/wsjrdp/bulk_actionable.rb` (`Wsjrdp::BulkActionable`)
 - Specs: `spec/domain/wsjrdp/table_state_spec.rb`,
   `spec/domain/wsjrdp/expandable_table_columns_spec.rb`,
   `spec/domain/wsjrdp/expandable_table_rows_spec.rb`,
@@ -1367,6 +1371,8 @@ The widget derives all of this from the state (`state.column_configs(configs)`,
                                      #   don't collide
       filter_sig: "…",               # (optional) when this changes the remembered
                                      #   selection is cleared (default: state.wire(:filter))
+      only_selected: true,           # (optional) the switch "nur Gewählte anzeigen" in
+                                     #   the selection's line
     })
 ```
 
@@ -1388,17 +1394,135 @@ dispatching `exptbl:selection-change` (bubbling, on `.bk-select-scope`), with
 `window.wsjrdpSelection.read(scope)` current: `{mode: "all", all: "1" |
 "<atoms>", atoms: [...]}` or `{mode: "ids", count, sum}` (the summed `amount`
 of the remembered ids, in cents). A page that states what its bulk action
-will do listens to that event (the Unit-Buchungen page's hints,
-`fin/unit_bookings/_selection_controls`).
+will do listens to that event (the bar of bulk actions below).
 
-**Showing the chosen rows alone.** `shared/wsjrdp/_table_only_selected_switch`
-(local `form_id`, the form the table's selection posts to) renders the switch
-"nur Gewählte anzeigen" anywhere on the page; the selection JS finds the
+**Showing the chosen rows alone.** `only_selected: true` in the selection puts
+the switch "nur Gewählte anzeigen" into the selection's line (the plain bar,
+or the bulk-action bar's line of how many rows are selected), at its right.
+`shared/wsjrdp/_table_only_selected_switch` (local `form_id`, the form the
+table's selection posts to) renders the same switch anywhere else on a page; the selection JS finds the
 table's scope through that form, hides the rows whose checkbox is off
 (`tbody.exp-group.bk-unselected`, kept in step by every refresh) and remembers
 the switch per table in sessionStorage next to the selection. A selectable
 table inside a lazily loaded turbo frame restores its selection and its switch
 on `turbo:frame-load`.
+
+**Bulk actions.** A table whose rows are selected for an action gets a bar of
+bulk actions (`Wsjrdp::BulkActions`, `t.bulk_actions`). The actions are
+declared once, next to the controller, like the columns:
+
+```ruby
+ACTIONS = Wsjrdp::BulkActions.define(noun: {one: "Buchung", many: "Buchungen"}) do |a|
+  a.action key: "unit_budget", label: "Als Unit-Budget markieren", icon: :wallet,
+    hint: {one: "Zählt 1 Buchung zum Unit-Budget", many: "Zählt %{count} Buchungen zum Unit-Budget"},
+    done: "%{count} Buchungen: als Unit-Budget markiert.",
+    authorize: [:update, DatevBooking], apply: :bulk_mark_unit_budget
+  a.action key: "secondary_cost_center", label: "Sekundäre Kostenstelle setzen", icon: :tag,
+    param: {name: :secondary_cost_center_number, label: "Sekundäre Kostenstelle",
+            options: :secondary_cost_center_options, default: "3810"},
+    hint: {one: "Setzt %{target} bei 1 Buchung", many: "Setzt %{target} bei %{count} Buchungen"},
+    done: "%{count} Buchungen: %{target} gesetzt.",
+    authorize: [:update, DatevBooking], apply: :bulk_assign
+end
+```
+
+- `hint` says what the action will do (`%{count}` the selected rows,
+  `%{target}` the chosen option's text): the live line in the action's panel
+  and the tooltip of its button. `done` is the flash.
+- `param` (optional): one select -- `options` and `default` name methods of
+  the controller (or `default` is a value).
+- `authorize`: `[action, subject]`; the bar leaves out the actions the user
+  may not run, the controller refuses them.
+- `apply` names a controller method `(ids, value) -> count`; it raises
+  `ArgumentError` for a value it refuses.
+- `danger: true` colours the button as a destructive one.
+- `partition:` (optional) names a controller method `(selected, value) ->
+  Wsjrdp::BulkActions::Partition`: the rows the action changes (`affected:`),
+  extra preview columns showing what changes for them (`columns: [{label:,
+  cell: ->(row)}]`, e.g. `"3800 → 3810"`), and the selected rows it leaves
+  alone (`groups: [Wsjrdp::BulkActions::Group.new(rows:, text:, warning:)]`,
+  `%{count}` in the text). The action runs on the affected rows only; the
+  preview lists them, then each group -- a line, or, for a warning, a warning
+  box with its rows.
+
+```haml
+  - t.selection({name: "ids[]", id_field: ->(r) { r.id }, form: "my-bulk", all_param: "select_all",
+                 total_count: rows.total_count, row_data: ->(r) { {atom: r.atom, amount: r.cents} }})
+  - t.bulk_actions ACTIONS, url: bulk_path(rows.state.wire_params),
+      preview_url: bulk_preview_path(rows.state.wire_params), inline: 3, sum: true,
+      totals: {"all" => [count, sum_cents], "<atom>" => [count, sum_cents]},
+      quickselect: {"<atom>" => "label"}
+```
+
+The bar (`shared/wsjrdp/_expandable_table_bulk_bar`) is the selection's bar
+and the form the checkboxes name (`selection[:form]`). While the page
+scrolls, the box of the actions stays at the top of the table and, once the
+table's header row has gone under it, a copy of that row stands right below
+it -- the table scrolls sideways in a box of its own, where the real row
+cannot stick; the copy takes the columns' widths and the sideways scroll, and
+its sort links and its page box work. A table with the bar stacks, from top to
+bottom:
+
+1. the filter line and, when open, the filter pane;
+2. the toolbar: view switch, summary, "Sortiert nach";
+3. the bar: the box of the actions; the quick-select over all pages
+   (`quickselect`: "Keine", "Alle (N)", per atom "+ label" and "nur (N)", the
+   counts from `totals`); the small line of how many rows are selected, their
+   sum, "Alle N auswählen (alle Seiten)" once a row is selected, "Auswahl
+   aufheben" and, at its right, the switch "nur Gewählte anzeigen" (the
+   selection's `only_selected`); below it the top paging; at the right of
+   both the column hamburger (in a table without the bar the paging and the
+   hamburger stand in the toolbar);
+4. the table, then the bottom paging. It is always there, so selecting the first row or taking the
+last one off never moves the table: without a selection it says "0
+ausgewählt." without "Auswahl aufheben", and the actions are disabled.
+It says how many rows are selected -- with `sum: true` also their sum, from
+the rows' `amount` (cents) or, for an all-pages selection, from `totals` --,
+offers "all pages" and "Auswahl aufheben", shows the first `inline` actions as buttons and the
+others under "Weitere". Every action opens its PANEL, which is also its
+confirmation: the param's select (if it has one), the live hint, with
+`preview_url` the rows the selection resolves to, and the button that runs
+it. The rows come from the preview endpoint -- the bar posts its form there
+when a panel opens and again after the selection changed -- and scroll in a
+box of their own, smaller on a low window and left out on a very low one.
+Running an action posts `bulk_action`, the action's param and the selection
+(the remembered ids of other pages added), and fires `exptbl:bulk-submit`
+(bubbling, on the form, `detail.action`) for a page that wants to remember how
+it looked; the selection is forgotten. `frame` (default `"_top"`) is where the
+answer goes. A host that hands the selection in as a Hash may put the same
+keys under its `:bulk_actions`.
+
+The controller runs it with `Wsjrdp::BulkActionable`:
+
+```ruby
+def bulk
+  redirect_to list_path(state.wire_params), **run_bulk_action(ACTIONS, scope: filtered_rows,
+    atoms: ->(scope, keys) { scope.where(atom: keys) })
+end
+```
+
+It takes the posted ids within `scope` (others are ignored), every row of
+`scope` for `select_all=1`, the rows of the named atoms for
+`select_all=<atom,...>`; checks the action's `authorize` with `authorize!`;
+runs `apply` in a transaction; and answers the flash -- the `done` message,
+or an alert for nothing selected, an unknown action or a refused value.
+
+The preview endpoint resolves the same selection the same way and renders
+the rows (`shared/wsjrdp/_expandable_table_bulk_preview`): "Betrifft N
+Zeilen", at most `BULK_PREVIEW_LIMIT` (200) of them with the host's columns,
+and how many more. The bar loads it per action: it posts `bulk_action` and the
+action's value along, so an action's `partition` shapes its preview, and it
+loads again when the value or the selection changes. While it loads, the
+panel's button is off (and stays off when the action touches no row), and a
+selection wholly on the current page shows its rows at once, taken from the
+table (the shown columns' text), "wird geprüft" above them.
+
+```ruby
+def bulk_preview
+  render_bulk_preview(ACTIONS, scope: filtered_rows, atoms: ..., order: {date: :desc, id: :desc},
+    columns: ->(view) { view.my_table_columns(condensed: true).select { |col| PREVIEW_KEYS.include?(col[:key]) } })
+end
+```
 
 **A filter.** Pass a `filter:` config. The filter occupies the two lines above
 the table's toolbar: a framed **filter line** (presets, applied-filter chips,
@@ -1754,6 +1878,7 @@ method that sets each one is in brackets.
 | `view` | the view switch in the toolbar: `{label:, options: [[value, text], ..]}`, one segment per view, the chosen one pressed; each segment links to `?<prefix>v=<value>` and closes the open details. An option the policy does not declare raises [`t.view`] |
 | `footer` | `->(col){ html }` one cell of a footer row under the rows (a sum row), per visible column [`t.footer`] |
 | `selection` | row selection config (§2) [`t.selection`] |
+| `bulk_actions` | the bar of bulk actions over the selected rows: `{actions:, url:, inline:, totals:, sum:, frame:}` (§2, "Bulk actions"); needs a `selection` with a `form` [`t.bulk_actions`, or the selection Hash's `:bulk_actions`] |
 | `filter` | filter builder DISPLAY config: `apply_url`, `condensed_locked`, `disabled`, `panel` (false = the Schnellauswahl alone, no pane), plus `presets` when the view rather than the policy declares them (§2) — everything else comes from `state.filter`. Renders the filter line (presets, applied-filter chips, the pane's toggle) and, between it and the toolbar, the pane [`t.filter`] |
 | `condensed` | compact in-detail variant [`t.condensed`]. The kit supplies only the generic behaviour of such a table (content-sized columns, no wrapping, tighter cells); the column widths and which column wraps are the dataset's own and are declared in a styles partial next to its table — for the bookings, `fin/bookings/_condensed_styles` |
 

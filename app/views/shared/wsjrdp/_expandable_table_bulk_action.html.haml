@@ -1,0 +1,52 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One action of a bulk-action bar (shared/wsjrdp/_expandable_table_bulk_bar).
+-#  Every action runs from its PANEL: the param's select (if it has one), the
+-#  live hint, the rows it will touch (filled by the bar's script from the
+-#  preview endpoint, scrolling in a box of its own) and the button that runs
+-#  it -- the panel is the confirmation. In the bar the action is a button that
+-#  opens its panel as a menu; under "Weitere" an item that shows its panel in
+-#  that menu (`as: :item` for the item, `as: :menu_panel` for the panel).
+-#
+-#  Locals: action (Wsjrdp::BulkActions::Action), as (:bar, :item or
+-#  :menu_panel), form_id, preview (whether the bar has a preview endpoint)
+- hint = {hint_one: action.hint[:one], hint_many: action.hint[:many]}
+- if as == :item
+  %button.dropdown-item{type: "button", data: {bulk_show: action.key}}
+    = icon(action.icon)
+    = action.label
+- else
+  - panel = capture do
+    .bk-bulk-panel{data: {bulk_panel: action.key}, hidden: (as == :menu_panel)}
+      - if as == :menu_panel
+        .small.fw-semibold.mb-2
+          = icon(action.icon)
+          = action.label
+      - if action.param
+        - select_id = "#{form_id}-#{action.key}"
+        - options = options_for_select(action.options_in(controller), action.default_in(controller))
+        %label.form-label.small.mb-1{for: select_id}= action.param.label
+        = select_tag action.param.name, options, id: select_id, class: "form-select form-select-sm mb-2",
+          data: {bulk_param_for: action.key}
+      .small.mb-2.bk-bulk-hint{data: {bulk_hint_for: action.key}}
+      - if preview
+        .bk-bulk-preview.mb-2
+      %button.btn.btn-sm.w-100{type: "button", class: (action.danger ? "btn-danger" : "btn-primary"),
+        data: hint.merge(bulk_action: action.key)}
+        = icon(action.icon)
+        = action.label
+  - if as == :menu_panel
+    .px-3.py-2.bk-bulk-menu-section= panel
+  - else
+    .dropdown.d-inline-block
+      %button.btn.btn-sm.dropdown-toggle{type: "button", aria: {expanded: "false"}, disabled: true,
+        class: (action.danger ? "btn-outline-danger" : "btn-outline-primary"),
+        data: {bs_toggle: "dropdown", bs_auto_close: "outside"}}
+        = icon(action.icon)
+        = action.label
+      .dropdown-menu.p-3.bk-bulk-popover= panel
