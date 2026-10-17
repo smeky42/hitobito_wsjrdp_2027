@@ -64,9 +64,59 @@ module Wsjrdp2027
       "application/x-bzip2" => "bzip2-komprimiert", "application/zstd" => "Zstandard-komprimiert"
     }.freeze
 
+    # Short names of the types for the Typ column of the documents lists
+    # (DocumentManagement::DocumentsHelper#document_type_cell).
+    SHORT_LABELS = {
+      "application/pdf" => "PDF",
+      "image/jpeg" => "JPEG", "image/png" => "PNG", "image/heic" => "HEIC", "image/webp" => "WebP",
+      "image/gif" => "GIF",
+      "application/msword" => "Word",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => "Word",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template" => "Word",
+      "application/vnd.oasis.opendocument.text" => "ODT",
+      "application/vnd.oasis.opendocument.text-template" => "ODT",
+      "application/vnd.ms-excel" => "Excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "Excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.template" => "Excel",
+      "application/vnd.oasis.opendocument.spreadsheet" => "ODS",
+      "application/vnd.oasis.opendocument.spreadsheet-template" => "ODS",
+      "application/vnd.ms-powerpoint" => "PowerPoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation" => "PowerPoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.template" => "PowerPoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.slideshow" => "PowerPoint",
+      "application/vnd.oasis.opendocument.presentation" => "ODP",
+      "application/vnd.oasis.opendocument.presentation-template" => "ODP",
+      "message/rfc822" => "E-Mail", "application/vnd.ms-outlook" => "Outlook",
+      "text/plain" => "Text", "text/markdown" => "Markdown",
+      "application/zip" => "ZIP", "application/x-tar" => "tar", "application/gzip" => "gzip",
+      "application/x-bzip2" => "bzip2", "application/zstd" => "zstd"
+    }.freeze
+
     module_function
 
     UNKNOWN_TYPE = "application/octet-stream"
+    UNKNOWN_ICON = :file
+
+    # The icon of a content type: its file kind's; for another image or
+    # text that of images or plain text; else UNKNOWN_ICON.
+    def icon_for(content_type)
+      type = content_type.to_s
+      type_icons[type] ||
+        (:"file-image" if type.start_with?("image/")) ||
+        (:"file-alt" if type.start_with?("text/")) ||
+        UNKNOWN_ICON
+    end
+
+    # The short name of a content type, nil for one SHORT_LABELS does not
+    # know.
+    def short_label_for(content_type) = SHORT_LABELS[content_type.to_s]
+
+    # Every type of a file kind with the kind's icon.
+    def type_icons
+      @type_icons ||= all.each_with_object({}) do |kind, icons|
+        kind[:types].each { |type| icons[type] ||= kind[:icon] }
+      end
+    end
 
     # The type of an extension: the one a kind names, else Marcel's by
     # name; nil when Marcel does not know it.

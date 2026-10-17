@@ -20,7 +20,7 @@
   = wsjrdp_expandable_table do |t|
     - t.rows documents, id: "doc"
     - t.columns document_table_columns(people_by_id), menu: true
-    - t.gaps max: "1.5rem", grow_max: "5rem"
+    - t.gaps max: "1.5rem", grow_max: "12rem"
     - t.row_key { |document| document.id }
     - t.detail_page(column: true) { |document| document_management_document_path(document) }
     - t.detail_src { |document| document_management_document_path(document) }

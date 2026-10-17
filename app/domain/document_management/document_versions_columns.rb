@@ -15,8 +15,8 @@
 # deleted share one cell -- an arrow up (the replacing version stands above
 # it) and a ban sign, each with its time -- and sort one by one. Von, who
 # uploaded it, is a tristate column, by default shown where there is room
-# (auto), and widens to fit a long name; the columns menu adds the file's name, type,
-# size and origin. The table fills the width (t.gaps in _versions_table).
+# (auto), and widens to fit a long name; the columns menu adds the file's name, type
+# (an icon and a short name, DocumentsHelper#document_type_cell), size and origin. The table fills the width (t.gaps in _versions_table).
 module DocumentManagement::DocumentVersionsColumns
   ENDED = "Ersetzt / gelöscht"
 
@@ -46,7 +46,7 @@ module DocumentManagement::DocumentVersionsColumns
       sort: ->(document) { document.file_status }, default: true
     c.column key: "filename", abbr: "fn", label: "Dateiname", width: "10rem", target_width: "18rem", grow: 1,
       sort: ->(document) { document.filename.to_s.downcase }
-    c.column key: "content_type", abbr: "ct", label: "Typ", width: "9rem",
+    c.column key: "content_type", abbr: "ct", label: "Typ", width: "6rem",
       sort: ->(document) { document.content_type.to_s }
     c.column key: "byte_size", abbr: "bs", label: "Größe", numeric: true, width: "5.5rem",
       sort: ->(document) { document.byte_size }, sort_first: "desc"
