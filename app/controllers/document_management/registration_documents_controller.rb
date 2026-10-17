@@ -76,7 +76,7 @@ class DocumentManagement::RegistrationDocumentsController < ApplicationControlle
     Wsjrdp2027::RegisterDocumentsJob.log(result, actor_id: current_user.id, run: "ausgewählt", timing: timing.finish)
     flash_key = result.failed.zero? ? :notice : :alert
     redirect_back_with(flash_key => t(".registered", chains: result.chains, created: result.created,
-      updated: result.updated, failed: result.failed,
+      updated: result.updated, failed: result.failed, skipped: result.skipped,
       duration: Wsjrdp2027::RegisterDocumentsJob.format_duration(timing.duration)))
   end
 

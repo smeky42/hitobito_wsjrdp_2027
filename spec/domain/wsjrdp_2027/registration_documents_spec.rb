@@ -109,6 +109,29 @@ describe Wsjrdp2027::RegistrationDocuments do
       expect(documents.map(&:readable_by).uniq).to eq([%w[log]])
       expect(documents.map(&:deletable_by).uniq).to eq([[]])
     end
+
+    it "skips a chain whose column changed since the scan, and takes it as it is then" do
+      stale = chain
+      person.update_columns(upload_medical_pdf: nil)
+
+      expect(register([stale]).to_h).to include(chains: 0, created: 0, failed: 0, skipped: 1)
+      expect(documents).to be_empty
+
+      expect(register.to_h).to include(chains: 1, created: 2, skipped: 0)
+      expect(documents.map(&:status)).to eq(%w[superseded deleted])
+    end
+
+    it "skips a chain whose rows or versions changed since the scan" do
+      register
+      hidden = chain
+      documents.last.update!(status: "deleted", deleted_at: Time.zone.now)
+      expect(register([hidden]).to_h).to include(chains: 0, updated: 0, skipped: 1)
+      expect(documents.last.reload.status).to eq("deleted")
+
+      versioned = chain
+      version("upload_medical_pdf", second, second, Time.zone.now)
+      expect(register([versioned]).to_h).to include(chains: 0, skipped: 1)
+    end
   end
 
   it "registers a missing file as a row without file and deletes after emptying the column" do

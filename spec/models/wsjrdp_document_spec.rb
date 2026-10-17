@@ -208,6 +208,18 @@ describe WsjrdpDocument do
       expect(created.reload).to have_attributes(comment: "Nach dem Löschen", subject_id: person.id)
     end
 
+    it "locks the person before its documents" do
+      create_document
+      sqls = []
+      callback = ->(*, payload) { sqls << payload[:sql] }
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { person.destroy! }
+
+      lock = sqls.index { |sql| sql.include?("FOR NO KEY UPDATE") && sql.include?('"people"') }
+      update = sqls.index { |sql| sql.start_with?('UPDATE "wsjrdp_documents"') }
+      expect(update).to be_a(Integer)
+      expect(lock).to be_a(Integer).and be < update
+    end
+
     it "deletes its documents softly and keeps them pointing at it" do
       old = create_document(status: "superseded", superseded_at: 1.day.ago)
       current = create_document(replaces: old)
