@@ -93,6 +93,16 @@ class WsjrdpDocument < ActiveRecord::Base
     of_subject(subject).current.originals.in_slot(**slot).first
   end
 
+  # Sets file_checked_at of the rows to at, leaving out a row someone is
+  # writing at that moment (SKIP LOCKED; the writer stamps it): the
+  # statement never waits, so it cannot wait in a circle with a writer that
+  # holds several rows (doc/wsjrdp/locked_change.md). Answers how many rows
+  # it stamped.
+  def self.stamp_checked(ids, at)
+    free = where(id: ids).lock("FOR NO KEY UPDATE SKIP LOCKED").select(:id)
+    where(id: free).update_all(file_checked_at: at)
+  end
+
   # The documents this one follows, oldest first.
   def predecessors
     chain = []

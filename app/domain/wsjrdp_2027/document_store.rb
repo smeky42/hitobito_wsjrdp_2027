@@ -22,11 +22,15 @@ module Wsjrdp2027
   # Wsjrdp2027::DocumentFilename.
   #
   # A file is never overwritten: it is written to a temporary file in its
-  # folder first, then linked to its name, which fails when the name is taken
-  # (or, where the file system has no hard links, created exclusively and
-  # filled). A taken name -- by a file or by a row -- gets the next suffix
-  # _1, _2, ... A file whose row could not be saved is removed again; one
-  # whose row an enclosing transaction rolls back later stays without a row.
+  # folder first (#prepare), then linked to its name, which fails when the
+  # name is taken (or, where the file system has no hard links, created
+  # exclusively and filled), and its row saved (#place). A taken name -- by a
+  # file or by a row -- gets the next suffix _1, _2, ... A file whose row
+  # could not be saved is removed again.
+  #
+  # Every write of a slot goes through Wsjrdp2027::DocumentWrite, which runs
+  # #place under the slot's lock and removes the placed files again when its
+  # transaction rolls back.
   class DocumentStore
     MAX_ATTEMPTS = 100
     TEMPORARY_PREFIX = ".tmp-"
@@ -49,6 +53,13 @@ module Wsjrdp2027
 
     # No free name within MAX_ATTEMPTS suffixes.
     class NameTaken < Error; end
+
+    # A document as built, its file in a temporary file of its folder, ready
+    # to be placed (#prepare, #place); attributes as given, own the lists and
+    # refs as built (#follow).
+    Prepared = Struct.new(:document, :temporary, :folder, :ext, :kind, :attributes, :own, keyword_init: true)
+    # What a document takes from the one it follows, unless given (#follow).
+    FOLLOWED = %i[readable_by writable_by deletable_by key_ref secondary_key_ref].freeze
 
     class << self
       def root
@@ -88,36 +99,81 @@ module Wsjrdp2027
       #
       # The block, if given, gets the document as built, before anything is
       # written (e.g. to authorize it).
+      #
+      # A write of its own (Wsjrdp2027::DocumentWrite): without replaces the
+      # slot must be free, with it replaces must still be current. A subject
+      # whose data is not valid does not refuse the document; the warning
+      # goes to the log (a writer that shows it uses DocumentWrite).
       def store!(io, attributes, ext: nil, upload: true, now: Time.zone.now, &block)
-        new.store!(io, attributes, ext: ext, upload: upload, now: now, &block)
+        attributes = attributes.to_h.symbolize_keys
+        write = DocumentWrite.new(skip_unchanged: false)
+        write.put(io, attributes, ext: ext, upload: upload, now: now, expected_current: attributes[:replaces], &block)
+        document = write.commit!.first.document
+        write.warnings.each { |warning| Rails.logger.warn("DocumentStore.store! #{document.id}: #{warning}") }
+        document
+      end
+
+      # Removes the temporary file of a prepared document.
+      def discard(prepared)
+        FileUtils.rm_f(prepared.temporary) if prepared&.temporary
       end
 
       # Registers a file that already lies under the root, where it lies, as
       # the current document of its slot: the current one of the slot becomes
       # superseded. A file that is not there gets file_status missing. The
       # rights come as in store!. For writers that put the file in place
-      # themselves (the registration uploads, doc/wsjrdp/documents.md).
+      # themselves (the registration uploads, doc/wsjrdp/documents.md); under
+      # the lock of the slot (DocumentWrite.lock_key).
       def register!(path, attributes, now: Time.current)
         new.register!(Pathname(path), attributes, now: now)
       end
 
       # Hides a document: deleted, with deleted_at; the file stays. reason
-      # and who hid it (by, a person) go into additional_info.
+      # and who hid it (by, a person) go into additional_info. A write of its
+      # own (Wsjrdp2027::DocumentWrite#hide), also for a document whose
+      # subject is gone.
       def hide!(document, reason: nil, by: nil)
-        info = document.additional_info.merge({"deleted_reason" => reason, "deleted_by_id" => by&.id}.compact)
-        document.update!(status: WsjrdpDocument::DELETED, deleted_at: Time.current, additional_info: info)
+        DocumentWrite.new(subject: document.subject).hide(document, reason: reason, by: by).commit!
+        document.reload
       end
 
       # Hides the current original of a slot, if there is one; answers it.
       def hide_current!(subject, reason: nil, by: nil, **slot)
-        document = WsjrdpDocument.current_for(subject, **slot)
-        hide!(document, reason: reason, by: by) if document
-        document
+        DocumentWrite.new(subject: subject).remove(reason: reason, by: by, **slot).commit!.first.document
+      end
+
+      # The current document a new one would follow: of its slot, or for a
+      # derivation of its original and derivation key.
+      def current_like(document)
+        WsjrdpDocument.current
+          .where(subject_type: document.subject_type, subject_id: document.subject_id,
+            derived_from_id: document.derived_from_id || document.derived_from&.id,
+            derivation_key: document.derivation_key)
+          .in_slot(key: document.key, key_number: document.key_number.to_i,
+            secondary_key: document.secondary_key.to_s, secondary_key_number: document.secondary_key_number.to_i)
+          .first
+      end
+
+      # Marks a document deleted, as #hide! does, in the caller's
+      # transaction and under the caller's locks (DocumentWrite).
+      def mark_deleted!(document, reason: nil, by: nil)
+        info = document.additional_info.merge({"deleted_reason" => reason, "deleted_by_id" => by&.id}.compact)
+        document.update!(status: WsjrdpDocument::DELETED, deleted_at: Time.current, additional_info: info)
       end
     end
 
-    def store!(io, attributes, ext:, upload:, now:)
+    # Builds the document and writes io into a temporary file of its folder:
+    # everything but its name and row. Refuses (RecordInvalid, TooLarge)
+    # before anything stays behind. The block gets the document as built,
+    # before anything is written. follow_current: a document without
+    # replaces follows the current one of its slot, if there is one (#follow;
+    # the writer does it again under the slot's lock).
+    def prepare(io, attributes, ext:, upload:, follow_current: false)
+      attributes = attributes.to_h.symbolize_keys
       document = build(attributes)
+      prepared = Prepared.new(document: document, attributes: attributes,
+        own: FOLLOWED.index_with { |name| document.public_send(name) })
+      follow(prepared, self.class.current_like(document)) if follow_current && document.replaces.nil?
       @kind = WsjrdpDocumentKind.for_document(document)
       yield document if block_given?
       raise ActiveRecord::RecordInvalid, document if ext.present? && extension_invalid?(document, ext)
@@ -126,17 +182,45 @@ module Wsjrdp2027
       folder = self.class.root.join(DocumentSubjects.fetch(document.subject_type).folder_for(document.subject_id))
       FileUtils.mkdir_p(folder)
       temporary = folder.join("#{TEMPORARY_PREFIX}#{SecureRandom.hex(8)}")
+      written = false
       begin
         write_temporary(io, temporary, upload)
         describe(document, temporary, ext)
         raise ActiveRecord::RecordInvalid, document if upload && refused_by_kind?(document)
         raise ActiveRecord::RecordInvalid, document unless document.valid?
 
-        save_under_free_name(document, temporary, folder, now)
+        written = true
       ensure
-        FileUtils.rm_f(temporary)
+        FileUtils.rm_f(temporary) unless written
       end
-      document
+      prepared.temporary = temporary
+      prepared.folder = folder
+      prepared.ext = @ext
+      prepared.kind = @kind
+      prepared
+    end
+
+    # Sets the document to follow current, the current one of its slot found
+    # anew (nil: the slot is free): it replaces it and takes its lists and
+    # refs unless the attributes give them, as a document built with replaces
+    # does; in a free slot it keeps its own.
+    def follow(prepared, current)
+      document = prepared.document
+      document.replaces = current
+      FOLLOWED.each do |name|
+        next unless prepared.attributes[name].nil?
+
+        document.public_send(:"#{name}=", current ? current.public_send(name) : prepared.own[name])
+      end
+    end
+
+    # Links the prepared file to a free name and saves its row; the
+    # predecessor (replaces) becomes superseded. Under the slot's lock
+    # (DocumentWrite); answers the document.
+    def place(prepared, now:)
+      @kind = prepared.kind
+      @ext = prepared.ext
+      save_under_free_name(prepared.document, prepared.temporary, prepared.folder, now)
     end
 
     def register!(path, attributes, now:)
@@ -157,8 +241,11 @@ module Wsjrdp2027
         document.file_checked_at = Time.current
         document.content_type = Marcel::MimeType.for(name: document.filename.to_s)
       end
-      document.replaces ||= current_of_slot(document)
-      save(document)
+      key = DocumentWrite.lock_key(document.subject_type, document.subject_id, DocumentWrite.slot_of(document))
+      Wsjrdp::LockedChange.run(keys: [key]) do
+        document.replaces ||= current_of_slot(document)
+        save(document)
+      end
       document
     end
 

@@ -98,6 +98,22 @@ describe Wsjrdp2027::DocumentStore do
       expect { store(replaces: old.reload, now: now + 2) }.to raise_error(ActiveRecord::RecordInvalid, /nicht mehr aktuell/)
       expect(files.size).to eq(2)
     end
+
+    it "is followed by a document prepared without replaces, which takes its lists unless given" do
+      old = store(readable_by: %w[log finance], writable_by: %w[log])
+      store = described_class.new
+      attributes = {subject: person, key: "medical", filename: "neu.pdf"}
+
+      prepared = store.prepare(StringIO.new(pdf), attributes, ext: nil, upload: true, follow_current: true)
+      expect(prepared.document).to have_attributes(replaces: old, readable_by: %w[log finance], writable_by: %w[log])
+
+      store.follow(prepared, nil)
+      expect(prepared.document).to have_attributes(replaces: nil, readable_by: %w[person update], writable_by: %w[log])
+
+      given = store.prepare(StringIO.new(pdf), attributes.merge(readable_by: %w[person]), ext: nil, upload: true,
+        follow_current: true)
+      expect(given.document).to have_attributes(replaces: old, readable_by: %w[person], writable_by: %w[log])
+    end
   end
 
   it "never overwrites a file without a row" do
@@ -152,6 +168,16 @@ describe Wsjrdp2027::DocumentStore do
     expect(folder).not_to exist
   end
 
+  it "stores the document of a person whose data is not valid and logs the warning" do
+    person.update_columns(language: "xx")
+    allow(Rails.logger).to receive(:warn)
+
+    document = store
+
+    expect(person.reload.upload_medical_pdf).to eq(document.absolute_storage_file_path)
+    expect(Rails.logger).to have_received(:warn).with(a_string_including("nicht gültig"))
+  end
+
   it "hides a document and keeps its file" do
     document = store
 
@@ -160,6 +186,15 @@ describe Wsjrdp2027::DocumentStore do
     expect(document.reload).to have_attributes(status: "deleted", deleted_at: be_present)
     expect(document.additional_info).to include("deleted_reason" => "test")
     expect(Pathname(document.absolute_storage_file_path)).to exist
+  end
+
+  it "hides a document whose subject is gone" do
+    document = store
+    document.update_columns(subject_id: 0)
+
+    described_class.hide!(document.reload, reason: "gone")
+
+    expect(document.reload).to have_attributes(status: "deleted", subject: nil)
   end
 
   it "hides the current document of a slot, if there is one" do

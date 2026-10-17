@@ -129,6 +129,30 @@ describe Wsjrdp::DocumentsController, type: :controller do
       expect(root.glob("**/*").select(&:file?)).to be_empty
     end
 
+    it "asks to try again while the documents are busy, and writes nothing" do
+      sign_in(person)
+      allow(Wsjrdp::LockedChange).to receive(:run).and_raise(Wsjrdp::LockedChange::Busy, "busy")
+
+      expect { post :create, params: {document: params} }.not_to change(WsjrdpDocument, :count)
+
+      expect(response).to be_redirect
+      expect(flash[:alert]).to include("noch einmal")
+      expect(root.glob("**/*").select(&:file?)).to be_empty
+    end
+
+    it "stores the upload and its people column for a person whose data is not valid, and warns" do
+      person.update_columns(language: "xx", upload_medical_pdf: nil)
+      sign_in(people(:admin))
+
+      post :create, params: {document: params.merge(key: "medical")}
+
+      document = WsjrdpDocument.last
+      expect(document).to have_attributes(subject: person, key: "medical", status: "current")
+      expect(person.reload.upload_medical_pdf).to eq(document.absolute_storage_file_path)
+      expect(flash[:warning]).to include("nicht gültig")
+      expect(flash[:notice]).to be_present
+    end
+
     it "names what is wrong" do
       sign_in(person)
       store

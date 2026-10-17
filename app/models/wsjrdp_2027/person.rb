@@ -354,7 +354,13 @@ module Wsjrdp2027::Person
       # Marks every document of the person that is not deleted yet (current and
       # superseded ones) as deleted, inside the transaction of the destroy. The
       # rows keep their subject, superseded_at and replaces.
+      # The documents of a destroyed person stay, marked deleted (no
+      # dependent above). The person's row is locked first: a document write
+      # of the person (Wsjrdp2027::DocumentWrite) locks it before the slots,
+      # and the same order here keeps the two from waiting for each other in
+      # a circle (doc/wsjrdp/locked_change.md).
       def soft_delete_wsjrdp_documents
+        ::Person.where(id: id).lock("FOR NO KEY UPDATE").pick(:id)
         now = Time.current
         wsjrdp_documents.where.not(status: WsjrdpDocument::DELETED).update_all(
           [

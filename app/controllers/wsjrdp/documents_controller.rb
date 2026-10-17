@@ -17,7 +17,12 @@
 #   subject, its keys, the document it replaces, a date and a comment come
 #   with it. Who may read, write and hide the new document follows from the
 #   one it replaces, its kind (WsjrdpDocumentKind) or the defaults; only an
-#   admin may give the three lists with the request.
+#   admin may give the three lists with the request. A subject whose data
+#   is not valid does not refuse the upload; the answer warns (#store).
+#   While another write of the subject's documents holds their lock past
+#   the timeout (Wsjrdp::LockedChange::Busy), or the database ends the
+#   write in a deadlock, nothing is written and the answer asks to try
+#   again.
 #
 # Who may do what is the document's own lists (Wsjrdp2027::DocumentAccess).
 class Wsjrdp::DocumentsController < ApplicationController
@@ -45,9 +50,8 @@ class Wsjrdp::DocumentsController < ApplicationController
     upload = document_params[:file]
     return redirect_back_or_to(root_path, alert: t(".no_file")) unless upload.respond_to?(:original_filename)
 
-    document = Wsjrdp2027::DocumentStore.store!(upload, attributes(upload)) do |built|
-      authorize!(:create, built)
-    end
+    document, warnings = store(upload)
+    flash[:warning] = warnings.join(" ") if warnings.any?
     redirect_back_or_to(fallback_path(document), notice: t(".stored", filename: document.filename))
   rescue ActiveRecord::RecordInvalid => e
     redirect_back_or_to(root_path, alert: e.record.errors.full_messages.to_sentence)
@@ -56,9 +60,23 @@ class Wsjrdp::DocumentsController < ApplicationController
       alert: t(".too_large", size: e.limit_mb || Settings.documents.max_upload_size_mb))
   rescue ArgumentError => e
     redirect_back_or_to(root_path, alert: e.message)
+  rescue Wsjrdp::LockedChange::Busy, ActiveRecord::Deadlocked
+    redirect_back_or_to(root_path, alert: t(".busy"))
   end
 
   private
+
+  # As DocumentStore.store!, but a subject whose data is not valid (e.g. a
+  # person as it lies in the database) does not refuse the upload: the
+  # document and the people column of its kind are written anyway, and the
+  # answer shows the warning of DocumentWrite. Answers the document and the
+  # warnings.
+  def store(upload)
+    attributes = attributes(upload)
+    write = Wsjrdp2027::DocumentWrite.new(skip_unchanged: false)
+    write.put(upload, attributes, expected_current: attributes[:replaces]) { |built| authorize!(:create, built) }
+    [write.commit!.first.document, write.warnings]
+  end
 
   def document_params
     params.require(:document).permit(:subject_type, :subject_id, :replaces_id, :document_date, :comment,

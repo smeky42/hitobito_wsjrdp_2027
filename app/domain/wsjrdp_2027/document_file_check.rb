@@ -50,7 +50,7 @@ module Wsjrdp2027
         @result.failed += 1
         @result.errors << "#{row.id}: #{e.message}"
       end
-      WsjrdpDocument.where(id: unchanged).update_all(file_checked_at: @now) if unchanged.any?
+      WsjrdpDocument.stamp_checked(unchanged, @now) if unchanged.any?
       @result.checked += rows.size
       @result
     end

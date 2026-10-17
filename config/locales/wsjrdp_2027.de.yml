@@ -1514,7 +1514,8 @@ de:
       log_failed: "Registrierung der Anmelde-Dokumente (%{run}) abgebrochen: %{error}"
       log_cancelled: >-
         Registrierung der Anmelde-Dokumente (%{run}) abgebrochen von %{by} nach %{done} von %{total} Personen:
-        %{chains} Ketten, %{created} neu, %{updated} geändert, %{failed} fehlgeschlagen, Dauer %{duration}
+        %{chains} Ketten, %{created} neu, %{updated} geändert, %{failed} fehlgeschlagen, %{skipped} übersprungen,
+        Dauer %{duration}
       log_skipped: "Registrierung der Anmelde-Dokumente (%{run}) übersprungen: eine andere läuft bereits"
       log_dequeued: "Registrierung der Anmelde-Dokumente abgebrochen von %{by}, bevor sie begann"
       cancel:
@@ -1533,7 +1534,7 @@ de:
         cancel_confirm: Die Registrierung abbrechen? Bereits registrierte Ketten bleiben registriert.
       log_message: >-
         Anmelde-Dokumente registriert (%{run}): %{chains} Ketten, %{created} neu,
-        %{updated} geändert, %{failed} fehlgeschlagen, Dauer %{duration}
+        %{updated} geändert, %{failed} fehlgeschlagen, %{skipped} übersprungen, Dauer %{duration}
       columns:
         key: Art
       states:
@@ -1605,7 +1606,9 @@ de:
         nothing_chosen: Bitte wähle mindestens eine Person aus.
         enqueued: "%{count} Ketten werden im Hintergrund registriert."
         running: Eine Registrierung läuft bereits.
-        registered: "%{chains} Ketten registriert: %{created} neu, %{updated} geändert, %{failed} fehlgeschlagen (%{duration})."
+        registered: >-
+          %{chains} Ketten registriert: %{created} neu, %{updated} geändert, %{failed} fehlgeschlagen,
+          %{skipped} übersprungen (%{duration}).
       register_all:
         enqueued: Die Registrierung aller Anmelde-Dokumente läuft im Hintergrund.
         running: Eine Registrierung läuft bereits.
@@ -1773,6 +1776,8 @@ de:
       finance_audit: Finanzstufe Audit und höher (z.B. Kassenprüfer, rdp Vorstand)
       finance: Finanzstufe Write und höher (Buchhaltung, Finanzteam)
       finance_manage: Finanzstufe Manage
+    document_write:
+      subject_invalid: "Das Dokument ist gespeichert, die Daten der Person sind aber nicht gültig: %{errors}"
     documents:
       show:
         missing: Die Datei dieses Dokuments fehlt in der Ablage.
@@ -1781,6 +1786,7 @@ de:
         stored: "„%{filename}“ wurde gespeichert."
         too_large: Die Datei ist zu groß (höchstens %{size} MB).
         invalid_entries: "Ungültige Rechte-Einträge: %{entries}"
+        busy: Die Dokumente werden gerade von jemand anderem bearbeitet. Bitte versuche es gleich noch einmal.
       upload_form:
         file: Datei
         document_date: Datum des Dokuments

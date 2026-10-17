@@ -84,7 +84,9 @@ Two runs find it out again:
   whose file is gone becomes `missing`, one whose file is back `present`
   with its size and SHA-256 (and its type, if it had none;
   `Wsjrdp2027::DocumentFileData`). Every row checked gets
-  `file_checked_at`. A row with an empty path, or one the store refuses,
+  `file_checked_at` -- except a row someone writes at that moment, which the
+  writer stamps (`WsjrdpDocument.stamp_checked`, `SKIP LOCKED`: the statement
+  never waits). A row with an empty path, or one the store refuses,
   counts as missing. Each folder is listed once.
 
 ## Who may what
@@ -212,7 +214,9 @@ The extension:
 
 ## Writing a file
 
-`DocumentStore.store!(io, attributes, ext:)`:
+`DocumentStore.store!(io, attributes, ext:)` stores one document; it is a
+`DocumentWrite` (below) with one file. A document without `replaces` needs a
+free slot, one with `replaces` needs that one to be still current.
 
 1. builds the document; a block, if given, sees it before anything is written
    (the controller authorizes there);
@@ -222,11 +226,11 @@ The extension:
    uploads have a limit;
 3. records size, SHA-256, content type and `file_status` `present`; an upload
    whose type or extension its kind does not accept is refused;
-4. links the temporary file to its name; the link fails when the name is
-   taken, which gives the next suffix. Where the file system has no hard
-   links the file is created exclusively and filled. A row that cannot be
-   saved because its path is taken also gives the next suffix, and the file
-   is removed again;
+4. under the lock of its slot: links the temporary file to its name; the link
+   fails when the name is taken, which gives the next suffix. Where the file
+   system has no hard links the file is created exclusively and filled. A row
+   that cannot be saved because its path is taken also gives the next suffix,
+   and the file is removed again;
 5. saves the row (and supersedes the replaced document) and removes the
    temporary file.
 
@@ -236,9 +240,76 @@ current document of its slot. `DocumentStore.hide!(document, reason:, by:)`
 and `hide_current!(subject, reason:, by:, **slot)` hide a document, keeping
 the file.
 
-A file is never overwritten. A file whose row an enclosing transaction rolls
-back later stays without a row, as does a temporary file after a crash; the
+A file is never overwritten. A temporary file left by a crash stays, as does
+a linked file whose transaction a crash cut off before its commit; the
 checksum is not checked on download.
+
+## Writing documents
+
+`Wsjrdp2027::DocumentWrite` changes the documents of one subject, all of it
+or nothing:
+
+```ruby
+write = Wsjrdp2027::DocumentWrite.new(subject: person, by: current_user, origin: "ui")
+write.put(upload, {key: "contract", filename: upload.original_filename}, expected_current: id)
+write.remove(key: "sepa", reason: "deleted_by_user")
+write.on_subject { |person, results| person.status = "upload" }
+results = write.commit!
+```
+
+- `put` stores a file as the new current document of its slot, `remove`
+  hides the current one of a slot, `hide` hides one document -- also one
+  whose subject is gone (no row lock, no people column then); `put`,
+  `remove` and `on_subject` need the subject's record.
+- `commit!` first prepares every file (steps 1-3 above). A refused file
+  refuses the whole change before anything is written: one refused `put`
+  raises its own error, several raise `DocumentWrite::Invalid` with the
+  failures.
+- Then, in one transaction under the locks of every slot it touches
+  (`Wsjrdp::LockedChange`, `doc/wsjrdp/locked_change.md`), it reads each
+  slot's current document anew, places the files (steps 4-5), hides what is
+  removed, writes the path of each slot's current document into the people
+  column of its kind (`people_column_name`; originals without numbers only),
+  runs the `on_subject` block and saves the subject, which writes its
+  PaperTrail version in the same transaction.
+- Every `put` and `remove`, and a change with an `on_subject` block, locks
+  the subject's row first, before the slots: what it reads of the subject --
+  the columns of other slots, the status, the tags -- is not stale, two
+  uploads into different slots of one person cannot both miss the other, and
+  a subject being destroyed refuses the change (`RecordNotFound` once its row
+  is gone, so no document of a destroyed subject is left behind current). A
+  `hide` locks the row only when its kind has a people column.
+- The files of a change that rolls back are removed again.
+- `expected_current:` `:any` (default) follows whatever is current: the new
+  document replaces it and takes its lists and refs unless the attributes
+  give them, as a document built with `replaces` does (`DocumentStore#follow`);
+  in a free slot it keeps the kind's lists. `nil` expects a free slot (else
+  `slot_taken`); a document or id expects that one to be current (else
+  `replaces_not_current`; for a removal `DocumentWrite::Conflict`).
+- A file equal to the slot's current one (SHA-256) adds nothing: its result
+  is `UNCHANGED`. `skip_unchanged: false` stores it anyway (`store!` does).
+- Each result says `STORED`, `UNCHANGED`, `REMOVED` or `NOT_PRESENT`, with
+  the document.
+- An `on_subject` block stops the change with an error of its own
+  (`Conflict`, `RecordInvalid`, ...), which `commit!` passes on; one that
+  raises `ActiveRecord::Rollback` gets `DocumentWrite::RolledBack` from
+  `commit!`. The change is undone either way, its files removed.
+- `invalid_subject:` `:warn` (default) saves a subject that fails its
+  validations without them, so that its people columns still name the files
+  just written, and adds a message to `write.warnings`: an upload must not
+  fail because other data of the person, as it lies in the database, is not
+  valid. `DocumentStore.store!` logs the message. `:raise` lets such a
+  subject stop the change.
+
+Every change of the slots of `wsjrdp_documents` goes through `DocumentWrite`
+or takes the lock of its slot as it does (`DocumentWrite.lock_key`:
+`DocumentStore.register!` and the import of the registration uploads); only
+then do the locks keep two writers apart, and only then do the people columns
+stay in step. Two writers take no slot lock: the file check (`file_status`,
+`file_checked_at`), which changes no slot, and the soft delete of a destroyed
+person (`Person#soft_delete_wsjrdp_documents`), which marks every document of
+the person deleted and locks the person's row first -- the order of a locked
+change with that row, so the two never wait for each other in a circle.
 
 ## Download and upload
 
@@ -248,7 +319,12 @@ checksum is not checked on download.
   `Content-Security-Policy: sandbox`. A missing file answers 404.
 - `POST /documents` stores an upload from `wsjrdp/documents/_upload_form`
   (locals: `subject` and the keys, or `replaces`), with the author, a comment
-  and the date of the document.
+  and the date of the document. A person whose data is not valid does not
+  refuse it: the document and the people column of its kind are written, and
+  the answer warns (`write.warnings`). While another write of the subject's
+  documents holds their lock past the timeout (`Wsjrdp::LockedChange::Busy`),
+  or the database ends the write in a deadlock, nothing is written and the
+  answer asks to try again.
 
 ## JSON:API
 
@@ -358,6 +434,14 @@ Registering is repeatable: a registered row only changes its status (and
 `new` (nothing registered), `partial` or `complete` (every file registered as
 the chain says).
 
+The import reads and hashes a chain's files before it takes the lock of its
+slot; under the lock it first checks that the chain's basis is as the scan
+read it: the column, how many versions of
+the person touch the columns, and the rows of the chain's files (none
+changed, none new). A chain that changed since the scan is skipped
+(`skipped` in the result), nothing of it written; the next run takes it as it
+is by then.
+
 The tab shows per key the people (chains) by state and the files, registered
 and missing; the chains as an expandable table over the Array of chains,
 with the CNF filter in Ruby (`DocumentManagement::RegistrationChainsFilterSchema`,
@@ -387,8 +471,9 @@ through `/document_management/registration_documents/cancel`; a run stops
 after the chain at hand -- each chain is registered in a transaction of its
 own, so nothing is left half done, and registering again carries on from
 there. A run over all chains notes the files of the chains it leaves as
-they stand as checked (`Import#checked`). The entry ends with the counts
-(chains, created, updated, failed), the errors and the timing.
+they stand as checked (`Import#checked`: a thousand rows per statement,
+leaving out a row someone writes at that moment). The entry ends with the counts
+(chains, created, updated, failed, skipped), the errors and the timing.
 
 `RegistrationDocuments.record!(person, people_column:, path:, author:,
 origin:)` keeps `wsjrdp_documents` in step when a column is set: it

@@ -105,6 +105,18 @@ module Wsjrdp2027
       index && path.to_s[(index + UPLOADS_MARKER.length)..]
     end
 
+    # A path as the chains know it: below the root where it lies there, else
+    # as it is.
+    def path_key(path) = relative_path(path) || path.to_s
+
+    # The versions of people (of the given ones) that touch the columns: the
+    # scan reads them, Import#stale? counts them again.
+    def column_versions(person_ids = nil)
+      scope = ::PaperTrail::Version.where(item_type: "Person")
+      scope = scope.where(item_id: person_ids) if person_ids
+      scope.where("object_changes LIKE ANY (ARRAY[?])", COLUMNS.keys.map { |column| "%#{column}%" })
+    end
+
     def time_of_name(name)
       parsed = parse_name(File.basename(name.to_s))
       parsed && Time.zone.strptime(parsed[:timestamp], DocumentFilename::TIMESTAMP_FORMAT)
@@ -141,8 +153,11 @@ module Wsjrdp2027
       def filename = File.basename(relative_path)
     end
 
-    # person_name is filled in by who shows the chain (the scan reads no names).
-    Chain = Struct.new(:person_id, :key, :column, :current_path, :entries, :person_name, keyword_init: true) do
+    # person_name is filled in by who shows the chain (the scan reads no
+    # names); version_count is how many versions of the person touched the
+    # columns when the scan read them (Import#stale?).
+    Chain = Struct.new(:person_id, :key, :column, :current_path, :entries, :person_name, :version_count,
+      keyword_init: true) do
       def id = "#{person_id}-#{key}"
 
       def registered_count = entries.count(&:registered?)
@@ -173,6 +188,7 @@ module Wsjrdp2027
         @person_ids = person_ids&.map(&:to_i)
         @anomalies = []
         @events = Hash.new { |hash, chain_key| hash[chain_key] = [] }
+        @version_counts = Hash.new(0)
       end
 
       def run
@@ -234,12 +250,10 @@ module Wsjrdp2027
       # Every version of a person that changed one of the columns, in the
       # order they were made.
       def read_versions
-        scope = ::PaperTrail::Version.where(item_type: "Person")
-        scope = scope.where(item_id: @person_ids) if @person_ids
-        likes = COLUMNS.keys.map { |column| "%#{column}%" }
-        scope = scope.where("object_changes LIKE ANY (ARRAY[?])", likes)
-        rows = scope.order(:created_at, :id).pluck(:item_id, :object_changes, :whodunnit, :whodunnit_type, :created_at)
+        rows = RegistrationDocuments.column_versions(@person_ids).order(:created_at, :id)
+          .pluck(:item_id, :object_changes, :whodunnit, :whodunnit_type, :created_at)
         rows.each_with_index do |(person_id, yaml, whodunnit, whodunnit_type, at), sequence|
+          @version_counts[person_id] += 1
           author = [whodunnit_type.presence || "Person", whodunnit.presence&.to_i]
           self.class.column_changes(yaml).each do |column, (from, to)|
             if to.present?
@@ -315,7 +329,7 @@ module Wsjrdp2027
         @events[[person_id.to_i, key]].select { |event| event[:kind] == :set }.pluck(:relative)
       end
 
-      def path_key(path) = RegistrationDocuments.relative_path(path) || path.to_s
+      def path_key(path) = RegistrationDocuments.path_key(path)
 
       def anomaly(kind, path, person_id = nil, detail = nil)
         @anomalies << Anomaly.new(kind: kind, path: path, person_id: person_id, detail: detail)
@@ -331,7 +345,7 @@ module Wsjrdp2027
           current = paths[COLUMNS.key(key)].presence&.then { |path| path_key(path) }
           plan_statuses(entries, current)
           Chain.new(person_id: person_id, key: key, column: COLUMNS.key(key),
-            current_path: current, entries: entries)
+            current_path: current, entries: entries, version_count: @version_counts[person_id])
         end.sort_by { |chain| [chain.person_id, KEYS.index(chain.key)] }
       end
 
@@ -401,9 +415,11 @@ module Wsjrdp2027
 
     # Registers chains (Scan) as rows of wsjrdp_documents with the rights of
     # their kinds (rights_for); updates the status of rows registered before.
-    # Each chain in a transaction of its own.
+    # Each chain in a transaction of its own, under the lock of its slot
+    # (DocumentWrite.lock_key); a chain whose basis changed since the scan is
+    # skipped (#stale?).
     class Import
-      Result = Struct.new(:chains, :created, :updated, :failed, :errors, keyword_init: true) do
+      Result = Struct.new(:chains, :created, :updated, :failed, :skipped, :errors, keyword_init: true) do
         def to_h = super.merge(errors: errors.first(50))
       end
 
@@ -411,15 +427,21 @@ module Wsjrdp2027
         @kinds = RegistrationDocuments.kinds
         @root = Pathname(root)
         @now = now
-        @result = Result.new(chains: 0, created: 0, updated: 0, failed: 0, errors: [])
+        @result = Result.new(chains: 0, created: 0, updated: 0, failed: 0, skipped: 0, errors: [])
       end
+
+      # Rows stamped per statement by #checked: a statement over a thousand
+      # rows is done in a few milliseconds, so a writer that waits for one of
+      # its rows waits no longer than that.
+      STAMP_SLICE = 1000
 
       # Notes that the files of chains registered as they stand were checked
       # now (the scan found them as their rows say): file_checked_at of their
-      # rows, in one statement.
+      # rows, STAMP_SLICE rows per statement, leaving out a row someone writes
+      # at that moment (WsjrdpDocument.stamp_checked).
       def checked(chains)
         ids = chains.flat_map { |chain| chain.entries.filter_map { |entry| entry.document&.id } }
-        ids.each_slice(5000) { |slice| WsjrdpDocument.where(id: slice).update_all(file_checked_at: @now) }
+        ids.each_slice(STAMP_SLICE) { |slice| WsjrdpDocument.stamp_checked(slice, @now) }
       end
 
       # Registers the chains in order; the block, if given, gets each chain and
@@ -436,21 +458,63 @@ module Wsjrdp2027
 
       private
 
+      # Registers the chain under its lock, unless its basis changed since
+      # the scan (#stale?): then nothing is written, and the next run takes
+      # the chain as it is by then. The files are read and hashed before the
+      # lock (#file_data); under it only the rows are written.
       def register_chain(chain)
-        WsjrdpDocument.transaction do
+        key = DocumentWrite.lock_key("Person", chain.person_id, {key: chain.key})
+        data = file_data(chain)
+        registered = Wsjrdp::LockedChange.run(keys: [key]) do
+          next false if stale?(chain)
+
           previous = nil
           chain.entries.each do |entry|
-            previous = entry.document ? update(entry, previous) : create(chain, entry, previous)
+            file = data[entry.relative_path]
+            previous = entry.document ? update(entry, previous, file) : create(chain, entry, previous, file)
           end
+          true
         end
-        @result.chains += 1
+        if registered
+          @result.chains += 1
+        else
+          @result.skipped += 1
+        end
       rescue ActiveRecord::ActiveRecordError => e
         @result.failed += 1
         @result.errors << "#{chain.id}: #{e.message}"
         chain.entries.each { |entry| entry.document = nil if entry.document&.new_record? }
       end
 
-      def update(entry, previous)
+      # Whether the chain's basis changed since the scan read it: the column
+      # as it is now, how many versions of the person touch the columns, or
+      # the rows of the chain's files -- one changed (updated_at), or one for
+      # a file the scan found none for.
+      def stale?(chain)
+        column = ::Person.where(id: chain.person_id).pick(chain.column).presence
+        return true if column&.then { |path| RegistrationDocuments.path_key(path) } != chain.current_path
+        return true if RegistrationDocuments.column_versions(chain.person_id).count != chain.version_count
+
+        rows = WsjrdpDocument.where(relative_storage_file_path: chain.entries.map(&:relative_path))
+          .pluck(:relative_storage_file_path, :id, :updated_at).to_h { |path, id, at| [path, [id, at]] }
+        chain.entries.any? do |entry|
+          row = rows[entry.relative_path]
+          entry.document ? row != [entry.document.id, entry.document.updated_at] : !row.nil?
+        end
+      end
+
+      # The file attributes the chain's rows get (#file_attributes: type,
+      # size, SHA-256), by relative path: of every file without a row, and of
+      # a file whose status changed since its row was written.
+      def file_data(chain)
+        chain.entries.each_with_object({}) do |entry, data|
+          next if entry.document && entry.document.file_status == entry.file_status
+
+          data[entry.relative_path] = file_attributes(entry, @root.join(entry.relative_path))
+        end
+      end
+
+      def update(entry, previous, file)
         document = entry.document
         changes = {}
         if document.status != entry.status
@@ -463,7 +527,7 @@ module Wsjrdp2027
         changes[:replaces_id] = previous.id if previous && document.replaces_id.nil? && previous.id != document.id
         if document.file_status != entry.file_status
           changes[:file_status] = entry.file_status
-          changes.merge!(file_attributes(entry, @root.join(entry.relative_path))) if entry.exists
+          changes.merge!(file) if entry.exists
         end
         # Checked now, also when nothing else changes; only a change counts.
         @result.updated += 1 if changes.any?
@@ -472,16 +536,15 @@ module Wsjrdp2027
         document
       end
 
-      def create(chain, entry, previous)
-        path = @root.join(entry.relative_path)
-        document = WsjrdpDocument.new(attributes(chain, entry, previous, path))
+      def create(chain, entry, previous, file)
+        document = WsjrdpDocument.new(attributes(chain, entry, previous, file))
         document.save!
         entry.document = document
         @result.created += 1
         document
       end
 
-      def attributes(chain, entry, previous, path)
+      def attributes(chain, entry, previous, file)
         {subject_type: "Person", subject_id: chain.person_id, key: chain.key, filename: entry.filename,
          relative_storage_file_path: entry.relative_path, absolute_storage_file_path: entry.recorded_path,
          status: entry.status, superseded_at: entry.superseded_at,
@@ -490,7 +553,7 @@ module Wsjrdp2027
          author_type: entry.author_type, author_id: entry.author_id,
          file_status: entry.file_status, file_checked_at: @now,
          additional_info: {"registration_upload" => provenance(chain, entry)}}
-          .merge(file_attributes(entry, path))
+          .merge(file)
           .merge(RegistrationDocuments.rights_for(chain.key, @kinds))
       end
 
