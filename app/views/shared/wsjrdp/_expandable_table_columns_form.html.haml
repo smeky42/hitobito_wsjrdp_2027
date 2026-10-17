@@ -156,7 +156,11 @@
         // characters relaxed (see doc/wsjrdp/url_encoding.md), then Turbo-visit.
         var qs = window.wsjrdpRelaxedQuery.serialize(new FormData(form));
         var dest = (form.getAttribute("action") || location.pathname) + (qs ? "?" + qs : "");
-        if (window.Turbo && window.Turbo.visit) { window.Turbo.visit(dest); }
+        // A table nested in a row's detail reloads only its turbo frame (its
+        // form's action is the detail's path), as the page size select does.
+        var frame = form.closest("turbo-frame");
+        if (frame) { frame.setAttribute("src", dest); }
+        else if (window.Turbo && window.Turbo.visit) { window.Turbo.visit(dest); }
         else { window.location.assign(dest); }
       }
       list.querySelectorAll(".exp-cols-tristate").forEach(function (button) {

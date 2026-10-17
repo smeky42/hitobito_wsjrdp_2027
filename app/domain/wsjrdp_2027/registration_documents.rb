@@ -453,9 +453,13 @@ module Wsjrdp2027
       def update(entry, previous)
         document = entry.document
         changes = {}
-        changes[:status] = entry.status if document.status != entry.status
-        changes[:superseded_at] = entry.superseded_at if changes[:status] == WsjrdpDocument::SUPERSEDED
-        changes[:deleted_at] = entry.deleted_at || @now if changes[:status] == WsjrdpDocument::DELETED
+        if document.status != entry.status
+          # A new status brings its times, as a new row gets them: a
+          # document current again is neither superseded nor deleted.
+          changes[:status] = entry.status
+          changes[:superseded_at] = entry.superseded_at
+          changes[:deleted_at] = (entry.status == WsjrdpDocument::DELETED) ? (entry.deleted_at || @now) : nil
+        end
         changes[:replaces_id] = previous.id if previous && document.replaces_id.nil? && previous.id != document.id
         if document.file_status != entry.file_status
           changes[:file_status] = entry.file_status
