@@ -657,12 +657,78 @@ rules:
   **preset group** — one `in` condition on the group's attribute whose values
   are all member values — gets none, because the pressed member buttons show
   it (a slot holding a value outside the group keeps its chip);
-- **fixed slots never become chips**: `user_slots` is the user half alone, and
-  the builder renders the `readonly` ones as locked chips instead;
+- **fixed `readonly` slots come first, as locked chips**: muted, a grey edge
+  and a lock, plain text rather than openers (`et_filter_locked_chips`) -- the
+  line shows them with the pane closed as well, and the builder shows them as
+  one compact line of the same small chips (`hidden` slots never show);
 - with no chip at all the line reads **"Kein Filter aktiv"** only when the table
   has neither presets nor fixed slots. A table with presets shows the bar, which
   already says that none is switched on; a table whose slots are all pinned
   shows nothing, because it *is* filtered — just not by the user.
+
+#### Liftable and optional fixed conditions
+
+A fixed entry with a `key:` and `liftable: true` is a pin like any other —
+locked, not in the `f` param, the user cannot edit or remove it — except that a
+preset may LIFT it. One with `optional: true` is the other way round: off by
+default, a preset may PIN it, and then it is a locked pin like the others:
+
+```ruby
+filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
+  fixed: [{key: "unit_cc", slots: [[["unit_cost_center", "in", "true"]]], liftable: true},
+          {key: "no_cc2",  slots: [[["secondary_cost_center", "blank"]]], liftable: true},
+          {key: "has_cc2", slots: [[["secondary_cost_center", "present"]]], optional: true}],
+  presets: [{key: "with_cc2", label: "auch mit sek. Kostenstelle", lifts: ["no_cc2"]},
+            {key: "assigned", label: "Mit sek. Kostenstelle", lifts: %w[unit_cc no_cc2],
+             pins: %w[has_cc2]}]}
+```
+
+- Which entries are off their default is a field of its own, `lifts` (param
+  `<prefix>u`, a comma list of keys, URL only), never the editable filter.
+  Only declared liftable and optional keys are read from it, so a
+  hand-written URL can do nothing a preset could not. An entry not in force
+  neither filters nor shows.
+- A preset with `lifts:` and/or `pins:` (and optionally `slots:`, which land in
+  the editable user part) is pressed when its entries are toggled and its
+  slots applied; its toggle switches its entries and adds / removes its slots
+  (`FilterPreset#lifting?`, `#toggle_lifts`). Such presets combine freely.
+  A preset's own conditions belong in `pins:` when the user must not edit
+  them -- the table would no longer show what the pressed preset says.
+- Once the table no longer shows its initial selection — an entry toggled, or
+  the user filter other than the `default:` — the filter line offers
+  "Standard" after the presets, which goes back to it (`Filter#initial?`).
+- A `lifts:` key that is no liftable entry, a `pins:` key that is no optional
+  one, an entry both liftable and optional, one of them without a key and a
+  duplicate key raise.
+
+#### Fixed groups
+
+One question with several answers, each answer a locked condition (or none),
+exactly one of them in force:
+
+```ruby
+filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
+  fixed_groups: [{key: "cc2", label: "Sek. Kostenstelle", default: "blank",
+                  members: [{key: "blank", label: "leer", slots: [[["secondary_cost_center", "blank"]]]},
+                            {key: "set", label: "hat Wert", slots: [[["secondary_cost_center", "present"]]]},
+                            {key: "any", label: "egal", slots: nil}]}],
+  presets: [{key: "assigned", label: "Ansicht: mit sek. Kostenstelle", sets: {"cc2" => "set"}}]}
+```
+
+- The filter line shows each group as a segmented control behind its label,
+  the member in force pressed; its condition is a locked chip like any pin,
+  the user cannot edit it. The member without a condition ("alle", "egal") is
+  the asterisk of an exclusive group, its label the tooltip.
+- `show: :hidden` on a group keeps its conditions out of the filter line and
+  the builder -- the pressed switch says enough --; they filter all the same.
+  The default `:readonly` shows them as locked chips.
+- A member other than the default rides in the `lifts` param (`<prefix>u`) as
+  `group.member`; only declared groups and members are read from it.
+- A preset with `sets: {group => member}` chooses members in one click: pressed
+  while they are chosen, its toggle goes back to the groups' defaults.
+  "Standard" goes back to every default.
+- A default that is no member, a duplicate member and a `sets:` naming what is
+  not declared raise.
 
 #### Presets — the filter's "Schnellauswahl"
 

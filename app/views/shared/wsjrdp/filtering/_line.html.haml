@@ -39,7 +39,10 @@
 -#  The members of an EXCLUSIVE group (FilterPreset#exclusive?) render as ONE
 -#  segmented control -- the unrestricted button (an asterisk, "ohne
 -#  Einschränkung") first, exactly one segment pressed -- the other
--#  entries as toggle links with a tick.
+-#  entries as toggle links with a tick. A lifting preset (FilterPreset#lifting?)
+-#  changes the lifts param as well as the filter. Once the table no longer
+-#  shows its initial selection (a pin lifted, or the user filter other than
+-#  the default), "Standard" at the end of the presets goes back to it.
 - state = local_assigns.fetch(:state)
 - presets = Array(local_assigns.fetch(:presets, nil))
 - disabled = local_assigns.fetch(:disabled, false)
@@ -64,19 +67,26 @@
         %span.small.text-muted Schnellauswahl
         - presets.chunk_while { |a, b| a.exclusive? && b.exclusive? && a.group == b.group }.each do |chunk|
           - if chunk.first.exclusive?
-            .btn-group.btn-group-sm.flt-segment{role: "group", "aria-label": chunk.first.group}
-              - chunk.each do |preset|
-                -# An icon-only button (the unrestricted one's asterisk): its
-                -# label is the tooltip and the accessible name.
-                - icon_only = preset.css_class.to_s.split.include?(Wsjrdp::TableState::Filter::ICON_ONLY_CLASS)
-                = link_to et_url(state, {filter: preset.toggle_wire}),
-                  class: ["btn btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" "),
-                  role: "button", aria: {pressed: preset.active?.to_s, label: (preset.label if icon_only)},
-                  title: (preset.label if icon_only), data: {title: preset.label} do
-                  - if preset.icon.present?
-                    %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
-                  - unless icon_only
-                    = preset.label
+            -# The label and its segment stay together when the bar wraps; a fixed
+            -# group (Filter "FIXED GROUPS") says what it asks in front.
+            %span.d-inline-flex.align-items-center.gap-1.flt-group
+              - if chunk.first.group_label
+                %span.small.flt-group-label= chunk.first.group_label
+              .btn-group.btn-group-sm.flt-segment{role: "group", "aria-label": (chunk.first.group_label || chunk.first.group)}
+                - chunk.each do |preset|
+                  -# An icon-only button (the unrestricted one's asterisk): its
+                  -# label is the tooltip and the accessible name.
+                  - icon_only = preset.css_class.to_s.split.include?(Wsjrdp::TableState::Filter::ICON_ONLY_CLASS)
+                  - segment_changes = {filter: preset.toggle_wire}
+                  - segment_changes[:lifts] = preset.toggle_lifts.presence if preset.lifting?
+                  = link_to et_url(state, segment_changes),
+                    class: ["btn btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" "),
+                    role: "button", aria: {pressed: preset.active?.to_s, label: (preset.label if icon_only)},
+                    title: (preset.label if icon_only), data: {title: preset.label} do
+                    - if preset.icon.present?
+                      %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
+                    - unless icon_only
+                      = preset.label
             - next
           - preset = chunk.first
           -# A LINK, not a button: a preset applies at once, so it is a GET to a
@@ -90,7 +100,9 @@
           -# so a host can colour its presets. Without them the link is byte for byte
           -# what it was before.
           - preset_class = ["btn btn-sm btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" ")
-          = link_to et_url(state, {filter: preset.toggle_wire}),
+          - changes = {filter: preset.toggle_wire}
+          - changes[:lifts] = preset.toggle_lifts.presence if preset.lifting?
+          = link_to et_url(state, changes),
             class: preset_class,
             role: "button", title: preset_title,
             aria: {pressed: preset.active?.to_s}, data: {title: preset_title} do
@@ -100,6 +112,12 @@
             - if preset.icon.present?
               %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
             = preset.label
+        - unless state.filter.initial?
+          = link_to et_url(state, {filter: state.filter.default_wire, lifts: nil}),
+            class: "btn btn-sm btn-link flt-preset-reset", role: "button",
+            title: "Die anfängliche Schnellauswahl wiederherstellen" do
+            %i.fas.fa-undo{"aria-hidden": "true"}
+            Standard
         %span.small.flt-preset-lock-note
           ⚠ gesperrt, bis die Änderungen angewendet oder verworfen sind
     -# The applied filter at a glance. Hidden while the pane is open (the builder

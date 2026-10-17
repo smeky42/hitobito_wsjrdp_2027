@@ -99,14 +99,21 @@ class Wsjrdp::TableState
   # from the builder's unapplied draft -- see doc/wsjrdp/expandable_table.md,
   # "Presets".
   FilterPreset = Data.define(:key, :label, :slots, :active, :toggle_wire, :icon, :css_class,
-    :group, :attribute, :value, :group_values, :exclusive) do
+    :group, :attribute, :value, :group_values, :exclusive, :lifts, :pins, :toggle_lifts, :group_label) do
     # Data has no per-member defaults; this override gives the display members
     # and the group ones theirs, so a slot preset is constructed by naming
-    # neither.
+    # neither. `lifts` are the liftable fixed keys a preset lifts, `pins` the
+    # optional ones it switches on, `toggle_lifts` the lifts param its toggle
+    # leads to (nil: the toggle leaves it alone).
     def initialize(key:, label:, slots:, active:, toggle_wire:, icon: nil, css_class: nil,
-      group: nil, attribute: nil, value: nil, group_values: nil, exclusive: false)
+      group: nil, attribute: nil, value: nil, group_values: nil, exclusive: false, lifts: nil, pins: nil,
+      toggle_lifts: nil, group_label: nil)
       super
     end
+
+    # Does the preset switch fixed conditions -- lift, pin, or choose a fixed
+    # group's member -- and so change the lifts param?
+    def lifting? = !toggle_lifts.nil?
 
     def active? = active
 
@@ -157,6 +164,28 @@ class Wsjrdp::TableState
   # restriction by this attribute": by default an asterisk (the wildcard, "any
   # value") with "ohne Einschränkung" as its tooltip and accessible name; with
   # `unrestricted_label:` that text instead.
+  #
+  # TOGGLED fixed conditions: a fixed entry with `key:` and `liftable: true` is
+  # in force by default, but a preset declaring `lifts: [key, ...]` lifts it --
+  # the table then shows the rows the pin kept out; one with `optional: true`
+  # is off by default, and a preset declaring `pins: [key, ...]` switches it on.
+  # Either way the user cannot edit the condition, the user filter only
+  # narrows. Which entries deviate from their default is a field of its own
+  # (`lifts`, the `u` param), never the editable filter, and only declared
+  # keys are read from it, so a hand-written URL can do nothing a preset could
+  # not. Such a preset may carry slots as well; it is pressed when its entries
+  # are toggled and its slots applied, and its toggle changes both. #initial?
+  # says whether the table shows its initial selection (no entry toggled, the
+  # user filter the declared default): the filter line's "Standard" button goes
+  # back to it.
+  #
+  # FIXED GROUPS (`fixed_groups:`): one question with several answers, each
+  # answer a locked condition (or none), exactly one in force -- the filter
+  # line shows the group as a segmented control behind its label. The answer
+  # chosen other than the group's default rides in the same `u` param as
+  # `group.member`. A preset with `sets: {group => member}` chooses answers in
+  # one click (pressed while they are chosen; its toggle goes back to the
+  # defaults).
   class Filter
     EMPTY_CATALOG = {attributes: [].freeze}.freeze
 
@@ -178,21 +207,27 @@ class Wsjrdp::TableState
     # filter, or `policy: :fixed`). `presets` are the policy's quick-select
     # buttons, already built and flat -- a group contributes one per member (a
     # view-declared declaration is built on demand by #preset).
-    attr_reader :schema, :fixed_entries, :user_query, :exclude, :presets
+    attr_reader :schema, :fixed_entries, :user_query, :exclude, :presets, :toggled, :liftable, :optional,
+      :choices
 
     def initialize(schema:, exclude:, bound: nil, user_bound: nil,
       fixed_entries: [], fixed_query: nil, user_query: nil, default_tree: nil,
-      presets: [])
+      presets: [], toggled: [], liftable: [], optional: [], fixed_groups: [], choices: {})
       @schema = schema
       @exclude = exclude.freeze
       @bound = bound           # bound schema, FULL -- fixed slots + full_catalog
       @user_bound = user_bound # bound schema, reduced by exclude: -- user part + catalog
-      @fixed_entries = fixed_entries.freeze
+      @fixed_entries = fixed_entries.freeze # the entries in force (lifted out, pinned in)
       @fixed_query = fixed_query
       @user_query = user_query
       @default_tree = default_tree # the policy's `default:` user tree, if any
-      @presets = Array(presets).flat_map { |declaration| Array(build_declaration(declaration)) }
-        .freeze
+      @toggled = toggled.freeze    # the keys of the entries off their default
+      @liftable = liftable.freeze  # the keys a preset may lift
+      @optional = optional.freeze  # the keys a preset may pin
+      @fixed_groups = fixed_groups.freeze # the declared fixed groups (resolver-checked)
+      @choices = choices.freeze    # {group => member} where not the default
+      @presets = (@fixed_groups.flat_map { |group| fixed_group_presets(group) } +
+        Array(presets).flat_map { |declaration| Array(build_declaration(declaration)) }).freeze
       freeze
     end
 
@@ -255,6 +290,18 @@ class Wsjrdp::TableState
       @schema.encode_tree(@default_tree, schema: @user_bound).to_s
     end
 
+    # The liftable entries lifted, the optional ones pinned.
+    def lifted = @toggled & @liftable
+
+    def pinned = @toggled & @optional
+
+    # Does the table show its initial selection: no entry toggled and the user
+    # filter the declared default?
+    def initial? = @toggled.empty? && @choices.empty? && wire == default_wire
+
+    # The member of a fixed group in force.
+    def choice(group_key) = @choices.fetch(group_key.to_s) { fixed_group(group_key)[:default] }
+
     # What ONE declaration of the VIEW's (`t.filter presets: [...]`, instead of
     # the policy's) stands for: the Wsjrdp::TableState::FilterPreset of a slot
     # preset, the Array of member ones of a group. Same implementation as the
@@ -283,16 +330,95 @@ class Wsjrdp::TableState
     # spec/controllers/fin/table_policies_spec.rb turns into a CI failure. The
     # keyword list is the declaration's contract: an unknown key raises here too
     # (ArgumentError, "unknown keyword"), whichever site declared the preset.
-    def build_preset(key:, label:, slots:, icon: nil, css_class: nil)
+    def build_preset(key:, label:, slots: nil, lifts: nil, pins: nil, sets: nil, icon: nil, css_class: nil)
       raise ArgumentError, "filter preset #{key}: the table declares no filter schema" unless @schema
+      if slots.nil? && lifts.nil? && pins.nil? && sets.nil?
+        raise ArgumentError, "filter preset #{key}: needs slots:, lifts:, pins: or sets:"
+      end
 
-      parsed = @schema.parse_fixed!(slots, schema: @user_bound, what: "filter preset #{key}").as_json
+      parsed = slots.nil? ? [] : @schema.parse_fixed!(slots, schema: @user_bound, what: "filter preset #{key}").as_json
+      lift_keys = lifts && preset_keys!(key, "lifts", lifts, @liftable, "liftable")
+      pin_keys = pins && preset_keys!(key, "pins", pins, @optional, "optional")
+      chosen = sets && preset_sets!(key, sets)
+      toggling = Array(lift_keys) + Array(pin_keys)
       active = parsed.all? { |slot|
         Wsjrdp::Filtering::SlotEquality.include_slot?(user_slots, slot, aliases: sign_aliases)
-      }
+      } && (toggling - @toggled).empty? && Hash(chosen).all? { |group, member| choice(group) == member }
       Wsjrdp::TableState::FilterPreset.new(key: key.to_s, label: label.to_s, slots: parsed.freeze,
-        active: active, toggle_wire: preset_toggle_wire(parsed, active),
-        icon: icon&.to_s, css_class: css_class&.to_s)
+        active: active, toggle_wire: parsed.empty? ? wire : preset_toggle_wire(parsed, active),
+        icon: icon&.to_s, css_class: css_class&.to_s, lifts: lift_keys, pins: pin_keys,
+        toggle_lifts: (preset_lifts_param(toggling, chosen, active) if lift_keys || pin_keys || chosen))
+    end
+
+    # The lifts param after a preset's toggle: its keys toggled on (or back),
+    # its fixed groups set to its members (or back to their defaults).
+    def preset_lifts_param(keys, chosen, active)
+      toggled = active ? (@toggled - keys) : (@toggled | keys)
+      choices = @choices.dup
+      Hash(chosen).each do |group, member|
+        default = fixed_group(group)[:default]
+        if active || member == default
+          choices.delete(group)
+        else
+          choices[group] = member
+        end
+      end
+      lifts_param(toggled, choices)
+    end
+
+    # The lifts param of a state: the toggled keys, then `group.member` of each
+    # fixed group off its default, in declared order.
+    def lifts_param(toggled, choices)
+      keys = (@liftable + @optional).select { |key| toggled.include?(key) }
+      groups = @fixed_groups.filter_map { |group| "#{group[:key]}.#{choices[group[:key]]}" if choices[group[:key]] }
+      (keys + groups).join(",")
+    end
+
+    # A preset's `sets:` -- {group => member} of declared fixed groups; a typo
+    # raises.
+    def preset_sets!(key, sets)
+      sets.to_h { |group, member|
+        declared = @fixed_groups.find { |candidate| candidate[:key] == group.to_s }
+        unless declared && declared[:members].any? { |candidate| candidate[:key] == member.to_s }
+          raise ArgumentError, "filter preset #{key}: sets #{group}: #{member}, which is no fixed group's member"
+        end
+
+        [group.to_s, member.to_s]
+      }.freeze
+    end
+
+    def fixed_group(key) = @fixed_groups.find { |group| group[:key] == key.to_s }
+
+    # One button per member of a fixed group -- an exclusive segment, exactly
+    # one pressed; each leads to the state with its member chosen.
+    def fixed_group_presets(group)
+      chosen = choice(group[:key])
+      group[:members].map do |member|
+        choices = @choices.dup
+        if member[:key] == group[:default]
+          choices.delete(group[:key])
+        else
+          choices[group[:key]] = member[:key]
+        end
+        # The member without a condition ("alle", "egal") is the unrestricted
+        # one: the asterisk of an exclusive group, its label the tooltip.
+        unrestricted = member[:slots].blank?
+        Wsjrdp::TableState::FilterPreset.new(key: "#{group[:key]}.#{member[:key]}", label: member[:label],
+          slots: nil, active: chosen == member[:key], toggle_wire: wire, exclusive: true,
+          icon: (UNRESTRICTED_ICON if unrestricted), css_class: (ICON_ONLY_CLASS if unrestricted),
+          group: "fixed-#{group[:key]}", group_label: group[:label], toggle_lifts: lifts_param(@toggled, choices))
+      end
+    end
+
+    # The keys a preset lifts or pins: each one a liftable (optional) fixed
+    # entry of the table -- host-authored, so a typo raises.
+    def preset_keys!(key, option, given, allowed, kind)
+      keys = Array(given).map(&:to_s)
+      stray = keys - allowed
+      return keys.freeze if keys.any? && stray.empty?
+
+      raise ArgumentError, "filter preset #{key}: #{option} #{stray.first.inspect}, which is no #{kind} " \
+                           "fixed entry (#{allowed.join(", ")})"
     end
 
     # Turning a preset ON adds the slots the user filter is missing; turning it
@@ -552,7 +678,7 @@ class Wsjrdp::TableState
   AUTO_SUFFIX = ".a"
 
   attr_reader :policy, :sort_list, :hidden_sort_list, :column_states, :per_page, :per_value, :page,
-    :open_keys, :filter, :pane, :level, :view, :links, :links_token, :store_key, :sources
+    :open_keys, :filter, :lifts, :pane, :level, :view, :links, :links_token, :store_key, :sources
 
   # `view` is the table's chosen view (the policy's `view: {values:}`), nil for
   # a table that declares none. `links` is how its page link column shows --
@@ -565,7 +691,7 @@ class Wsjrdp::TableState
   # `sort: {hidden:}`, resolved.
   def initialize(policy:, store_key:, columns:, sort_list:, column_states:, per_page:, per_value:,
     page:, open_keys:, filter:, pane:, level:, sources:, view: nil, links_token: nil, default_columns: false,
-    hidden_sort_list: [])
+    hidden_sort_list: [], lifts: [])
     @policy = policy
     @store_key = store_key
     @columns = columns
@@ -579,6 +705,7 @@ class Wsjrdp::TableState
     @page = page
     @open_keys = open_keys.to_set.freeze
     @filter = filter
+    @lifts = Array(lifts).freeze
     @pane = pane
     @level = level
     @view = view
@@ -661,6 +788,7 @@ class Wsjrdp::TableState
     when :sort then Wsjrdp::ExpandableTableSort.encode(sort_list.map { |key, dir| [@policy.abbr_for(key), dir] }).to_s
     when :cols then encode_column_states(@column_states)
     when :filter then @filter.wire
+    when :lifts then @lifts.join(",")
     when :per_page then @per_value
     when :page then @page.to_s
     when :open then @open_keys.to_a.join(",")
@@ -804,7 +932,7 @@ class Wsjrdp::TableState
       Wsjrdp::TableState.new(policy: @policy, store_key: @store_key, columns: @columns,
         sort_list: values[:sort], column_states: values[:cols],
         per_page: values[:per_page][0], per_value: values[:per_page][1],
-        page: values[:page], open_keys: values[:open], filter: values[:filter],
+        page: values[:page], open_keys: values[:open], filter: values[:filter], lifts: values[:lifts],
         pane: values[:pane], level: values[:level], view: values[:view], links_token: @links_token,
         default_columns: @default_columns, sources: @sources,
         hidden_sort_list: hidden_sort_list)
@@ -1055,6 +1183,8 @@ class Wsjrdp::TableState
       Wsjrdp::TableState::Filter.new(schema: schema, exclude: exclude,
         bound: bound, user_bound: user_bound,
         fixed_entries: entries, fixed_query: fixed_query,
+        toggled: @toggled || [], liftable: toggleable_keys(:liftable), optional: toggleable_keys(:optional),
+        fixed_groups: fixed_group_declarations(policy_field), choices: @choices || {},
         user_query: filter_user_query(policy_field, schema, user_bound, user, default_tree),
         default_tree: @policy.evaluate(policy_field.default, @controller),
         presets: Array(@policy.evaluate(policy_field.options[:presets], @controller)))
@@ -1068,13 +1198,132 @@ class Wsjrdp::TableState
     # The policy's fixed entries plus the ONE strictly parsed query over all
     # their slots. Parsed against the FULL bound schema: a pinned condition may
     # legitimately use an attribute the user's picker does not offer.
+    # The entries in force: a liftable one unless lifted, an optional one only
+    # when pinned (their keys in the lifts field), every other one always. An
+    # entry not in force does not filter, and the builder does not show it.
     def filter_fixed(policy_field, schema, bound)
-      entries = Array(@policy.evaluate(policy_field.options[:fixed], @controller)).map { |entry|
+      toggled = @toggled || []
+      in_force = fixed_declarations(policy_field).select { |entry|
+        entry[:optional] ? toggled.include?(entry[:key]) : !toggled.include?(entry[:key])
+      }
+      entries = in_force.map { |entry|
         slots = Array(@policy.evaluate(entry[:slots], @controller))
-        {slots: slots.freeze, show: (entry[:show] || :readonly).to_sym}.freeze
-      }.freeze
+        {key: entry[:key], slots: slots.freeze, show: (entry[:show] || :readonly).to_sym}.freeze
+      }
+      # Each fixed group's member in force, unless it is the one without slots.
+      fixed_group_declarations(policy_field).each do |group|
+        member = group[:members].find { |candidate| candidate[:key] == ((@choices || {})[group[:key]] || group[:default]) }
+        next if member[:slots].blank?
+
+        entries << {key: "#{group[:key]}.#{member[:key]}", slots: member[:slots], show: group[:show]}.freeze
+      end
+      entries.freeze
       slots = entries.flat_map { |entry| entry[:slots] }
       [entries, slots.empty? ? nil : schema.parse_fixed!(slots, schema: bound)]
+    end
+
+    # The policy's fixed entries as declared, keys as Strings. A key is needed
+    # for a liftable entry and must be unique.
+    def fixed_declarations(policy_field)
+      @fixed_declarations ||= begin
+        list = Array(@policy.evaluate(policy_field.options[:fixed], @controller)).map do |entry|
+          entry = entry.transform_keys(&:to_sym)
+          unknown = entry.keys - %i[slots show key liftable optional]
+          raise ArgumentError, "filter fixed entry: unknown keyword: #{unknown.first.inspect}" if unknown.any?
+          if entry[:liftable] && entry[:optional]
+            raise ArgumentError, "filter fixed entry #{entry[:key]}: either liftable or optional"
+          end
+          if (entry[:liftable] || entry[:optional]) && entry[:key].blank?
+            raise ArgumentError, "filter fixed entry: a liftable or optional entry needs a key"
+          end
+
+          entry.merge(key: entry[:key]&.to_s)
+        end
+        keys = list.filter_map { |entry| entry[:key] }
+        duplicate = keys.find { |key| keys.count(key) > 1 }
+        raise ArgumentError, "filter fixed entry: duplicate key #{duplicate.inspect}" if duplicate
+
+        list.freeze
+      end
+    end
+
+    # The policy's fixed groups, checked: a group has a key, a label, members
+    # with key, label and slots (nil for the member that pins nothing) and a
+    # default that is one of them; `show: :hidden` keeps its conditions out of
+    # the filter line and the builder (its switch says enough), `:readonly`
+    # (default) shows them as locked chips.
+    def fixed_group_declarations(policy_field)
+      @fixed_group_declarations ||= Array(@policy.evaluate(policy_field.options[:fixed_groups], @controller))
+        .map { |group| fixed_group_declaration(group.transform_keys(&:to_sym)) }.freeze
+    end
+
+    def fixed_group_declaration(group)
+      what = "filter fixed group #{group[:key].inspect}"
+      unknown = group.keys - %i[key label default members show]
+      raise ArgumentError, "#{what}: unknown keyword: #{unknown.first.inspect}" if unknown.any?
+
+      key = group.fetch(:key).to_s
+      raise ArgumentError, "#{what}: key must match #{TOKEN_PATTERN.inspect}" unless key.match?(TOKEN_PATTERN)
+
+      members = Array(group.fetch(:members)).map do |member|
+        member = member.transform_keys(&:to_sym)
+        member_key = member.fetch(:key).to_s
+        raise ArgumentError, "#{what}: member key #{member_key.inspect}" unless member_key.match?(TOKEN_PATTERN)
+
+        {key: member_key, label: member.fetch(:label).to_s, slots: member[:slots] && Array(member[:slots]).freeze}.freeze
+      end
+      keys = members.pluck(:key)
+      raise ArgumentError, "#{what}: duplicate member" if keys.uniq.size != keys.size
+      default = group.fetch(:default).to_s
+      raise ArgumentError, "#{what}: default #{default.inspect} is no member" unless keys.include?(default)
+
+      show = (group[:show] || :readonly).to_sym
+      raise ArgumentError, "#{what}: show #{show.inspect} -- :readonly or :hidden" unless %i[readonly hidden].include?(show)
+
+      {key: key, label: group.fetch(:label).to_s, default: default, members: members.freeze, show: show}.freeze
+    end
+
+    TOKEN_PATTERN = /\A[a-z][a-z0-9_]*\z/
+
+    # The keys of the liftable (`kind` :liftable) or optional fixed entries, in
+    # declared order; both without a kind.
+    def toggleable_keys(kind = nil)
+      policy_field = @policy.field(:filter)
+      return [] unless policy_field.options[:schema]
+
+      fixed_declarations(policy_field)
+        .select { |entry| kind ? entry[kind] : (entry[:liftable] || entry[:optional]) }.pluck(:key)
+    end
+
+    # The lifts field: the toggleable keys the param names -- entries off their
+    # default --, in declared order; anything else in it is ignored. Remembered
+    # for the filter, which is built after it (FIELD_DEFINITIONS order).
+    def parse_lifts(raw, policy_field)
+      named = raw.to_s.split(",").map(&:strip)
+      @toggled = toggleable_keys.select { |key| named.include?(key) }.freeze
+      @choices = {}
+      groups = policy_field_filter_groups
+      named.each do |token|
+        group_key, member_key = token.split(".", 2)
+        group = groups.find { |candidate| candidate[:key] == group_key }
+        next unless group && member_key && member_key != group[:default]
+        next unless group[:members].any? { |member| member[:key] == member_key }
+
+        @choices[group_key] = member_key
+      end
+      @choices.freeze
+      @toggled + groups.filter_map { |group| "#{group[:key]}.#{@choices[group[:key]]}" if @choices[group[:key]] }
+    end
+
+    def default_lifts(_value, _policy_field)
+      @choices = {}.freeze
+      @toggled = [].freeze
+    end
+
+    # The fixed groups of the table's filter (none without a filter schema).
+    def policy_field_filter_groups
+      filter_field = @policy.field(:filter)
+      filter_field.options[:schema] ? fixed_group_declarations(filter_field) : []
     end
 
     # The user's half. `:fixed` means "fixed slots only": no user query at all.

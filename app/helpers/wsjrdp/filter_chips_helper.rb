@@ -30,6 +30,15 @@ module Wsjrdp::FilterChipsHelper
       user_slots: state.filter.user_slots, presets: presets).chips
   end
 
+  # The fixed conditions the user sees but cannot change (show: :readonly), as
+  # chips worded the same way -- one per slot, labelled from the FULL catalog
+  # (a pin may use an attribute the picker does not offer).
+  def et_filter_locked_chips(state)
+    return [] if state.filter.readonly_slots.empty?
+
+    Wsjrdp::FilterChips.new(catalog: state.filter.full_catalog, user_slots: state.filter.readonly_slots).chips
+  end
+
   # A chip's words, an option's prefix muted and light (.flt-opt-prefix):
   # what `chip.text` says, with that part set apart.
   def et_filter_chip_content(chip)

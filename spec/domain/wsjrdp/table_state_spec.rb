@@ -845,6 +845,166 @@ describe Wsjrdp::TableState do
       end
     end
 
+    describe "liftable fixed entries" do
+      let(:unit) { [[["cost_center", "in", "U1"]]] }
+      let(:no_entry) { [[["accounting_entry", "blank"]]] }
+      let(:liftable_policy) do
+        filter_policy(policy: :url,
+          fixed: [{key: "unit", slots: unit, liftable: true}, {key: "no_entry", slots: no_entry, liftable: true},
+            {slots: locked, show: :hidden}],
+          presets: [{key: "all_units", label: "Alle Kostenstellen", lifts: ["unit"]},
+            {key: "entries", label: "Mit Beitragsbuchung", lifts: ["no_entry"], slots: user_tree}])
+      end
+
+      def presets_of(state) = state.filter.presets.index_by(&:key)
+
+      it "keeps every pin in force without the lifts param" do
+        state = resolve(liftable_policy)
+        expect(state.filter.fixed_slots).to eq(unit + no_entry + locked)
+        expect(state.filter.lifted).to eq([])
+        expect(state.filter.liftable).to eq(%w[unit no_entry])
+        expect(state.filter.initial?).to be true
+        expect(state.wire_params).to eq({})
+      end
+
+      it "lifts the pins the param names, liftable ones only, in declared order" do
+        state = resolve(liftable_policy, {"u" => "no_entry,bogus,unit"})
+        expect(state.filter.lifted).to eq(%w[unit no_entry])
+        expect(state.filter.fixed_slots).to eq(locked)
+        expect(state.lifts).to eq(%w[unit no_entry])
+        expect(state.wire(:lifts)).to eq("unit,no_entry")
+        expect(state.wire_params).to eq({"u" => "unit,no_entry"})
+        expect(state.filter.initial?).to be false
+      end
+
+      it "presses a lifting preset when its pins are lifted (and its slots applied) and toggles both" do
+        off = presets_of(resolve(liftable_policy))
+        expect(off["all_units"]).to have_attributes(active?: false, lifting?: true, lifts: %w[unit],
+          toggle_lifts: "unit", toggle_wire: "")
+        expect(off["entries"]).to have_attributes(active?: false, toggle_lifts: "no_entry",
+          toggle_wire: JSON.generate(user_tree))
+
+        on = presets_of(resolve(liftable_policy, {"u" => "unit,no_entry", "f" => JSON.generate(user_tree)}))
+        expect(on["all_units"]).to have_attributes(active?: true, toggle_lifts: "no_entry")
+        expect(on["entries"]).to have_attributes(active?: true, toggle_lifts: "unit", toggle_wire: "")
+
+        half = presets_of(resolve(liftable_policy, {"u" => "no_entry"}))
+        expect(half["entries"].active?).to be false
+      end
+
+      describe "optional entries" do
+        let(:with_entry) { [[["accounting_entry", "present"]]] }
+        let(:optional_policy) do
+          filter_policy(policy: :url,
+            fixed: [{key: "unit", slots: unit, liftable: true}, {key: "entry", slots: with_entry, optional: true}],
+            presets: [{key: "entries", label: "Beitragsbuchungen", lifts: ["unit"], pins: ["entry"]}])
+        end
+
+        it "leaves an optional entry off by default and pins it with its preset, lifting the other" do
+          off = resolve(optional_policy)
+          expect(off.filter.fixed_slots).to eq(unit)
+          expect(off.filter.optional).to eq(%w[entry])
+          preset = off.filter.presets.first
+          expect(preset).to have_attributes(active?: false, lifting?: true, pins: %w[entry], toggle_lifts: "unit,entry")
+
+          on = resolve(optional_policy, {"u" => "entry,unit"})
+          expect(on.filter.fixed_slots).to eq(with_entry)
+          expect([on.filter.lifted, on.filter.pinned]).to eq([%w[unit], %w[entry]])
+          expect(on.filter.readonly_slots).to eq(with_entry)
+          expect(on.filter.presets.first).to have_attributes(active?: true, toggle_lifts: "")
+          expect(on.filter.initial?).to be false
+        end
+
+        it "refuses a preset that pins what is not optional, and an entry both liftable and optional" do
+          expect {
+            resolve(filter_policy(fixed: [{key: "unit", slots: unit, liftable: true}],
+              presets: [{key: "x", label: "X", pins: ["unit"]}]))
+          }
+            .to raise_error(ArgumentError, /no optional fixed entry/)
+          expect { resolve(filter_policy(fixed: [{key: "a", slots: unit, liftable: true, optional: true}])) }
+            .to raise_error(ArgumentError, /either liftable or optional/)
+        end
+      end
+
+      describe "fixed groups" do
+        let(:entry_group) do
+          {key: "entry", label: "Beitragsbuchung", default: "none",
+           members: [{key: "none", label: "ohne", slots: [[["accounting_entry", "blank"]]]},
+             {key: "some", label: "mit", slots: [[["accounting_entry", "present"]]]},
+             {key: "any", label: "egal", slots: nil}]}
+        end
+        let(:group_policy) do
+          filter_policy(policy: :url, fixed_groups: [entry_group],
+            presets: [{key: "with_entries", label: "Mit Beitragsbuchung", sets: {"entry" => "some"}}])
+        end
+
+        def by_key(state) = state.filter.presets.index_by(&:key)
+
+        it "puts the default member in force and offers the members as one exclusive segment" do
+          state = resolve(group_policy)
+          expect(state.filter.readonly_slots).to eq([[["accounting_entry", "blank"]]])
+          members = state.filter.presets.first(3)
+          expect(members.map(&:key)).to eq(%w[entry.none entry.some entry.any])
+          expect(members.map(&:active?)).to eq([true, false, false])
+          expect(members).to all(have_attributes(exclusive?: true, group_label: "Beitragsbuchung", lifting?: true))
+          expect(members.map(&:toggle_lifts)).to eq(["", "entry.some", "entry.any"])
+          # The member without a condition is the unrestricted asterisk, its label the tooltip.
+          expect(members.last).to have_attributes(icon: "asterisk", css_class: "flt-preset-icon-only", label: "egal")
+          expect(members.first.icon).to be_nil
+          expect(state.filter.initial?).to be true
+        end
+
+        it "puts the chosen member in force, from the lifts param, and nothing for one without slots" do
+          some = resolve(group_policy, {"u" => "entry.some"})
+          expect(some.filter.readonly_slots).to eq([[["accounting_entry", "present"]]])
+          expect(some.filter.choice("entry")).to eq("some")
+          expect(some.wire_params).to eq({"u" => "entry.some"})
+          expect(by_key(some)["entry.some"].active?).to be true
+          expect(some.filter.initial?).to be false
+
+          any = resolve(group_policy, {"u" => "entry.any"})
+          expect(any.filter.fixed_slots).to eq([])
+          expect(resolve(group_policy, {"u" => "entry.bogus,other.none"}).filter.choices).to eq({})
+        end
+
+        it "chooses members with a preset's sets:, pressed while chosen, back to the defaults when toggled off" do
+          off = by_key(resolve(group_policy))["with_entries"]
+          expect(off).to have_attributes(active?: false, toggle_lifts: "entry.some")
+          on = by_key(resolve(group_policy, {"u" => "entry.some"}))["with_entries"]
+          expect(on).to have_attributes(active?: true, toggle_lifts: "")
+        end
+
+        it "keeps the conditions of a group with show: :hidden out of sight, in force all the same" do
+          state = resolve(filter_policy(policy: :url, fixed_groups: [entry_group.merge(show: :hidden)]))
+          expect(state.filter.readonly_slots).to eq([])
+          expect(state.filter.hidden_slots).to eq([[["accounting_entry", "blank"]]])
+          expect(state.filter.fixed_slots).to eq([[["accounting_entry", "blank"]]])
+          expect { resolve(filter_policy(fixed_groups: [entry_group.merge(show: :loud)])) }
+            .to raise_error(ArgumentError, /readonly or :hidden/)
+        end
+
+        it "refuses a default that is no member and a preset setting what is not declared" do
+          expect { resolve(filter_policy(fixed_groups: [entry_group.merge(default: "x")])) }
+            .to raise_error(ArgumentError, /no member/)
+          expect {
+            resolve(filter_policy(fixed_groups: [entry_group],
+              presets: [{key: "x", label: "X", sets: {"entry" => "bogus"}}]))
+          }.to raise_error(ArgumentError, /no fixed group's member/)
+        end
+      end
+
+      it "refuses a preset that lifts what is not liftable, and a liftable entry without a key" do
+        expect {
+          resolve(filter_policy(fixed: [{key: "unit", slots: unit}],
+            presets: [{key: "x", label: "X", lifts: ["unit"]}]))
+        }.to raise_error(ArgumentError, /no liftable fixed entry/)
+        expect { resolve(filter_policy(fixed: [{slots: unit, liftable: true}])) }
+          .to raise_error(ArgumentError, /needs a key/)
+        expect { resolve(filter_policy(fixed: [{key: "a", slots: unit}, {key: "a", slots: no_entry}])) }
+          .to raise_error(ArgumentError, /duplicate key/)
+      end
+    end
+
     describe "fixed slots are parsed STRICTLY" do
       it "raises for an attribute the schema does not know, naming it and its slot" do
         expect {

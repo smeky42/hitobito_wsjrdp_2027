@@ -13,10 +13,12 @@
 -#  shows the same conditions in full.
 -#
 -#  WHAT IS RENDERED: a `.flt-applied` container with the muted word "Filter",
--#  then ONE chip per chip of Wsjrdp::FilterChips (= one per CNF slot of the
--#  applied user filter, in slot order), consecutive chips separated by a
--#  `.flt-and` "und" -- the slots are ANDed, and saying so is the whole point of
--#  showing them side by side. Which slots become chips and how each is worded is
+-#  first the fixed conditions the user sees but cannot change (show:
+-#  :readonly, et_filter_locked_chips) as muted chips with a lock -- plain
+-#  text, not openers --, then ONE chip per chip of Wsjrdp::FilterChips (= one
+-#  per CNF slot of the applied user filter, in slot order), consecutive chips
+-#  separated by a `.flt-and` "und" -- the slots are ANDed, and saying so is the
+-#  whole point of showing them side by side. Which slots become chips and how each is worded is
 -#  decided ENTIRELY by the domain class (app/domain/wsjrdp/filter_chips.rb):
 -#  fixed (host-pinned) slots never arrive here at all -- `user_slots` is the
 -#  user half alone -- and a slot equal to an ACTIVE preset's is dropped, because
@@ -34,10 +36,9 @@
 -#    1. no presets and no fixed slots -> "Kein Filter aktiv". Nothing else would
 -#       be on the left of the line, and a silently blank strip reads like a
 -#       rendering bug rather than like "everything is shown".
--#    2. fixed slots but neither user slots nor presets (the reconciliation
--#       bookings table) -> NOTHING. The table IS filtered, by conditions the
--#       user cannot remove; its body describes them in the builder's condensed
--#       locked summary, so "Kein Filter aktiv" would be plainly wrong here.
+-#    2. fixed slots but no user slot: the readonly ones are the chips; hidden
+-#       ones alone show NOTHING -- the table IS filtered, by conditions the
+-#       user cannot remove, so "Kein Filter aktiv" would be plainly wrong.
 -#    3. presets declared -> NOTHING. The preset bar is then the line's content,
 -#       and it already says that none of them is switched on.
 -#
@@ -60,12 +61,20 @@
 - openable = local_assigns.fetch(:openable, true)
 - presets = Array(local_assigns.fetch(:presets, nil))
 - chips = et_filter_chips(state, presets: presets)
+- locked_chips = et_filter_locked_chips(state)
 
-- if chips.any?
+- if chips.any? || locked_chips.any?
   %span.flt-applied
     %span.flt-label Filter
-    - chips.each_with_index do |chip, index|
+    - locked_chips.each_with_index do |chip, index|
       - if index.positive?
+        %span.flt-and und
+      %span.flt-chip.flt-chip-locked.wsjrdp-html-tip{title: "#{chip.text} — fest vorgegeben",
+        data: {bs_title: et_filter_chip_tip(chip, hint: "Fest vorgegeben, nicht änderbar")}}
+        %i.fas.fa-lock.flt-chip-lock{"aria-hidden": "true"}
+        = et_filter_chip_content(chip)
+    - chips.each_with_index do |chip, index|
+      - if index.positive? || locked_chips.any?
         %span.flt-and und
       -# A button, not a link: it changes nothing on the server, it only opens
       -# the pane next to it. `.pane-opener` is the open-only control of
@@ -132,6 +141,15 @@
     .flt-applied .flt-chip:hover { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .08);
       border-color: rgba(var(--bs-primary-rgb, 33, 105, 124), .5);
       border-left-color: var(--bs-primary, #21697c); }
+    /* A fixed condition: muted, a grey edge and a lock, no pointer -- it opens
+       nothing and cannot be changed. */
+    .flt-applied .flt-chip.flt-chip-locked, .flt-applied .flt-chip.flt-chip-locked[title] {
+      cursor: default; color: var(--bs-secondary-color, #6c757d);
+      background: var(--bs-tertiary-bg, #f8f9fa); border-color: var(--bs-border-color, #dee2e6);
+      border-left-color: var(--bs-secondary-color, #6c757d); }
+    .flt-applied .flt-chip.flt-chip-locked:hover { background: var(--bs-tertiary-bg, #f8f9fa);
+      border-color: var(--bs-border-color, #dee2e6); border-left-color: var(--bs-secondary-color, #6c757d); }
+    .flt-chip-lock { font-size: .65rem; }
     /* The AND between two slots: small caps, muted -- a connector, not a chip. */
     .flt-applied .flt-and { color: var(--bs-secondary-color, #6c757d); font-size: .7rem;
       text-transform: uppercase; letter-spacing: .04em; }
