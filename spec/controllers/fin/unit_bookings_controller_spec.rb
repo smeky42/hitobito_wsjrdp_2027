@@ -9,8 +9,10 @@
 
 require "spec_helper"
 
-# The Abstimmung page "Unit-Buchungen": the figures, the open bookings with their
-# quick-select and the bulk assignment, the lazily loaded assigned bookings.
+# The Abstimmung page "Unit-Buchungen": the figures, the bookings table -- the
+# open bookings first, its Schnellauswahl lifting the pins -- and the bar of
+# bulk actions (count against the Unit-Budget, set or take off a secondary cost
+# center), each action previewing what it changes.
 # Invented numbers, names and amounts.
 describe Fin::UnitBookingsController do
   render_views
@@ -54,10 +56,14 @@ describe Fin::UnitBookingsController do
 
   def doc = Nokogiri::HTML(response.body)
 
-  # The ids of the open table's rows, from the lazy detail frames.
-  def open_row_ids = response.body.scan(/bkframe-ub-(\d+)/).flatten.map(&:to_i).uniq
+  # The ids of the table's rows, from the lazy detail frames.
+  def row_ids = response.body.scan(/bkframe-ub-(\d+)/).flatten.map(&:to_i).uniq
 
   def tiles = doc.css("#main .border.rounded.p-3").map { |tile| tile.css("div").first(2).map { |d| d.text.strip } }
+
+  def preview_doc = Nokogiri::HTML.fragment(response.body)
+
+  def preset_href(label) = doc.css(".flt-presets a").find { |a| a.text.squish == label }&.[]("href")
 
   context "as the write tier" do
     before { sign_in(accountant) }
@@ -68,197 +74,203 @@ describe Fin::UnitBookingsController do
       expect(response).to be_successful
       expect(tiles).to eq([["7", "für Units sichtbar"], ["1", "zählen zum Unit-Budget"],
         ["2", "mit sekundärer Kostenstelle"], ["4", "offen"]])
-      expect(open_row_ids).to contain_exactly(open_oepnv.id, open_oepnv_2.id, open_km.id, refund.id)
+      expect(row_ids).to contain_exactly(open_oepnv.id, open_oepnv_2.id, open_km.id, refund.id)
       proposals = doc.css("td[data-colkey='proposal']").map { |td| td.text.strip }
       expect(proposals).to all(eq("3810 Unit Treffen Reisekosten"))
-      # The Unit-Budget column ("nein" on every row) is offered, not shown.
-      # (The assigned section's frame is lazy: the page carries only its placeholder.)
       expect(doc.css("thead th[data-colkey]").pluck("data-colkey"))
-        .to eq(%w[booking_date signed_base_amount posting_text cost_center_number account_number proposal])
+        .to eq(%w[booking_date signed_base_amount posting_text cost_center_number secondary_cost_center_number
+          account_number proposal])
     end
 
-    it "offers the assign form, preset to 3810, the quick-select by deciding account and the switch" do
+    it "switches the three questions, shows the bookings with a secondary cost center, and goes back to Standard" do
+      get :index
+      # "alle" / "egal" is the asterisk, its word the tooltip.
+      segments = doc.css(".flt-presets .flt-segment").map { |segment|
+        segment.css("a").map { |a| a.text.squish.presence || a["title"] }
+      }
+      expect(segments).to eq([["alle", "Unit-KSt", "Unit-KSt primär oder sekundär"],
+        ["egal", "leer", "hat Wert"], ["egal", "nein", "ja"]])
+      expect(doc.css(".flt-segment a.flt-preset-icon-only i.fa-asterisk").size).to eq(3)
+      expect(doc.css(".flt-presets .flt-group-label").map(&:text)).to eq(["KSt", "Sek KSt", "Unit-Budget?"])
+      expect(doc.css(".flt-segment a[aria-pressed=true]").map { |a| a.text.squish }).to eq(%w[Unit-KSt leer nein])
+      # The switches say what is shown: their conditions are no chips, neither in the
+      # filter line nor in the builder.
+      expect(doc.css(".flt-chip-locked")).to be_empty
+      expect(JSON.parse(doc.at_css(".flt-root")["data-locked"])).to eq([])
+      expect(preset_href("Standard")).to be_nil
+
+      get :index, params: {ubu: "ub.any"}
+      expect(row_ids).to contain_exactly(open_oepnv.id, open_oepnv_2.id, open_km.id, refund.id, unit_budget.id)
+      expect(preset_href("Standard")).to be_present
+
+      get :index, params: {ubu: "ub.yes"}
+      expect(row_ids).to eq([unit_budget.id])
+
+      # "Unit-KSt primär oder sekundär", "hat Wert" and "nein": the bookings with a secondary cost center.
+      get :index, params: {ubu: "kst.unit_any,cc2.set"}
+      expect(row_ids).to contain_exactly(assigned.id, assigned_unit.id)
+      expect(doc.css(".flt-segment a[aria-pressed=true]").map { |a| a.text.squish })
+        .to eq(["Unit-KSt primär oder sekundär", "hat Wert", "nein"])
+      expect(doc.css(".flt-applied .flt-chip")).to be_empty
+
+      # A position the declaration does not offer cannot be chosen by hand.
+      get :index, params: {ubu: "kst.bogus"}
+      expect(row_ids.size).to eq(4)
+    end
+
+    it "offers the bar with its three actions, the cost center preset to 3810, the quick-select and the switch" do
       get :index
 
-      select = doc.at_css("select[name='secondary_cost_center_number']")
+      form = doc.at_css("form#ub-bulk.bk-bulk-box")
+      expect(form["action"]).to eq(bulk_reconciliation_unit_bookings_path)
+      expect(form["data-preview-url"]).to eq(bulk_preview_reconciliation_unit_bookings_path)
+      expect(form.css("[data-bulk-action]").pluck("data-bulk-action").uniq)
+        .to eq(%w[unit_budget secondary_cost_center clear])
+      select = form.at_css("select[name='secondary_cost_center_number'][data-bulk-param-for=secondary_cost_center]")
       expect(select.at_css("option[selected]")["value"]).to eq("3810")
       expect(select.css("option").pluck("value")).to include("3800")
       expect(select.css("option").pluck("value")).not_to include("U1")
-      buttons = doc.css(".ub-select").map { |b| b.text.strip }
-      expect(buttons).to eq(["Keine", "Alle (4)", "Konto 66630 Reisekosten ÖPNV", "nur (2)",
-        "Gegenkto 66680 Kilometergeld", "nur (1)", "Konto 66680 Kilometergeld", "nur (1)"])
-      form = doc.at_css("form#ub-assign-form")
+      expect(doc.css(".bk-bulk-quick button").map { |b| b.text.squish })
+        .to eq(["Keine", "Alle (4)", "Konto 66630 Reisekosten ÖPNV", "nur (2)",
+          "Gegenkto 66680 Kilometergeld", "nur (1)", "Konto 66680 Kilometergeld", "nur (1)"])
       expect(form["data-k66630-count"]).to eq("2")
       expect(form["data-all-count"]).to eq("4")
-      expect(form["data-turbo-frame"]).to eq("_top")
-      expect(form["data-hint-many"]).to eq("Setzt %{target} als sekundäre Kostenstelle bei %{count} ausgewählten Buchungen")
-      expect(form.at_css("button[type=submit]")["disabled"]).to be_present
-      expect(form.at_css(".ub-selection-hint")).to be_present
-      expect(doc.css("#main .exp-toolbar-below-filter .text-muted.small").map(&:text).join).not_to include("Summe (gefiltert)")
-      expect(doc.css("input.bk-select-check").pluck("data-atom"))
-        .to contain_exactly("k66630", "k66630", "k66680", "g66680")
-      expect(doc.at_css(".bk-only-selected-toggle")["data-form"]).to eq("ub-assign-form")
+      expect(doc.css("input.bk-select-check").pluck("form")).to all(eq("ub-bulk"))
+      expect(doc.at_css(".bk-bulk-status .bk-only-selected-toggle")["data-form"]).to eq("ub-bulk")
     end
 
-    it "assigns the posted bookings and comes back with the count" do
-      post :assign, params: {booking_ids: [open_oepnv.id, unit_budget.id], secondary_cost_center_number: "3810"}
+    describe "Als Unit-Budget markieren" do
+      it "marks the selected bookings on a unit's cost center and leaves a central one alone" do
+        post :bulk, params: {bulk_action: "unit_budget", ubu: "kst.all,cc2.any,ub.any",
+                             booking_ids: [open_oepnv.id, assigned_unit.id, assigned.id]}
 
-      expect(response).to redirect_to(reconciliation_unit_bookings_path)
-      expect(flash[:notice]).to eq("1 Buchungen: sekundäre Kostenstelle 3810 Unit Treffen Reisekosten gesetzt.")
-      expect(open_oepnv.reload.secondary_cost_center_number).to eq("3810")
-      expect(unit_budget.reload.secondary_cost_center_number).to be_nil
+        expect(flash[:notice]).to eq("2 Buchungen: als Unit-Budget markiert.")
+        expect(open_oepnv.reload.is_unit_budget).to be(true)
+        expect(assigned_unit.reload.is_unit_budget).to be(true)
+        expect(assigned.reload.is_unit_budget).to be_nil
+        expect(response).to redirect_to(reconciliation_unit_bookings_path(ubu: "kst.all,cc2.any,ub.any"))
+      end
+
+      it "previews the bookings it marks with their answer so far, the central one apart with a warning" do
+        open_km.update_columns(is_unit_budget: true)
+        post :bulk_preview, params: {bulk_action: "unit_budget", ubu: "kst.all,cc2.any,ub.any",
+                                     booking_ids: [open_oepnv.id, unit_budget.id, assigned.id, open_km.id]}
+
+        html = preview_doc
+        expect(html.at_css(".bk-bulk-preview-head").text.squish).to eq("Betrifft 2 Buchungen")
+        list = html.css(".bk-bulk-preview-list").first
+        expect(list.css("thead th").last.text).to eq("Bisher")
+        expect(list.css("tbody tr td:last-child").map { |td| td.text.squish })
+          .to contain_exactly("nein (automatisch, Konto 66630)", "ja (automatisch, Konto 66500)")
+        warning = html.at_css(".alert-warning")
+        expect(warning.text).to include("1 mit einer primären Kostenstelle, die keine Unit-Kostenstelle ist")
+        expect(warning.css("tbody tr").size).to eq(1)
+        expect(html.text).to include("1 sind schon als Unit-Budget markiert.")
+      end
     end
 
-    it "assigns every open booking of the current filter with select_all=1, keeping both views" do
-      post :assign, params: {select_all: "1", secondary_cost_center_number: "3800",
-                             ubf: "!(!(!(k,in,'66630')))", uaf: "!(!(!(cc2,in,'3810')))"}
+    describe "Sekundäre Kostenstelle setzen" do
+      it "sets it on every selected booking, replacing another one" do
+        post :bulk, params: {bulk_action: "secondary_cost_center", secondary_cost_center_number: "3800",
+                             ubu: "cc2.any", booking_ids: [open_oepnv.id, assigned_unit.id]}
 
-      expect(flash[:notice]).to start_with("2 Buchungen")
-      expect([open_oepnv, open_oepnv_2].map { |b| b.reload.secondary_cost_center_number }).to eq(%w[3800 3800])
-      expect(open_km.reload.secondary_cost_center_number).to be_nil
-      expect(refund.reload.secondary_cost_center_number).to be_nil
-      expect(response).to redirect_to(reconciliation_unit_bookings_path(ubf: "!(!(!(k,in,'66630')))",
-        uaf: "!(!(!(cc2,in,'3810')))"))
+        expect(flash[:notice]).to eq("2 Buchungen: sekundäre Kostenstelle 3800 UL-Team-Wochenende gesetzt.")
+        expect([open_oepnv, assigned_unit].map { |b| b.reload.secondary_cost_center_number }).to eq(%w[3800 3800])
+      end
+
+      it "sets it on every booking of the current filter with select_all=1, and on the chosen atoms" do
+        post :bulk, params: {bulk_action: "secondary_cost_center", select_all: "1",
+                             secondary_cost_center_number: "3800", ubf: "!(!(!(k,in,'66630')))"}
+        expect([open_oepnv, open_oepnv_2].map { |b| b.reload.secondary_cost_center_number }).to eq(%w[3800 3800])
+        expect(open_km.reload.secondary_cost_center_number).to be_nil
+        expect(response).to redirect_to(reconciliation_unit_bookings_path(ubf: "!(!(!(k,in,'66630')))"))
+
+        post :bulk, params: {bulk_action: "secondary_cost_center", select_all: "g66680,k66680",
+                             secondary_cost_center_number: "3810"}
+        expect([open_km, refund].map { |b| b.reload.secondary_cost_center_number }).to eq(%w[3810 3810])
+      end
+
+      it "previews what changes, the bookings carrying it already apart" do
+        post :bulk_preview, params: {bulk_action: "secondary_cost_center", secondary_cost_center_number: "3810",
+                                     ubu: "cc2.any", booking_ids: [open_oepnv.id, assigned_unit.id]}
+
+        html = preview_doc
+        expect(html.at_css(".bk-bulk-preview-head").text.squish).to eq("Betrifft 1 Buchung")
+        expect(html.css(".bk-bulk-preview-list tbody td:last-child").map(&:text)).to eq(["— → 3810"])
+        expect(html.text).to include("1 haben schon 3810 Unit Treffen Reisekosten.")
+      end
+
+      it "refuses a unit's cost center and an unknown one, changing nothing" do
+        post :bulk, params: {bulk_action: "secondary_cost_center", booking_ids: [open_oepnv.id],
+                             secondary_cost_center_number: "U1"}
+        expect(flash[:alert]).to include("U1")
+
+        post :bulk, params: {bulk_action: "secondary_cost_center", booking_ids: [open_oepnv.id],
+                             secondary_cost_center_number: "0000"}
+        expect(flash[:alert]).to include("0000")
+        expect(open_oepnv.reload.secondary_cost_center_number).to be_nil
+      end
     end
 
-    it "narrows the open list by cost center, which the filter offers" do
-      WsjrdpCostCenter.create!(number: "U2", name: "Unit U2", is_unit_cost_center: true)
-      other = book(5, primary: "U2")
-      get :index, params: {ubf: "!(!(!(cc,in,'U2')))"}
+    describe "Sekundäre Kostenstelle löschen" do
+      it "takes it off the selected bookings that carry one" do
+        post :bulk, params: {bulk_action: "clear", ubu: "kst.all,cc2.any",
+                             booking_ids: [assigned.id, assigned_unit.id, open_oepnv.id]}
 
-      expect(open_row_ids).to eq([other.id])
-      expect(doc.at_css("form#ub-assign-form")["data-all-count"]).to eq("1")
-    end
+        expect(flash[:notice]).to eq("2 Buchungen: sekundäre Kostenstelle gelöscht.")
+        expect([assigned, assigned_unit].map { |b| b.reload.secondary_cost_center_number }).to eq([nil, nil])
+      end
 
-    it "assigns the bookings of the chosen atoms with select_all=<atoms>" do
-      post :assign, params: {select_all: "g66680,k66680", secondary_cost_center_number: "3810"}
+      it "previews only the bookings with one, and which one goes" do
+        post :bulk_preview, params: {bulk_action: "clear", ubu: "cc2.any",
+                                     booking_ids: [assigned_unit.id, open_oepnv.id]}
 
-      expect(open_km.reload.secondary_cost_center_number).to eq("3810")
-      expect(refund.reload.secondary_cost_center_number).to eq("3810")
-      expect(open_oepnv.reload.secondary_cost_center_number).to be_nil
-    end
+        html = preview_doc
+        expect(html.at_css(".bk-bulk-preview-head").text.squish).to eq("Betrifft 1 Buchung")
+        expect(html.css(".bk-bulk-preview-list thead th").last.text).to eq("Sekundäre Kostenstelle (wird gelöscht)")
+        expect(html.css(".bk-bulk-preview-list tbody td:last-child").map(&:text).join).to include("3810")
+        expect(html.text).to include("1 ohne sekundäre Kostenstelle bleiben unverändert.")
+      end
 
-    # The selection and nothing else: the posted ids, the chosen atoms, or
-    # every assigned booking with select_all=1 -- never the open ones.
-    it "takes the secondary cost center off the selected assigned bookings" do
-      post :clear, params: {booking_ids: [assigned.id, open_oepnv.id]}
-
-      expect(response).to redirect_to(reconciliation_unit_bookings_path)
-      expect(flash[:notice]).to eq("1 Buchungen: sekundäre Kostenstelle gelöscht.")
-      expect(assigned.reload.secondary_cost_center_number).to be_nil
-      expect(assigned_unit.reload.secondary_cost_center_number).to eq("3810")
-
-      post :clear, params: {select_all: "3810"}
-      expect(assigned_unit.reload.secondary_cost_center_number).to be_nil
-    end
-
-    it "clears every assigned booking of the frame's filter with select_all=1, carrying both views" do
-      post :clear, params: {select_all: "1", ubf: "!(!(!(k,in,'66630')))", uaf: "!(!(!(cc2,in,'3810')))"}
-
-      expect(response).to redirect_to(reconciliation_unit_bookings_path(ubf: "!(!(!(k,in,'66630')))",
-        uaf: "!(!(!(cc2,in,'3810')))"))
-      expect(flash[:notice]).to eq("1 Buchungen: sekundäre Kostenstelle gelöscht.")
-      expect(assigned_unit.reload.secondary_cost_center_number).to be_nil
-      expect(assigned.reload.secondary_cost_center_number).to eq("U1")
-      expect(open_oepnv.reload.secondary_cost_center_number).to be_nil
-
-      post :clear, params: {select_all: "1"}
-      expect(DatevBooking.where.not(secondary_cost_center_number: nil).count).to eq(0)
-    end
-
-    it "refuses a unit's cost center and an unknown one, changing nothing" do
-      post :assign, params: {booking_ids: [open_oepnv.id], secondary_cost_center_number: "U1"}
-      expect(flash[:alert]).to include("U1")
-
-      post :assign, params: {booking_ids: [open_oepnv.id], secondary_cost_center_number: "0000"}
-      expect(flash[:alert]).to include("0000")
-      expect(open_oepnv.reload.secondary_cost_center_number).to be_nil
+      it "says so when none of the selected bookings carries one" do
+        post :bulk, params: {bulk_action: "clear", booking_ids: [open_oepnv.id]}
+        expect(flash[:alert]).to eq("Keine der ausgewählten Buchungen ist betroffen.")
+      end
     end
 
     it "says so when nothing is selected" do
-      post :assign, params: {secondary_cost_center_number: "3810"}
+      post :bulk, params: {bulk_action: "secondary_cost_center", secondary_cost_center_number: "3810"}
       expect(flash[:alert]).to eq("Keine Buchungen ausgewählt.")
     end
 
-    it "serves the assigned bookings as the frame the collapsed section loads" do
-      request.headers["Turbo-Frame"] = "unit_bookings_assigned"
-      get :assigned
-
-      expect(response).to be_successful
-      expect(response.body).not_to include("<html")
-      expect(doc.at_css("turbo-frame#unit_bookings_assigned")).to be_present
-      expect(response.body.scan(/bkframe-ua-(\d+)/).flatten.map(&:to_i).uniq)
-        .to contain_exactly(assigned.id, assigned_unit.id)
-      form = doc.at_css("form#ua-clear-form")
-      expect(form["action"]).to eq(clear_reconciliation_unit_bookings_path)
-      expect(form["data-hint-many"]).to eq("Löscht die sekundäre Kostenstelle bei %{count} ausgewählten Buchungen")
-      expect(form.at_css("button[type=submit]")["disabled"]).to be_present
-      expect(form.at_css(".ub-selection-hint")).to be_present
-      expect(doc.css("turbo-frame#unit_bookings_assigned thead th[data-colkey]").pluck("data-colkey"))
-        .to eq(%w[booking_date signed_base_amount posting_text cost_center_number secondary_cost_center_number
-          account_number])
-      expect(doc.at_css("turbo-frame#unit_bookings_assigned .flt-line")).to be_present
-      expect(doc.at_css("turbo-frame#unit_bookings_assigned .pane-toggle")).to be_present
-      expect(doc.css("turbo-frame#unit_bookings_assigned .text-muted.small").map(&:text).join).not_to include("Summe (gefiltert)")
-      expect(doc.css(".ub-select").map { |b| b.text.strip })
-        .to eq(["Keine", "Alle (2)", "3800 UL-Team-Wochenende", "nur (1)", "3810 Unit Treffen Reisekosten", "nur (1)"])
-      expect(doc.css("input.bk-select-check").pluck("data-atom")).to contain_exactly("3800", "3810")
-      expect(doc.at_css(".bk-only-selected-toggle")["data-form"]).to eq("ua-clear-form")
-    end
-
-    it "is a tab of the Abstimmung area, and the page carries the lazy frame with the frame's view" do
-      get :index, params: {uaf: "!(!(!(cc2,in,'3810')))"}
+    it "is a tab of the Abstimmung area" do
+      get :index
 
       expect(doc.css(".nav-tabs a, ul.nav a").map { |a| a.text.strip }).to include("TN-Beiträge", "Unit-Buchungen")
-      frame = doc.at_css("turbo-frame#unit_bookings_assigned")
-      expect(frame["src"]).to eq(assigned_reconciliation_unit_bookings_path(uaf: "!(!(!(cc2,in,'3810')))"))
-      expect(frame["loading"]).to eq("lazy")
-      expect(doc.at_css('[data-bs-target="#ub-assigned"]').text.squish)
-        .to eq("Unit-Buchungen mit sekundärer Kostenstelle, die nicht zum Unit-Budget zählen")
-    end
-
-    # The frame's filter: its apply comes back to the frame, and the frame's
-    # clear form carries the filter back to the page.
-    it "filters the assigned bookings inside the frame" do
-      post :apply_assigned, params: {filter_json: [[["secondary_cost_center", "in", "3810"]]].to_json}
-      location = URI.parse(response.location)
-      expect(location.path).to eq(assigned_reconciliation_unit_bookings_path)
-      expect(CGI.unescape(location.query)).to eq("uaf=!(!(!(cc2,in,'3810')))")
-
-      request.headers["Turbo-Frame"] = "unit_bookings_assigned"
-      get :assigned, params: {uaf: "!(!(!(cc2,in,'3810')))"}
-
-      expect(response.body.scan(/bkframe-ua-(\d+)/).flatten.map(&:to_i).uniq).to eq([assigned_unit.id])
-      expect(doc.at_css("form#ua-clear-form")["action"])
-        .to eq(clear_reconciliation_unit_bookings_path(uaf: "!(!(!(cc2,in,'3810')))"))
-      expect(doc.at_css("form#ua-clear-form")["data-all-count"]).to eq("1")
     end
   end
 
   context "as the read tier" do
     before { sign_in(reader) }
 
-    it "reads the page and the section without checkboxes or forms" do
+    it "reads the page without checkboxes or bar" do
       get :index
 
       expect(response).to be_successful
-      expect(open_row_ids.size).to eq(4)
-      expect(doc.at_css("form#ub-assign-form")).to be_nil
-      expect(doc.css("input.bk-select-check")).to be_empty
-
-      request.headers["Turbo-Frame"] = "unit_bookings_assigned"
-      get :assigned
-      expect(doc.at_css("form#ua-clear-form")).to be_nil
+      expect(row_ids.size).to eq(4)
+      expect(doc.at_css(".bk-bulk-box")).to be_nil
       expect(doc.css("input.bk-select-check")).to be_empty
     end
 
-    it "may neither assign nor clear" do
+    it "may run no bulk action" do
       expect do
-        post :assign, params: {booking_ids: [open_oepnv.id], secondary_cost_center_number: "3810"}
+        post :bulk, params: {bulk_action: "secondary_cost_center", booking_ids: [open_oepnv.id],
+                             secondary_cost_center_number: "3810"}
       end.to raise_error(CanCan::AccessDenied)
-      expect { post :clear, params: {booking_ids: [assigned.id]} }.to raise_error(CanCan::AccessDenied)
-      expect(open_oepnv.reload.secondary_cost_center_number).to be_nil
-      expect(assigned.reload.secondary_cost_center_number).to eq("U1")
+      expect { post :bulk, params: {bulk_action: "unit_budget", booking_ids: [open_oepnv.id]} }
+        .to raise_error(CanCan::AccessDenied)
+      expect { post :bulk_preview, params: {select_all: "1"} }.to raise_error(CanCan::AccessDenied)
+      expect(open_oepnv.reload.is_unit_budget).to be_nil
     end
   end
 end

@@ -326,52 +326,70 @@ units see into three disjoint sets and lists the third:
 | mit sekundärer Kostenstelle | the rule says `false`, and a secondary cost center is set |
 | offen | the rule says `false`, primary cost center a unit's own, no secondary cost center |
 
-The open bookings stand in the full bookings table, without its summary line,
-with a user filter on top (the attributes that pin the set — either cost
-center, the Unit-Budget, the always blank secondary cost center — are excluded
-from the picker; the cost center itself stays, to narrow to one unit). An
-injected
-"Vorschlag" column names the secondary cost center that fits the expense
-account on either side of the booking (`PROPOSED_SECONDARY_COST_CENTERS`: the
-travel-cost accounts 66630, 66631, 66680 and 65800 belong to 3810); a proposal
-naming a cost center the master data does not carry is none.
+The page's one bookings table, without its summary line, STARTS with the open
+bookings: three switches of locked conditions
+(`Fin::UnitBookingsController::FIXED_GROUPS`, `doc/wsjrdp/expandable_table.md`,
+"Fixed groups"), in their default positions:
 
-Whoever may update bookings gets the assign controls above the table: a
-select over the assignable cost centers — every cost center that is not a
-unit's own — preset to the proposal, the row checkboxes, a quick-select over
-all pages of the current filter ("Alle (N)", "Keine", one group per atom) and
-the switch "nur Gewählte anzeigen".
-"Auswahl zuweisen" asks with the count, the sum and the cost center, then
-sets `secondary_cost_center_number` on the selected OPEN bookings in one
-statement (`assign!`; an id outside the open set is ignored, a number outside
-the assignable cost centers refused).
+| Switch | Positions (default bold) |
+|---|---|
+| KSt | alle (asterisk) · **Unit-KSt** (`unit_cost_center`) · Unit-KSt primär oder sekundär (`any_unit_cost_center`) |
+| Sek KSt | egal (asterisk) · **leer** · hat Wert |
+| Unit-Budget? | egal (asterisk) · **nein** · ja |
 
-The quick-select groups the open bookings by the account that keeps them out
+The defaults (bold) are the open bookings; "Unit-KSt primär oder sekundär",
+"hat Wert" and "nein" are the set "mit sekundärer Kostenstelle". "Standard"
+goes back to the open bookings. The switches' conditions are no chips
+(`show: :hidden`): the pressed switches say what the table shows. The user filter narrows whatever is
+shown. An injected "Vorschlag"
+column names the secondary cost center that fits the expense account on
+either side of the booking (`PROPOSED_SECONDARY_COST_CENTERS`: the
+travel-cost accounts 66630, 66631, 66680 and 65800 belong to 3810); a
+proposal naming a cost center the master data does not carry is none.
+
+Whoever may update bookings gets the row checkboxes and the table's bar of
+bulk actions (always there, its actions disabled until a booking is
+selected), with the quick-select over all pages of the current filter
+("Keine", "Alle (N)", one group per atom) and the switch "nur Gewählte
+anzeigen" (`doc/wsjrdp/expandable_table.md`, "Bulk actions"; `ACTIONS`). Each
+action works on the selection as it is, splits it itself (`partition`) and
+shows that split in its panel before it runs:
+
+- "Als Unit-Budget markieren" sets the booking's own `is_unit_budget` to
+  `true` (`mark_unit_budget!`) on the selected bookings not marked yet whose
+  primary cost center is a unit's own, the panel showing their answer so far
+  ("Bisher": `nein (automatisch, Konto 66630)`). A booking on any other cost
+  center cannot count against a unit's budget -- the budget assignment
+  follows its primary cost center -- so it is listed apart with a warning and
+  left alone; the ones marked already are counted. Taking the mark back is
+  the single booking's edit page.
+- "Sekundäre Kostenstelle setzen" opens a select over the assignable cost
+  centers -- every cost center that is not a unit's own -- preset to the
+  proposal, and sets `secondary_cost_center_number` on every selected booking
+  that carries another one (`assign!`), the panel showing the change (`— →
+  3810`, `3800 → 3810`); the ones carrying it already are counted. A number
+  outside the assignable cost centers is refused.
+- "Sekundäre Kostenstelle löschen" takes it off the selected bookings that
+  carry one (`clear!`), the panel listing them with the cost center that
+  goes; the others are counted.
+
+Each writes in one statement and ignores an id outside the current filter.
+
+The quick-select groups the shown bookings by the account that keeps them out
 of the Unit-Budget, the deciding side of the rule above: "Konto 66630 …"
 where the Konto said no, "Gegenkto 66680 …" where the Gegenkonto alone did (a
 refund paid from the bank account), "Buchung (Flag nein)" where the booking's
 own flag did. That group is the row's ATOM (`OPEN_ATOM_SQL`, selected as
-`selection_atom` and carried in `data-atom`); the form carries each atom's
-count and sum (`data-<atom>-count` / `-sum`), and `select_all` posts either
-`1` or the chosen atoms, the way the TN-Beiträge page posts its rating tiers.
+`selection_atom` and carried in `data-atom`); the bar's form carries each
+atom's count and sum (`data-<atom>-count` / `-sum`), and `select_all` posts
+either `1` or the chosen atoms, the way the TN-Beiträge page posts its rating
+tiers.
 
-The bookings that already carry a secondary cost center stand in a collapsed
-section at the end of the page, "Unit-Buchungen mit sekundärer Kostenstelle,
-die nicht zum Unit-Budget zählen", loaded into a turbo frame when the section
-opens (`#assigned`). The frame holds its own bookings browser, filter
-included: the filter's apply (`#apply_assigned`), the paging and the sorting
-navigate the frame, and the frame's state travels in the page's URL under the
-`ua` prefix, so the page hands it to the frame and a bulk action carries it
-back. The write tier gets the same controls there, grouped by the pair's
-central cost center (`ASSIGNED_ATOM_SQL`): "Sekundäre Kostenstelle löschen"
-takes it off the selected ASSIGNED bookings of the frame's filter (`clear!`).
-
-Behind each button a hint names how many bookings the action will touch —
-the current selection over all pages: "Löscht die sekundäre Kostenstelle bei
-2 ausgewählten Buchungen", "Setzt 3810 … als sekundäre Kostenstelle bei 86
-ausgewählten Buchungen" — and the button is disabled at zero; the confirm
-dialog repeats the sentence. The hint follows the selection's
-`exptbl:selection-change` event (`doc/wsjrdp/expandable_table.md`, "Row
-selection") and the form's select. A bulk action remembers the page's scroll
-position and whether the section was open (sessionStorage), and the page
-comes back that way once the section's frame has loaded.
+The bar says how many bookings are selected over all pages and their sum.
+Each action opens its panel: the select of "Sekundäre Kostenstelle setzen",
+the sentence of what it will do, the bookings it changes -- date, amount,
+description, cost center and what changes, at most 200, from
+`#bulk_preview` --, the selected bookings it leaves alone, and the button
+that runs it. A bulk action remembers the page's scroll position
+(sessionStorage, on the bar's `exptbl:bulk-submit`), and the page comes back
+there.

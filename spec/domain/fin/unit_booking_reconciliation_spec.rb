@@ -117,24 +117,34 @@ describe Fin::UnitBookingReconciliation do
     expect(reconciliation.assignable_cost_centers.map(&:number)).not_to include("U1", "U2")
   end
 
-  it "assigns the secondary cost center to the open bookings among the ids only" do
-    changed = reconciliation.assign!([open_oepnv.id, unit_budget.id, elsewhere.id, 0], "3810")
+  it "assigns the secondary cost center to the bookings among the ids, whatever they carried" do
+    changed = reconciliation.assign!([open_oepnv.id, unit_with_central.id, elsewhere.id, 0], "3800")
 
-    expect(changed).to eq(1)
-    expect(open_oepnv.reload.secondary_cost_center_number).to eq("3810")
+    expect(changed).to eq(3)
+    expect([open_oepnv, unit_with_central, elsewhere].map { |b| b.reload.secondary_cost_center_number })
+      .to eq(%w[3800 3800 3800])
     expect(unit_budget.reload.secondary_cost_center_number).to be_nil
-    expect(elsewhere.reload.secondary_cost_center_number).to be_nil
-    expect(reconciliation.open.pluck(:id)).to eq([open_km.id])
   end
 
-  it "takes the secondary cost center off the assigned bookings among the ids only" do
-    changed = reconciliation.clear!([central_with_unit.id, unit_with_central.id, unit_budget_with_secondary.id, 0])
+  it "marks the bookings among the ids on a unit's cost center as Unit-Budget, not a central one" do
+    unit_budget.update_columns(is_unit_budget: true)
+    changed = reconciliation.mark_unit_budget!([open_oepnv.id, unit_with_central.id, central_with_unit.id,
+      elsewhere.id, unit_budget.id, 0])
 
     expect(changed).to eq(2)
-    expect(central_with_unit.reload.secondary_cost_center_number).to be_nil
-    expect(unit_with_central.reload.secondary_cost_center_number).to be_nil
-    expect(unit_budget_with_secondary.reload.secondary_cost_center_number).to eq("3810")
-    expect(reconciliation.open.pluck(:id)).to contain_exactly(open_oepnv.id, open_km.id, unit_with_central.id)
+    expect([open_oepnv, unit_with_central].map { |b| b.reload.is_unit_budget }).to eq([true, true])
+    expect([central_with_unit, elsewhere].map { |b| b.reload.is_unit_budget }).to eq([nil, nil])
+    expect(reconciliation.markable(DatevBooking.all).pluck(:id)).not_to include(unit_budget.id, central_with_unit.id)
+    expect(reconciliation.unit_budget.pluck(:id)).to include(open_oepnv.id, unit_with_central.id)
+  end
+
+  it "takes the secondary cost center off the bookings among the ids that carry one" do
+    changed = reconciliation.clear!([central_with_unit.id, unit_with_central.id, unit_budget_with_secondary.id,
+      open_oepnv.id, 0])
+
+    expect(changed).to eq(3)
+    expect([central_with_unit, unit_with_central, unit_budget_with_secondary]
+      .map { |b| b.reload.secondary_cost_center_number }).to eq([nil, nil, nil])
   end
 
   it "refuses a number that is no assignable cost center" do

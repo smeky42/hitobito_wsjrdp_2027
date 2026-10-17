@@ -8,180 +8,225 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 # The Abstimmung page "Unit-Buchungen" at /fin/reconciliation/unit_bookings
-# (Fin::UnitBookingReconciliation): the figures over what the units see, the
-# open bookings with a quick-select by the deciding account and the bulk
-# assignment of a secondary cost center, and -- lazily loaded into a collapsed
-# section -- the bookings that already carry one, with a quick-select by
-# central cost center and the bulk removal of the secondary cost center. Both
-# lists carry the bookings filter; the assigned one's lives inside its turbo
-# frame, so its apply comes back to the frame. Renders under the Abstimmung
-# sheet with its tabs (Sheet::Fin::UnitBooking).
+# (Fin::UnitBookingReconciliation): the figures over what the units see and one
+# bookings table. The table starts with the OPEN bookings -- three switches of
+# locked conditions (FIXED_GROUPS: the cost center a unit's own, no secondary
+# cost center, not counting against the Unit-Budget) -- whose other positions
+# the Schnellauswahl offers -- "Unit-KSt primär oder sekundär", "hat Wert" and
+# "nein" are the bookings that carry a secondary cost center --, "Standard"
+# the open ones again (doc/wsjrdp/expandable_table.md, "Fixed groups"). The user's filter narrows
+# whatever is shown.
+#
+# Its bar of bulk actions (ACTIONS, Wsjrdp::BulkActions) marks the selection as
+# Unit-Budget, sets or takes off its secondary cost center. Each action splits
+# the selection itself (`partition`): what it changes, with what changes, and
+# what it leaves alone -- which the panel previews and the action keeps to.
+# Renders under the Abstimmung sheet with its tabs (Sheet::Fin::UnitBooking).
 class Fin::UnitBookingsController < Fin::FinController
   include Wsjrdp::TableStateful
+  include Wsjrdp::BulkActionable
 
   before_action :authorize_action
-  # Assigning and clearing WRITE the bookings' secondary cost center, so they
-  # need the write tier on top of the section's :show gate, like the booking's
-  # own edit page.
-  before_action :authorize_write, only: %i[assign clear]
+  # The bulk actions WRITE the bookings, so they need the write tier on top of
+  # the section's :show gate, like the booking's own edit page (each action
+  # names the same right for the bar).
+  before_action :authorize_write, only: %i[bulk bulk_preview]
 
-  helper_method :reconciliation, :open_bookings, :assigned_bookings, :open_atoms, :assigned_atoms,
-    :filtered_open_figure, :assigned_figure, :may_assign?
+  helper_method :reconciliation, :bookings, :atoms, :filtered_figure, :may_assign?, :bulk_totals
 
-  # The page pins each list itself (Fin::UnitBookingReconciliation), so the
-  # user's filter offers none of the attributes that pin it: either cost center
-  # and the Unit-Budget on both lists, the secondary cost center -- always blank
-  # -- on the open one. The cost center itself stays: narrowing to one unit is
-  # what the filter is for.
-  OPEN_PINNED_FILTER_ATTRIBUTES = %i[any_cost_center unit_budget secondary_cost_center].freeze
-  ASSIGNED_PINNED_FILTER_ATTRIBUTES = %i[any_cost_center unit_budget].freeze
+  WRITE = [:update, DatevBooking].freeze
 
-  # The open bookings ("ub"): the user's filter narrows the pinned set and stays
-  # in the URL, so the page always shows what its link says. The Unit-Budget
-  # column, "nein" on every row here, is offered rather than shown.
-  OPEN_POLICY = wsjrdp_expandable_table_policy prefix: "ub",
-    columns: Fin::DatevBookingsColumns.codec,
-    sort: {hidden: [["booking_date", "desc"]]},
-    cols: {default: %w[booking_date signed_base_amount posting_text cost_center_number account_number]},
-    per_page: {default: 50},
-    filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
-             exclude: OPEN_PINNED_FILTER_ATTRIBUTES},
-    pane: {default: 0}
+  # Three questions the table answers with locked conditions, one switch each
+  # in the Schnellauswahl (doc/wsjrdp/expandable_table.md, "Fixed groups");
+  # their defaults are the open bookings (Fin::UnitBookingReconciliation#open).
+  # None of them the user can edit; the user filter only narrows. Their
+  # conditions stay out of the filter line (show: :hidden): the pressed
+  # switches say what is shown.
+  FIXED_GROUPS = [
+    {key: "kst", label: "KSt", default: "unit", show: :hidden,
+     members: [{key: "all", label: "alle", slots: nil},
+       {key: "unit", label: "Unit-KSt", slots: [[["unit_cost_center", "in", "true"]]]},
+       {key: "unit_any", label: "Unit-KSt primär oder sekundär",
+        slots: [[["any_unit_cost_center", "in", "true"]]]}]},
+    {key: "cc2", label: "Sek KSt", default: "blank", show: :hidden,
+     members: [{key: "any", label: "egal", slots: nil},
+       {key: "blank", label: "leer", slots: [[["secondary_cost_center", "blank"]]]},
+       {key: "set", label: "hat Wert", slots: [[["secondary_cost_center", "present"]]]}]},
+    {key: "ub", label: "Unit-Budget?", default: "no", show: :hidden,
+     members: [{key: "any", label: "egal", slots: nil},
+       {key: "no", label: "nein", slots: [[["unit_budget", "in", "false"]]]},
+       {key: "yes", label: "ja", slots: [[["unit_budget", "in", "true"]]]}]}
+  ].freeze
 
-  # The assigned bookings ("ua"), in the lazily loaded section: own paging,
-  # sorting and filter, all in the URL as well -- the page hands them to the
-  # frame, and a bulk action carries them back to the page. The secondary cost
-  # center stands right behind the primary one; the Unit-Budget column, "nein"
-  # on every row here, is offered rather than shown.
-  ASSIGNED_POLICY = wsjrdp_expandable_table_policy prefix: "ua",
+  # The bookings ("ub"): the filter -- pins, lifts and the user's part -- stays
+  # in the URL, so the page always shows what its link says.
+  POLICY = wsjrdp_expandable_table_policy prefix: "ub",
     columns: Fin::DatevBookingsColumns.codec,
     sort: {hidden: [["booking_date", "desc"]]},
     cols: {default: %w[booking_date signed_base_amount posting_text cost_center_number
       secondary_cost_center_number account_number]},
     per_page: {default: 50},
-    filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
-             exclude: ASSIGNED_PINNED_FILTER_ATTRIBUTES},
+    filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema, fixed_groups: FIXED_GROUPS},
     pane: {default: 0}
+
+  # What the bar over the selected bookings offers.
+  ACTIONS = Wsjrdp::BulkActions.define(noun: {one: "Buchung", many: "Buchungen"}) do |a|
+    a.action key: "unit_budget", label: "Als Unit-Budget markieren", icon: :wallet,
+      hint: {one: "Zählt 1 ausgewählte Buchung zum Unit-Budget",
+             many: "Zählt %{count} ausgewählte Buchungen zum Unit-Budget"},
+      done: "%{count} Buchungen: als Unit-Budget markiert.", authorize: WRITE,
+      partition: :unit_budget_partition, apply: :bulk_mark_unit_budget
+    a.action key: "secondary_cost_center", label: "Sekundäre Kostenstelle setzen", icon: :tag,
+      param: {name: :secondary_cost_center_number, label: "Sekundäre Kostenstelle",
+              options: :secondary_cost_center_options, default: :proposed_secondary_cost_center},
+      hint: {one: "Setzt %{target} als sekundäre Kostenstelle bei 1 ausgewählten Buchung",
+             many: "Setzt %{target} als sekundäre Kostenstelle bei %{count} ausgewählten Buchungen"},
+      done: "%{count} Buchungen: sekundäre Kostenstelle %{target} gesetzt.", authorize: WRITE,
+      partition: :assign_partition, apply: :bulk_assign
+    a.action key: "clear", label: "Sekundäre Kostenstelle löschen", icon: :eraser, danger: true,
+      hint: {one: "Löscht die sekundäre Kostenstelle bei 1 ausgewählten Buchung",
+             many: "Löscht die sekundäre Kostenstelle bei %{count} ausgewählten Buchungen"},
+      done: "%{count} Buchungen: sekundäre Kostenstelle gelöscht.", authorize: WRITE,
+      partition: :clear_partition, apply: :bulk_clear
+  end
+
+  # The columns of a panel's list of the bookings an action will touch (the
+  # action's partition adds what changes).
+  PREVIEW_COLUMNS = %w[booking_date signed_base_amount posting_text cost_center_number].freeze
 
   def index
   end
 
-  # Apply target of the open table's filter builder (PRG), keeping the assigned
-  # table's view.
+  # Apply target of the table's filter builder (PRG).
   def apply
-    wsjrdp_apply_table_filter(open_table_state,
-      redirect_to: reconciliation_unit_bookings_path(assigned_table_state.wire_params))
+    wsjrdp_apply_table_filter(table_state, redirect_to: reconciliation_unit_bookings_path)
   end
 
-  # The assigned bookings, as the turbo frame the page's collapsed section
-  # loads when it opens; a direct visit gets the frame inside the page.
-  def assigned
-    render layout: false if request.headers["Turbo-Frame"].present?
+  # Runs a bulk action (ACTIONS) on the selection: the posted booking_ids, or
+  # with select_all every booking of the current filter ("1") or those of the
+  # named atoms (the quick-select). Ids outside the filtered table are ignored.
+  def bulk
+    redirect_back_to_list(**run_bulk_action(ACTIONS, scope: filtered, id_param: :booking_ids,
+      atoms: atoms_of(Fin::UnitBookingReconciliation::OPEN_ATOM_SQL)))
   end
 
-  # Apply target of the assigned table's filter builder, which submits inside
-  # the frame: the redirect renders the frame anew.
-  def apply_assigned
-    wsjrdp_apply_table_filter(assigned_table_state,
-      redirect_to: assigned_reconciliation_unit_bookings_path)
-  end
-
-  # Sets ONE secondary cost center on the selected open bookings: the posted
-  # booking_ids, or with select_all every open booking of the current filter
-  # ("1") or those of the named atoms (a comma-separated list, the
-  # quick-select). Ids outside the open set are ignored by the reconciliation.
-  def assign
-    ids = selected_ids(filtered_open, Fin::UnitBookingReconciliation::OPEN_ATOM_SQL)
-    return redirect_back_to_list(alert: "Keine Buchungen ausgewählt.") if ids.empty?
-
-    number = params[:secondary_cost_center_number].to_s
-    count = reconciliation.assign!(ids, number)
-    target = reconciliation.assignable_cost_centers.find { |cost_center| cost_center.number == number }
-    label = Fin::UnitBookingReconciliation.label(target)
-    redirect_back_to_list(notice: "#{count} Buchungen: sekundäre Kostenstelle #{label} gesetzt.")
-  rescue ArgumentError => e
-    redirect_back_to_list(alert: e.message)
-  end
-
-  # Takes the secondary cost center off the selected assigned bookings of the
-  # current filter, the same way.
-  def clear
-    ids = selected_ids(assigned_scope, Fin::UnitBookingReconciliation::ASSIGNED_ATOM_SQL)
-    return redirect_back_to_list(alert: "Keine Buchungen ausgewählt.") if ids.empty?
-
-    count = reconciliation.clear!(ids)
-    redirect_back_to_list(notice: "#{count} Buchungen: sekundäre Kostenstelle gelöscht.")
+  # The bookings a bulk action would touch, for the panels of its bar
+  # (Wsjrdp::BulkActionable#render_bulk_preview).
+  def bulk_preview
+    render_bulk_preview(ACTIONS, scope: filtered, id_param: :booking_ids,
+      atoms: atoms_of(Fin::UnitBookingReconciliation::OPEN_ATOM_SQL),
+      order: {booking_date: :desc, id: :desc}, preload: Fin::DatevBookingsColumns::PRELOADS,
+      columns: ->(view) {
+        view.booking_table_columns(condensed: true).select { |col| PREVIEW_COLUMNS.include?(col[:key]) }
+      })
   end
 
   private
+
+  Partition = Wsjrdp::BulkActions::Partition
+  Group = Wsjrdp::BulkActions::Group
+
+  # Als Unit-Budget markieren: the bookings not marked yet on a unit's own cost
+  # center, with their answer so far. A booking on any other cost center cannot
+  # count against a unit's budget -- the budget assignment follows its primary
+  # cost center (doc/fin/unit_budget.md) -- so it is shown apart, with a
+  # warning, and left alone; so are the ones marked already.
+  def unit_budget_partition(selected, _value)
+    unmarked = reconciliation.unmarked(selected)
+    markable = reconciliation.markable(selected)
+    Partition.new(affected: DatevBooking.with_unit_budget.where(id: markable.select(:id)),
+      columns: [{label: "Bisher", cell: ->(booking) { helpers.fin_format_datev_booking_is_unit_budget(booking) }}],
+      groups: [
+        Group.new(rows: unmarked.where.not(id: markable.select(:id)), warning: true,
+          text: "%{count} mit einer primären Kostenstelle, die keine Unit-Kostenstelle ist: " \
+                "Sie lassen sich keiner Unit zuordnen und werden nicht markiert."),
+        Group.new(rows: selected.where(is_unit_budget: true), text: "%{count} sind schon als Unit-Budget markiert.")
+      ])
+  end
+
+  # Sekundäre Kostenstelle setzen: every selected booking whose secondary cost
+  # center is another one, with the change; the ones carrying it already stay.
+  def assign_partition(selected, number)
+    target = reconciliation.assignable_cost_center!(number)
+    Partition.new(
+      affected: selected.where("datev_bookings.secondary_cost_center_number IS DISTINCT FROM ?", target.number),
+      columns: [{label: "Sekundäre Kostenstelle",
+                 cell: ->(booking) { "#{booking.secondary_cost_center_number.presence || "—"} → #{target.number}" }}],
+      groups: [Group.new(rows: selected.where(secondary_cost_center_number: target.number),
+        text: "%{count} haben schon #{Fin::UnitBookingReconciliation.label(target)}.")]
+    )
+  end
+
+  # Sekundäre Kostenstelle löschen: the selected bookings that carry one, with
+  # the one that goes; the others stay as they are.
+  def clear_partition(selected, _value)
+    Partition.new(affected: selected.where.not(secondary_cost_center_number: nil),
+      columns: [{label: "Sekundäre Kostenstelle (wird gelöscht)",
+                 cell: ->(booking) { helpers.fin_format_datev_booking_secondary_cost_center_number(booking) }}],
+      groups: [Group.new(rows: selected.where(secondary_cost_center_number: nil),
+        text: "%{count} ohne sekundäre Kostenstelle bleiben unverändert.")])
+  end
+
+  # The bulk actions' work (Wsjrdp::BulkActions `apply`), on the rows the
+  # partition calls affected; each answers how many bookings changed.
+  def bulk_mark_unit_budget(ids, _value) = reconciliation.mark_unit_budget!(ids)
+
+  def bulk_assign(ids, number) = reconciliation.assign!(ids, number)
+
+  def bulk_clear(ids, _value) = reconciliation.clear!(ids)
+
+  # The secondary cost centers the bar offers, the one for the travel
+  # accounts chosen at first.
+  def secondary_cost_center_options
+    reconciliation.assignable_cost_centers
+      .map { |cost_center| [Fin::UnitBookingReconciliation.label(cost_center), cost_center.number] }
+  end
+
+  def proposed_secondary_cost_center = reconciliation.proposal_for("66630")&.number
+
+  # The quick-select's atoms as rows of a scope.
+  def atoms_of(atom_sql) = ->(scope, keys) { reconciliation.with_atoms(scope, atom_sql, keys) }
 
   def reconciliation
     @reconciliation ||= Fin::UnitBookingReconciliation.new
   end
 
-  def open_table_state = wsjrdp_expandable_table_state(OPEN_POLICY)
+  def table_state = wsjrdp_expandable_table_state(POLICY)
 
-  def assigned_table_state = wsjrdp_expandable_table_state(ASSIGNED_POLICY)
-
-  # The open bookings the user's filter leaves, with the resolved Unit-Budget
-  # columns the table's cells read.
-  def filtered_open
-    @filtered_open ||= open_table_state.filter.scope(reconciliation.open(DatevBooking.with_unit_budget))
+  # The bookings the filter -- pins, lifts and the user's part -- leaves, with
+  # the resolved Unit-Budget columns the table's cells read.
+  def filtered
+    @filtered ||= table_state.filter.scope(DatevBooking.with_unit_budget)
   end
 
-  # The assigned bookings the frame's filter leaves.
-  def assigned_scope
-    @assigned_scope ||= assigned_table_state.filter.scope(reconciliation.assigned(DatevBooking.with_unit_budget))
-  end
-
-  def open_bookings
-    @open_bookings ||= rows(open_table_state,
-      reconciliation.with_atom(filtered_open, Fin::UnitBookingReconciliation::OPEN_ATOM_SQL))
-  end
-
-  def assigned_bookings
-    @assigned_bookings ||= rows(assigned_table_state,
-      reconciliation.with_atom(assigned_scope, Fin::UnitBookingReconciliation::ASSIGNED_ATOM_SQL))
-  end
-
-  def rows(state, relation)
-    Wsjrdp::ExpandableTableRows.new(state, relation,
+  def bookings
+    @bookings ||= Wsjrdp::ExpandableTableRows.new(table_state,
+      reconciliation.with_atom(filtered, Fin::UnitBookingReconciliation::OPEN_ATOM_SQL),
       sort: Fin::DatevBookingsColumns.sort_expressions,
       sum: :signed_base_amount, preload: Fin::DatevBookingsColumns::PRELOADS)
   end
 
-  # The quick-selects: the open bookings the filter leaves by deciding account,
-  # the assigned ones the frame's filter leaves by central cost center.
-  def open_atoms
-    @open_atoms ||= reconciliation.open_atoms(filtered_open)
+  # The quick-select: the bookings the filter leaves by the account that keeps
+  # them out of the Unit-Budget (or decides it).
+  def atoms
+    @atoms ||= reconciliation.open_atoms(filtered)
   end
 
-  def assigned_atoms
-    @assigned_atoms ||= reconciliation.assigned_atoms(assigned_scope)
+  # Count and sum (cents) of the whole table and of each quick-select atom, for
+  # the bar's figures of an all-pages selection (t.bulk_actions totals:).
+  def bulk_totals(figure, atoms)
+    cents = ->(sum) { (sum * 100).round }
+    {"all" => [figure.count, cents.call(figure.sum)]}
+      .merge(atoms.to_h { |atom| [atom.key, [atom.count, cents.call(atom.sum)]] })
   end
 
-  def filtered_open_figure
-    @filtered_open_figure ||= reconciliation.figure(filtered_open)
+  def filtered_figure
+    @filtered_figure ||= reconciliation.figure(filtered)
   end
 
-  def assigned_figure
-    @assigned_figure ||= reconciliation.figure(assigned_scope)
-  end
-
-  # The selection a bulk action posts: every row of the scope (select_all=1),
-  # the rows of the named atoms (select_all=<atoms>), else the posted ids.
-  def selected_ids(scope, atom_sql)
-    spec = params[:select_all].to_s
-    return scope.pluck(:id) if spec == "1"
-    return reconciliation.with_atoms(scope, atom_sql, spec.split(",")).pluck(:id) if spec.present?
-
-    Array(params[:booking_ids]).map(&:to_i)
-  end
-
-  # Back to the page as it was: the URL-chosen params of both tables.
+  # Back to the page as it was: the URL-chosen params of the table.
   def redirect_back_to_list(**flash)
-    carry = open_table_state.wire_params.merge(assigned_table_state.wire_params)
-    redirect_to reconciliation_unit_bookings_path(carry), **flash
+    redirect_to reconciliation_unit_bookings_path(table_state.wire_params), **flash
   end
 
   def authorize_action
@@ -192,7 +237,7 @@ class Fin::UnitBookingsController < Fin::FinController
     authorize!(:update, DatevBooking)
   end
 
-  # The same gate for the views: whoever may not assign gets neither the
-  # checkboxes nor the forms; the lists stay a reading view.
+  # The same gate for the views: whoever may not write gets neither the
+  # checkboxes nor the bar; the table stays a reading view.
   def may_assign? = can?(:update, DatevBooking)
 end
