@@ -202,7 +202,11 @@ describe Group::BookkeepingController do
     def column_menu = doc.at_css(".tbl-burger-panel")
 
     # The applied USER conditions, as the filter line words them.
-    def chip_texts = doc.css(".flt-chip").map { |chip| chip.text.strip }
+    # The chips of the user's own conditions (the group's pinned cost centers
+    # show as a locked chip of their own).
+    def chip_texts = doc.css(".flt-chip:not(.flt-chip-locked)").map { |chip| chip.text.strip }
+
+    def locked_chip_texts = doc.css(".flt-chip.flt-chip-locked").map { |chip| chip.text.squish }
 
     # The Schnellauswahl toggle links by label, each as its raw <a> tag.
     # Keyed by the link's text -- an icon-only button (the unrestricted
@@ -413,6 +417,8 @@ describe Group::BookkeepingController do
       show(groups(:unit_b))
       expect(response).to be_successful
       expect(chip_texts).to be_empty
+      # The group's own cost centers stand as a locked chip, whatever the user filtered.
+      expect(locked_chip_texts).to eq(["Kostenstelle oder sekundäre Kostenstelle ist B1 Kostenstelle B1"])
     end
 
     # The one-click shortcut into the user filter, over the same RESOLVED answer

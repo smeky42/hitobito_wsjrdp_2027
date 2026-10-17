@@ -94,6 +94,18 @@
   .flt-chip[title] { cursor: help; }
   .flt-slot:not(.flt-slot-locked) .flt-chip[title] { cursor: pointer; }
   .flt-lock { color: var(--bs-secondary-color, #6c757d); font-size: .75rem; }
+  /* The fixed (locked) conditions as one compact line of small, muted chips. */
+  .flt-locked-row { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding: .1rem 0; }
+  .flt-locked-slot { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
+  .flt-locked-row .flt-chip { cursor: default; border-radius: 4px; padding: .1rem .45rem;
+    border: 1px solid var(--bs-border-color); border-left: 3px solid var(--bs-secondary-color, #6c757d);
+    background: var(--bs-tertiary-bg, var(--bs-light)); color: var(--bs-secondary-color, #6c757d);
+    font-size: .78rem; line-height: 1.4; }
+  .flt-locked-row .flt-chip .fw-semibold { font-weight: 500 !important; color: var(--bs-secondary-color, #6c757d); }
+  .flt-locked-row .flt-chip:hover { border-color: var(--bs-border-color);
+    border-left-color: var(--bs-secondary-color, #6c757d); }
+  .flt-locked-and { color: var(--bs-secondary-color, #6c757d); font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .04em; }
   /* Condensed summary of the fixed (locked) conditions: one muted line with a
      full-text tooltip, shown instead of the full read-only chip rows. */
   .flt-locked-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem;
@@ -190,7 +202,7 @@
 -# one box (see the .flt-pane rules in shared/wsjrdp/_expandable_table_styles).
 .wsjrdp-pane.flt-pane{id: et_pane_id(state), class: ("open" if open), data: {pane_cookie: pane_cookie}}
   .pane-body
-    .flt-root{class: ("flt-disabled" if disabled), data: {catalog: catalog.to_json, value: value.to_json, locked: locked.to_json, locked_catalog: locked_catalog.to_json, condensed_locked: condensed_locked.to_s, disabled: disabled.to_s, presets: presets.map { |p| {key: p.key, label: p.label, slots: p.slots, group: p.group, attribute: p.attribute, value: p.value, group_values: p.group_values} }.to_json, presets_bar: presets_id}}
+    .flt-root{class: ("flt-disabled" if disabled), data: {catalog: catalog.to_json, value: value.to_json, locked: locked.to_json, pinned_out_of_sight: state.filter.hidden_slots.any?.to_s, locked_catalog: locked_catalog.to_json, condensed_locked: condensed_locked.to_s, disabled: disabled.to_s, presets: presets.map { |p| {key: p.key, label: p.label, slots: p.slots, group: p.group, attribute: p.attribute, value: p.value, group_values: p.group_values} }.to_json, presets_bar: presets_id}}
       .flt-slots
       - unless disabled
         .d-flex.flex-wrap.align-items-center.gap-2.mt-2
@@ -706,19 +718,23 @@
         chip.appendChild(text);
         return chip;
       }
-      // Locked conditions as full read-only slots (one row per AND-slot).
+      // Locked conditions as ONE compact line: a lock, then a small read-only
+      // chip per AND-slot (its conditions joined by "oder"), "und" between --
+      // the way the filter line shows the applied filter.
       function renderLockedFull() {
+        var row = el("div", "flt-locked-row");
+        row.title = "Fest vorgegeben – nicht änderbar";
+        row.appendChild(icon("lock")).classList.add("flt-lock");
         locked.forEach(function (slot, li) {
-          if (li > 0) slotsEl.appendChild(el("div", "flt-und", "UND"));
-          var row = el("div", "flt-slot flt-slot-locked");
-          row.title = "Fest vorgegeben – nicht änderbar";
-          row.appendChild(icon("lock")).classList.add("flt-lock");
+          if (li > 0) row.appendChild(el("span", "flt-locked-and", "und"));
+          var group = el("span", "flt-locked-slot");
           slot.forEach(function (cond, ci) {
-            if (ci > 0) row.appendChild(el("span", "flt-or", "oder"));
-            row.appendChild(readonlyChip(cond, " — fest vorgegeben, nicht änderbar"));
+            if (ci > 0) group.appendChild(el("span", "flt-or", "oder"));
+            group.appendChild(readonlyChip(cond, " — fest vorgegeben, nicht änderbar"));
           });
-          slotsEl.appendChild(row);
+          row.appendChild(group);
         });
+        slotsEl.appendChild(row);
       }
       // Locked conditions as ONE compact summary line (condensed_locked):
       // slots joined by " UND ", the conditions within a slot by " ODER ", and a
@@ -825,7 +841,11 @@
           addFirst.appendChild(document.createTextNode(" Bedingung hinzufügen"));
           addFirst.addEventListener("click", function () { openEditor(0, null); });
           emptyRow.appendChild(addFirst);
-          emptyRow.appendChild(el("span", "flt-empty-hint", "Ohne Bedingungen werden alle Einträge angezeigt."));
+          // With conditions out of sight (show: :hidden -- a Schnellauswahl's
+          // switches, a page's own pin) the table is not unfiltered.
+          emptyRow.appendChild(el("span", "flt-empty-hint", root.dataset.pinnedOutOfSight === "true"
+            ? "Ohne eigene Bedingungen gilt nur die Vorgabe der Seite und der Schnellauswahl."
+            : "Ohne Bedingungen werden alle Einträge angezeigt."));
           slotsEl.appendChild(emptyRow);
           if (editor && editor.si === 0) slotsEl.appendChild(buildEditor());
         } else {

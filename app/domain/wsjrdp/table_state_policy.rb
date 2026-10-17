@@ -98,6 +98,7 @@ class Wsjrdp::TableStatePolicy
   #   field     short                    wire form                     default policy
   #   sort      s                        RISON list "bez,nr~"          :remember
   #   cols      c                        "nr,~bez,sum" (~ = hidden)    :remember
+  #   lifts     u                        comma list of fixed keys      :url  (filter's lifted pins)
   #   filter    f                        Rison CNF tree                :url
   #   per_page  z                        integer or "all" (=> :all)    :remember
   #   page      p                        integer                       :remember
@@ -108,6 +109,8 @@ class Wsjrdp::TableStatePolicy
   FIELD_DEFINITIONS = {
     sort: {short: "s", policy: :remember},
     cols: {short: "c", policy: :remember},
+    # Before `filter`: the filter is built knowing which of its pins are lifted.
+    lifts: {short: "u", policy: :url},
     filter: {short: "f", policy: :url},
     per_page: {short: "z", policy: :remember},
     page: {short: "p", policy: :remember},
