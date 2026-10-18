@@ -75,4 +75,38 @@ module Wsjrdp2027::PeopleController
 
     respond_with(entry, &block)
   end
+
+  # Without a group in the URL (/people/:id) the route helpers of the page
+  # that take the group from the current URL -- group_person_tags_path(person_id:
+  # ..., name: ...) of the tags and the like -- take the default group (#parent).
+  def url_options
+    options = super
+    return options if group_in_path? || params[:id].blank? || parent.nil?
+
+    options.merge(_recall: options.fetch(:_recall, {}).merge(group_id: parent.id))
+  end
+
+  private
+
+  # Without a group in the URL (/people/:id) the person's default group
+  # (Person#default_group), as the person's other pages
+  # (Person::StatusController#group); with one, the core's.
+  def parent_entry(clazz)
+    return super unless clazz == ::Group && !group_in_path? && params[:id].present?
+
+    model_ivar_set(::Person.find(params[:id]).default_group)
+  end
+
+  # Without a group in the URL the person by id alone -- the default group
+  # need not be one the person has a role in; the core's otherwise.
+  def find_entry
+    group_in_path? ? super : ::Person.find(params[:id])
+  end
+
+  # Whether the URL names a group (/groups/:group_id/people/:id). The path
+  # alone counts: a group_id in the query string of /people/:id does not
+  # move the page into another group.
+  def group_in_path?
+    request.path_parameters[:group_id].present?
+  end
 end
