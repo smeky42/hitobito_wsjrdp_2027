@@ -62,12 +62,12 @@ class Person::UnitController < ApplicationController
     @person ||= Person.find(params[:id])
   end
 
-  # The group of the URL, without one the person's primary group (the root
-  # group for a person without one), as the status page
+  # The group of the URL, without one the person's default group
+  # (Person#default_group, mostly the primary group), as the status page
   # (Person::StatusController#group): the page works in every group and at
   # /people/:id/... in the primary group.
   def group
-    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : person.default_group
   end
 
   def unit_page_path = helpers.person_subpage_path(:unit, group, person)

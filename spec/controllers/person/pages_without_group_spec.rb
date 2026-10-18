@@ -50,6 +50,16 @@ shared_examples "a person page without a group" do |page, action|
     expect(response).to have_http_status(:ok)
   end
 
+  it "shows the page in a group with a role for a person without a primary group" do
+    ul.update_columns(primary_group_id: nil)
+
+    get action, params: {id: ul.id}
+
+    expect(response).to have_http_status(:ok)
+    # One of the person's groups (the core's groups.first has no order).
+    expect(ul.reload.groups.map(&:id)).to include(assigns(:group).id)
+  end
+
   it "routes the short URL" do
     expect(get: short_path).to route_to("person/#{described_class.controller_path.split("/").last}##{action}",
       id: ul.id.to_s)

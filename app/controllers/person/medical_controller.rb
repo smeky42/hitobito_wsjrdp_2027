@@ -53,6 +53,6 @@ class Person::MedicalController < ApplicationController
   end
 
   def group
-    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : person.default_group
   end
 end

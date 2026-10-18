@@ -91,7 +91,7 @@ class Person::StatusController < ApplicationController
   # The group of the URL, without one (/people/:id/status) the primary group,
   # for the person sheet and the links.
   def group
-    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : person.default_group
   end
 
   # What the status change about to be saved does to the contract: :confirm
