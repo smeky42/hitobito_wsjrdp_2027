@@ -29,6 +29,21 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
     class_name: "AccountingEntry",
     dependent: :nullify
 
+  # The payment the bank transaction belongs to (doc/fin/payments.md): a
+  # return -- or, from statements with transaction details, a debit's single
+  # collection -- names its debit; a collective direct debit credit its
+  # Sammler and order. Set by the importer, or by hand.
+  belongs_to :direct_debit_pre_notification, optional: true, class_name: "WsjrdpDirectDebitPreNotification"
+  belongs_to :direct_debit_payment_info, optional: true, class_name: "WsjrdpDirectDebitPaymentInfo"
+  belongs_to :payment_initiation, optional: true, class_name: "WsjrdpPaymentInitiation"
+
+  # Neither deleted nor replaced by a later statement's copy.
+  scope :current, -> { where(deleted_at: nil, replaced_by_id: nil) }
+  scope :returns, -> { where.not(return_reason: nil) }
+  # Money the bank credited without a return reason -- on a debit's or a
+  # Sammler's link, its collection.
+  scope :collections, -> { where(return_reason: nil, debit_credit: "C") }
+
   # The DATEV booking this bank transaction is reconciled with. More
   # details are recorded in datev_booking_link_meta.
   belongs_to :datev_booking, optional: true

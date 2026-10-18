@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Rückläufer (Zahlungsverkehr): every return debit with the debit and order
+-#  its end-to-end id names; the not assignable ones are marked. A row opens
+-#  into the return's page (show, in its turbo frame). Cells:
+-#  Fin::PaymentsHelper.
+
+#main
+  %h1= t("fin.tabs.payment_returns")
+  %p.text-muted= t("fin.payments.returns_lead")
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows payment_returns, id: "pr"
+    - t.columns payment_return_table_columns, menu: true
+    - t.gaps max: "2rem", grow_max: "30rem"
+    - t.row_key { |entry| entry.id }
+    - t.detail_page { |entry| payment_return_path(entry) }
+    - t.detail_src { |entry| payment_return_path(entry) }
+    - t.footer { |col| payment_return_footer(col, payment_return_totals) }
+    - t.paging per_options: [25, 50, 100, :all]
+    - t.filter apply_url: apply_payment_returns_path
+
+  %p.text-muted.small.mt-2
+    = t("fin.payments.returns_shown", count: payment_returns.total_count,
+      unassigned: payment_return_totals[:unassigned_count])

@@ -57,6 +57,7 @@ Das Sheet rendert links ein Partial (siehe §4). Für Finanzen ist das
 %ul.nav-left-list
   = nav t("fin.nav.overview"), fin_path
   = nav t("fin.nav.accounts"), wsjrdp_fin_accounts_path, %w[fin/acc fin/tx]
+  = nav t("fin.nav.payments"), fin_payments_path,       %w[fin/payments fin/direct_debit_payment_infos]
   = nav t("fin.nav.fees"),     fees_path,                %w[fin/fees fin/person_fees fin/payment_plans fin/individual_payment_plans fin/fee_reductions]
   = nav t("fin.nav.moss"),     moss_path,                %w[fin/moss]
   = nav t("fin.nav.accounting"), bookkeeping_path,       %w[fin/bookkeeping]

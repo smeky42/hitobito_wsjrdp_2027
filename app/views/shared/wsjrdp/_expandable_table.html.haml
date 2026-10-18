@@ -538,7 +538,7 @@
               - if selection
                 %td.bk-select-cell{ **sticky_selection_attrs }
               - columns.each do |col|
-                %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-no-mobile" if col[:mobile] == false), ("exp-no-narrow" if col[:narrow] == false), ("exp-truncate" if col[:truncate] && !condensed), *sticky_classes.call(col)].compact, **sticky_attrs.call(col), data: { colkey: col[:key] } }= footer.call(col)
+                %td.exp-col{ class: [col[:css_class], ("text-end text-nowrap" if col[:numeric]), ("exp-gap" if gap_keys.include?(col[:key])), ("exp-tnum" if col[:tabular_nums]), ("exp-no-mobile" if col[:mobile] == false), ("exp-no-narrow" if col[:narrow] == false), ("exp-truncate" if col[:truncate] && !condensed), *sticky_classes.call(col)].compact, **sticky_attrs.call(col), data: { colkey: col[:key] } }= footer.call(col)
 
   - if paging_bottom_html.present?
     .mt-2= paging_bottom_html

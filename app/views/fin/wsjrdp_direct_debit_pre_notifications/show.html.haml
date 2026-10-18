@@ -4,39 +4,10 @@
 -#  Affero General Public License version 3 or later.
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
-
-#main.row
-  - permitted_attrs_set = Set.new(permitted_attrs)
-  = standard_form(pre_notification, {url: get_pre_notification_path, method: :put}) do |f|
-    = hidden_field_tag("return_url", return_url)
-    = f.error_messages
-    = form_buttons_if_editable(f, cancel_url: cancel_url)
-
-    .mt-3
-    = field_set_tag do
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :created_at, :updated_at)
-      %div.border-top.py-2
-      - try_skip_help = "Wichtig: \"Einzug aussetzen\" hat keine Auswirkung, wenn die SEPA XML Datei für die Übermittlung zur Bank bereits erzeugt wurde."
-      - try_skip_disabled = (f.object.payment_status != "pre_notified")
-      = input_or_render_attrs(f, :try_skip, help_inline: try_skip_help, disabled: try_skip_disabled)
-      - if permitted_attrs_set.include?(:payment_status)
-        = f.labeled_collection_select(:payment_status, Settings.pre_notification_payment_status, :first, :last, {})
-      - else
-        = input_or_render_attrs(f, :payment_status)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :amount_eur)
-      - if !f.object.pre_notified_amount_cents.nil? && (f.object.pre_notified_amount_cents != f.object.amount_cents)
-        = input_or_render_attrs(f, :pre_notified_amount_eur)
-      = input_or_render_attrs(f, :description)
-      = input_or_render_attrs(f, :comment, help_inline: 'Nur sichtbar für Personen mit Buchhaltungs-Rechten')
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :collection_date, :debit_sequence_type, :endtoend_id)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
-      = input_or_render_attrs(f, :mandate_id, :mandate_date)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address)
-      = input_or_render_attrs(f, :creditor_id)
-
-    = form_buttons_if_editable(f, cancel_url: cancel_url)
+-#
+-#  A debit under its person (Fin::WsjrdpDirectDebitPreNotificationsController):
+-#  the Zahlungsverkehr area's detail, leading back to the person's Beitrag.
+= render "fin/direct_debits/detail", debit: @debit, ctx: @ctx, editing: false,
+  edit_url: (can?(:update, @debit) ? edit_wsjrdp_direct_debit_pre_notification_path(@debit, return_url: return_path) : nil),
+  return_path: return_path, back: person_accounting_path(@person),
+  back_label: t("fin.payments.back_to", tab: t("people.tabs.finance"))

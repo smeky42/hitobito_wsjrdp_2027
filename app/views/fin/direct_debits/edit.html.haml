@@ -1,0 +1,13 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of a debit (fin/direct_debits/_detail in edit mode): the
+-#  fields its status lets change (Fin::DebitEditing) as inputs.
+= wsjrdp_detail_frame("dd", @debit.id) do
+  = render "detail", debit: @debit, ctx: @ctx, editing: true,
+    form_url: direct_debit_path(@debit, return_url: return_path),
+    cancel_url: direct_debit_path(@debit, return_url: return_path), return_path: return_path

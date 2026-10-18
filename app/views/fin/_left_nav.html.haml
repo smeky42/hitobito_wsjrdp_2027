@@ -7,7 +7,8 @@
 -#
 -#  Sub-items of the "Finanzen" main-nav section (entered at /fin, the overview
 -#  page): Konten & Wallets holds the money accounts, their statements and the
--#  camt transactions; Beiträge the person fees and the payment plans behind its
+-#  camt transactions; Zahlungsverkehr the payment orders sent from them, their
+-#  debits and returns; Beiträge the person fees and the payment plans behind its
 -#  own overview; Moss the
 -#  Moss overview / transactions; Buchhaltung the DATEV bookkeeping / bookings;
 -#  Abstimmung matches accounting entries with bookings; Controlling is still
@@ -21,6 +22,7 @@
   -# The overview entry needs no fragments: current_page? matches /fin exactly.
   = nav t("fin.nav.overview"), fin_path
   = nav t("fin.nav.accounts"), wsjrdp_fin_accounts_path, %w[fin/acc fin/tx]
+  = nav t("fin.nav.payments"), fin_payments_path, %w[fin/payments fin/direct_debit_payment_infos]
   = nav t("fin.nav.fees"), fees_path, %w[fin/fees fin/person_fees fin/payment_plans fin/individual_payment_plans fin/fee_reductions]
   = nav t("fin.nav.moss"), moss_path, %w[fin/moss]
   = nav t("fin.nav.accounting"), bookkeeping_path, %w[fin/bookkeeping]

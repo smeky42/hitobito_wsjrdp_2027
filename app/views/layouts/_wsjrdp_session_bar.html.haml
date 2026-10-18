@@ -34,12 +34,16 @@
 -# .info-bar reserves in the FLOW push the page down but not the logo -- it
 -# would end up under the bars. Push it down by their height. The admin tab
 -# adds nothing here (height: 0 on desktop), and on a phone the core hides the
--# logo anyway. Covered by spec/controllers/session_settings_spec.rb.
+-# logo anyway. Covered by spec/controllers/session_settings_spec.rb. The same
+-# height is --wsjrdp-session-bars-height, for what sticks to the window's top
+-# edge and has to stay below the bars (the sticky buttons of a finance edit
+-# page, fin/shared/_detail_styles).
 - bar_count = [impersonating, finance_tier_bar?].count { |shown| shown }
 - if impersonating || finance_tier_bar? || show_admin_tab
   :css
     .wsjrdp-session-bar.info-bar .alert { box-sizing: border-box; position: fixed; left: 0; width: var(--wsjrdp-bar-width, 100%); height: 30px; padding: 0 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12.25px; line-height: 28px; border-radius: 0; white-space: nowrap; }
     header.logo { margin-top: #{bar_count * 30}px; }
+    :root { --wsjrdp-session-bars-height: #{bar_count * 30}px; }
     .wsjrdp-session-bar .wsjrdp-bar-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .wsjrdp-session-bar .wsjrdp-bar-note, .wsjrdp-session-bar .wsjrdp-seg, .wsjrdp-session-bar .wsjrdp-bar-action { flex: none; }
     .wsjrdp-session-bar .wsjrdp-seg { display: inline-flex; height: 24px; border: 1px solid var(--bs-alert-color); border-radius: 4px; overflow: hidden; }

@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The page of a Sammler (fin/direct_debit_payment_infos/_detail), also the
+-#  row detail of the Sammler list; on its own page its debits
+-#  (fin/direct_debits/_section).
+= wsjrdp_detail_frame("dpi", @info.id) do
+  = render "detail", info: @info, ctx: @ctx
+  - if @ctx.regular?
+    = render "fin/direct_debits/section", apply_url: apply_debits_direct_debit_payment_info_path(@info)

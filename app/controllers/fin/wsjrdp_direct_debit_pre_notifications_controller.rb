@@ -7,95 +7,57 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+# A debit (pre-notification) under its person, /fin/pn/:id and
+# /fin/pn/:id/edit: the same pages as in the Zahlungsverkehr area
+# (Fin::DebitPages, Fin::DirectDebitsController), under the person's sheet and
+# leading back to the person's Beitrag. The person's Beitrag tab and an
+# entry's page link here. A debit without a person has no page here and is
+# sent to the area's.
+#
+# Rights as in the area: reading with :log on the pre-notification (the audit
+# tier up), editing with :update (the finance tier up), see Fin::DebitEditing.
 class Fin::WsjrdpDirectDebitPreNotificationsController < Fin::FinController
-  include WsjrdpFormHelper
+  include Fin::DebitPages
 
-  before_action :authorize_action
-
-  helper_method :pre_notification
-  helper_method :permitted_attrs
-  helper_method :cancel_url, :return_url
-  helper_method :get_pre_notification_path
+  before_action :load_debit
 
   def show
-    @wsjrdp_direct_debit_pre_notification = pre_notification
-    @person = person
-    @group = group
-    render :show
+    authorize!(:log, @debit)
+    @ctx = Fin::AttrFormatContext.regular
+  end
+
+  def edit
+    authorize!(:update, @debit)
+    @ctx = Fin::AttrFormatContext.regular
   end
 
   def update
-    @wsjrdp_direct_debit_pre_notification = pre_notification
-    @person = person
-    @group = group
-    authorize!(:log, person)
-    pre_notification.attributes = permitted_params
-
-    if pre_notification.save
-      redirect_to return_url
-    else
-      render :show, status: :bad_request
-    end
-  end
-
-  def pre_notification
-    @wsjrdp_direct_debit_pre_notification ||= WsjrdpDirectDebitPreNotification.find(params[:id])
-  end
-
-  def person
-    @person ||= pre_notification.person
-  end
-
-  def group
-    @group ||= pre_notification.group
-  end
-
-  def authorize_action
-    authorize!(:log, person)
+    authorize!(:update, @debit)
+    save_debit(@debit)
   end
 
   private
 
-  def get_pre_notification_path(entry = nil)
-    wsjrdp_direct_debit_pre_notification_path(entry.nil? ? pre_notification : entry)
+  # The debit with what its person's sheet needs (Sheet::Fin::Wsjrdp-
+  # DirectDebitPreNotification); without a person, off to the area's page.
+  def load_debit
+    @debit = find_debit
+    return redirect_to_area unless @debit.subject_type == "Person" && @debit.subject
+
+    @wsjrdp_direct_debit_pre_notification = @debit
+    @person = @debit.person
+    @group = @debit.group
   end
 
-  def return_url
-    return_url_or_fallback url_for(pre_notification)
+  def redirect_to_area
+    path = (action_name == "edit") ? edit_direct_debit_path(@debit, return_url: return_path) :
+      direct_debit_path(@debit, return_url: return_path)
+    redirect_to path
   end
 
-  def cancel_url
-    return_url
-  end
+  def debit_page_place = :person
 
-  def model_params
-    params.require(:wsjrdp_direct_debit_pre_notification)
-  end
+  def debit_page_path(debit, **) = wsjrdp_direct_debit_pre_notification_path(debit, **)
 
-  def permitted_attrs
-    if pre_notification.payment_status == "pre_notified"
-      [
-        :try_skip,
-        # :payment_status,  # forbidden to not screw up states
-        :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address,
-        :amount_cents, :amount_eur,
-        # :debit_sequence_type,  # in PmtInf
-        # :collection_date,  # in PmtInf
-        # :mandate_id  # constant for the whole jamboree
-        :mandate_date,  # allow writing in case a new mandate was issued
-        :description,
-        :comment,
-        :endtoend_id,
-        # :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address,  # in PmtInf
-        # :creditor_id,  # in GrpHdr
-        :payment_role
-      ]
-    else
-      [:comment]
-    end
-  end
-
-  def permitted_params
-    model_params.permit(permitted_attrs)
-  end
+  def edit_debit_page_path(debit, **) = edit_wsjrdp_direct_debit_pre_notification_path(debit, **)
 end

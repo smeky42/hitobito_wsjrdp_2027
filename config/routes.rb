@@ -258,7 +258,7 @@ Rails.application.routes.draw do
           post :apply
         end
       end
-      resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :update]
+      resources :wsjrdp_direct_debit_pre_notifications, path: "pn", only: [:show, :edit, :update]
       resources :wsjrdp_payment_plans, path: "payment_plans", only: [:index, :show, :update]
       # "Moss" section: overview at /fin/moss (own controller) + the transactions
       # list at /fin/moss/transactions (own controller). See doc/navigation.md.
@@ -278,6 +278,23 @@ Rails.application.routes.draw do
        invoices: "MossInvoice", top_ups: "MossTopUp"}.each do |slug, kind|
         get "moss/#{slug}", to: "moss_transactions#index", kind: kind, as: "moss_#{slug}"
         post "moss/#{slug}/apply", to: "moss_transactions#apply", kind: kind, as: "apply_moss_#{slug}"
+      end
+      # "Zahlungsverkehr" section: its overview at /fin/payments, the orders
+      # (SEPA files), the debits and the returns. See doc/fin/payments.md.
+      get :payments, path: "payments", to: "payments#index", as: "fin_payments"
+      resources :payment_orders, path: "payments/orders", only: [:index, :show] do
+        collection { post :apply }
+        member { post :apply_debits }
+      end
+      resources :direct_debit_payment_infos, only: [:index, :show] do
+        collection { post :apply }
+        member { post :apply_debits }
+      end
+      resources :direct_debits, path: "payments/debits", only: [:index, :show, :edit, :update] do
+        collection { post :apply }
+      end
+      resources :payment_returns, path: "payments/returns", only: [:index, :show] do
+        collection { post :apply }
       end
       # "Beiträge" section: its overview page at /fin/fees; the two lists it
       # links to (person_fees, payment_plans) have their own routes above.

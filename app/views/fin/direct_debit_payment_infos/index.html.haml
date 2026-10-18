@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Sammler (Zahlungsverkehr): every direct debit payment info -- one
+-#  collection date and sequence type of a direct debit order -- with the
+-#  returns of its debits. A row opens into the Sammler's detail (show, in its
+-#  turbo frame). The footer sums the
+-#  whole filtered list. Cells: Fin::PaymentsHelper.
+
+#main
+  %h1= t("fin.tabs.direct_debit_payment_infos")
+  %p.text-muted= t("fin.payments.payment_infos_lead")
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows payment_infos, id: "dpi"
+    - t.columns direct_debit_payment_info_table_columns, menu: true
+    - t.gaps max: "8rem", grow_max: "24rem"
+    - t.row_key { |info| info.id }
+    - t.detail_page { |info| direct_debit_payment_info_path(info) }
+    - t.detail_src { |info| direct_debit_payment_info_path(info) }
+    - t.footer { |col| direct_debit_payment_info_footer(col, payment_info_totals) }
+    - t.paging per_options: [25, 50, 100, :all]
+    - t.filter apply_url: apply_direct_debit_payment_infos_path
+
+  %p.text-muted.small.mt-2
+    = t("fin.payments.payment_infos_shown", count: payment_infos.total_count)

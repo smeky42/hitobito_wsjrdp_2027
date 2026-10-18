@@ -12,7 +12,7 @@ module Sheet
     self.parent_sheet = Sheet::Person
 
     def title
-      "Lastschrift Pre-Notification #{entry.id}"
+      view.payment_debit_label(entry)
     end
 
     def current_parent_nav_path

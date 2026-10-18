@@ -33,11 +33,11 @@ describe Fin::ControllingController do
       .to include(controlling_budget_path)
   end
 
-  it "renders the seven Finanzen areas next to Übersicht, Controlling active" do
+  it "renders the eight Finanzen areas next to Übersicht, Controlling active" do
     get :index
     expect(left_nav_entries.map(&:first)).to eq(
-      [I18n.t("fin.nav.overview"), I18n.t("fin.nav.accounts"), I18n.t("fin.nav.fees"),
-        I18n.t("fin.nav.moss"), I18n.t("fin.nav.accounting"),
+      [I18n.t("fin.nav.overview"), I18n.t("fin.nav.accounts"), I18n.t("fin.nav.payments"),
+        I18n.t("fin.nav.fees"), I18n.t("fin.nav.moss"), I18n.t("fin.nav.accounting"),
         I18n.t("fin.nav.reconciliation"), I18n.t("fin.nav.controlling"), I18n.t("fin.nav.admin")]
     )
     # Exactly one entry is marked, and it is this area.

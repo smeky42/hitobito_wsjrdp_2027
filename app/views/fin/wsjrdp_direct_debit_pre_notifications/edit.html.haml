@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of a debit under its person: the Zahlungsverkehr area's
+-#  detail in its edit mode (Fin::DebitEditing).
+= render "fin/direct_debits/detail", debit: @debit, ctx: @ctx, editing: true,
+  form_url: wsjrdp_direct_debit_pre_notification_path(@debit, return_url: return_path),
+  cancel_url: wsjrdp_direct_debit_pre_notification_path(@debit, return_url: return_path),
+  return_path: return_path, back: person_accounting_path(@person),
+  back_label: t("fin.payments.back_to", tab: t("people.tabs.finance"))

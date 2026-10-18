@@ -1,0 +1,27 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The look of the Zahlungsverkehr values, once per response
+-#  (Fin::PaymentsHelper#payment_pre_notified_note): the announced amount
+-#  beside a debit's amount stays in one piece -- next to the amount where it
+-#  fits, a gap apart, else on a line of its own, flush with the amount (a
+-#  flex row's column gap separates only what shares a line) --, an amount
+-#  that differs from the collected one in the orange of the finance pages
+-#  (fin/_person_status_styles); dates and times with digits of one width; the
+-#  per-Sammler lines under an order's value (Fin::PaymentsHelper#payment_order_stack),
+-#  small and muted, their row aligned to the top so every cell's first line is
+-#  the order's.
+- unless @payment_styles_rendered
+  - @payment_styles_rendered = true
+  :css
+    .payment-amount-with-note { display: inline-flex; flex-wrap: wrap; column-gap: .9em; max-width: 100%; }
+    .payment-pre-notified { display: inline-block; white-space: nowrap; }
+    .payment-tabular { font-variant-numeric: tabular-nums; }
+    .payment-pre-notified-differs { color: #e8590c; font-weight: 600; }
+    .payment-stack-line { font-size: .8em; line-height: 1.5; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; }
+    .payment-stack-head { white-space: nowrap; }
+    tr:has(.payment-stack-head) > td { vertical-align: top; }

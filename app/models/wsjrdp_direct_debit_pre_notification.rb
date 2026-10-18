@@ -28,6 +28,21 @@ class WsjrdpDirectDebitPreNotification < ActiveRecord::Base
 
   has_many :notes, dependent: :destroy, as: :subject
 
+  # The bank transactions about this debit (WsjrdpCamtTransaction): its return
+  # and -- from statements with transaction details -- its single collection.
+  has_many :camt_transactions,
+    foreign_key: "direct_debit_pre_notification_id",
+    inverse_of: :direct_debit_pre_notification,
+    class_name: "WsjrdpCamtTransaction",
+    dependent: :nullify
+  # The same, by role (dependent: the plain association above nullifies).
+  has_many :return_camt_transactions, -> { current.returns },
+    foreign_key: "direct_debit_pre_notification_id", inverse_of: :direct_debit_pre_notification,
+    class_name: "WsjrdpCamtTransaction", dependent: nil
+  has_many :collection_camt_transactions, -> { current.collections },
+    foreign_key: "direct_debit_pre_notification_id", inverse_of: :direct_debit_pre_notification,
+    class_name: "WsjrdpCamtTransaction", dependent: nil
+
   validates :amount_eur, presence: true
   validates :description, presence: true
 

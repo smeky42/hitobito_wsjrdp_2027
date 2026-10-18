@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a Sammler (a direct debit payment info, doc/fin/
+-#  detail_partials.md): its order, collection, figures and creditor. Shown on
+-#  the Sammler's page and inside the Sammler list's row -- `ctx` says which.
+-#  The values come from Fin::PaymentDetailsHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_direct_debit_payment_info.
+-#
+-#  Locals: info (a row of Fin::PaymentQueries.payment_infos), ctx
+= render "fin/payments/styles"
+= fin_detail(info, ctx) do |d|
+  - d.header back: direct_debit_payment_infos_path, back_label: t("fin.payments.back_to", tab: t("fin.tabs.direct_debit_payment_infos")),
+      label: t("fin.payments.payment_info_label", id: info.id),
+      title: [fin_date(info.requested_collection_date), info.debit_sequence_type].compact.join(" ")
+  - d.attrs :payment_initiation, :payment_information_identification
+  - d.attrs :requested_collection_date, :debit_sequence_type, :payment_type_instrument, :batch_booking
+  - d.attrs :number_of_transactions, :control_sum_cents, :returns, :bank
+  - d.attrs :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address, :creditor_id
+  - d.raw_data do
+    - d.raw_entries :additional_info, title: t("fin.payments.additional_info")

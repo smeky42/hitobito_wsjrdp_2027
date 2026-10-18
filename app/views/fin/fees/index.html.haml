@@ -32,3 +32,7 @@
       %li
         = link_to t("fin.tabs.fee_reductions"), fin_fee_reductions_path
         = wsjrdp_newtab_link(fin_fee_reductions_path)
+  -# How the fees are collected: the direct debit orders in Zahlungsverkehr.
+  %p
+    = t("fin.payments.fees_hint")
+    = link_to t("fin.payments.direct_debit_orders"), payment_orders_filtered_path(["kind", "in", WsjrdpPaymentInitiation::DIRECT_DEBIT])

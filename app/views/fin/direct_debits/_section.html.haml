@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The Einzüge section of an order's or a Sammler's page
+-#  (Fin::DirectDebitsSection): the debits table without the order column,
+-#  filtered on its own; nothing without :log on WsjrdpFinAccount.
+-#
+-#  Locals: apply_url (the host's apply_debits route)
+- if section_debits?
+  %h2.h5.mt-4= t("fin.tabs.direct_debits")
+  = render "fin/direct_debits/table", rows: section_debits, totals: section_debit_totals, id: "d",
+    apply_url: apply_url, columns: direct_debit_table_columns.reject { |col| col[:key] == "order" }

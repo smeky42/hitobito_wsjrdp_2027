@@ -13,7 +13,6 @@ class Person::FeeController < Fin::FinController
 
   before_action :authorize_action
 
-  helper_method :get_entry_path
   helper_method :permitted_attrs
   helper_method :extra_entry_turbo_frame
 
@@ -106,14 +105,6 @@ class Person::FeeController < Fin::FinController
   end
 
   private
-
-  def get_entry_path(entry)
-    if entry.class.name.demodulize == WsjrdpDirectDebitPreNotification.name.demodulize
-      wsjrdp_direct_debit_pre_notification_path(entry)
-    else
-      accounting_entry_path(entry)
-    end
-  end
 
   # Whoever may edit the person (the person included), and read-only the
   # finance audit tier (:show_finance) -- as

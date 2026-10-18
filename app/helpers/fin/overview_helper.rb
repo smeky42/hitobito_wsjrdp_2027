@@ -10,7 +10,7 @@
 # The Finanzen entry page (/fin): one CARD per area, each with its icon, one
 # sentence on what the area is for, quick links to the area's tabs and two or
 # three key figures. Only the icon and the locale key are written here -- the
-# areas are the six Sheet::Fin::* sheets in navigation order, their titles and
+# areas are the Sheet::Fin::* sheets in navigation order, their titles and
 # tabs are what those sheets already declare (`tab "fin.tabs.…", :path`), so a
 # new tab shows up on /fin by itself (see doc/navigation.md), the purposes come
 # from the locale (fin.areas.<key>.purpose) and the numbers from
@@ -40,6 +40,7 @@ module Fin::OverviewHelper
   # place a new area has to be named.
   AREAS = {
     Sheet::Fin::Accounts => {key: :accounts, icon: "university"},
+    Sheet::Fin::Payments => {key: :payments, icon: "exchange-alt"},
     Sheet::Fin::Fees => {key: :fees, icon: "coins"},
     Sheet::Fin::Moss => {key: :moss, icon: "wallet"},
     Sheet::Fin::Accounting => {key: :accounting, icon: "book"},
@@ -136,6 +137,7 @@ module Fin::OverviewHelper
   def fin_area_figures(key)
     case key
     when :accounts then fin_accounts_figures
+    when :payments then fin_payments_figures
     when :fees then fin_fees_figures
     when :moss then fin_moss_figures
     when :accounting then fin_accounting_figures
@@ -150,6 +152,17 @@ module Fin::OverviewHelper
   def fin_accounts_figures
     [fin_figure(fin_figure_label(:total_balance),
       fin_aligned_cents_de(fin_total_balance_cents(fin_accounts_with_balance)))]
+  end
+
+  # How many orders there are; the returns no debit and no order can be
+  # assigned to are open work -- person-level, so only for whoever may see
+  # them.
+  def fin_payments_figures
+    overview = Fin::PaymentsOverview.new(person_level: can?(:log, WsjrdpFinAccount))
+    figures = [fin_figure(fin_figure_label(:payment_orders), fin_figure_count(overview.orders_count))]
+    return figures unless overview.person_level?
+
+    figures << fin_open_figure(fin_figure_label(:payment_returns_unassigned), overview.returns[:unassigned_count])
   end
 
   def fin_fees_figures

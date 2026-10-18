@@ -52,7 +52,7 @@
   - when :compact
     %dl.row.small.mb-3
       - rows.each do |row|
-        %dt.col-sm-3.col-lg-2.fw-normal.text-muted.mb-1{title: row.tooltip}= row.label
+        %dt.col-sm-3.col-lg-2.text-sm-end.fw-normal.text-muted.mb-1{title: row.tooltip}= row.label
         %dd.col-sm-9.col-lg-10.mb-1.text-break<
           - if row.editable && f
             %span.fin-edit-display= fin_detail_content(row, editable_shown)
