@@ -85,6 +85,8 @@ Rails.application.routes.draw do
     %w[contract sepa medical data_agreement passport recommendation photo_permission good_conduct].each do |doc|
       get "people/:id/upload/show_#{doc}" => "person/upload#show_#{doc}"
     end
+    # The person's page itself, /people/:id, is a route of its own
+    # (lib/hitobito_wsjrdp_2027/wagon.rb, wsjrdp_2027.person_page_route).
     # The print, upload, unit, history, log and security pages without a
     # group, in the person's primary group too (Wsjrdp2027::PeopleHelper,
     # person_subpage_path); the security page's actions stay in the group's

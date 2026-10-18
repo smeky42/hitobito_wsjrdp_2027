@@ -12,7 +12,9 @@ module Wsjrdp2027::Sheet::Base
 
   # if current_page matches, this tab is active
   # if alt_paths matches exactly, this tab is active
-  # if alt_paths prefix matches, this tab is active
+  # if alt_paths prefix matches, the tab with the longest matching path is
+  #   active -- the most specific: /people/:id (Info) starts
+  #   /people/:id/status/primary_role too, which is the status tab's
   # if nothing matches, first tab is active
   def find_active_tab
     active = visible_tabs.detect(&:current_page?)
@@ -25,7 +27,13 @@ module Wsjrdp2027::Sheet::Base
     end
     if active.nil?
       current_path = current_nav_path
-      active = visible_tabs.detect { |tab| tab.alt_path_of?(current_path) }
+      matches = visible_tabs.filter_map do |tab|
+        lengths = tab.alt_paths.map { |p| tab.send(:path_for, p) }
+          .select { |path| current_path =~ %r{/?#{path}/?} }.map(&:length)
+        [tab, lengths.max] if lengths.any?
+      end
+      # max_by keeps the first of equally long matches: the tabs' order.
+      active = matches.max_by { |_tab, length| length }&.first
     end
     active || visible_tabs.first
   end

@@ -86,6 +86,10 @@ module HitobitoWsjrdp2027
         controller.prepend Wsjrdp2027::Person::PageInPrimaryGroup
       end
       Person::SecurityToolsController.prepend Wsjrdp2027::Person::SecurityToolsController
+      # group_person_path/_url of the primary group: the person's page at
+      # /people/:id (the route below, Wsjrdp2027::GroupPersonPaths).
+      Rails.application.routes.named_routes.path_helpers_module.prepend Wsjrdp2027::GroupPersonPaths::Path
+      Rails.application.routes.named_routes.url_helpers_module.prepend Wsjrdp2027::GroupPersonPaths::Url
       GroupsController.prepend Wsjrdp2027::GroupsController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
       Group::StatisticsController.include Wsjrdp2027::StatisticsController
@@ -177,6 +181,41 @@ module HitobitoWsjrdp2027
     # and accepted, and stops any stage but production on a bad entry.
     config.after_initialize do
       Wsjrdp2027::ServiceTokenHmacKeys.current
+    end
+
+    # The person's page at /people/:id in the default group
+    # (Person#default_group), handled by PeopleController
+    # (Wsjrdp2027::PeopleController): show, and update and destroy -- the
+    # forms and delete links of the core build their target with
+    # group_person_path, which answers /people/:id in the primary group
+    # (Wsjrdp2027::GroupPersonPaths). For HTML (Turbo's form submissions
+    # included) and for a client that names no format it understands --
+    # Accept */* or an unknown type, as curl and fetch send it -- which gets
+    # the page as the group's URL gives it. A registered other format (json,
+    # pdf, vcf) keeps the core's route, which redirects to the group's URL.
+    # Prepended: the core's route of the same path (person/top#show) would
+    # win otherwise. Only numeric ids, so /people/query and the like stay the
+    # core's. In the core's locale scope, as LanguageRouteScope has it
+    # (without its own route /:locale, which the core draws).
+    initializer "wsjrdp_2027.person_page_route" do |app|
+      app.routes.prepend do
+        page = lambda do |request|
+          format = request.format
+          request.path_parameters[:id].to_s.match?(/\A\d+\z/) &&
+            (format.nil? || format.symbol.nil? || format.html?)
+        end
+        routes = lambda do
+          get "/people/:id" => "people#show", :format => false, :constraints => page
+          match "/people/:id" => "people#update", :via => [:patch, :put], :format => false, :constraints => page
+          delete "/people/:id" => "people#destroy", :format => false, :constraints => page
+        end
+        languages = Settings.application.languages.to_hash.keys
+        if languages.size > 1
+          scope "(:locale)", locale: /#{languages.join("|")}/, &routes
+        else
+          routes.call
+        end
+      end
     end
 
     initializer "wsjrdp_2027.add_inflections" do |_app|
