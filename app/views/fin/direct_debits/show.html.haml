@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The page of a debit (fin/direct_debits/_detail), also the row detail of the
+-#  Einzüge tables. On its own page it is the reading page, with "Bearbeiten"
+-#  for whoever may :update pre-notifications (edit).
+= wsjrdp_detail_frame("dd", @debit.id) do
+  = render "detail", debit: @debit, ctx: @ctx, editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && can?(:update, @debit) ? edit_direct_debit_path(@debit, return_url: return_path) : nil),
+    return_path: return_path

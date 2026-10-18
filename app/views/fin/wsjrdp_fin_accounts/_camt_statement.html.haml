@@ -31,6 +31,9 @@
 #main.row
   %p
     %a{ href: return_url} Zurück
+    -# The payment orders sent from this account (Zahlungsverkehr).
+    %span.ms-3
+      = link_to t("fin.payments.account_orders"), payment_orders_filtered_path(["account", "in", @wsjrdp_fin_account.id.to_s])
   %table.table.table-striped.table-sm.table-custom
     %thead
       %tr

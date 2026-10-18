@@ -1,0 +1,25 @@
+# frozen_string_literal: true
+
+#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+#
+#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+#  Affero General Public License version 3 or later. See the COPYING
+#  file at the top-level directory or at
+#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+module Sheet
+  class Fin::Payments < Base
+    # The sheet of Fin::PaymentOrdersController: the list renders under the area sheet,
+    # an order's page keeps its tabs and left nav
+    # (doc/navigation.md §6).
+    class Fin::PaymentOrder < Base
+      class_attribute :always_render_parent
+      self.parent_sheet = Sheet::Fin::Payments
+      self.always_render_parent = true
+
+      def title
+        I18n.t("fin.tabs.payment_orders")
+      end
+    end
+  end
+end

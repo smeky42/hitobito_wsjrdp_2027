@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a return (a bank transaction with a return reason,
+-#  doc/fin/detail_partials.md): the person, the return, the debit -- found by
+-#  the end-to-end id, else by the mandate reference, marked so; flagged when
+-#  there is none --, its Sammler and order, the bank's references, and the
+-#  accounting entry booked for it with the bank transaction itself. Shown on
+-#  the return's page and inside the Rückläufer list's row -- `ctx` says which.
+-#  The values come from Fin::PaymentDetailsHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_camt_transaction.
+-#
+-#  Locals: entry (a row of Fin::PaymentQueries.returns), ctx
+= render "fin/payments/styles"
+= fin_detail(entry, ctx) do |d|
+  - d.header back: payment_returns_path, back_label: t("fin.payments.back_to", tab: t("fin.tabs.payment_returns")),
+      label: t("fin.payments.return_label", id: entry.id), title: entry.subject&.short_full_name_with_nickname
+  - d.attrs :subject, :return_date, :amount_cents, :return_reason, :return_status
+  - d.attrs :debit, :payment_info, :payment_order
+  - d.attrs :endtoend_id, :mandate_id, :description
+  - d.attrs :entry, :camt_transaction

@@ -614,6 +614,14 @@ de:
         subject: Beteiligte Person
         accounting_entry: Assoziierte Buchung
         accounting_entry_id: Assoziierte Buchung
+        # The Zahlungsverkehr detail of a return (fin/payment_returns/_detail).
+        return_date: Datum
+        amount_cents: Betrag
+        debit: Einzug
+        payment_info: Sammler
+        payment_order: Auftrag
+        entry: Beitragsbuchung
+        camt_transaction: Kontobewegung
 
       # de.activerecord.attributes.moss_transaction (L1: one Moss payment)
       moss_transaction:
@@ -722,6 +730,55 @@ de:
         cdtr_bic: Kreditor BIC
         cdtr_address: Kreditor Adresse
         creditor_id: Gläubiger-Identifikationsnummer
+        # The Zahlungsverkehr detail of a debit (fin/direct_debits/_detail).
+        subject: Person
+        payment_role: Bezahlungs-Rolle
+        payment_initiation: Auftrag
+        direct_debit_payment_info: Sammler
+        accounting_entry: Beitragsbuchung
+        mandate: Mandat
+        collection: Fälligkeit
+        other_page: Auch unter
+        amount_cents: Betrag
+        returns: Rücklastschrift
+        email_to: E-Mail an
+        email_cc: E-Mail Kopie (CC)
+        email_bcc: E-Mail Blindkopie (BCC)
+        email_reply_to: Antwort an
+        email_from: E-Mail von
+
+      # de.activerecord.attributes.wsjrdp_payment_initiation (Auftrag, fin/payment_orders/_detail)
+      wsjrdp_payment_initiation:
+        kind: Typ
+        fin_account: Konto
+        initiating_party_name: Auftraggeber
+        status: Status
+        created_at: Erstellt
+        number_of_transactions: Anzahl
+        control_sum_cents: Betrag
+        returns: Retouren
+        bank: Bankbuchung
+        message_identification: Nachrichten-ID
+        sepa_schema: Schema
+
+      # de.activerecord.attributes.wsjrdp_direct_debit_payment_info (Sammler,
+      # fin/direct_debit_payment_infos/_detail)
+      wsjrdp_direct_debit_payment_info:
+        payment_initiation: Auftrag
+        payment_information_identification: PmtInf-ID
+        requested_collection_date: Fälligkeitsdatum
+        debit_sequence_type: Lastschrift Sequenz-Typ
+        payment_type_instrument: Lastschriftverfahren
+        batch_booking: Sammelbuchung
+        number_of_transactions: Anzahl
+        control_sum_cents: Betrag
+        returns: Retouren
+        bank: Bankbuchung
+        cdtr_name: Kreditor Name
+        cdtr_iban: Kreditor IBAN
+        cdtr_bic: Kreditor BIC
+        cdtr_address: Kreditor Adresse
+        creditor_id: Gläubiger-ID
 
       # de.activerecord.attributes.wsjrdp_personal_account (Kreditor)
       wsjrdp_personal_account:
@@ -1825,6 +1882,7 @@ de:
     nav:
       overview: "Übersicht"
       accounts: "Konten & Wallets"
+      payments: "Zahlungsverkehr"
       fees: "Beiträge"
       moss: "Moss"
       accounting: "Buchhaltung"
@@ -1848,10 +1906,14 @@ de:
         cost_centers_personal_accounts: "Kostenstellen · Kreditoren"
         reconciliation_entries_unlinked: "Beitragsbuchungen ohne DATEV-Buchung"
         reconciliation_moss_unlinked: "Moss-Buchungen ohne DATEV-Buchung"
+        payment_orders: "Aufträge"
+        payment_returns_unassigned: "Rückläufer nicht zuordenbar"
         none: "Noch keine Kennzahlen."
     areas:
       accounts:
         purpose: "Die Konten und Wallets des Kontingents."
+      payments:
+        purpose: "Zahlungsaufträge an die Bank (Lastschriften, Überweisungen), ihre Einzüge und Rückläufer."
       fees:
         purpose: "Beiträge und Ratenpläne der Teilnehmenden."
       moss:
@@ -1866,6 +1928,10 @@ de:
         purpose: "Zahlungscodes, Finanzzugriff auf Gruppen und Kostenstellen der Gruppen."
     tabs:
       accounts: "Konten"
+      payment_orders: "Aufträge"
+      direct_debit_payment_infos: "Sammler"
+      direct_debits: "Einzüge"
+      payment_returns: "Rückläufer"
       person_fees: "Personen"
       fee_reductions: "Reduktionen"
       plans: "Ratenpläne"
@@ -1891,6 +1957,92 @@ de:
       invoices: "Rechnungen"
       reimbursements: "Erstattungen"
       top_ups: "Einzahlungen"
+    # Zahlungsverkehr (doc/fin/payments.md): Aufträge, Einzüge, Rückläufer.
+    payments:
+      overview_lead: "Zahlungsaufträge an die Bank – je Auftrag eine SEPA-Datei –, die Einzüge der Lastschriften und ihre Rückläufer."
+      orders_lead: "Alle Zahlungsaufträge an die Bank, je Auftrag eine SEPA-Datei (Lastschrift oder Überweisung), mit den Retouren seiner Einzüge."
+      debits_lead: "Alle Einzüge der Lastschriften, je Person und Auftrag eine Vorabankündigung, mit Beitragsbuchung und Rücklastschrift."
+      returns_lead: "Alle Rücklastschriften laut Kontoauszug, mit ihrem Einzug – verknüpft, sonst über End-to-End-ID oder Mandatsreferenz gefunden –, dessen Auftrag und der Beitragsbuchung dazu."
+      orders_shown:
+        one: "Ein Auftrag"
+        other: "%{count} Aufträge"
+      debits_shown:
+        one: "Ein Einzug"
+        other: "%{count} Einzüge"
+      returns_shown: "%{count} Rückläufer, davon %{unassigned} nicht zuordenbar"
+      kinds:
+        direct_debit: "Lastschrift"
+        credit_transfer: "Überweisung"
+        conflict: "widersprüchlich"
+        unknown: "unbekannt"
+      kind_hints:
+        direct_debit: "Lastschrift: Schema pain.008 oder Lastschrift-Sammler"
+        credit_transfer: "Überweisung: Schema pain.001"
+        conflict: "Schema pain.001, aber mit Lastschrift-Sammlern – bitte prüfen"
+        unknown: "Weder Lastschrift noch Überweisung erkennbar – bitte prüfen"
+      statuses:
+        xml_generated: "XML erzeugt"
+        skipped: "übersprungen"
+        pre_notified: "angekündigt"
+      fields:
+        order: "Auftrag"
+      payment_infos: "Sammler"
+      payment_infos_lead: "Alle Sammler der Lastschrift-Aufträge, je Einzugsdatum und Sequenztyp eines Auftrags einer, mit den Retouren ihrer Einzüge."
+      payment_infos_shown:
+        one: "Ein Sammler"
+        other: "%{count} Sammler"
+      debit: "Einzug"
+      payment_info_label: "Sammler #%{id}"
+      order_label: "Auftrag #%{id}"
+      debit_label: "Einzug #%{id}"
+      debit_notice_label: "Vorabankündigung Einzug #%{id}"
+      debit_saved: "Einzug #%{id} gespeichert."
+      debit_help:
+        try_skip: "Wichtig: \"Einzug aussetzen\" hat keine Auswirkung, wenn die SEPA XML Datei für die Übermittlung zur Bank bereits erzeugt wurde."
+        comment: "Nur sichtbar für Personen mit Buchhaltungs-Rechten"
+      amount: "Betrag"
+      mandate_of: "vom"
+      labels:
+        mandate_id: "Mandatsreferenz"
+        mandate_date: "Mandatsdatum"
+        creditor_id: "Gläubiger-ID"
+      return_label: "Rückläufer #%{id}"
+      # The back link of a page: the name of the tab it belongs to.
+      back_to: "Zurück zu %{tab}"
+      additional_info: "Zusätzliche Informationen"
+      no_account: "Kein eigenes Konto mit dieser IBAN"
+      debit_page_area: "Zahlungsverkehr"
+      debit_page_person: "Beitrag der Person"
+      entry_link: "Beitragsbuchung #%{id}"
+      camt_link: "Kontobewegung #%{id}"
+      amount_differs: "Weicht vom eingezogenen Betrag ab"
+      entry_amount_differs: "Die Beitragsbuchung bucht %{entry}, der Einzug %{debit}."
+      amount_as_announced: "Wie vorab informiert"
+      pre_notified_note: "vorab informiert: %{amount}"
+      sequence_types_hint: "Fälligkeitsdatum · Sequenz-Typ: FRST erste, RCUR Folge-, OOFF einmalige, FNAL letzte Lastschrift"
+      unassigned: "nicht zuordenbar"
+      unassigned_hint: "Weder End-to-End-ID noch Mandatsreferenz führen zu einem Einzug, und die Kontobewegung nennt keinen Auftrag."
+      # How a return without a stored link to its debit was matched.
+      return_matched_by:
+        endtoend: "nicht verknüpft"
+        mandate: "nicht verknüpft, über Mandat"
+      return_matched_by_hints:
+        endtoend: "Die Kontobewegung verweist nicht auf den Einzug; gefunden über die End-to-End-ID."
+        mandate: "Die Kontobewegung verweist nicht auf den Einzug, und die End-to-End-ID der Bank nennt keinen; gefunden über Mandatsreferenz und Fälligkeit (bis 5 Tage vor der Valuta)."
+      no_credit: "fehlt"
+      no_credit_hint: "Die SEPA-Datei ging an die Bank, doch keine Kontobewegung verweist als Gutschrift auf diesen Sammler."
+      credit_differs: "Die Gutschrift (%{credit}) weicht von der Kontrollsumme (%{control}) ab."
+      no_return_entry: "Keine Beitragsbuchung zu dieser Rücklastschrift"
+      account_orders: "Zahlungsaufträge dieses Kontos"
+      fees_hint: "Eingezogen werden die Beiträge per Lastschrift:"
+      direct_debit_orders: "Lastschrift-Aufträge im Zahlungsverkehr"
+      tiles:
+        orders: "Aufträge"
+        debits: "Einzüge"
+        skipped: "davon übersprungen"
+        returns: "Rückläufer"
+        unassigned: "davon nicht zuordenbar"
+        last_order: "Letzter Auftrag"
     # Verwaltung, erster Tab: der Gruppen-Finanzzugriff einzelner Personen
     # (people.additional_info["finance_group_ids"]).
     finance_groups:

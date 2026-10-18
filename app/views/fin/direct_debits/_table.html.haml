@@ -1,0 +1,26 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The Einzüge table: the tab's and the section of an order's page. A row
+-#  opens into the debit's page (show, in its turbo frame). The footer sums
+-#  the whole filtered list. Cells: Fin::PaymentsHelper.
+-#
+-#  Locals: rows (Wsjrdp::ExpandableTableRows), totals, id, apply_url, columns
+= render "fin/payments/styles"
+= wsjrdp_expandable_table do |t|
+  - t.rows rows, id: id
+  - t.columns columns, menu: true
+  - t.gaps max: "4rem", grow_max: "16rem"
+  - t.row_key { |debit| debit.id }
+  - t.detail_page { |debit| direct_debit_path(debit) }
+  - t.detail_src { |debit| direct_debit_path(debit) }
+  - t.footer { |col| direct_debit_footer(col, totals) }
+  - t.paging per_options: [25, 50, 100, 250, :all]
+  - t.filter apply_url: apply_url
+
+%p.text-muted.small.mt-2
+  = t("fin.payments.debits_shown", count: rows.total_count)

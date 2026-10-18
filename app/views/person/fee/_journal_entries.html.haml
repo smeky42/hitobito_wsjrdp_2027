@@ -52,7 +52,7 @@
             - if entry.respond_to?(:direct_debit_pre_notification) && entry.direct_debit_pre_notification.present? && can?(:show, entry.direct_debit_pre_notification)
               %div
                 %span.fw-light.muted= "Pre-Notification: "
-                %span.fw-light= link_to(entry.direct_debit_pre_notification.link_name, url_for(entry.direct_debit_pre_notification))
+                %span.fw-light= link_to(entry.direct_debit_pre_notification.link_name, polymorphic_path(entry.direct_debit_pre_notification, return_url: request.fullpath))
             - if can?(:log, entry) && !entry.author_full_name.blank?
               %div.fw-light
                 %span.fw-light.muted= "Erstellt von: "
@@ -70,8 +70,9 @@
                       - else
                         %span.fw-bold= format_cents_de(entry.amount_cents)
                 %td.pl-1(style="padding: 0;")
+                  -# The entry's page leads back here, and returns here after a save.
                   - if can?(:log, entry) && !entry.id.blank?
-                    %a{href: url_for(entry)}
+                    %a{href: polymorphic_path(entry, return_url: request.fullpath)}
                       %span.fa.fa-info-circle(aria-label="info" role="img")
               %tr
                 %td(colspan="2" style="padding: 0; vertical-align: top;")

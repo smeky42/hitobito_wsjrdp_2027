@@ -231,7 +231,7 @@ spot.
 
 ```ruby
 fin_detail(record, ctx, layout: nil, blank: nil, form_url: nil, only: nil,
-           editing: nil, edit_url: nil, cancel_url: nil) { |d| … }
+           editing: nil, edit_url: nil, cancel_url: nil, sticky_actions: false) { |d| … }
 ```
 
 `layout:` sets this partial's default layout — a Symbol, or a Hash naming one
@@ -283,7 +283,10 @@ A field's options are `label help tooltip blank hide span align editable input
 options extra`; there is no `value` — a value comes from the record through its
 formatter, never from the partial. `editable: true` gives the field its input
 inside the partial's form (`form_url:`), `input:` picks which one (`:text`,
-`:textarea`, `:check_box`, `:select` with `options:`; the default is the amount
+`:wide_text` for a long single-line value such as an IBAN, `:date` -- hitobito's
+date field with its datepicker --,
+`:textarea`, `:check_box`, `:select` with `options:` (`:wide_select` for options
+wider than the narrow select); the default is the amount
 input). The amount input is a text field with a € suffix that shows the amount
 German-formatted, `1.234,56` (`Fin::MoneyInput.format`) — a number field cannot
 show thousands points. The budget writers of `WsjrdpBudgetable` read that text
@@ -320,6 +323,16 @@ may not write from one who may. `cancel_url:` is the link the edit page returns
 by. Both carry `data-turbo-frame="_top"`: a detail sits INSIDE its turbo frame,
 and a plain link would navigate that frame instead of the page.
 
+`sticky_actions: true` puts the edit page's buttons right under its header
+instead of at its end, in a line that stays at the top of the window while
+the page scrolls (`.fin-edit-actions-sticky`, `position: sticky`) -- below
+the session bars (impersonation, finance tier), whose height
+`layouts/_wsjrdp_session_bar` sets as `--wsjrdp-session-bars-height` -- for an
+edit page longer than a screen. The three sit in a flex row with one gap,
+so a row that wraps stays aligned, and below the `sm` breakpoint the second
+says "Speichern und weiter", which keeps the line to one row on a phone. It
+changes nothing in the other modes.
+
 **An editable field always stands where its input can be reached.** A field the
 partial declared `editable:` (the key, whatever its value) is never dropped for
 being blank wherever the detail carries a form — the edit page, and the inline
@@ -350,7 +363,7 @@ line, tooltip and blank marker are produced in one place
 | layout | markup | use |
 |---|---|---|
 | `:list` | `dl.fin-detail-list.m-0.p-2.border-top`, one `.row.mb-2` per field with `dt.col-md-3.col-xl-2.text-md-end.text-muted` (tooltip as its `title`) + `dd.col-md-9.col-lg-8.col-xl-8.mw-63ch.text-break` | the form-like grid of the wagon's tx/ae pages, the page default |
-| `:compact` | `dl.row.small.mb-3`, `dt.col-sm-3.col-lg-2.fw-normal.text-muted` + `dd.col-sm-9.col-lg-10.text-break` | the dense rows of an embedded pane, the embedded default |
+| `:compact` | `dl.row.small.mb-3`, `dt.col-sm-3.col-lg-2.text-sm-end.fw-normal.text-muted` + `dd.col-sm-9.col-lg-10.text-break` | the dense rows of an embedded pane, the embedded default |
 | `:grid` | `.row.g-3` cells, `col-6 col-md-4 col-lg-3` (`span: 2` widens to `col-12 col-md-8 col-lg-6`), `align: :end` right-aligns | cells with amounts |
 
 The layout a group uses: the group's `layout:` → the partial's `layout:` (per

@@ -64,8 +64,15 @@ module Wsjrdp::Filtering
       @id_search = id_search
     end
 
+    # Computed once per request: a page asks for them several times (the
+    # builder's catalog, the chips' full catalog, preset groups), and an option
+    # set can be large (every person with a debit). Outside a request -- a spec,
+    # a script -- every call computes afresh, so nothing stale is ever seen.
     def pairs
-      @pairs_proc.call
+      return @pairs_proc.call unless RequestStore.active?
+
+      cache = (RequestStore.store[:wsjrdp_filter_option_pairs] ||= {}.compare_by_identity)
+      cache.fetch(self) { cache[self] = @pairs_proc.call }
     end
 
     # Catalog form. Inline only for now; a {mode: "remote", endpoint: ...}

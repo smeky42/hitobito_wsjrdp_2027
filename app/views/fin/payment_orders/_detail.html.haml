@@ -1,0 +1,33 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a payment order (doc/fin/detail_partials.md): its head, its
+-#  figures, its Sammler -- each opening into its own detail -- and its raw
+-#  data. Shown on the order's page and inside
+-#  the Aufträge list's row -- `ctx` says which. The values come from
+-#  Fin::PaymentDetailsHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_payment_initiation.
+-#
+-#  Locals: order (a row of Fin::PaymentQueries.orders), infos (its Sammler),
+-#          ctx (Fin::AttrFormatContext)
+= render "fin/payments/styles"
+= fin_detail(order, ctx) do |d|
+  - d.header back: payment_orders_path, back_label: t("fin.payments.back_to", tab: t("fin.tabs.payment_orders")),
+      label: t("fin.payments.order_label", id: order.id), title: payment_kind_label(order.kind)
+  - d.attrs :kind, :fin_account, :initiating_party_name, :status, :created_at
+  - d.attrs :number_of_transactions, :control_sum_cents, :returns, :bank
+  - d.attrs :message_identification, :sepa_schema
+  - if infos.any?
+    - d.custom title: t("fin.payments.payment_infos"), key: :payment_infos do
+      = wsjrdp_expandable_table do |t|
+        - t.rows payment_order_infos_rows(infos), id: "si#{order.id}"
+        - t.columns direct_debit_payment_info_table_columns
+        - t.row_key { |info| info.id }
+        - t.detail_page { |info| direct_debit_payment_info_path(info) }
+        - t.detail_src { |info| direct_debit_payment_info_path(info) }
+  - d.raw_data do
+    - d.raw_entries :additional_info, title: t("fin.payments.additional_info")

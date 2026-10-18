@@ -1,0 +1,65 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a debit (a pre-notification, doc/fin/detail_partials.md),
+-#  read-only, the result first: who, how much, when, in which status and
+-#  whether it came back; then the order, Sammler, collection entry -- with a
+-#  warning where its amount differs -- and the debit's other page, purpose
+-#  and reference, the edit-side fields (skip, comment), the mails, the
+-#  mandate with the creditor id, debtor and creditor, and the payment role
+-#  with the timestamps at the end. Shown on the debit's two pages -- in the
+-#  Zahlungsverkehr area and under its person (Fin::DebitPages) -- and inside
+-#  the Einzüge tables' rows; `ctx` says whether it is a page or a row.
+-#  Its label says "Vorabankündigung Einzug" while it is only announced
+-#  (Fin::PaymentsHelper#payment_debit_label). The values come from
+-#  Fin::PaymentDetailsHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_direct_debit_pre_notification.
+-#
+-#  On the edit page (editing: true) the fields the debit's status and the
+-#  viewer's tier let change (Fin::DebitEditing) get their inputs -- the amount as the money input --,
+-#  the rest stays as it reads.
+-#
+-#  Locals: debit (a row of Fin::PaymentQueries.debits), ctx
+-#          editing:    the kit's edit mode -- nil a list row, false the
+-#                      reading page, true the edit page
+-#          form_url:   the PATCH target of the edit page
+-#          edit_url:   the edit page the reading page's "Bearbeiten" points at
+-#          cancel_url: the reading page the edit page's "Abbrechen" returns to
+-#          return_path: the page the reader came from (`return_url`); the
+-#                       back link leads there instead of to the Einzüge tab
+-#          back, back_label: the back link where it is not the Einzüge tab
+-#                       (the page under the person)
+- editing = local_assigns.fetch(:editing, nil)
+- fields = editing ? Fin::DebitEditing.fields(debit, manage: can?(:admin_finance, debit)) : {}
+- amount = fields.key?(:amount_eur) ? :amount_eur : :amount_cents
+- edit = ->(*attrs) { payment_debit_edit_options(fields, *attrs) }
+= render "fin/payments/styles"
+= fin_detail(debit, ctx, editing: editing, form_url: local_assigns[:form_url],
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
+  - return_path = local_assigns[:return_path]
+  - back_label = local_assigns[:back_label] || t("fin.payments.back_to", tab: t("fin.tabs.direct_debits"))
+  - d.header back: return_path || local_assigns[:back] || direct_debits_path,
+      back_label: return_path ? t("global.button.back") : back_label,
+      label: payment_debit_label(debit), title: debit.subject&.short_full_name_with_nickname
+  - d.attrs :subject, amount, :collection, :payment_status, :returns, **edit.call(amount, :payment_status)
+  - d.attrs :payment_initiation, :direct_debit_payment_info, :accounting_entry, :other_page, other_page: {blank: :hide}
+  - d.attrs :description, :endtoend_id, **edit.call(:description, :endtoend_id)
+  - d.attrs :try_skip, :comment, **payment_debit_help(editing).deep_merge(edit.call(:try_skip, :comment))
+  - d.attrs :email_to, :email_cc, :email_bcc, :email_reply_to, :email_from
+  -# Reading, the mandate is one line ("wsjrdp… vom 09.10.2025"); editing,
+  -# its reference and date are fields of their own.
+  - if editing
+    - d.attrs :mandate_id, :mandate_date, :creditor_id,
+        **payment_debit_mandate_labels.deep_merge(edit.call(:mandate_id, :mandate_date))
+  - else
+    - d.attrs :mandate, :creditor_id, **payment_debit_mandate_labels.slice(:creditor_id)
+  - d.attrs :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address,
+      **edit.call(:dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
+  - d.attrs :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address
+  - d.attrs :payment_role, :created_at, :updated_at
+  - d.raw_data do
+    - d.raw_entries :additional_info, title: t("fin.payments.additional_info")

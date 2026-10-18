@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_18_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -57,9 +57,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
     t.jsonb "camt_transaction_link_meta", default: {}, null: false
     t.bigint "payment_notice_id"
     t.index ["author_type", "author_id"], name: "index_accounting_entries_on_author_type_and_author_id"
+    t.index ["camt_transaction_id"], name: "index_accounting_entries_on_camt_transaction_id"
     t.index ["datev_booking_id"], name: "index_accounting_entries_on_datev_booking_id", unique: true
     t.index ["direct_debit_payment_info_id"], name: "index_accounting_entries_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "index_accounting_entries_on_direct_debit_pre_notification_id"
+    t.index ["endtoend_id"], name: "index_accounting_entries_on_endtoend_id"
     t.index ["moss_booking_id"], name: "index_accounting_entries_on_moss_booking_id"
     t.index ["payment_initiation_id"], name: "index_accounting_entries_on_payment_initiation_id"
     t.index ["payment_notice_id"], name: "index_accounting_entries_on_payment_notice_id"
@@ -1754,10 +1756,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
     t.decimal "signed_base_amount", precision: 20, scale: 3, null: false, comment: "Signed booking amount in the base currency (EUR), account perspective (+ = inflow: CRDT +, DBIT -)"
     t.virtual "base_amount", type: :decimal, precision: 20, scale: 3, comment: "Sign-less base-currency amount", as: "abs(signed_base_amount)", stored: true
     t.virtual "debit_credit", type: :string, comment: "Debit/credit (C/D) derived from the ISO credit_debit_indication", as: "\nCASE\n    WHEN ((credit_debit_indication)::text = 'CRDT'::text) THEN 'C'::text\n    ELSE 'D'::text\nEND", stored: true
+    t.bigint "direct_debit_pre_notification_id", comment: "The debit this bank transaction concerns: its return, or its single collection (TxDtls)"
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
     t.index ["datev_booking_batch_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_batch_id"
     t.index ["datev_booking_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_id", unique: true
+    t.index ["direct_debit_payment_info_id"], name: "index_wsjrdp_camt_transactions_on_direct_debit_payment_info_id"
+    t.index ["direct_debit_pre_notification_id"], name: "idx_on_direct_debit_pre_notification_id_c68aaccc0f"
+    t.index ["entry_id"], name: "index_wsjrdp_camt_transactions_on_entry_id"
+    t.index ["payment_initiation_id"], name: "index_wsjrdp_camt_transactions_on_payment_initiation_id"
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
     t.check_constraint "base_currency::text = 'EUR'::text", name: "chk_wsjrdp_camt_tx_base_currency"
     t.check_constraint "credit_debit_indication::text = ANY (ARRAY['CRDT'::character varying::text, 'DBIT'::character varying::text])", name: "chk_wsjrdp_camt_tx_credit_debit_indication"
@@ -1864,6 +1871,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
     t.string "cdtr_bic"
     t.string "creditor_id", default: "DE81WSJ00002017275"
     t.string "cdtr_address"
+    t.jsonb "additional_info", default: {}, null: false
     t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_c4d3672197"
   end
 
@@ -1910,6 +1918,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
     t.bigint "receipt_document_id"
     t.index ["author_type", "author_id"], name: "idx_on_author_type_author_id_71103f7220"
     t.index ["direct_debit_payment_info_id"], name: "idx_on_direct_debit_payment_info_id_48e9587e08"
+    t.index ["endtoend_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_endtoend_id"
+    t.index ["mandate_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_mandate_id"
     t.index ["payment_initiation_id"], name: "idx_on_payment_initiation_id_3f1ba63efb"
     t.index ["receipt_document_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_receipt_document"
     t.index ["ref_type", "ref_id"], name: "index_wsjrdp_direct_debit_pre_notifications_on_ref"
@@ -2266,6 +2276,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
   add_foreign_key "accounting_entries", "accounting_entries", column: "reverses_id"
   add_foreign_key "accounting_entries", "datev_bookings", on_delete: :nullify
   add_foreign_key "accounting_entries", "moss_bookings", on_delete: :nullify
+  add_foreign_key "accounting_entries", "wsjrdp_camt_transactions", column: "camt_transaction_id", on_delete: :nullify
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id"
   add_foreign_key "accounting_entries", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id"
   add_foreign_key "accounting_entries", "wsjrdp_payment_initiations", column: "payment_initiation_id"
@@ -2296,6 +2307,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_16_000100) do
   add_foreign_key "wsj27_rdp_fee_rules", "wsjrdp_payment_plans", column: "custom_installments_payment_plan_id"
   add_foreign_key "wsjrdp_camt_transactions", "datev_booking_batches"
   add_foreign_key "wsjrdp_camt_transactions", "datev_bookings", on_delete: :nullify
+  add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_payment_initiations", column: "payment_initiation_id", on_delete: :nullify
   add_foreign_key "wsjrdp_cost_centers", "people", column: "manager_person_id"
   add_foreign_key "wsjrdp_deregistration_events", "wsjrdp_deregistrations", column: "deregistration_id", on_delete: :cascade
   add_foreign_key "wsjrdp_deregistrations", "wsjrdp_deregistrations", column: "replaces_id", on_delete: :nullify

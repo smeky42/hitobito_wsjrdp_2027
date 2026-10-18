@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The page of a payment order (fin/payment_orders/_detail), also the row
+-#  detail of the Aufträge list; on its own page -- for a direct debit, with
+-#  :log on WsjrdpFinAccount -- its debits (fin/direct_debits/_section).
+= wsjrdp_detail_frame("po", @order.id) do
+  = render "detail", order: @order, infos: @infos, ctx: @ctx
+  - if @ctx.regular?
+    = render "fin/direct_debits/section", apply_url: apply_debits_payment_order_path(@order)

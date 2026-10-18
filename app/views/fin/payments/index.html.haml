@@ -1,0 +1,39 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Zahlungsverkehr overview (default tab): one tile per kind of order, linking
+-#  to the Aufträge list pressed on that kind, and -- for whoever may see
+-#  person-level payment data -- the debits and the returns, the not
+-#  assignable returns as open work. Figures: Fin::PaymentsOverview.
+- ov = @overview
+- tile_class = "border rounded p-3 text-reset text-decoration-none"
+
+#main
+  %h1= t("fin.nav.payments")
+  %p.text-muted= t("fin.payments.overview_lead")
+
+  .d-flex.flex-wrap.gap-3.mb-4
+    = link_to payment_orders_path, class: tile_class do
+      .fs-3.fw-semibold= payment_count(ov.orders_count)
+      .text-muted.small= t("fin.payments.tiles.orders")
+      .small= t("fin.payments.tiles.last_order") + ": " + (fin_date(ov.last_order_date) || "–")
+    - ov.orders_by_kind.each do |k|
+      = link_to payment_orders_filtered_path(["kind", "in", k.kind]), class: tile_class do
+        .fs-3.fw-semibold= payment_count(k.count)
+        .text-muted.small= payment_kind_cell(k.kind)
+        .small.fw-semibold= safe_join(["Σ ", payment_cents(k.sum_cents)])
+    - if ov.person_level?
+      = link_to direct_debits_path, class: tile_class do
+        .fs-3.fw-semibold= payment_count(ov.debits_count)
+        .text-muted.small= t("fin.payments.tiles.debits")
+        .small= "#{t("fin.payments.tiles.skipped")}: #{payment_count(ov.debits_skipped_count)}"
+      = link_to payment_returns_path, class: tile_class do
+        .fs-3.fw-semibold= payment_count(ov.returns[:count])
+        .text-muted.small= t("fin.payments.tiles.returns")
+        .small.fw-semibold.text-danger= safe_join(["Σ ", payment_cents(ov.returns[:sum_cents])])
+        .small{class: ("text-warning fw-semibold" if ov.returns[:unassigned_count].positive?)}
+          = "#{t("fin.payments.tiles.unassigned")}: #{payment_count(ov.returns[:unassigned_count])}"

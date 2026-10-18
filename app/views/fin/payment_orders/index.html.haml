@@ -1,0 +1,32 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Aufträge (Zahlungsverkehr): every payment order -- direct debits and credit
+-#  transfers -- as an expandable table. An order of several Sammler (direct
+-#  debit payment infos) shows its figures per Sammler as small lines under
+-#  the order's own in the same cells (Fin::PaymentsHelper#payment_order_stack).
+-#  A row opens into the order's head and Sammler
+-#  (show, in its turbo frame); the order's page adds its debits. The footer sums the whole filtered list. Cells: Fin::PaymentsHelper.
+
+#main
+  = render "fin/payments/styles"
+  %h1= t("fin.tabs.payment_orders")
+  %p.text-muted= t("fin.payments.orders_lead")
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows payment_orders, id: "po"
+    - t.columns payment_order_table_columns, menu: true
+    - t.gaps max: "4rem", grow_max: "16rem"
+    - t.row_key { |order| order.id }
+    - t.detail_page { |order| payment_order_path(order) }
+    - t.detail_src { |order| payment_order_path(order) }
+    - t.footer { |col| payment_order_footer(col, payment_order_totals) }
+    - t.paging per_options: [25, 50, 100, :all]
+    - t.filter apply_url: apply_payment_orders_path
+
+  %p.text-muted.small.mt-2
+    = t("fin.payments.orders_shown", count: payment_orders.total_count)

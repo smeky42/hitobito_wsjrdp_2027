@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Einzüge (Zahlungsverkehr): every debit of every order, with its collection
+-#  entry and its returns (fin/direct_debits/_table).
+
+#main
+  %h1= t("fin.tabs.direct_debits")
+  %p.text-muted= t("fin.payments.debits_lead")
+
+  = render "table", rows: direct_debits, totals: direct_debit_totals, id: "dd",
+    apply_url: apply_direct_debits_path, columns: direct_debit_table_columns

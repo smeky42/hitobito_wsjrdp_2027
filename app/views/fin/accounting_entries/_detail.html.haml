@@ -45,6 +45,9 @@
   - links << ["Bank-Transaktion", e.camt_transaction_id && link_to("##{e.camt_transaction_id}", wsjrdp_camt_transaction_path(e.camt_transaction_id))]
   - links << ["Pre-Notification", e.direct_debit_pre_notification_id && link_to("##{e.direct_debit_pre_notification_id}", wsjrdp_direct_debit_pre_notification_path(e.direct_debit_pre_notification_id))]
   - links << ["Moss-Buchung", link_to("##{e.moss_booking_id}", moss_booking_path(e.moss_booking_id))] if e.moss_booking_id
+  -# The payment order: the entry's own, or -- for a return -- its debit's.
+  - order_id = payment_order_id_of_entry(e)
+  - links << [t("fin.payments.fields.order"), link_to("##{order_id}", payment_order_path(order_id))] if order_id
   .mt-3.pt-2.border-top
     .booking-detail-label.text-muted.text-uppercase.mb-1 Verknüpfungen
     = render "shared/wsjrdp/kv_grid", rows: [links]

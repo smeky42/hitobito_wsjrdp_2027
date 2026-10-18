@@ -183,11 +183,16 @@ describe Fin::BookingsController, type: :controller do
     # the height of the bars -- otherwise it sits under them.
     def logo_offset = response.body[/header\.logo \{ margin-top: (\d+)px; \}/, 1]&.to_i
 
+    # The same height, for what sticks to the window's top edge below the bars
+    # (the sticky buttons of a finance edit page).
+    def bars_height = response.body[/--wsjrdp-session-bars-height: (\d+)px;/, 1]&.to_i
+
     it "shows nothing without a cap (ondemand)" do
       get :show, params: {id: booking.id}
 
       expect(bars).to be_empty
       expect(logo_offset).to be_nil
+      expect(bars_height).to be_nil
     end
 
     it "offers every tier up to the roles' own, the one in force pressed, each carrying its own tier" do
@@ -209,6 +214,7 @@ describe Fin::BookingsController, type: :controller do
         I18n.t("layouts.wsjrdp_session_bar.reset_lowered"), true])
       expect(warning.css("a, [data-method], .wsjrdp-bar-close")).to be_empty
       expect(logo_offset).to eq(30)
+      expect(bars_height).to eq(30)
     end
 
     # Raising is not lowering: the bar turns red and says so.

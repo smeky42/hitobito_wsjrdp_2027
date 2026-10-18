@@ -29,7 +29,9 @@
 -#          form_url (nil or the PATCH target for editable fields),
 -#          edit_mode (:auto / :view / :edit),
 -#          edit_url (the edit page, for the :view header's Bearbeiten button),
--#          cancel_url (the reading page, for the :edit page's Abbrechen link)
+-#          cancel_url (the reading page, for the :edit page's Abbrechen link),
+-#          sticky_actions (the :edit page's buttons under its header, staying in
+-#            sight while the page scrolls, instead of at its end)
 = fin_detail_styles
 .bk-item-detail
   - edit_mode = local_assigns.fetch(:edit_mode, :auto)
@@ -42,6 +44,7 @@
   -# and the inline toggle of a pane. Only the reading page, which carries no
   -# form at all, lets a blank one fall to its blank rule.
   - editable_shown = form_url.present?
+  - sticky = local_assigns[:sticky_actions] && edit_mode == :edit
   - form_kinds = [:header, :fields]
   = fin_detail_form_tag(record, form_url, editing: editing) do |f|
     - if f && !editing
@@ -59,11 +62,14 @@
             title: section.title,
             toolbar: fin_detail_header_toolbar(section.options[:toolbar],
               local_assigns[:edit_url], edit_mode)
+        - if f && sticky
+          = fin_detail_edit_actions(f, editing, mode: edit_mode,
+            cancel_url: local_assigns[:cancel_url], sticky: true)
       - when :fields
         = render "fin/shared/detail_group", record: record, ctx: ctx, section: section,
           layout: section.layout || default_layout, blank: section.blank || default_blank,
           form: f, editable_shown: editable_shown
-    - if f
+    - if f && !sticky
       = fin_detail_edit_actions(f, editing, mode: edit_mode,
         cancel_url: local_assigns[:cancel_url])
   - sections.each do |section|

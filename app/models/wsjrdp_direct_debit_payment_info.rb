@@ -14,4 +14,10 @@ class WsjrdpDirectDebitPaymentInfo < ActiveRecord::Base
   belongs_to :payment_initiation,
     optional: true,
     class_name: "WsjrdpPaymentInitiation"
+  # The bank's collective credit(s) of this Sammler.
+  has_many :camt_transactions,
+    foreign_key: "direct_debit_payment_info_id",
+    inverse_of: :direct_debit_payment_info,
+    class_name: "WsjrdpCamtTransaction",
+    dependent: :nullify
 end

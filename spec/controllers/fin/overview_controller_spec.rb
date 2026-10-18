@@ -28,7 +28,7 @@ describe Fin::OverviewController do
   # live under (fin.nav.<key>, fin.areas.<key>.purpose). The write tier sees
   # the Verwaltung for its Zahlungscodes tab.
   def area_keys
-    %w[accounts fees moss accounting reconciliation controlling admin]
+    %w[accounts payments fees moss accounting reconciliation controlling admin]
   end
 
   # [label, href] of every link inside #main.
@@ -87,6 +87,10 @@ describe Fin::OverviewController do
     expect(response).to have_http_status(:ok)
     expect(links).to include(
       [I18n.t("fin.nav.accounts"), wsjrdp_fin_accounts_path],
+      [I18n.t("fin.nav.payments"), fin_payments_path],
+      [I18n.t("fin.tabs.payment_orders"), payment_orders_path],
+      [I18n.t("fin.tabs.direct_debits"), direct_debits_path],
+      [I18n.t("fin.tabs.payment_returns"), payment_returns_path],
       [I18n.t("fin.nav.fees"), fees_path],
       [I18n.t("fin.tabs.person_fees"), fin_person_fees_path],
       [I18n.t("fin.tabs.plans"), wsjrdp_payment_plans_path],
@@ -138,8 +142,8 @@ describe Fin::OverviewController do
     # Each card is marked with its area's icon (Fin::OverviewHelper::AREAS);
     # Haml merges the fa- class with .fas, so only the fa- half is read back.
     icons = cards.map { |c| c.at_css(".fin-area-icon i")["class"].split.grep(/\Afa-/) }
-    expect(icons.flatten).to eq(%w[fa-university fa-coins fa-wallet fa-book fa-check-double
-      fa-chart-line fa-sliders-h])
+    expect(icons.flatten).to eq(%w[fa-university fa-exchange-alt fa-coins fa-wallet fa-book
+      fa-check-double fa-chart-line fa-sliders-h])
   end
 
   it "says on every card what its area is for" do

@@ -81,7 +81,7 @@ module Fin::DetailHelper
   # reading page the "Abbrechen" of an :edit page returns to; both render
   # nothing when they are nil.
   def fin_detail(record, ctx, layout: nil, blank: nil, form_url: nil, only: nil,
-    editing: nil, edit_url: nil, cancel_url: nil)
+    editing: nil, edit_url: nil, cancel_url: nil, sticky_actions: false)
     builder = Fin::DetailBuilder.new(capture: method(:capture), only: only)
     yield builder
     render "fin/shared/detail", record: record, ctx: ctx, sections: builder.to_sections,
@@ -90,7 +90,8 @@ module Fin::DetailHelper
       form_url: form_url,
       edit_mode: fin_detail_edit_mode(editing),
       edit_url: edit_url,
-      cancel_url: cancel_url
+      cancel_url: cancel_url,
+      sticky_actions: sticky_actions
   end
 
   # The edit mode of this detail (EDIT_MODES); anything but nil / true / false
@@ -249,6 +250,12 @@ module Fin::DetailHelper
     case row.input
     when :text
       f.text_field row.attr, class: "form-control form-control-sm", style: "max-width: 20ch"
+    # A long single-line value (an IBAN, a reference, a purpose): the value
+    # column's width.
+    when :wide_text
+      f.text_field row.attr, class: "form-control form-control-sm"
+    when :date
+      fin_detail_date_input(f, row.attr)
     when :textarea
       f.text_area row.attr, rows: 3, class: "form-control form-control-sm"
     when :check_box
@@ -258,8 +265,27 @@ module Fin::DetailHelper
     when :select
       f.select row.attr, row.options, {include_blank: false},
         class: "form-select form-select-sm", style: "max-width: 24ch"
+    when :wide_select
+      f.select row.attr, row.options, {include_blank: false},
+        class: "form-select form-select-sm", style: "width: auto; max-width: 100%"
     else
       fin_detail_amount_input(f, row.attr)
+    end
+  end
+
+  # The date input as hitobito's own (StandardFormBuilder#date_field): a text
+  # field with the calendar icon and the class `date` the core's datepicker
+  # opens on, the date German-formatted ("09.10.2025"). After a failed save
+  # the field keeps what was typed.
+  def fin_detail_date_input(f, attr)
+    record = f.object
+    invalid = record.errors[attr].any?
+    value = invalid ? record.public_send(:"#{attr}_before_type_cast") : record.public_send(attr)
+    value = l(value) if value.is_a?(Date)
+    content_tag(:div, class: "input-group input-group-sm", style: "max-width: 20ch") do
+      content_tag(:span, icon(:"calendar-alt"), class: "input-group-text") +
+        f.text_field(attr, value: value, autocomplete: "off",
+          class: ["date form-control form-control-sm", ("is-invalid" if invalid)].compact.join(" "))
     end
   end
 
@@ -290,10 +316,15 @@ module Fin::DetailHelper
   # two submits and the link back to the reading page; in :auto mode the
   # record's own page keeps hitobito's form_buttons, and an embedded pane the JS
   # cancel that resets the form and toggles back to display mode.
-  def fin_detail_edit_actions(f, editing, mode: :auto, cancel_url: nil)
-    content_tag(:div, class: "fin-edit-actions p-2 border-top") do
+  #
+  # `sticky:` -- the edit page's line under its header that stays in sight
+  # while the page scrolls (fin_detail sticky_actions:), not the one at its
+  # end.
+  def fin_detail_edit_actions(f, editing, mode: :auto, cancel_url: nil, sticky: false)
+    classes = sticky ? "fin-edit-actions fin-edit-actions-sticky p-2" : "fin-edit-actions p-2 border-top"
+    content_tag(:div, class: classes) do
       if mode == :edit
-        fin_detail_edit_page_buttons(f, cancel_url)
+        fin_detail_edit_page_buttons(f, cancel_url, sticky: sticky)
       elsif editing
         form_buttons(f, cancel_url: request.path)
       else
@@ -307,18 +338,29 @@ module Fin::DetailHelper
   # come back here instead of going on to the reading page. The cancel is a
   # link, and breaks out of the detail's turbo frame like the "Bearbeiten"
   # button does.
-  def fin_detail_edit_page_buttons(f, cancel_url)
+  #
+  # In the sticky line (`sticky:`) the three sit in a flex row with one gap --
+  # a row that wraps on a narrow screen stays aligned -- and the second says
+  # "Speichern und weiter" below the sm breakpoint, so the line keeps to one
+  # row on a phone.
+  def fin_detail_edit_page_buttons(f, cancel_url, sticky: false)
+    margin = sticky ? "" : " mt-2"
+    stay_label = if sticky
+      safe_join(["Speichern und weiter", content_tag(:span, " bearbeiten", class: "d-none d-sm-inline")])
+    else
+      "Speichern und weiter bearbeiten"
+    end
     buttons = [
       f.button("Speichern", name: "save", value: "1",
-        class: "btn btn-sm btn-primary mt-2", data: {disable: true}),
-      f.button("Speichern und weiter bearbeiten", name: "stay", value: "1",
-        class: "btn btn-sm btn-outline-primary mt-2 ms-2", data: {disable: true})
+        class: "btn btn-sm btn-primary#{margin}", data: {disable: true}),
+      f.button(stay_label, name: "stay", value: "1",
+        class: "btn btn-sm btn-outline-primary#{margin}#{" ms-2" unless sticky}", data: {disable: true})
     ]
     if cancel_url.present?
-      buttons << link_to("Abbrechen", cancel_url, class: "btn btn-sm btn-link mt-2 ms-2",
+      buttons << link_to("Abbrechen", cancel_url, class: "btn btn-sm btn-link#{margin}#{sticky ? " px-1" : " ms-2"}",
         data: {turbo_frame: "_top"})
     end
-    content_tag(:div, safe_join(buttons), class: "btn-toolbar")
+    content_tag(:div, safe_join(buttons), class: sticky ? "d-flex flex-wrap align-items-center gap-1 gap-sm-2" : "btn-toolbar")
   end
 
   def fin_detail_inline_buttons(f)
