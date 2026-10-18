@@ -35,7 +35,7 @@
                   = p.short_payment_role
               %td
                 %strong
-                  = link_to(p.short_full_name_with_nickname, "#{group_person_path(p.default_group_id, p)}/unit")
+                  = link_to(p.short_full_name_with_nickname, unit_person_path(p))
               %td= format_attr(p, :unit_code)
               %td= format_attr(p, :cluster_code)
               %td= p.status

@@ -2,7 +2,7 @@
   - if @printable and (@person.status == 'registered')
     - if can?(:edit, @person)
       = action_button(t('people.buttons.print_preview'),
-                      '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/print/preview',
+                      "#{person_base_path(@group, @person)}/print/preview",
                       :envelope,
                       remote: false,
                       method: :get,
@@ -14,7 +14,7 @@
       %br
 
       = action_button(t('people.buttons.print_submit'),
-                      '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/print/submit',
+                      "#{person_base_path(@group, @person)}/print/submit",
                       :envelope,
                       remote: false,
                       method: :get,
@@ -28,10 +28,10 @@
         = raw(t('people.status_help.printed'))
         %br
         %br
-        = standard_form(@person, {url: print_group_person_path,  method: :put}) do |f|
+        = standard_form(@person, {url: person_subpage_path(:print, @group, @person), method: :put}) do |f|
           - if @person.generated_registration_pdf.present?
             = action_button(t('people.buttons.show_registration_generated'),
-                            '/groups/' + params[:group_id] + '/people/'+ params[:id] + '/upload/show_registration_generated',
+                            "#{person_base_path(@group, @person)}/upload/show_registration_generated",
                             :envelope,
                             remote: false,
                             method: :get,

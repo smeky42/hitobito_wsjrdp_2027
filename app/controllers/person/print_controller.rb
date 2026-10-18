@@ -7,8 +7,8 @@ class Person::PrintController < ApplicationController
   include ContractHelper
 
   def index
-    @group ||= Group.find(params[:group_id])
-    @person ||= group.people.find(params[:id])
+    group
+    @person ||= entry
     @printable = printable
 
     unless printable
@@ -130,8 +130,17 @@ class Person::PrintController < ApplicationController
 
   private
 
+  # By id alone, in every group (#group).
   def entry
     @person ||= Person.find(params[:id])
+  end
+
+  # The group of the URL, without one the person's primary group (the root
+  # group for a person without one), as the status page
+  # (Person::StatusController#group): the page works in every group and at
+  # /people/:id/... in the primary group.
+  def group
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (entry.primary_group || Group.root)
   end
 
   def authorize_action

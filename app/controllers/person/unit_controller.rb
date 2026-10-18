@@ -34,7 +34,7 @@ class Person::UnitController < ApplicationController
       end
       update_cluster_code_in_db(@people_in_cluster, "fill_cluster_code")
     end
-    redirect_back_or_to(unit_group_person_path)
+    redirect_back_or_to(unit_page_path)
   end
 
   def clear_cluster_code
@@ -48,7 +48,7 @@ class Person::UnitController < ApplicationController
       p.cluster_code = nil
     end
     update_cluster_code_in_db(@people_in_cluster, "clear_cluster_code")
-    redirect_back_or_to(unit_group_person_path)
+    redirect_back_or_to(unit_page_path)
   end
 
   private
@@ -57,13 +57,20 @@ class Person::UnitController < ApplicationController
     authorize!(:edit, person)
   end
 
+  # By id alone, in every group (#group).
   def person
-    @person ||= fetch_person
+    @person ||= Person.find(params[:id])
   end
 
+  # The group of the URL, without one the person's primary group (the root
+  # group for a person without one), as the status page
+  # (Person::StatusController#group): the page works in every group and at
+  # /people/:id/... in the primary group.
   def group
-    @group ||= Group.find(params[:group_id])
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (person.primary_group || Group.root)
   end
+
+  def unit_page_path = helpers.person_subpage_path(:unit, group, person)
 
   def common_ul_unit_code
     ul_unit_code_set = Set.new(ul_in_cluster.map { |p| normalized_unit_code_or_nil(p.unit_code) }.select { |uc| uc })

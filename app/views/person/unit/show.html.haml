@@ -4,7 +4,7 @@
     --bs-table-accent-bg: transparent !important;
   }
 
-= standard_form(@person, { url: unit_group_person_path, method: :get }) do |f|
+= standard_form(@person, { url: person_subpage_path(:unit, @group, @person), method: :get }) do |f|
   = f.error_messages
 
 

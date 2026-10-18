@@ -7,7 +7,7 @@
         = f.file_field(field)
       - if @person.send(field).present?
         - if @person.send(field).present? && can?(:log, @person)
-          = action_button("", "/groups/#{params[:group_id]}/people/#{params[:id]}/upload/delete/#{field}",
+          = action_button("", "#{person_base_path(@group, @person)}/upload/delete/#{field}",
                           :trash, remote: false,
                           method: :delete,
                           class: "btn-danger",

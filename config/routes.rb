@@ -85,6 +85,24 @@ Rails.application.routes.draw do
     %w[contract sepa medical data_agreement passport recommendation photo_permission good_conduct].each do |doc|
       get "people/:id/upload/show_#{doc}" => "person/upload#show_#{doc}"
     end
+    # The print, upload, unit, history, log and security pages without a
+    # group, in the person's primary group too (Wsjrdp2027::PeopleHelper,
+    # person_subpage_path); the security page's actions stay in the group's
+    # URL and come back to the short one.
+    get "people/:id/print" => "person/print#index", :as => :print_person
+    put "people/:id/print" => "person/print#index"
+    get "people/:id/print/preview" => "person/print#preview"
+    get "people/:id/print/submit" => "person/print#submit"
+    get "people/:id/upload" => "person/upload#index", :as => :upload_person
+    put "people/:id/upload" => "person/upload#index"
+    get "people/:id/upload/show_registration_generated" => "person/upload#show_registration_generated"
+    delete "people/:id/upload/delete/:what" => "person/upload#destroy"
+    get "people/:id/unit" => "person/unit#show", :as => :unit_person
+    post "people/:id/unit/fill_cluster_code" => "person/unit#fill_cluster_code"
+    post "people/:id/unit/clear_cluster_code" => "person/unit#clear_cluster_code"
+    get "people/:id/history" => "person/history#index", :as => :history_person
+    get "people/:id/log" => "person/log#index", :as => :log_person
+    get "people/:id/security_tools" => "person/security_tools#index", :as => :security_tools_person
 
     resources :groups do
       # An API key's token is shown only as it is made
