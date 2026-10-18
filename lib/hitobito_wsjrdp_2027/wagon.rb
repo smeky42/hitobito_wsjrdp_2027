@@ -80,6 +80,12 @@ module HitobitoWsjrdp2027
 
       # Controllers
       PeopleController.prepend Wsjrdp2027::PeopleController
+      # History, log and security tools at /people/:id/... too, in the
+      # primary group.
+      [Person::HistoryController, Person::LogController, Person::SecurityToolsController].each do |controller|
+        controller.prepend Wsjrdp2027::Person::PageInPrimaryGroup
+      end
+      Person::SecurityToolsController.prepend Wsjrdp2027::Person::SecurityToolsController
       GroupsController.prepend Wsjrdp2027::GroupsController
       Groups::SelfInscriptionController.include Wsjrdp2027::Groups::SelfInscriptionController
       Group::StatisticsController.include Wsjrdp2027::StatisticsController

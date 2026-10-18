@@ -73,6 +73,42 @@ module Wsjrdp2027::PeopleHelper
 
   def jamboree_data_person_path_with_group(group, *args) = jamboree_data_person_path(args[0])
 
+  # The print, upload, unit, history, log and security pages by the same
+  # rule: page is the first part of their route names (print_person_path,
+  # print_group_person_path).
+  def person_subpage_path(page, group, person, options = {})
+    if other_than_primary_group?(group, person)
+      send(:"#{page}_group_person_path", group, person, options)
+    else
+      send(:"#{page}_person_path", person, options)
+    end
+  end
+
+  # Their tabs, and the short URLs as the tabs' alt paths.
+  def print_tab_path(group, *args) = person_subpage_path(:print, group, args[0])
+
+  def print_person_path_with_group(group, *args) = print_person_path(args[0])
+
+  def upload_tab_path(group, *args) = person_subpage_path(:upload, group, args[0])
+
+  def upload_person_path_with_group(group, *args) = upload_person_path(args[0])
+
+  def unit_tab_path(group, *args) = person_subpage_path(:unit, group, args[0])
+
+  def unit_person_path_with_group(group, *args) = unit_person_path(args[0])
+
+  def history_tab_path(group, *args) = person_subpage_path(:history, group, args[0])
+
+  def history_person_path_with_group(group, *args) = history_person_path(args[0])
+
+  def log_tab_path(group, *args) = person_subpage_path(:log, group, args[0])
+
+  def log_person_path_with_group(group, *args) = log_person_path(args[0])
+
+  def security_tools_tab_path(group, *args) = person_subpage_path(:security_tools, group, args[0])
+
+  def security_tools_person_path_with_group(group, *args) = security_tools_person_path(args[0])
+
   # The page "Hauptgruppe/Rolle wechseln" by the same rule.
   def primary_role_page_path(group, person)
     other_than_primary_group?(group, person) ? status_primary_role_group_person_path(group, person) : status_primary_role_person_path(person)

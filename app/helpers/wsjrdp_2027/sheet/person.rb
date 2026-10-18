@@ -24,12 +24,16 @@ module Wsjrdp2027::Sheet::Person
   ]
 
   included do
+    # Print, upload and unit: the short URL in the primary group, the group's
+    # URL in any other (Wsjrdp2027::PeopleHelper#person_subpage_path).
     tab "people.tabs.print",
-      :print_group_person_path,
+      :print_tab_path,
+      alt: [:print_group_person_path, :print_person_path_with_group],
       if: :show
 
     tab "people.tabs.upload",
-      :upload_group_person_path,
+      :upload_tab_path,
+      alt: [:upload_group_person_path, :upload_person_path_with_group],
       if: :show
 
     tab "people.tabs.finance",
@@ -72,10 +76,20 @@ module Wsjrdp2027::Sheet::Person
       end)
 
     tab "people.tabs.unit",
-      :unit_group_person_path,
+      :unit_tab_path,
+      alt: [:unit_group_person_path, :unit_person_path_with_group],
       if: (lambda do |view, _group, person|
         view.can?(:log, person)
       end)
+
+    # The core's history, log and security tabs by the same rule, with the
+    # core's conditions.
+    %w[history log security_tools].each do |page|
+      index = tabs.index { |t| t.label_key == "people.tabs.#{page}" }
+      core = tabs[index]
+      tabs[index] = Sheet::Tab.new(core.label_key, :"#{page}_tab_path",
+        core.options.merge(alt: [:"#{page}_group_person_path", :"#{page}_person_path_with_group"]))
+    end
 
     self.tabs.select! { |t| shown_tabs.include? t.label_key }
     self.tabs.sort_by! { |t| shown_tabs.index t.label_key }

@@ -18,8 +18,8 @@ class Person::UploadController < ApplicationController
   ]
 
   def index
-    @group ||= Group.find(params[:group_id])
-    @person ||= group.people.find(params[:id])
+    group
+    @person ||= entry
     if request.put?
       upload_files
     end
@@ -45,15 +45,15 @@ class Person::UploadController < ApplicationController
   end
 
   def destroy
-    @person ||= group.people.find(params[:id])
+    @person ||= entry
     unless request.delete? && can?(:log, @person)
-      redirect_back_or_to(upload_group_person_path,
+      redirect_back_or_to(upload_page_path,
         alert: "Du darfst keine Dokumente löschen!")
       return
     end
     what = params[:what].to_sym
     unless ALL_UPLOAD_ATTRS_SYMS.any?(what)
-      redirect_back_or_to(upload_group_person_path,
+      redirect_back_or_to(upload_page_path,
         alert: "Du darfst #{what} nicht löschen!")
       return
     end
@@ -77,7 +77,7 @@ class Person::UploadController < ApplicationController
       val = @person.send(what)
       Rails.logger.debug { "new value of #{what}: #{val.inspect}" }
     end
-    redirect_to upload_group_person_path
+    redirect_to upload_page_path
   end
 
   def show_contract
@@ -114,9 +114,20 @@ class Person::UploadController < ApplicationController
 
   private
 
+  # By id alone, in every group (#group).
   def entry
     @person ||= Person.find(params[:id])
   end
+
+  # The group of the URL, without one the person's primary group (the root
+  # group for a person without one), as the status page
+  # (Person::StatusController#group): the page works in every group and at
+  # /people/:id/... in the primary group.
+  def group
+    @group ||= params[:group_id] ? Group.find(params[:group_id]) : (entry.primary_group || Group.root)
+  end
+
+  def upload_page_path = helpers.person_subpage_path(:upload, group, entry)
 
   def authorize_action
     authorize!(:edit, entry)
@@ -150,7 +161,7 @@ class Person::UploadController < ApplicationController
     end
     check_files
 
-    redirect_to upload_group_person_path
+    redirect_to upload_page_path
   end
 
   def check_files
@@ -191,7 +202,7 @@ class Person::UploadController < ApplicationController
 
     else
       flash[:alert] = I18n.t("activerecord.alert.only_pdf_allowed")
-      redirect_to upload_group_person_path
+      redirect_to upload_page_path
     end
   end
 
