@@ -370,6 +370,14 @@ module Wsjrdp2027::Person
         )
       end
 
+      # The group a person's pages draw when the URL names none
+      # (/people/:id/status, ...): the primary group, else the first group
+      # the person has a role in, else the root group -- the group of the
+      # core's default_group_id, which /people/:id leads to.
+      def default_group
+        primary_group || groups.first || ::Group.root
+      end
+
       def short_full_name
         first_names = first_name ? first_name.split : []
         name_parts = if !nickname.blank? && Set.new(first_names).include?(nickname)
