@@ -1,4 +1,7 @@
 #main.row-fluid
+  - if !@printable && @person.status == 'registered'
+    .alert.alert-danger
+      = simple_format("#{t('people.alerts.print_missing_fields')}: #{@not_printable_reason}", {}, wrapper_tag: "div")
   - if @printable and (@person.status == 'registered')
     - if can?(:edit, @person)
       = action_button(t('people.buttons.print_preview'),
@@ -22,8 +25,8 @@
                       title: t('people.buttons.print_submit_hint'))
       %br
       = raw(t('people.buttons.print_submit_info'))
-  - else 
-    - if can?(:edit, @person) 
+  - else
+    - if can?(:edit, @person)
       -if @person.status != 'registered'
         = raw(t('people.status_help.printed'))
         %br

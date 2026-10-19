@@ -1150,8 +1150,6 @@ de:
       sepa_mail: Deine Mailadrese für das SEPA Verfahren ist fehlerhaft, bitte überprüfe diese noch einmal!
       medical: Du hast nichts unter Medizinische Angaben eingetragen, bitte überprüfe diese noch mal auf Vollständigkeit!
 
-    info:
-      print_already_printed: Deine Anmeldung wurde schon gedruckt
     print:
       contract_roles:
         CMT: Contingent Management Team Mitglied
