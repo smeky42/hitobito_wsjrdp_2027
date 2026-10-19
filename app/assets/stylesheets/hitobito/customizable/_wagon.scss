@@ -69,6 +69,39 @@ body {
   color: $gray-light;
 }
 
+// Only the outermost parent sheet (the group) is red. A parent sheet inside
+// it -- a person above sub-pages of its own, e.g. Finanzen > Beiträge -- is
+// white, its tabs as the person's tabs on its other pages (#content).
+.sheet.parent .sheet.parent {
+  background: $white;
+
+  & > .level {
+    color: $text-color;
+  }
+
+  & > .level + .nav-sub {
+    border-bottom: 1px solid $border-color;
+
+    a {
+      color: $link-color;
+      border-bottom: 2px solid transparent;
+
+      &:hover {
+        border-color: $gray-light;
+      }
+    }
+
+    .active a {
+      color: $link-color;
+      border-color: $blue;
+
+      &:hover {
+        border-color: $purple;
+      }
+    }
+  }
+}
+
 // The ",—" of a whole-euro amount in a right-aligned money column
 // (Fin::AccountsOverviewHelper#fin_aligned_cents_de). A hidden "00" (::before,
 // not copied) gives the span the width of two digits in the surrounding font
