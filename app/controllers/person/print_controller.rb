@@ -9,15 +9,9 @@ class Person::PrintController < ApplicationController
   def index
     group
     @person ||= entry
-    @printable = printable
-
-    unless printable
-      flash[:alert] = (I18n.t "people.alerts.print_missing_fields") + ": " + not_printable_reason
-    end
-
-    unless @person.status == "registrered"
-      flash[:info] = (I18n.t "people.info.print_already_printed")
-    end
+    # Store what is missing for printing
+    @not_printable_reason = not_printable_reason
+    @printable = @not_printable_reason.empty?
   end
 
   def preview
