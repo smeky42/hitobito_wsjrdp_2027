@@ -159,6 +159,38 @@ describe Wsjrdp2027::DocumentWrite do
       expect(person.reload.upload_medical_pdf).to be_nil
     end
 
+    it "with skip_refused stores the others and names the refused one" do
+      change = put_file(write(skip_refused: true), "medical")
+      change.put(StringIO.new("\x89PNG\r\n\x1A\n".b), {key: "sepa", filename: "bild.png"}, now: now)
+
+      results = change.commit!
+
+      expect(results.map { |result| result.document.key }).to eq(%w[medical])
+      expect(change.skipped.map { |attributes, error| [attributes[:key], error.class] })
+        .to eq([["sepa", ActiveRecord::RecordInvalid]])
+      expect(person.reload).to have_attributes(upload_medical_pdf: be_present, upload_sepa_pdf: nil)
+      expect(files.size).to eq(1)
+    end
+
+    it "with skip_refused leaves out an empty file" do
+      change = put_file(write(skip_refused: true), "medical")
+      change.put(StringIO.new(""), {key: "sepa", filename: "leer.pdf"}, now: now)
+
+      expect(change.commit!.map { |result| result.document.key }).to eq(%w[medical])
+      expect(change.skipped.map { |attributes, error| [attributes[:key], error.record.errors.details[:base]] })
+        .to eq([["sepa", [{error: :empty_file}]]])
+    end
+
+    it "with skip_refused answers nothing when every put is refused" do
+      change = write(skip_refused: true)
+      change.put(StringIO.new("\x89PNG\r\n\x1A\n".b), {key: "sepa", filename: "bild.png"}, now: now)
+
+      expect(change.commit!).to eq([])
+      expect(change.skipped.size).to eq(1)
+      expect(WsjrdpDocument.of_subject(person)).to be_empty
+      expect(files).to be_empty
+    end
+
     it "keeps nothing when a later step fails" do
       change = put_file(write, "medical").on_subject { raise "boom" }
 
@@ -215,6 +247,43 @@ describe Wsjrdp2027::DocumentWrite do
 
       expect(person.reload.upload_medical_pdf).to eq(document.absolute_storage_file_path)
       expect(change.warnings).to contain_exactly(a_string_including("nicht gültig"))
+    end
+  end
+
+  describe "the lock" do
+    # Records, for each call of the file system, whether it ran under the
+    # locks of the change (inside Wsjrdp::LockedChange.run's block).
+    let(:calls) { [] }
+
+    before do
+      inside = false
+      allow(Wsjrdp::LockedChange).to receive(:run).and_wrap_original do |original, **options, &block|
+        original.call(**options) do |change|
+          inside = true
+          block.call(change)
+        ensure
+          inside = false
+        end
+      end
+      allow(File).to receive(:rename).and_wrap_original { |m, *args| calls << [:rename, inside] && m.call(*args) }
+      allow(FileUtils).to receive(:rm_f).and_wrap_original { |m, *args| calls << [:rm_f, inside] && m.call(*args) }
+    end
+
+    it "holds no file system work: the file is in place before and cleaned up after" do
+      put_file(write, "medical", pdf("one")).commit!
+      put_file(write, "medical", pdf("one"), now: now + 1).commit!
+
+      expect(calls.map(&:first)).to include(:rename, :rm_f)
+      expect(calls.select(&:last)).to be_empty
+    end
+
+    it "removes the files of a change that fails under the lock, after it" do
+      change = put_file(put_file(write, "medical"), "sepa").on_subject { raise "boom" }
+
+      expect { change.commit! }.to raise_error("boom")
+      expect(files).to be_empty
+      expect(calls.count { |name, _| name == :rm_f }).to be >= 2
+      expect(calls.select(&:last)).to be_empty
     end
   end
 

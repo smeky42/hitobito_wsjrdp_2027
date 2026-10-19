@@ -19,10 +19,13 @@ module Wsjrdp2027
   #
   # commit! first writes every file to a temporary file and checks it
   # (DocumentStore#prepare) -- a refused one refuses the whole change before
-  # anything is written. Then, in one transaction (Wsjrdp::LockedChange)
-  # under the lock of every slot it touches, it reads each slot's current
-  # document anew, links the files to their names and saves their rows, the
-  # predecessors becoming superseded, hides what is removed, writes the path
+  # anything is written, or with skip_refused is left out of it (#skipped)
+  # -- and moves it to a free name (DocumentStore#
+  # claim_name), and finds the people column of each slot: all the file
+  # system work, and the lookups, before any lock. Then, in one transaction
+  # (Wsjrdp::LockedChange) under the lock of every slot it touches -- database
+  # work only --, it reads each slot's current document anew, saves the rows,
+  # the predecessors becoming superseded, hides what is removed, writes the path
   # of each slot's current document into the people column of its kind
   # (WsjrdpDocumentKind#people_column_name), runs the on_subject block and
   # saves the subject (its PaperTrail version with it). Every put and
@@ -30,8 +33,9 @@ module Wsjrdp2027
   # first, so that what it reads of the subject -- other slots' columns,
   # status, tags -- is not stale, and a subject being destroyed refuses the
   # change (RecordNotFound once its row is gone); a hide locks the row only
-  # when its kind has a people column. The files of a change that rolls
-  # back are removed again.
+  # when its kind has a people column. The files of a change that does not
+  # commit are removed again, and so are those of puts that turned out
+  # UNCHANGED -- after the lock, both.
   #
   # expected_current: :any (default) follows whatever is current -- the new
   # document replaces it and takes its lists and refs unless given
@@ -67,7 +71,8 @@ module Wsjrdp2027
     Result = Data.define(:slot, :outcome, :document)
 
     # Several puts were refused before anything was written; failures are
-    # [[attributes, error], ...]. One refused put raises its own error.
+    # [[attributes, error], ...]. One refused put raises its own error. With
+    # skip_refused neither is raised: the refused puts are #skipped.
     class Invalid < DocumentStore::Error
       attr_reader :failures
 
@@ -116,11 +121,20 @@ module Wsjrdp2027
     # What the subject's save had to say: messages for the user.
     attr_reader :warnings
 
+    # With skip_refused: the puts refused while preparing, left out of the
+    # change, as [[attributes, error], ...] (RecordInvalid, TooLarge).
+    attr_reader :skipped
+
+    # skip_refused: a put refused while preparing (DocumentStore#prepare:
+    # extension, the kind's checks, size) is left out of the change instead of
+    # refusing it; the other operations go ahead, and #skipped names it.
     def initialize(subject: nil, by: nil, origin: nil, skip_unchanged: true, invalid_subject: :warn,
-      timeout: Wsjrdp::LockedChange::DEFAULT_TIMEOUT)
+      skip_refused: false, timeout: Wsjrdp::LockedChange::DEFAULT_TIMEOUT)
       raise ArgumentError, "invalid_subject: #{invalid_subject.inspect}" unless INVALID_SUBJECT.include?(invalid_subject)
 
       @invalid_subject = invalid_subject
+      @skip_refused = skip_refused
+      @skipped = []
       @warnings = []
       @subject = subject
       @by = by
@@ -131,14 +145,16 @@ module Wsjrdp2027
     end
 
     # Stores io as the new current document of its slot (DocumentStore.store!
-    # for attributes, ext and upload). The block gets the document as built.
-    def put(io, attributes, ext: nil, upload: true, now: Time.zone.now, expected_current: ANY, &block)
+    # for attributes, ext, upload and allow_empty). The block gets the
+    # document as built.
+    def put(io, attributes, ext: nil, upload: true, allow_empty: false, now: Time.zone.now, expected_current: ANY,
+      &block)
       attributes = attributes.to_h.symbolize_keys
       attributes = attributes.reverse_merge(subject: @subject) if @subject
       attributes = attributes.reverse_merge(author: @by) if @by
       attributes = attributes.reverse_merge(origin: @origin) if @origin
-      @operations << {type: :put, io: io, attributes: attributes, ext: ext, upload: upload, now: now,
-                      expected: expected_current, block: block}
+      @operations << {type: :put, io: io, attributes: attributes, ext: ext, upload: upload, allow_empty: allow_empty,
+                      now: now, expected: expected_current, block: block}
       self
     end
 
@@ -164,17 +180,22 @@ module Wsjrdp2027
       self
     end
 
-    # Answers the Results, in the order of the operations.
+    # Answers the Results, in the order of the operations (without the
+    # skipped puts; nothing to do answers []).
     def commit!
       @warnings = []
+      @skipped = []
+      committed = nil
       prepare_all
+      return [] if @operations.empty? && @on_subject.nil?
+
       type, id, subject = subject!
-      lock_subject = @on_subject.present? || @operations.any? { |op| op[:type] != :hide || people_column(subject, op) }
-      placed = []
+      claim_names
+      @operations.each { |op| op[:people_column] = people_column(subject, op) }
+      lock_subject = @on_subject.present? || @operations.any? { |op| op[:type] != :hide || op[:people_column] }
       keys = @operations.map { |op| self.class.lock_key(type, id, slot(op)) }
-      committed = Wsjrdp::LockedChange.run(rows: lock_subject ? [subject] : [], keys: keys, timeout: @timeout) do |change|
-        change.on_rollback { placed.each { |path| FileUtils.rm_f(path) } }
-        results = @operations.map { |op| apply(subject, op, placed) }
+      committed = Wsjrdp::LockedChange.run(rows: lock_subject ? [subject] : [], keys: keys, timeout: @timeout) do
+        results = @operations.map { |op| apply(subject, op) }
         mirror(subject)
         @on_subject&.call(subject, results)
         # Always with an on_subject block: a change of tags is no attribute change.
@@ -186,11 +207,13 @@ module Wsjrdp2027
       committed
     ensure
       @operations.each { |op| DocumentStore.discard(op[:prepared]) }
+      remove_claimed(committed)
     end
 
     private
 
-    # The files and checks of every put; a refused one refuses all.
+    # The files and checks of every put; a refused one refuses all -- or,
+    # with skip_refused, leaves the change and goes to #skipped.
     def prepare_all
       failures = []
       @operations.each do |op|
@@ -198,11 +221,18 @@ module Wsjrdp2027
 
         op[:store] = DocumentStore.new
         op[:prepared] = op[:store].prepare(op[:io], op[:attributes], ext: op[:ext], upload: op[:upload],
-          follow_current: !op[:expected].nil?, &op[:block])
+          allow_empty: op[:allow_empty], follow_current: !op[:expected].nil?, &op[:block])
       rescue ActiveRecord::RecordInvalid, DocumentStore::TooLarge => e
+        op[:refused] = true
         failures << [op[:attributes], e]
       end
       return if failures.empty?
+
+      if @skip_refused
+        @skipped = failures
+        @operations.reject! { |op| op[:refused] }
+        return
+      end
 
       @operations.each { |op| DocumentStore.discard(op[:prepared]) }
       raise failures.first.last if @operations.size == 1
@@ -231,6 +261,24 @@ module Wsjrdp2027
 
     def slot(op) = op[:slot] || self.class.slot_of(op[:prepared].document)
 
+    # Moves each put's file to a free name (DocumentStore#claim_name).
+    def claim_names
+      @operations.each do |op|
+        op[:claimed] = op[:store].claim_name(op[:prepared], now: op[:now]) if op[:type] == :put
+      end
+    end
+
+    # The claimed files no row names: all of them when the change did not
+    # commit, those of UNCHANGED puts when it did.
+    def remove_claimed(committed)
+      @operations.each do |op|
+        next unless op[:claimed]
+        next if committed && !op[:unchanged]
+
+        FileUtils.rm_f(op[:claimed])
+      end
+    end
+
     # A subject that is not valid -- e.g. as it lies in the database -- does
     # not stop the documents (invalid_subject: :warn, the default): it is
     # saved without validations, so that its people columns name the files
@@ -243,25 +291,23 @@ module Wsjrdp2027
       subject.save!(validate: false)
     end
 
-    def apply(subject, op, placed)
+    def apply(subject, op)
       case op[:type]
-      when :put then apply_put(op, placed)
+      when :put then apply_put(op)
       when :remove then apply_remove(subject, op)
       when :hide then apply_hide(op)
       end
     end
 
-    def apply_put(op, placed)
+    def apply_put(op)
       document = op[:prepared].document
       current = DocumentStore.current_like(document)
       check_expected!(document, current, op[:expected])
-      if @skip_unchanged && unchanged?(current, document)
-        return Result.new(slot: slot(op), outcome: UNCHANGED, document: current)
-      end
+      op[:unchanged] = @skip_unchanged && unchanged?(current, document)
+      return Result.new(slot: slot(op), outcome: UNCHANGED, document: current) if op[:unchanged]
 
       op[:store].follow(op[:prepared], current)
-      op[:store].place(op[:prepared], now: op[:now])
-      placed << document.absolute_storage_file_path
+      op[:store].place(op[:prepared])
       Result.new(slot: slot(op), outcome: STORED, document: document)
     end
 
@@ -298,7 +344,8 @@ module Wsjrdp2027
     end
 
     # The people column of the kind of the operation's slot, for an original
-    # without numbers of a person; nil when there is none.
+    # without numbers of a person; nil when there is none. Before the lock: a
+    # put has its kind from #prepare, the others look it up.
     def people_column(subject, op)
       return nil unless subject.is_a?(::Person)
 
@@ -307,15 +354,16 @@ module Wsjrdp2027
       document = op[:prepared]&.document || op[:document]
       return nil if document && (document.derived_from_id || document.derived_from)
 
-      column = WsjrdpDocumentKind.for(subject_type: subject.class.base_class.name, key: slot[:key],
-        secondary_key: slot[:secondary_key])&.people_column_name
+      kind = op[:prepared] ? op[:prepared].kind : WsjrdpDocumentKind.for(subject_type: subject.class.base_class.name,
+        key: slot[:key], secondary_key: slot[:secondary_key])
+      column = kind&.people_column_name
       column if column.present? && subject.has_attribute?(column)
     end
 
     # The path of each touched slot's current document into its column.
     def mirror(subject)
       @operations.each do |op|
-        column = people_column(subject, op)
+        column = op[:people_column]
         next unless column
 
         current = WsjrdpDocument.current_for(subject, **slot(op))

@@ -212,6 +212,43 @@ The extension:
 3. else the extension of the content type Marcel finds in the file;
 4. else none.
 
+## File names
+
+A document keeps the name of its file in `filename` -- for an upload the
+name the uploader's browser sends, as it likes (the multipart header; Rack
+keeps only its last path part). It is only ever shown: the file lies under a
+name of our own (above). `Wsjrdp2027::UploadFilename` checks and normalizes
+it, in `DocumentStore#build` for every way a document is made, and a
+validation on create holds every new row to it:
+
+1. A name of 500 bytes or more as given is refused -- an early way out,
+   told as too long like step 4.
+2. A name that is no valid UTF-8, or holds a control character (Unicode
+   category Cc, NUL among them), U+202E (RIGHT-TO-LEFT OVERRIDE) or `/` or
+   `\` is refused.
+3. It is normalized: Unicode NFC; `< > : " | ? *` (not allowed by Windows)
+   and `% $ ;` become `-`; leading white space and trailing white space and
+   dots go, white space inside stays; a name Windows reserves (`CON`, `PRN`,
+   `AUX`, `NUL`, `COM0-9`, `LPT0-9`, also with an extension) gets `_`; the
+   other directional marks stay (Hebrew, Arabic). Nothing left: the
+   fallback after the keys, `upload-<key>[-<key_number>][-<secondary_key>
+   [-<secondary_key_number>]]`.
+4. A normalized name of more than 255 bytes is refused, never shortened.
+
+Lengths are bytes of UTF-8 (`String#bytesize`): 255 bytes are never more than
+the 255 UTF-16 units Windows allows, nor than the 255 bytes of Linux file
+systems. A normalized name is one `ActiveStorage::Filename#sanitized` leaves
+as it is. When normalizing changed the name, the name as given goes into
+`additional_info["original_filename"]` (at most 500 characters). A refusal
+refuses the document before anything is written, with an error of
+`filename` that says why, not the name: "Dateiname ist zu lang (höchstens
+255 Bytes)", "Dateiname ungültig (kein UTF-8)", "Dateiname ungültig (enthält
+Unicode-Steuerzeichen)", "Dateiname ungültig (enthält U+202E und /)" (the
+forbidden characters the name holds). Where a page shows a refused name, it
+shows it escaped (`UploadFilename.display`: ASCII letters, digits, space and
+`. - _ ( )` as they are, everything else as `\u{XXXX}` or `\xXX`, at most 60
+characters), so that nothing in it reads as HTML.
+
 ## Writing a file
 
 `DocumentStore.store!(io, attributes, ext:)` stores one document; it is a
@@ -224,15 +261,17 @@ free slot, one with `replaces` needs that one to be still current.
    upload above the limit of its kind, else
    `Settings.documents.max_upload_size_mb` (default 20), is refused -- only
    uploads have a limit;
-3. records size, SHA-256, content type and `file_status` `present`; an upload
-   whose type or extension its kind does not accept is refused;
-4. under the lock of its slot: links the temporary file to its name; the link
-   fails when the name is taken, which gives the next suffix. Where the file
-   system has no hard links the file is created exclusively and filled. A row
-   that cannot be saved because its path is taken also gives the next suffix,
-   and the file is removed again;
-5. saves the row (and supersedes the replaced document) and removes the
-   temporary file.
+3. records size, SHA-256, content type and `file_status` `present`; an empty
+   file (0 bytes) is refused unless the writer passes `allow_empty: true`
+   (no PDF, image or letter is empty); an upload whose type or extension its
+   kind does not accept is refused;
+4. before the lock of its slot, moves the temporary file to its name: the
+   name is taken by creating an empty file of that name exclusively -- which
+   fails when a file has the name -- and the temporary file is renamed onto
+   it. A name a file or a row has gives the next suffix. No hard links, no
+   copying: any file system will do;
+5. under the lock of its slot, database work only: saves the row (and
+   supersedes the replaced document).
 
 `DocumentStore.register!(path, attributes)` records a file already under the
 upload root in place (or as missing, when it is not there) and supersedes the
@@ -241,8 +280,8 @@ and `hide_current!(subject, reason:, by:, **slot)` hide a document, keeping
 the file.
 
 A file is never overwritten. A temporary file left by a crash stays, as does
-a linked file whose transaction a crash cut off before its commit; the
-checksum is not checked on download.
+a moved file whose change a crash cut off before its commit; the checksum is
+not checked on download.
 
 ## Writing documents
 
@@ -264,10 +303,14 @@ results = write.commit!
 - `commit!` first prepares every file (steps 1-3 above). A refused file
   refuses the whole change before anything is written: one refused `put`
   raises its own error, several raise `DocumentWrite::Invalid` with the
-  failures.
+  failures. With `skip_refused: true` a refused file is left out instead and
+  the others go ahead; `write.skipped` names it. Then it moves the files to their names (step 4) and finds the
+  people column of each slot -- all the file system work and the lookups
+  happen before any lock.
 - Then, in one transaction under the locks of every slot it touches
-  (`Wsjrdp::LockedChange`, `doc/wsjrdp/locked_change.md`), it reads each
-  slot's current document anew, places the files (steps 4-5), hides what is
+  (`Wsjrdp::LockedChange`, `doc/wsjrdp/locked_change.md`) -- database work
+  only --, it reads each slot's current document anew, saves the rows (step
+  5), hides what is
   removed, writes the path of each slot's current document into the people
   column of its kind (`people_column_name`; originals without numbers only),
   runs the `on_subject` block and saves the subject, which writes its
@@ -279,7 +322,8 @@ results = write.commit!
   a subject being destroyed refuses the change (`RecordNotFound` once its row
   is gone, so no document of a destroyed subject is left behind current). A
   `hide` locks the row only when its kind has a people column.
-- The files of a change that rolls back are removed again.
+- The files of a change that does not commit are removed again, and so are
+  those of puts that turned out `UNCHANGED` -- after the lock.
 - `expected_current:` `:any` (default) follows whatever is current: the new
   document replaces it and takes its lists and refs unless the attributes
   give them, as a document built with `replaces` does (`DocumentStore#follow`);

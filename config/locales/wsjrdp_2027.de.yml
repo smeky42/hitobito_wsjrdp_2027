@@ -114,6 +114,13 @@ de:
               kind_content_type: "Diese Art von Dokument nimmt nur Dateien vom Typ %{types} an."
               kind_extension: "Diese Art von Dokument nimmt nur Dateien mit der Endung %{extensions} an."
               kind_too_large: "Die Datei ist zu groß (höchstens %{size} MB)."
+              empty_file: Die Datei ist leer.
+            filename:
+              too_long: ist zu lang (höchstens %{max} Bytes)
+              invalid_encoding: ungültig (kein UTF-8)
+              control_character: ungültig (enthält Unicode-Steuerzeichen)
+              forbidden_characters: ungültig (enthält %{characters})
+              not_normalized: ist nicht normalisiert
         wsjrdp_document_kind:
           key_blank: darf nicht leer sein.
           key_too_long: darf höchstens 40 Zeichen lang sein.
@@ -128,6 +135,8 @@ de:
           unknown_column: ist keine Upload-Spalte der Personen.
 
     attributes:
+      wsjrdp_document:
+        filename: Dateiname
       wsjrdp_document_kind:
         subject_type: Gehört zu
         key: Schlüssel

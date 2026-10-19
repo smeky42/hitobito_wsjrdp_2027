@@ -22,21 +22,28 @@ module Wsjrdp2027
   # Wsjrdp2027::DocumentFilename.
   #
   # A file is never overwritten: it is written to a temporary file in its
-  # folder first (#prepare), then linked to its name, which fails when the
-  # name is taken (or, where the file system has no hard links, created
-  # exclusively and filled), and its row saved (#place). A taken name -- by a
-  # file or by a row -- gets the next suffix _1, _2, ... A file whose row
-  # could not be saved is removed again.
+  # folder first (#prepare), then moved to its name (#claim_name) -- the name
+  # is taken first by creating an empty file of that name exclusively, which
+  # fails when a file has it, and the temporary file then renamed onto it --,
+  # and at last its row saved (#place). A name a file or a row has gets the
+  # next suffix _1, _2, ... Works on any file system: no hard links, no
+  # copying.
   #
-  # Every write of a slot goes through Wsjrdp2027::DocumentWrite, which runs
-  # #place under the slot's lock and removes the placed files again when its
-  # transaction rolls back.
+  # Every write of a slot goes through Wsjrdp2027::DocumentWrite: it claims
+  # the names before it takes the slot's lock, so that only database work
+  # happens under the lock (#place), and removes the claimed files again
+  # when the change does not commit.
   class DocumentStore
     MAX_ATTEMPTS = 100
     TEMPORARY_PREFIX = ".tmp-"
-    PATH_INDEX = "index_wsjrdp_documents_on_relative_storage_file_path"
-    # Errors of File.link where the file system has no hard links.
-    LINK_UNSUPPORTED = [NotImplementedError, Errno::EPERM, Errno::EXDEV, Errno::EOPNOTSUPP, Errno::EMLINK].freeze
+    # The mode of a stored file (less the umask), as the registration uploads
+    # always had it: readable by everybody on the host, like any other file
+    # the app writes.
+    FILE_MODE = 0o644
+    # The longest name as given kept in additional_info["original_filename"]
+    # (characters; a longer one is cut). A name as given has fewer than
+    # UploadFilename::MAX_GIVEN_BYTES bytes, so it is a net only.
+    MAX_ORIGINAL_FILENAME_LENGTH = 500
 
     class Error < StandardError; end
 
@@ -96,6 +103,9 @@ module Wsjrdp2027
       #   (WsjrdpDocumentKind), else the table's defaults.
       # - upload: true checks the size limit and the files the kind accepts
       #   (only uploads have them).
+      # - allow_empty: an empty file (0 bytes) is refused unless true -- no
+      #   PDF, no image, no letter is empty; a writer that means to keep an
+      #   empty file says so.
       #
       # The block, if given, gets the document as built, before anything is
       # written (e.g. to authorize it).
@@ -104,10 +114,11 @@ module Wsjrdp2027
       # slot must be free, with it replaces must still be current. A subject
       # whose data is not valid does not refuse the document; the warning
       # goes to the log (a writer that shows it uses DocumentWrite).
-      def store!(io, attributes, ext: nil, upload: true, now: Time.zone.now, &block)
+      def store!(io, attributes, ext: nil, upload: true, allow_empty: false, now: Time.zone.now, &block)
         attributes = attributes.to_h.symbolize_keys
         write = DocumentWrite.new(skip_unchanged: false)
-        write.put(io, attributes, ext: ext, upload: upload, now: now, expected_current: attributes[:replaces], &block)
+        write.put(io, attributes, ext: ext, upload: upload, allow_empty: allow_empty, now: now,
+          expected_current: attributes[:replaces], &block)
         document = write.commit!.first.document
         write.warnings.each { |warning| Rails.logger.warn("DocumentStore.store! #{document.id}: #{warning}") }
         document
@@ -167,8 +178,9 @@ module Wsjrdp2027
     # before anything stays behind. The block gets the document as built,
     # before anything is written. follow_current: a document without
     # replaces follows the current one of its slot, if there is one (#follow;
-    # the writer does it again under the slot's lock).
-    def prepare(io, attributes, ext:, upload:, follow_current: false)
+    # the writer does it again under the slot's lock). An empty file is
+    # refused unless allow_empty (store!).
+    def prepare(io, attributes, ext:, upload:, allow_empty: false, follow_current: false)
       attributes = attributes.to_h.symbolize_keys
       document = build(attributes)
       prepared = Prepared.new(document: document, attributes: attributes,
@@ -186,6 +198,7 @@ module Wsjrdp2027
       begin
         write_temporary(io, temporary, upload)
         describe(document, temporary, ext)
+        raise ActiveRecord::RecordInvalid, document if !allow_empty && empty_file?(document)
         raise ActiveRecord::RecordInvalid, document if upload && refused_by_kind?(document)
         raise ActiveRecord::RecordInvalid, document unless document.valid?
 
@@ -214,13 +227,36 @@ module Wsjrdp2027
       end
     end
 
-    # Links the prepared file to a free name and saves its row; the
+    # Moves the prepared file to a free name of its folder -- one no file and
+    # no row has -- and sets the document's paths; answers the path. Before
+    # the slot's lock (DocumentWrite): file system work only.
+    def claim_name(prepared, now:)
+      document = prepared.document
+      MAX_ATTEMPTS.times do |suffix|
+        name = DocumentFilename.build(timestamp: now, suffix: suffix, subject_id: document.subject_id,
+          key: document.key, key_number: document.key_number,
+          secondary_key: document.secondary_key, secondary_key_number: document.secondary_key_number,
+          derivation_key: document.derivation_key, ext: prepared.ext)
+        path = prepared.folder.join(name)
+        relative = path.relative_path_from(self.class.root).to_s
+        next if WsjrdpDocument.exists?(relative_storage_file_path: relative)
+        next unless reserve(path)
+
+        move(prepared.temporary, path)
+        prepared.temporary = nil
+        document.absolute_storage_file_path = path.to_s
+        document.relative_storage_file_path = relative
+        return path
+      end
+      raise NameTaken, "no free name for the document within #{MAX_ATTEMPTS} suffixes"
+    end
+
+    # Saves the row of a document whose file is in place (#claim_name); the
     # predecessor (replaces) becomes superseded. Under the slot's lock
-    # (DocumentWrite); answers the document.
-    def place(prepared, now:)
-      @kind = prepared.kind
-      @ext = prepared.ext
-      save_under_free_name(prepared.document, prepared.temporary, prepared.folder, now)
+    # (DocumentWrite): database work only; answers the document.
+    def place(prepared)
+      save(prepared.document)
+      prepared.document
     end
 
     def register!(path, attributes, now:)
@@ -253,12 +289,41 @@ module Wsjrdp2027
 
     def build(attributes)
       attributes = attributes.to_h.symbolize_keys
-      document = WsjrdpDocument.new(attributes.except(:replaces, :derived_from))
+      document = WsjrdpDocument.new(attributes.except(:replaces, :derived_from, :filename))
       inherit(document, attributes[:replaces], attributes, :replaces) if attributes[:replaces]
       inherit(document, attributes[:derived_from], attributes, :derived_from) if attributes[:derived_from]
       apply_kind_rights(document, attributes) unless attributes[:replaces] || attributes[:derived_from]
+      take_filename(document, attributes[:filename]) if attributes.key?(:filename)
       document.status = WsjrdpDocument::CURRENT
       document
+    end
+
+    # The file name as given (an upload's, from the uploader's browser),
+    # checked and normalized (UploadFilename): a refused one -- too long as
+    # given, no valid UTF-8, a control character, U+202E, "/" or a backslash, too
+    # long normalized -- refuses the document (RecordInvalid, before anything
+    # is written; the error says why, not the name).
+    # Nothing left: the fallback after the document's keys. A name the
+    # normalizing changed goes into additional_info["original_filename"] as
+    # given, at most MAX_ORIGINAL_FILENAME_LENGTH characters.
+    def take_filename(document, given)
+      given = given.to_s
+      refuse_filename(document, given, UploadFilename.refusal(given))
+
+      normalized = UploadFilename.normalize(given, fallback: UploadFilename.fallback_for(**DocumentWrite.slot_of(document)))
+      refuse_filename(document, given, :too_long) if normalized.bytesize > UploadFilename::MAX_BYTES
+      document.filename = normalized
+      return if normalized == given
+
+      original = UploadFilename.utf8(given)[0, MAX_ORIGINAL_FILENAME_LENGTH]
+      document.additional_info = document.additional_info.to_h.merge("original_filename" => original)
+    end
+
+    def refuse_filename(document, given, reason)
+      return unless reason
+
+      document.errors.add(:filename, reason, **UploadFilename.error_options(given))
+      raise ActiveRecord::RecordInvalid, document
     end
 
     # The lists not given come from the document's kind, if it has one.
@@ -302,6 +367,13 @@ module Wsjrdp2027
       end
     end
 
+    def empty_file?(document)
+      return false unless document.byte_size.to_i.zero?
+
+      document.errors.add(:base, :empty_file)
+      true
+    end
+
     # Only a current document is replaced.
     def replaces_not_current?(document)
       return false if document.replaces.nil? || document.replaces.current?
@@ -321,7 +393,7 @@ module Wsjrdp2027
     def write_temporary(io, temporary, upload)
       limit_mb = @kind&.max_upload_size_mb
       limit = limit_mb ? limit_mb.megabytes : self.class.max_upload_size
-      File.open(temporary, File::WRONLY | File::CREAT | File::EXCL, 0o640) do |file|
+      File.open(temporary, File::WRONLY | File::CREAT | File::EXCL, FILE_MODE) do |file|
         source = io.respond_to?(:to_io) ? io.to_io : io
         source.rewind if source.respond_to?(:rewind)
         copied = upload ? IO.copy_stream(source, file, limit + 1) : IO.copy_stream(source, file)
@@ -344,48 +416,22 @@ module Wsjrdp2027
         DocumentFilename.extension_for_type(document.content_type)
     end
 
-    def save_under_free_name(document, temporary, folder, now)
-      MAX_ATTEMPTS.times do |suffix|
-        name = DocumentFilename.build(timestamp: now, suffix: suffix, subject_id: document.subject_id,
-          key: document.key, key_number: document.key_number,
-          secondary_key: document.secondary_key, secondary_key_number: document.secondary_key_number,
-          derivation_key: document.derivation_key, ext: @ext)
-        path = folder.join(name)
-        next unless claim(temporary, path)
-
-        document.absolute_storage_file_path = path.to_s
-        document.relative_storage_file_path = path.relative_path_from(self.class.root).to_s
-        saved = false
-        begin
-          save(document)
-          saved = true
-          return document
-        rescue ActiveRecord::RecordNotUnique => e
-          raise unless e.message.include?(PATH_INDEX)
-        ensure
-          FileUtils.rm_f(path) unless saved
-        end
-      end
-      raise NameTaken, "no free name for the document within #{MAX_ATTEMPTS} suffixes"
-    end
-
-    # Puts the temporary file under path; false when path is taken.
-    def claim(temporary, path)
-      File.link(temporary, path)
+    # Takes path for this document: creates it empty, exclusively; false
+    # when a file has the name.
+    def reserve(path)
+      File.open(path, File::WRONLY | File::CREAT | File::EXCL, FILE_MODE) { nil }
       true
     rescue Errno::EEXIST
       false
-    rescue *LINK_UNSUPPORTED
-      copy_exclusively(temporary, path)
     end
 
-    def copy_exclusively(temporary, path)
-      File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o640) do |file|
-        File.open(temporary, "rb") { |source| IO.copy_stream(source, file) }
-      end
-      true
-    rescue Errno::EEXIST
-      false
+    # Renames the temporary file onto its reserved name; the reservation goes
+    # again when that fails.
+    def move(temporary, path)
+      File.rename(temporary, path)
+    rescue
+      FileUtils.rm_f(path)
+      raise
     end
 
     # The predecessor becomes superseded in the same transaction, so the new
