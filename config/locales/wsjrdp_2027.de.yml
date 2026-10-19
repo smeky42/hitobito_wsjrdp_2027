@@ -2265,6 +2265,12 @@ de:
     unblock_person: 'Im Tab "Sicherheit" wurde der Login entsperrt'
     wsjrdp_add_tag: 'Tag <i>%{tag_name}</i> hinzugefügt'
     wsjrdp_remove_tag: 'Tag <i>%{tag_name}</i> entfernt'
+    # Log entries of the wagon (Wsjrdp::LogEvents, doc/wsjrdp/log_entries.md).
+    wsjrdp_note: '<i>%{category}</i>: %{message}'
+    wsjrdp_note_categories:
+      pre_notification: Vorabankündigung Lastschrift
+    wsjrdp_detail: '%{label}: %{value}'
+    wsjrdp_generic: 'Eintrag <i>%{event}</i>'
     finance_group_ids:
       attr: "Finanzzugriff auf Gruppe <i>%{group}</i>"
       tokens:

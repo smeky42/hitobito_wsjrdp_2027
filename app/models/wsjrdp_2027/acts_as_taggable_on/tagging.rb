@@ -16,24 +16,19 @@ module Wsjrdp2027::ActsAsTaggableOn::Tagging
 
     private
 
+    # The log entry of the tag's person or group (Wsjrdp::LogEvents): the
+    # tag's name in wsjrdp_data and, as before it, in object_changes.
     def after_tagging_save
-      if previously_new_record?
-        PaperTrail::Version.create(
-          main: taggable, item: taggable,
-          whodunnit: PaperTrail.request.whodunnit,
-          event: "wsjrdp_add_tag",
-          object_changes: YAML.dump({"tag" => [nil, tag.name]})
-        )
-      end
+      log_tagging("wsjrdp_add_tag", [nil, tag.name]) if previously_new_record?
     end
 
     def after_tagging_destroy
-      PaperTrail::Version.create(
-        main: taggable, item: taggable,
-        whodunnit: PaperTrail.request.whodunnit,
-        event: "wsjrdp_remove_tag",
-        object_changes: YAML.dump({"tag" => [tag.name, nil]})
-      )
+      log_tagging("wsjrdp_remove_tag", [tag.name, nil])
+    end
+
+    def log_tagging(event, change)
+      Wsjrdp::LogEntry.record!(taggable, event, {"tag_name" => tag.name},
+        object_changes: YAML.dump({"tag" => change}))
     end
   end
 end

@@ -8,30 +8,87 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Wsjrdp2027::PaperTrail::VersionDecorator
-  def t_event(user: nil, item: nil, object_changes: nil, object_name: nil)
-    if %w[wsjrdp_add_tag wsjrdp_remove_tag].include?(event) && object_changes.present?
-      tag_change = YAML.load(object_changes, permitted_classes: [Date, Time, Symbol])["tag"] || [nil, nil]
-      tag_name = ERB::Util.html_escape(tag_change&.[]((event == "wsjrdp_add_tag") ? 1 : 0))
-      I18n.t(
-        "version.#{event}",
-        user: user,
-        item: item,
-        object_name: object_name,
-        object_changes: object_changes,
-        tag_name: tag_name
-      ).html_safe
-    else
-      I18n.t(
-        "version.#{event}",
-        user: user,
-        item: item,
-        object_name: object_name,
-        object_changes: object_changes
-      )
-    end
+  # A log entry of the wagon (Wsjrdp::LogEvents) is shown by its own rules,
+  # also when its item is not its main (where the core would show an
+  # association change), and never fails the log page.
+  def changes
+    return super unless Wsjrdp::LogEvents.wsjrdp?(event)
+
+    content_tag(:div, wsjrdp_event_text)
   end
 
   private
+
+  # What a value of a log entry shows when it is missing or empty.
+  WSJRDP_MISSING_VALUE = "–"
+
+  # The sentence of the event with its params, then a line per detail; for an
+  # event the register does not know, or whose sentence cannot be made, the
+  # generic line and every key with its value.
+  def wsjrdp_event_text
+    data = Wsjrdp::LogEvents.data(model)
+    definition = Wsjrdp::LogEvents.definition(event)
+    return wsjrdp_generic_text(data) unless definition
+
+    begin
+      wsjrdp_sentence(definition, data)
+    rescue I18n::ArgumentError
+      wsjrdp_generic_text(data)
+    end
+  end
+
+  def wsjrdp_sentence(definition, data)
+    params = definition.fetch(:params, {}).to_h { |key, type| [key, wsjrdp_value(type, data[key.to_s])] }
+    lines = [I18n.t("version.#{event}", **params, raise: true).html_safe]
+    definition.fetch(:details, {}).each do |key, type|
+      next unless data.key?(key.to_s)
+
+      label = I18n.t("version.wsjrdp_data.#{key}", default: key.to_s)
+      lines << I18n.t("version.wsjrdp_detail",
+        label: ERB::Util.html_escape(label), value: wsjrdp_value(type, data[key.to_s])).html_safe
+    end
+    h.safe_join(lines, h.tag.br)
+  end
+
+  def wsjrdp_generic_text(data)
+    lines = [I18n.t("version.wsjrdp_generic", event: ERB::Util.html_escape(event)).html_safe]
+    lines += data.map do |key, value|
+      ERB::Util.html_escape("#{key}: #{(value.is_a?(Hash) || value.is_a?(Array)) ? value.to_json : value}")
+    end
+    h.safe_join(lines, h.tag.br)
+  end
+
+  # A value of a log entry by its type, escaped: :text (on one line), :date
+  # (an ISO date), :cents (EUR), :person and :group (by id, "#<id>" for none),
+  # :list (of texts), :note_category (its label, else as stored). A value its
+  # type cannot read is shown as stored.
+  def wsjrdp_value(type, value)
+    return WSJRDP_MISSING_VALUE if value.nil? || value == "" || value == []
+
+    ERB::Util.html_escape(wsjrdp_value_text(type, value))
+  rescue ArgumentError, TypeError
+    ERB::Util.html_escape(value.to_s.squish)
+  end
+
+  def wsjrdp_value_text(type, value)
+    case type
+    when :date then I18n.l(Date.iso8601(value.to_s))
+    when :cents then h.format_cents_de(Integer(value))
+    when :person then wsjrdp_record_label(::Person, value)
+    when :group then wsjrdp_record_label(::Group.with_deleted, value)
+    when :list then Array(value).map { |element| element.to_s.squish }.join(", ")
+    when :note_category then wsjrdp_note_category_label(value.to_s)
+    else value.to_s.squish
+    end
+  end
+
+  def wsjrdp_record_label(scope, id) = scope.find_by(id: Integer(id))&.to_s || "##{id}"
+
+  def wsjrdp_note_category_label(category)
+    return category unless category.match?(/\A\w+\z/)
+
+    I18n.t("version.wsjrdp_note_categories.#{category}", default: category)
+  end
 
   ALLERGY_ATTRS = Wsjrdp2027::Person::JamboreeData::ALLERGIES.map { |allergy| "allergy_#{allergy}" }.freeze
   COMFORT_ATTRS = Wsjrdp2027::Person::JamboreeData::COMFORT_ATTRS.map(&:to_s).freeze

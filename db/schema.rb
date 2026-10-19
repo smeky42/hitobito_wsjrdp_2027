@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_18_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_20_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1641,9 +1641,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_18_000100) do
     t.datetime "created_at", precision: nil
     t.string "whodunnit_type", default: "Person", null: false
     t.string "mutation_id"
+    t.jsonb "wsjrdp_data", default: {}, null: false
+    t.jsonb "additional_info", default: {}, null: false
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
     t.index ["main_id", "main_type"], name: "index_versions_on_main_id_and_main_type"
     t.index ["mutation_id"], name: "index_versions_on_mutation_id"
+    t.index ["wsjrdp_data"], name: "index_versions_on_wsjrdp_data", opclass: :jsonb_path_ops, using: :gin
   end
 
   create_table "wsj27_rdp_fee_rules", force: :cascade do |t|
