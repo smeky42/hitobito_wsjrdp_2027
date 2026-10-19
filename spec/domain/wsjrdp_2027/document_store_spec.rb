@@ -127,13 +127,81 @@ describe Wsjrdp2027::DocumentStore do
     expect(File.basename(document.absolute_storage_file_path)).to eq("2026-10-11-14-03-07_1--#{person.id}-medical.pdf")
   end
 
-  it "fills the file in exclusively where there are no hard links" do
-    allow(File).to receive(:link).and_raise(Errno::EPERM)
+  it "moves the file to its name, without hard links" do
+    expect(File).not_to receive(:link)
 
     document = store
 
     expect(Pathname(document.absolute_storage_file_path).binread).to eq(pdf)
-    expect(files.size).to eq(1)
+    expect(files).to eq([File.basename(document.absolute_storage_file_path)])
+  end
+
+  it "keeps the normalized file name, and the name as given when that differs" do
+    document = store(filename: "Ver<trag>.pdf")
+
+    expect(document.filename).to eq("Ver-trag-.pdf")
+    expect(document.additional_info).to include("original_filename" => "Ver<trag>.pdf")
+    expect(store(filename: "scan.pdf", key: "sepa").additional_info).not_to have_key("original_filename")
+  end
+
+  it "names a document whose name has nothing left after its keys" do
+    document = store(filename: " . ", key: "deregistration", key_number: 2, secondary_key: "signed_form")
+
+    expect(document.filename).to eq("upload-deregistration-2-signed_form")
+    expect(document.additional_info).to include("original_filename" => " . ")
+  end
+
+  it "refuses a name with a control character, U+202E, a path separator or invalid UTF-8, writing nothing" do
+    {"a\u0000b.pdf" => "Dateiname ungültig (enthält Unicode-Steuerzeichen)",
+     "x\u202Efdp/e.exe" => "Dateiname ungültig (enthält U+202E und /)",
+     "a\\b.pdf" => "Dateiname ungültig (enthält \\)",
+     "bad\xFF.pdf".b => "Dateiname ungültig (kein UTF-8)"}.each do |name, message|
+      expect { store(filename: name) }.to raise_error(ActiveRecord::RecordInvalid) { |e|
+        expect(e.record.errors.full_messages).to eq([message])
+      }
+    end
+    expect(folder).not_to exist
+    expect(WsjrdpDocument.of_subject(person)).to be_empty
+  end
+
+  it "refuses a name too long as given or normalized, never shortens it" do
+    expect { store(filename: "#{"a" * 600}.pdf") }.to raise_error(ActiveRecord::RecordInvalid) { |e|
+      expect(e.record.errors.full_messages).to eq(["Dateiname ist zu lang (höchstens 255 Bytes)"])
+    }
+    expect { store(filename: "#{"a" * 300}.pdf") }.to raise_error(ActiveRecord::RecordInvalid) { |e|
+      expect(e.record.errors.details[:filename]).to include(a_hash_including(error: :too_long))
+    }
+  end
+
+  it "keeps any new document from a name that is not normalized, whatever writes it" do
+    document = WsjrdpDocument.new(subject: person, key: "medical", filename: "a:b.pdf",
+      relative_storage_file_path: "x", absolute_storage_file_path: "/x", byte_size: 1)
+
+    expect(document).not_to be_valid
+    expect(document.errors.details[:filename]).to include(a_hash_including(error: :not_normalized))
+  end
+
+  it "gives the file the mode of the registration uploads (644 less the umask)" do
+    document = store
+
+    expect(File.stat(document.absolute_storage_file_path).mode & 0o777).to eq(0o644 & ~File.umask)
+  end
+
+  it "skips a name a row has, even when its file is gone" do
+    first = store
+    File.delete(first.absolute_storage_file_path)
+    first.update_columns(status: "deleted")
+
+    second = store
+
+    expect(File.basename(second.absolute_storage_file_path)).to eq("2026-10-11-14-03-07_1--#{person.id}-medical.pdf")
+  end
+
+  it "removes the reserved name when the move fails" do
+    allow(File).to receive(:rename).and_raise(Errno::EIO)
+
+    expect { store }.to raise_error(Errno::EIO)
+    expect(files).to be_empty
   end
 
   it "stores a derivation with its own name, subject and keys of its original" do
@@ -154,6 +222,22 @@ describe Wsjrdp2027::DocumentStore do
     expect { store }.to raise_error(described_class::TooLarge)
     expect(files).to be_empty
     expect(WsjrdpDocument.of_subject(person)).to be_empty
+  end
+
+  it "refuses an empty file and leaves nothing behind" do
+    expect { store("") }.to raise_error(ActiveRecord::RecordInvalid) { |e|
+      expect(e.record.errors.full_messages).to eq(["Die Datei ist leer."])
+    }
+    expect(files).to be_empty
+    expect(WsjrdpDocument.of_subject(person)).to be_empty
+  end
+
+  it "stores an empty file when the writer allows it" do
+    document = described_class.store!(StringIO.new(""), {subject: person, key: "letter", filename: "leer.txt"},
+      allow_empty: true, now: now)
+
+    expect(document).to have_attributes(persisted?: true, byte_size: 0)
+    expect(File.size(document.absolute_storage_file_path)).to eq(0)
   end
 
   it "has no limit for what is not an upload" do

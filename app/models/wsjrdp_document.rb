@@ -79,6 +79,9 @@ class WsjrdpDocument < ActiveRecord::Base
   validates :subject_type, inclusion: {in: ->(_) { Wsjrdp2027::DocumentSubjects.types }}, on: :create
   validates :filename, presence: true
   validate :keys_valid, on: :create
+  # Every new document, whatever writes it, keeps a name UploadFilename lets
+  # through, normalized (DocumentStore takes a name as given that way).
+  validate :filename_valid, on: :create, if: -> { filename.present? }
   validate :slot_free, on: :create, if: -> { status == CURRENT }
 
   # As the check constraints of the table.
@@ -128,6 +131,13 @@ class WsjrdpDocument < ActiveRecord::Base
       error = Wsjrdp2027::DocumentFilename.key_error(value)
       errors.add(attribute, :"key_#{error}") if error
     end
+  end
+
+  def filename_valid
+    problem = Wsjrdp2027::UploadFilename.problem(filename)
+    return unless problem
+
+    errors.add(:filename, problem, **Wsjrdp2027::UploadFilename.error_options(filename))
   end
 
   # One current document per slot (index_wsjrdp_documents_current); the one
