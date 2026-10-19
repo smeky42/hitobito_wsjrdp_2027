@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The core's flash message of one level, plus the level info (blue), which
+-#  the core's layouts do not list: it shows right after notice, wherever
+-#  notice is shown. The text goes through simple_format, which keeps safe
+-#  tags (ul, li, code, img, a, ...) -- whatever a message takes from a user
+-#  must come escaped. Each paragraph goes into a div, not a p as in the
+-#  core: a p may not hold a list, a div may. The paragraphs are spaced as
+-#  the core's p (customizable/_wagon.scss).
+- levels = (level.to_sym == :notice) ? %i[notice info] : [level.to_sym]
+- levels.each do |shown|
+  - if flash[shown].present?
+    - text = [flash[shown]].flatten.join("\n")
+    %div{class: "alert alert-#{flash_class(shown)} alert-dismissible fade show"}
+      %button.btn-close{type: :button, 'data-bs-dismiss': :alert, 'aria-label': t('global.button.close')}
+      = simple_format(text, {}, wrapper_tag: "div")
