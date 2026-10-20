@@ -21,9 +21,12 @@ describe Wsjrdp2027::RegistrationDocuments do
   before { allow(Wsjrdp2027::DocumentStore).to receive(:root).and_return(root) }
   after { FileUtils.rm_rf(root) }
 
-  def file(name, content = "%PDF-1.4 #{name}")
+  # A file of the person's folder, older than Scan::GRACE unless written at
+  # `at`.
+  def file(name, content = "%PDF-1.4 #{name}", at: 1.day.ago)
     FileUtils.mkdir_p(folder)
     folder.join(name).write(content)
+    FileUtils.touch(folder.join(name), mtime: at.to_time)
   end
 
   # A version as the upload page leaves it: the column from one path to the
@@ -34,11 +37,11 @@ describe Wsjrdp2027::RegistrationDocuments do
       event: "update", whodunnit: by&.id&.to_s, whodunnit_type: by && "Person", object_changes: yaml, created_at: at)
   end
 
-  def scan = described_class::Scan.new(person_ids: [person.id]).run
+  def scan = Wsjrdp2027::RegistrationDocuments::Scan.new(person_ids: [person.id]).run
 
   def chain(key = "medical") = scan.chain(person.id, key)
 
-  def register(chains = [chain]) = described_class::Import.new.register(chains)
+  def register(chains = [chain]) = Wsjrdp2027::RegistrationDocuments::Import.new.register(chains)
 
   def documents = WsjrdpDocument.of_subject(person).order(:created_at, :id).to_a
 
@@ -153,7 +156,8 @@ describe Wsjrdp2027::RegistrationDocuments do
 
   it "clears the times of a document that is current again" do
     file(first)
-    register
+    adopted = described_class::Scan.new(person_ids: [person.id], adopt: ["person/pdf/#{person.id}/#{first}"]).run
+    register([adopted.chain(person.id, "medical")])
     expect(documents.sole).to have_attributes(status: "deleted", superseded_at: nil)
     expect(documents.sole.deleted_at).to be_present
 
@@ -215,13 +219,134 @@ describe Wsjrdp2027::RegistrationDocuments do
     expect(documents.first.file_checked_at).to eq(later)
   end
 
-  it "takes a file without a version by the time of its name, and the column's file without one" do
+  it "takes the column's file without a version, and leaves a file nothing names to a person to decide on" do
     file(first)
     file(second)
     person.update_columns(upload_medical_pdf: "#{prefix}/#{second}")
 
-    expect(chain.entries.map { |entry| [entry.filename, entry.source, entry.status] })
-      .to eq([[first, :disk, "superseded"], [second, :column, "current"]])
+    found = scan
+    expect(found.chain(person.id, "medical").entries.map { |entry| [entry.filename, entry.source, entry.status] })
+      .to eq([[second, :column, "current"]])
+    finding = found.anomalies.sole
+    expect(finding).to have_attributes(kind: :file_without_row, path: "person/pdf/#{person.id}/#{first}",
+      person_id: person.id)
+    expect(finding.detail).to have_attributes(key: "medical", named_at: Time.zone.local(2025, 6, 28, 14, 38, 32),
+      byte_size: "%PDF-1.4 #{first}".bytesize, same_as_id: nil, empty?: false)
+  end
+
+  describe "a file nothing names" do
+    let(:relative) { "person/pdf/#{person.id}/#{first}" }
+
+    before do
+      file(first)
+      file(second)
+      person.update_columns(upload_medical_pdf: "#{prefix}/#{second}")
+    end
+
+    it "is placed by the time of its name when adopted, and registered with a note of who adopted it" do
+      adopted = described_class::Scan.new(person_ids: [person.id], adopt: [relative]).run
+      expect(adopted.anomalies).to be_empty
+      expect(adopted.chain(person.id, "medical").entries.map { |entry| [entry.filename, entry.source, entry.status] })
+        .to eq([[first, :disk, "superseded"], [second, :column, "current"]])
+
+      described_class::Import.new(reviewed_by: uploader, reviewed_paths: [relative])
+        .register([adopted.chain(person.id, "medical")])
+
+      old, current = documents
+      expect(old.additional_info["registration_upload"]).to include("source" => "disk",
+        "reviewed_by" => {"type" => "Person", "id" => uploader.id}, "reviewed_at" => be_present)
+      expect(current.additional_info["registration_upload"]).not_to have_key("reviewed_by")
+    end
+
+    it "is placed as before once a row has it" do
+      chain_with = described_class::Scan.new(person_ids: [person.id], adopt: [relative]).run.chain(person.id, "medical")
+      register([chain_with])
+
+      found = scan
+      expect(found.anomalies).to be_empty
+      expect(found.chain(person.id, "medical").state).to eq(:complete)
+    end
+
+    it "is left out while it is young: a write may be about to register it" do
+      file("2026-10-20-10-00-00--#{person.id}-sepa.pdf", at: 1.minute.ago)
+
+      found = scan
+      expect(found.anomalies.map(&:path)).to eq([relative])
+      expect(found.chain(person.id, "sepa")).to be_nil
+    end
+
+    it "names an empty file and a document of the same content" do
+      file("2025-07-01-10-00-00--#{person.id}-passport.pdf", "")
+      stored = Wsjrdp2027::DocumentStore.store!(StringIO.new("%PDF-1.4 #{first}"),
+        {subject: person, key: "letter", filename: "a.pdf"})
+
+      details = scan.anomalies.to_h { |anomaly| [anomaly.detail.key, anomaly.detail] }
+      expect(details["passport"]).to have_attributes(byte_size: 0, empty?: true)
+      expect(details["medical"].same_as_id).to eq(stored.id)
+    end
+  end
+
+  describe described_class::Quarantine do
+    let(:relative) { "person/pdf/#{person.id}/#{first}" }
+
+    before { file(first, "%PDF-1.4 old") }
+
+    def set_aside = described_class.new.set_aside!(relative, person_id: person.id, key: "medical", by: uploader)
+
+    it "moves the file out of the person's folder with a note, and logs it for the person" do
+      target = set_aside
+
+      expect(target).to eq(root.join("quarantine", relative))
+      expect(target.read).to eq("%PDF-1.4 old")
+      expect(folder.join(first)).not_to exist
+      note = JSON.parse(Pathname("#{target}.json").read)
+      expect(note).to include("from" => relative, "person_id" => person.id, "key" => "medical", "byte_size" => 12,
+        "sha256" => Digest::SHA256.hexdigest("%PDF-1.4 old"), "set_aside_by" => {"type" => "Person", "id" => uploader.id})
+      log = HitobitoLogEntry.where(category: "documents").last
+      expect(log.subject).to eq(person)
+      expect(log.payload).to include("sub_category" => "registration_documents_set_aside", "from" => relative,
+        "to" => "quarantine/#{relative}")
+      expect(scan.anomalies).to be_empty
+    end
+
+    it "numbers a name the quarantine has already" do
+      set_aside
+      file(first, "%PDF-1.4 again")
+
+      target = set_aside
+
+      expect(target).to eq(root.join("quarantine", "#{relative}.1"))
+      expect(target.read).to eq("%PDF-1.4 again")
+    end
+
+    it "moves nothing once a row has the file (adopted meanwhile), and leaves no note behind" do
+      adopted = Wsjrdp2027::RegistrationDocuments::Scan.new(person_ids: [person.id], adopt: [relative]).run
+      register([adopted.chain(person.id, "medical")])
+
+      expect { set_aside }.to raise_error(described_class::Gone)
+      expect(folder.join(first)).to exist
+      expect(root.join("quarantine").glob("**/*").select(&:file?)).to be_empty
+    end
+
+    it "keeps the file where it lay when the note cannot be put in place" do
+      allow(File).to receive(:rename).and_call_original
+      allow(File).to receive(:rename).with(anything, a_string_ending_with(".json")).and_raise(Errno::EIO)
+
+      expect { set_aside }.to raise_error(Errno::EIO)
+      expect(folder.join(first).read).to eq("%PDF-1.4 old")
+      expect(root.join("quarantine").glob("**/*").select(&:file?)).to be_empty
+    end
+
+    it "makes an adoption of a file set aside meanwhile skip the chain" do
+      adopted = Wsjrdp2027::RegistrationDocuments::Scan.new(person_ids: [person.id], adopt: [relative]).run
+      set_aside
+
+      result = Wsjrdp2027::RegistrationDocuments::Import.new(reviewed_by: uploader, reviewed_paths: [relative])
+        .register([adopted.chain(person.id, "medical")])
+
+      expect(result.skipped).to eq(1)
+      expect(documents).to be_empty
+    end
   end
 
   it "lists what it cannot place and leaves documents of the new storage alone" do

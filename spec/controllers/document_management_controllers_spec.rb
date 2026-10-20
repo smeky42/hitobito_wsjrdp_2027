@@ -594,6 +594,56 @@ describe "Dokumentenverwaltung", type: :request do
       expect(html).to have_css("#registration-documents-runs tr", count: 1)
       expect(html).to have_no_css("#registration-documents-runs", text: "Anderer Eintrag")
     end
+
+    describe "a file nothing names" do
+      let(:loose) { "2025-05-01-10-00-00--#{person.id}-medical.pdf" }
+      let(:relative) { "person/pdf/#{person.id}/#{loose}" }
+
+      before do
+        folder.join(loose).write("%PDF-1.4 loose")
+        FileUtils.touch(folder.join(loose), mtime: 1.day.ago.to_time)
+      end
+
+      it "is listed to decide on, with a look at it" do
+        get "/document_management/registration_documents"
+
+        expect(html).to have_css("#registration-documents-files-without-row tr", text: loose)
+        expect(html).to have_no_css("tr.exp-row", text: "2 Dateien")
+
+        get "/document_management/registration_documents/unregistered_file", params: {path: relative}
+        expect(response).to have_http_status(200)
+        expect(response.body).to eq("%PDF-1.4 loose")
+        expect(response.headers["Content-Security-Policy"]).to eq("sandbox")
+      end
+
+      it "is adopted as an old file of its chain, with a note of who adopted it" do
+        post "/document_management/registration_documents/adopt_file", params: {path: relative}
+
+        expect(flash[:notice]).to include(relative)
+        old, current = WsjrdpDocument.of_subject(person).order(:created_at).to_a
+        expect(old).to have_attributes(relative_storage_file_path: relative, status: "superseded")
+        expect(old.additional_info["registration_upload"]["reviewed_by"]).to eq("type" => "Person", "id" => admin.id)
+        expect(current).to have_attributes(status: "current", replaces_id: old.id)
+      end
+
+      it "is set aside to the quarantine" do
+        post "/document_management/registration_documents/set_aside_file", params: {path: relative}
+
+        expect(flash[:notice]).to include(relative)
+        expect(folder.join(loose)).not_to exist
+        expect(root.join("quarantine", relative).read).to eq("%PDF-1.4 loose")
+      end
+
+      it "refuses a path that is no such file" do
+        get "/document_management/registration_documents/unregistered_file",
+          params: {path: "person/pdf/#{person.id}/#{name}"}
+        expect(flash[:alert]).to be_present
+
+        post "/document_management/registration_documents/set_aside_file", params: {path: "../../etc/passwd"}
+        expect(flash[:alert]).to be_present
+        expect(folder.join(name)).to exist
+      end
+    end
   end
 
   describe "Dokument-Arten" do

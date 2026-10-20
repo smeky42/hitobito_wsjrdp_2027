@@ -29,6 +29,14 @@
 # - cancel: cancels the run in the background (RegisterDocumentsJob.cancel!).
 # - register_all: registers every chain not registered as it stands, in the
 #   background (Wsjrdp2027::RegisterDocumentsJob).
+#
+# A file of a person folder no version, column or row names is a finding to
+# decide on (file_without_row, RegistrationDocuments::Scan), by its relative
+# path (`path`) -- each action checks that it still is one:
+# - unregistered_file: sends it, to look at first;
+# - adopt_file: registers its chain, the file placed by the time of its name
+#   (with the chain's other files not registered yet);
+# - set_aside_file: moves it to the quarantine (RegistrationDocuments::Quarantine).
 class DocumentManagement::RegistrationDocumentsController < ApplicationController
   include Wsjrdp::TableStateful
   include Wsjrdp::TrackedJobEndpoints
@@ -87,7 +95,57 @@ class DocumentManagement::RegistrationDocumentsController < ApplicationControlle
     redirect_back_with(notice: t("#{I18N}.register_all.enqueued"))
   end
 
+  def unregistered_file
+    finding = file_finding
+    return redirect_back_with(alert: t("#{I18N}.file_without_row.gone")) unless finding
+
+    path = Wsjrdp2027::DocumentStore.root.join(finding.path)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Content-Security-Policy"] = "sandbox"
+    send_file path, filename: path.basename.to_s, type: Marcel::MimeType.for(path, name: path.basename.to_s),
+      disposition: "inline"
+  end
+
+  def adopt_file
+    finding = file_finding
+    return redirect_back_with(alert: t("#{I18N}.file_without_row.gone")) unless finding
+
+    timing = Wsjrdp2027::RegisterDocumentsJob::Timing.new
+    chain = Wsjrdp2027::RegistrationDocuments::Scan.new(person_ids: [finding.person_id], adopt: [finding.path]).run
+      .chain(finding.person_id, finding.detail.key)
+    return redirect_back_with(alert: t("#{I18N}.file_without_row.not_adopted", path: finding.path)) unless chain
+
+    result = Wsjrdp2027::RegistrationDocuments::Import.new(reviewed_by: current_user, reviewed_paths: [finding.path])
+      .register([chain])
+    Wsjrdp2027::RegisterDocumentsJob.log(result, actor_id: current_user.id, run: t("#{I18N}.file_without_row.run"),
+      timing: timing.finish)
+    return redirect_back_with(alert: t("#{I18N}.file_without_row.not_adopted", path: finding.path)) unless result.chains == 1
+
+    redirect_back_with(notice: t("#{I18N}.file_without_row.adopted", path: finding.path))
+  end
+
+  def set_aside_file
+    finding = file_finding
+    return redirect_back_with(alert: t("#{I18N}.file_without_row.gone")) unless finding
+
+    Wsjrdp2027::RegistrationDocuments::Quarantine.new.set_aside!(finding.path, person_id: finding.person_id,
+      key: finding.detail.key, by: current_user)
+    redirect_back_with(notice: t("#{I18N}.file_without_row.set_aside", path: finding.path))
+  rescue Wsjrdp2027::RegistrationDocuments::Quarantine::Gone
+    redirect_back_with(alert: t("#{I18N}.file_without_row.gone"))
+  end
+
   private
+
+  # The file_without_row finding of the posted path, from a fresh scan of its
+  # person; nil when the path is none (any more).
+  def file_finding
+    person_id = params[:path].to_s[%r{\Aperson/pdf/(\d+)/[^/]+\z}, 1]
+    return nil unless person_id
+
+    Wsjrdp2027::RegistrationDocuments::Scan.new(person_ids: [person_id.to_i]).run.anomalies
+      .find { |anomaly| anomaly.kind == :file_without_row && anomaly.path == params[:path] }
+  end
 
   def register_in_background(chosen)
     return redirect_back_with(alert: t(".running")) if Wsjrdp2027::RegisterDocumentsJob.running?

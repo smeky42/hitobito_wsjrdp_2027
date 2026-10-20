@@ -59,6 +59,9 @@ Rails.application.routes.draw do
       post "cancel" => :cancel, :as => :document_management_cancel_registration_documents
       post "register" => :register, :as => :document_management_register_documents
       post "register_all" => :register_all, :as => :document_management_register_all_documents
+      get "unregistered_file" => :unregistered_file, :as => :document_management_unregistered_registration_file
+      post "adopt_file" => :adopt_file, :as => :document_management_adopt_registration_file
+      post "set_aside_file" => :set_aside_file, :as => :document_management_set_aside_registration_file
     end
     scope "document_management", module: "document_management", as: "document_management" do
       resources :document_kinds, except: [:edit]
