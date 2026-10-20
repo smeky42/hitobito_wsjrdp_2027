@@ -179,13 +179,33 @@ module Wsjrdp2027
     # without a person, a path outside the upload root, ...
     Anomaly = Struct.new(:kind, :path, :person_id, :detail, keyword_init: true)
 
+    # The detail of a file_without_row finding, for who decides on it: the
+    # key and the time of its name, its size, and the document of the person
+    # with the same content (SHA-256), if there is one.
+    FileWithoutRow = Data.define(:key, :named_at, :byte_size, :same_as_id) do
+      def empty? = byte_size.to_i.zero?
+    end
+
     # Builds the chains of all people, or of the given ones.
+    #
+    # A file of a person folder with a registration name that no version, no
+    # column and no row names is not placed by itself: it may be an old
+    # upload whose version was lost, or the file of a write that never
+    # committed. It is a finding (file_without_row) for a person to decide
+    # on -- adopt it (adopt: its relative path, for that scan; it is placed
+    # by the time of its name and registered with the chain, and has a row
+    # from then on) or set it aside (Quarantine). A file younger than GRACE
+    # is left out: a write may be about to register it.
     class Scan
+      GRACE = 10.minutes
+
       attr_reader :chains, :anomalies
 
-      def initialize(root: DocumentStore.root, person_ids: nil)
+      def initialize(root: DocumentStore.root, person_ids: nil, adopt: [], now: Time.current)
         @root = Pathname(root)
         @person_ids = person_ids&.map(&:to_i)
+        @adopt = Array(adopt).map(&:to_s).to_set
+        @now = now
         @anomalies = []
         @events = Hash.new { |hash, chain_key| hash[chain_key] = [] }
         @version_counts = Hash.new(0)
@@ -196,6 +216,7 @@ module Wsjrdp2027
         read_versions
         read_columns(people)
         read_disk(people)
+        place_unreferenced
         @chains = build_chains(people)
         attach_documents
         self
@@ -314,7 +335,37 @@ module Wsjrdp2027
         return anomaly(:folder_without_person, relative, person_id) unless people.key?(person_id)
         return if set_paths(person_id, parsed[:key]).include?(relative)
 
-        add_event(person_id, parsed[:key], :set, relative, self.class.time_or_epoch(relative), [nil, nil], :disk, -1)
+        (@unreferenced ||= []) << [person_id, parsed[:key], relative]
+      end
+
+      # The files read_file found no version and no column for: placed by
+      # the time of their name when a row has them or they are adopted; a
+      # finding otherwise, unless younger than GRACE.
+      def place_unreferenced
+        list = Array(@unreferenced)
+        return if list.empty?
+
+        rows = WsjrdpDocument.where(relative_storage_file_path: list.map(&:last)).pluck(:relative_storage_file_path).to_set
+        list.each do |person_id, key, relative|
+          if rows.include?(relative) || @adopt.include?(relative)
+            add_event(person_id, key, :set, relative, self.class.time_or_epoch(relative), [nil, nil], :disk, -1)
+          else
+            file_without_row(person_id, key, relative)
+          end
+        end
+      end
+
+      def file_without_row(person_id, key, relative)
+        path = @root.join(relative)
+        return if path.mtime > @now - GRACE
+
+        sha = Digest::SHA256.file(path).hexdigest
+        same_as = WsjrdpDocument.where(subject_type: "Person", subject_id: person_id, content_sha256: sha).order(:id).pick(:id)
+        anomaly(:file_without_row, relative, person_id,
+          FileWithoutRow.new(key: key, named_at: RegistrationDocuments.time_of_name(relative), byte_size: path.size,
+            same_as_id: same_as))
+      rescue Errno::ENOENT
+        nil
       end
 
       def add_event(person_id, key, kind, path, at, author, source, sequence)
@@ -325,8 +376,9 @@ module Wsjrdp2027
                                            author: author, source: source, sequence: sequence}
       end
 
+      # Looks only: a key without events gets no (empty) chain from it.
       def set_paths(person_id, key)
-        @events[[person_id.to_i, key]].select { |event| event[:kind] == :set }.pluck(:relative)
+        @events.fetch([person_id.to_i, key], []).select { |event| event[:kind] == :set }.pluck(:relative)
       end
 
       def path_key(path) = RegistrationDocuments.path_key(path)
@@ -423,10 +475,14 @@ module Wsjrdp2027
         def to_h = super.merge(errors: errors.first(50))
       end
 
-      def initialize(root: DocumentStore.root, now: Time.current)
+      # reviewed_by, reviewed_paths: who adopted the files of these relative
+      # paths (Scan, adopt:) -- noted in their rows' additional_info.
+      def initialize(root: DocumentStore.root, now: Time.current, reviewed_by: nil, reviewed_paths: [])
         @kinds = RegistrationDocuments.kinds
         @root = Pathname(root)
         @now = now
+        @reviewed_by = reviewed_by
+        @reviewed_paths = Array(reviewed_paths).map(&:to_s).to_set
         @result = Result.new(chains: 0, created: 0, updated: 0, failed: 0, skipped: 0, errors: [])
       end
 
@@ -459,13 +515,14 @@ module Wsjrdp2027
       private
 
       # Registers the chain under its lock, unless its basis changed since
-      # the scan (#stale?): then nothing is written, and the next run takes
-      # the chain as it is by then. The files are read and hashed before the
-      # lock (#file_data); under it only the rows are written.
+      # the scan (#stale?) -- or a file the scan found is gone by the time it
+      # is read: then nothing is written, and the next run takes the chain as
+      # it is by then. The files are read and hashed before the lock
+      # (#file_data); under it only the rows are written.
       def register_chain(chain)
         key = DocumentWrite.lock_key("Person", chain.person_id, {key: chain.key})
         data = file_data(chain)
-        registered = Wsjrdp::LockedChange.run(keys: [key]) do
+        registered = data && Wsjrdp::LockedChange.run(keys: [key]) do
           next false if stale?(chain)
 
           previous = nil
@@ -487,13 +544,19 @@ module Wsjrdp2027
       end
 
       # Whether the chain's basis changed since the scan read it: the column
-      # as it is now, how many versions of the person touch the columns, or
-      # the rows of the chain's files -- one changed (updated_at), or one for
-      # a file the scan found none for.
+      # as it is now, how many versions of the person touch the columns, an
+      # adopted file no longer there, or the rows of the chain's files -- one
+      # changed (updated_at), or one for a file the scan found none for.
       def stale?(chain)
         column = ::Person.where(id: chain.person_id).pick(chain.column).presence
         return true if column&.then { |path| RegistrationDocuments.path_key(path) } != chain.current_path
         return true if RegistrationDocuments.column_versions(chain.person_id).count != chain.version_count
+
+        # An adopted file set aside in the meantime (Quarantine, under the same lock).
+        set_aside = chain.entries.any? do |entry|
+          @reviewed_paths.include?(entry.relative_path) && !entry.document && !@root.join(entry.relative_path).file?
+        end
+        return true if set_aside
 
         rows = WsjrdpDocument.where(relative_storage_file_path: chain.entries.map(&:relative_path))
           .pluck(:relative_storage_file_path, :id, :updated_at).to_h { |path, id, at| [path, [id, at]] }
@@ -505,13 +568,16 @@ module Wsjrdp2027
 
       # The file attributes the chain's rows get (#file_attributes: type,
       # size, SHA-256), by relative path: of every file without a row, and of
-      # a file whose status changed since its row was written.
+      # a file whose status changed since its row was written. nil when a
+      # file the scan found is gone now (set aside, deleted).
       def file_data(chain)
         chain.entries.each_with_object({}) do |entry, data|
           next if entry.document && entry.document.file_status == entry.file_status
 
           data[entry.relative_path] = file_attributes(entry, @root.join(entry.relative_path))
         end
+      rescue Errno::ENOENT
+        nil
       end
 
       def update(entry, previous, file)
@@ -564,8 +630,85 @@ module Wsjrdp2027
       end
 
       def provenance(chain, entry)
+        reviewed = @reviewed_by && @reviewed_paths.include?(entry.relative_path)
         {"column" => chain.column, "source" => entry.source.to_s,
-         "cleared_by" => entry.cleared_by_id && {"type" => entry.cleared_by_type, "id" => entry.cleared_by_id}}.compact
+         "cleared_by" => entry.cleared_by_id && {"type" => entry.cleared_by_type, "id" => entry.cleared_by_id},
+         "reviewed_by" => reviewed ? {"type" => "Person", "id" => @reviewed_by.id} : nil,
+         "reviewed_at" => reviewed ? @now.iso8601 : nil}.compact
+      end
+    end
+
+    # Sets a file of a person folder aside: moves it below QUARANTINE, out of
+    # the folders the scan reads, with a note of where it lay, what it was
+    # and who set it aside (<name>.json beside it), and logs it for the
+    # person. Nothing is deleted; moving the file back undoes it. For the
+    # files no version, column or row names (Scan, file_without_row).
+    #
+    # The note is written first, beside its place; the file and the note are
+    # then moved under the lock of the slot (DocumentWrite.lock_key), once it
+    # is checked that the file is still there and has no row -- an adoption
+    # (Import, under the same lock) may have come first. Gone otherwise, and
+    # nothing is moved.
+    class Quarantine
+      QUARANTINE = "quarantine"
+
+      # The file is no longer one to set aside: gone, or a row has it.
+      class Gone < StandardError; end
+
+      def initialize(root: DocumentStore.root, now: Time.current)
+        @root = Pathname(root)
+        @now = now
+      end
+
+      # Answers the path the file lies at now.
+      def set_aside!(relative, person_id:, key:, by:)
+        source = @root.join(relative)
+        raise Gone, relative unless source.file?
+
+        target = free_target(@root.join(QUARANTINE, relative))
+        FileUtils.mkdir_p(target.dirname)
+        note = {"from" => relative, "person_id" => person_id, "key" => key, "byte_size" => source.size,
+                "sha256" => Digest::SHA256.file(source).hexdigest,
+                "set_aside_by" => {"type" => "Person", "id" => by.id}, "set_aside_at" => @now.iso8601}
+        pending = target.dirname.join("#{DocumentStore::TEMPORARY_PREFIX}#{SecureRandom.hex(8)}.json")
+        pending.write(JSON.pretty_generate(note))
+        move(source, target, pending, relative, person_id, key)
+        log(note, target, person_id)
+        target
+      ensure
+        FileUtils.rm_f(pending) if pending
+      end
+
+      private
+
+      def move(source, target, pending, relative, person_id, key)
+        Wsjrdp::LockedChange.run(keys: [DocumentWrite.lock_key("Person", person_id, {key: key})]) do
+          raise Gone, relative unless source.file? && !WsjrdpDocument.exists?(relative_storage_file_path: relative)
+
+          File.rename(source, target)
+          begin
+            File.rename(pending, "#{target}.json")
+          rescue
+            File.rename(target, source)
+            raise
+          end
+        end
+      end
+
+      # The name below QUARANTINE, with a number when it is taken.
+      def free_target(path)
+        return path unless path.exist? || Pathname("#{path}.json").exist?
+
+        (1..).lazy.map { |n| Pathname("#{path}.#{n}") }.find { |candidate| !candidate.exist? }
+      end
+
+      def log(note, target, person_id)
+        ::HitobitoLogEntry.categories |= [RegisterDocumentsJob.log_category]
+        ::HitobitoLogEntry.create!(category: RegisterDocumentsJob.log_category, level: "info",
+          subject_type: "Person", subject_id: person_id,
+          message: I18n.t("document_management.registration_documents.set_aside.log", path: note["from"]),
+          payload: note.merge("sub_category" => "registration_documents_set_aside",
+            "to" => target.relative_path_from(@root).to_s))
       end
     end
   end

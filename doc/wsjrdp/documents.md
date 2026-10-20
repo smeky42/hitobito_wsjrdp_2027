@@ -456,7 +456,30 @@ oldest first (`RegistrationDocuments::Scan`). It is built from
 - the files in the person's folder whose name is `<timestamp>--<id>-<key>.pdf`;
 - the rows already in `wsjrdp_documents`, by relative path.
 
-A file no version names is placed by the time of its name. Registering a
+A file of the folder that no version, no column and no row names is not
+placed by itself: it may be an old upload whose version was lost, or the file
+of a write that never committed (a crash between moving the file to its name
+and the commit). It is listed in the tab as a file to decide on
+(`file_without_row`) -- its key, the time of its name, its size (an empty one
+marked) and a document of the person with the same content -- and a person
+decides: look at it, **adopt** it (its chain is registered, the file placed
+by the time of its name -- with the chain's other files not registered yet;
+its row notes who adopted it in `additional_info.registration_upload.
+reviewed_by` and `reviewed_at`), or **set it aside**
+(`RegistrationDocuments::Quarantine`: moved below `quarantine/` of the upload
+root, out of the folders the scan reads, with a note `<name>.json` beside it
+-- where it lay, key, size, SHA-256, who and when -- and a log entry for the
+person; moving it back undoes it). The note is written first; file and note
+are moved under the lock of the slot, once it is checked that the file is
+still there without a row, and an adoption of a file set aside meanwhile is
+skipped -- adopting and setting aside never cross. Nothing about the
+decision is stored apart from that: a file with a row is placed as before, a
+file set aside is gone from the folder. A file changed less than ten minutes
+ago (`Scan::GRACE`, by its modification time) is left out, as a write may be
+about to register it; a file just copied or restored without its times shows
+up ten minutes later for that reason.
+
+Registering a
 chain (`RegistrationDocuments::Import`) writes one row per file, in order,
 each replacing the one before (`replaces_id`):
 

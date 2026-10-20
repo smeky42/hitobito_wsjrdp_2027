@@ -1631,6 +1631,38 @@ de:
         %{updated} geändert, %{failed} fehlgeschlagen, %{skipped} übersprungen, Dauer %{duration}
       columns:
         key: Art
+        person: Person
+      file_without_row:
+        title: "Dateien ohne Eintrag – bitte prüfen (%{count})"
+        lead: >-
+          Diese Dateien liegen im Ordner einer Person und tragen einen Anmelde-Namen, aber keine Version,
+          keine Spalte und kein Dokument nennt sie: eine alte Datei, deren Eintrag verloren ging, oder die
+          Datei eines Uploads, der nicht gespeichert wurde. Übernehmen registriert die Kette der Person für
+          diese Art und reiht die Datei dabei nach der Zeit in ihrem Namen als alte Datei ein; noch nicht
+          registrierte Dateien der Kette werden mit registriert. Aussortieren verschiebt sie in den
+          Quarantäne-Ordner (nichts wird gelöscht).
+        grace: >-
+          Eine Datei, die in den letzten 10 Minuten geändert wurde (Änderungszeit der Datei), erscheint
+          erst danach: ein Upload könnte sie gerade speichern. Auch eine eben kopierte oder
+          wiederhergestellte Datei erscheint deshalb erst nach 10 Minuten.
+        named_at: Zeit im Namen
+        size: Größe
+        file: Datei
+        same_as: Inhalt wie Dokument
+        show: Ansehen
+        adopt: Übernehmen
+        adopt_confirm: >-
+          %{path} als alte Datei übernehmen? Dabei wird die Kette der Person für diese Art registriert,
+          mit ihren übrigen noch nicht registrierten Dateien.
+        set_aside_button: Aussortieren
+        set_aside_confirm: "%{path} in den Quarantäne-Ordner verschieben?"
+        run: Datei übernommen
+        adopted: "%{path} wurde übernommen."
+        not_adopted: "%{path} konnte nicht übernommen werden; siehe die letzten Läufe."
+        set_aside: "%{path} liegt jetzt im Quarantäne-Ordner."
+        gone: Diese Datei ist nicht mehr ohne Eintrag (übernommen, verschoben oder nicht mehr da).
+      set_aside:
+        log: "Anmelde-Datei ohne Eintrag aussortiert: %{path}"
       states:
         new: nicht registriert
         partial: unvollständig
@@ -1696,6 +1728,7 @@ de:
         folder_without_person: Ordner ohne Person
         person_missing: Person gibt es nicht mehr
         outside_root: Pfad außerhalb der Ablage
+        file_without_row: Datei ohne Eintrag
       register:
         nothing_chosen: Bitte wähle mindestens eine Person aus.
         enqueued: "%{count} Ketten werden im Hintergrund registriert."

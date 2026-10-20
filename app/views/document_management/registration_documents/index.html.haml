@@ -9,8 +9,10 @@
 -#  key, the rights the new rows get (those of the kinds, shown only),
 -#  registering the chosen chains or all of them; the chains (one person, one
 -#  key) as an expandable table with the CNF filter and a selection across
--#  pages, each with its files as detail; the last runs and the findings the
--#  scan could not place (DocumentManagement::RegistrationDocumentsController).
+-#  pages, each with its files as detail; the last runs, the files no
+-#  version, column or row names (to look at, adopt or set aside) and the
+-#  other findings the scan could not place
+-#  (DocumentManagement::RegistrationDocumentsController).
 - scope = "document_management.registration_documents"
 - keys = Wsjrdp2027::RegistrationDocuments::KEYS
 - title(t("document_management.tabs.registration_documents"))
@@ -108,12 +110,56 @@
             %td.text-nowrap= document_time(run.created_at)
             %td= run.message
 
-  - if scan.anomalies.any?
+  -# Files no version, column or row names: a person decides on each --
+  -# look at it, adopt it as an old file of its chain, or set it aside.
+  - unreviewed, others = scan.anomalies.partition { |anomaly| anomaly.kind == :file_without_row }
+  - if unreviewed.any?
+    %details.mt-4#registration-documents-files-without-row{open: true}
+      %summary= t("#{scope}.file_without_row.title", count: unreviewed.size)
+      %p.small.text-muted.mt-2.mb-1= t("#{scope}.file_without_row.lead")
+      %p.small.text-muted= t("#{scope}.file_without_row.grace")
+      %table.table.table-sm.w-auto
+        %thead
+          %tr
+            %th= t("#{scope}.columns.person")
+            %th= t("#{scope}.columns.key")
+            %th= t("#{scope}.file_without_row.named_at")
+            %th.text-end= t("#{scope}.file_without_row.size")
+            %th= t("#{scope}.file_without_row.file")
+            %th
+        %tbody
+          - unreviewed.each do |anomaly|
+            - detail = anomaly.detail
+            %tr
+              %td= link_to(anomaly.person_id, person_path(anomaly.person_id), data: {turbo_frame: "_top"})
+              %td.font-monospace= detail.key
+              %td.text-nowrap= document_time(detail.named_at)
+              %td.text-end.text-nowrap{class: ("text-danger" if detail.empty?)}= number_to_human_size(detail.byte_size)
+              %td.small
+                .font-monospace= File.basename(anomaly.path)
+                - if detail.same_as_id
+                  .text-muted
+                    = t("#{scope}.file_without_row.same_as")
+                    = link_to("##{detail.same_as_id}", document_management_document_path(detail.same_as_id))
+              %td.text-nowrap
+                = link_to t("#{scope}.file_without_row.show"),
+                  document_management_unregistered_registration_file_path(path: anomaly.path),
+                  class: "btn btn-sm btn-outline-secondary", target: "_blank", rel: "noopener"
+                = button_to t("#{scope}.file_without_row.adopt"),
+                  document_management_adopt_registration_file_path(table_state.wire_params.merge(path: anomaly.path)),
+                  class: "btn btn-sm btn-outline-primary", form_class: "d-inline", data: {turbo: false},
+                  form: {data: {confirm: t("#{scope}.file_without_row.adopt_confirm", path: anomaly.path)}}
+                = button_to t("#{scope}.file_without_row.set_aside_button"),
+                  document_management_set_aside_registration_file_path(table_state.wire_params.merge(path: anomaly.path)),
+                  class: "btn btn-sm btn-outline-danger", form_class: "d-inline", data: {turbo: false},
+                  form: {data: {confirm: t("#{scope}.file_without_row.set_aside_confirm", path: anomaly.path)}}
+
+  - if others.any?
     %details.mt-4#registration-documents-anomalies
-      %summary= t("#{scope}.anomalies.title", count: scan.anomalies.size)
+      %summary= t("#{scope}.anomalies.title", count: others.size)
       %table.table.table-sm.mt-2
         %tbody
-          - scan.anomalies.each do |anomaly|
+          - others.each do |anomaly|
             %tr
               %td= t("#{scope}.anomalies.#{anomaly.kind}")
               %td.font-monospace.small= anomaly.path
