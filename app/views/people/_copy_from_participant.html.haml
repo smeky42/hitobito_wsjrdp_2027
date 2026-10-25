@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  "aus Teilnehmer*in Daten übernehmen" beside a bank account field: fills
+-#  in the participant's address or mail, named in the tooltip; hidden while
+-#  there is nothing to take over. Used on the person's edit page
+-#  (contactable/_finance_fields) and in the Kontoverbindung form
+-#  (person/bank_account/_form), as the field's aside
+-#  (Wsjrdp2027::StandardFormBuilder#with_aside); _copy_from_participant_script
+-#  makes it work.
+-#
+-#  Locals: person, kind (:address, :email), target (the field's id)
+- value = participant_copy_value(person, kind)
+%button.btn.btn-sm.btn-primary.text-nowrap{type: "button", hidden: value.blank?,
+  title: t("people.buttons.copy_data_title", value: value),
+  data: {copy_from_participant: kind, copy_target: "#" + target, copy_value: value}}
+  = t("people.buttons.copy_data")

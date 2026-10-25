@@ -13,9 +13,10 @@ module Wsjrdp2027
         :fill_and_stroke_rectangle, :fill_color,
         :image, :group, to: :pdf
 
-      def initialize(pdf, person)
+      def initialize(pdf, person, **options)
         @pdf = pdf
         @person = person
+        @options = options
       end
 
       private

@@ -88,6 +88,32 @@ describe Person::FeeController do
         expect(section).to have_css("a.sepa-account-change[href^='mailto:finanzen@worldscoutjamboree.de?']")
       end
     end
+
+    context "for the finance tier" do
+      before { sign_in(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person) }
+
+      it "offers the SEPA mandate once it can be made" do
+        yp.update_columns(birthday: Date.new(2010, 5, 1), town: "Musterstadt", sepa_address: "Musterstraße 1")
+
+        get :show, params: {person_id: yp.id}
+
+        section = Capybara.string(response.body).find("section.bank-account")
+        expect(section).to have_link(href: mandate_person_bank_account_path(yp))
+        expect(section).to have_no_css(".sepa-mandate-missing")
+      end
+
+      it "disables the SEPA mandate and names what is missing" do
+        yp.update_columns(birthday: nil, town: nil)
+
+        get :show, params: {person_id: yp.id}
+
+        section = Capybara.string(response.body).find("section.bank-account")
+        expect(section).to have_no_link(href: mandate_person_bank_account_path(yp))
+        expect(section).to have_css("a.disabled", text: I18n.t("people.sepa_account.mandate_view"))
+        expect(section.find(".sepa-mandate-missing")).to have_text(Person.human_attribute_name(:birthday))
+          .and have_text(Person.human_attribute_name(:town))
+      end
+    end
   end
 
   describe "the statement" do

@@ -1,0 +1,53 @@
+<%#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+
+  This file is part of hitobito_wsjrdp_2027 and licensed under the
+  Affero General Public License version 3 or later. See the COPYING
+  file at the top-level directory or at
+  https://github.com/smeky42/hitobito_wsjrdp_2027 %>
+<%= javascript_tag nonce: true do %>
+// The "aus Teilnehmer*in Daten übernehmen" buttons (people/_copy_from_participant).
+// Where the participant's address is in the same form (the person's edit
+// page), the address button follows what is typed there: value, tooltip and
+// whether it shows. Listens on the document, as a form may come in by Turbo.
+(function () {
+  const BUTTON = "[data-copy-from-participant]"
+  const ADDRESS_FIELDS = ["person_street", "person_housenumber", "person_zip_code", "person_town"]
+  const TITLE = <%== t("people.buttons.copy_data_title", value: "%{value}").to_json %>
+
+  function liveAddress(form) {
+    const value = (id) => ((form.querySelector("#" + id) || {}).value || "").trim()
+    if (!form.querySelector("#person_street")) return null
+    const line1 = [value("person_street"), value("person_housenumber")].filter(Boolean).join(" ")
+    const line2 = [value("person_zip_code"), value("person_town")].filter(Boolean).join(" ")
+    return [line1, line2].filter(Boolean).join(", ")
+  }
+
+  function refresh(button) {
+    if (button.getAttribute("data-copy-from-participant") !== "address" || !button.form) return
+    const address = liveAddress(button.form)
+    if (address === null) return
+    button.setAttribute("data-copy-value", address)
+    button.title = TITLE.replace("%{value}", address)
+    button.hidden = !address
+  }
+
+  function onClick(event) {
+    const button = event.target.closest(BUTTON)
+    if (!button) return
+    const target = document.querySelector(button.getAttribute("data-copy-target"))
+    if (target) target.value = button.getAttribute("data-copy-value") || ""
+  }
+
+  function onInput(event) {
+    if (!event.target.form || !ADDRESS_FIELDS.includes(event.target.id)) return
+    event.target.form.querySelectorAll(BUTTON).forEach(refresh)
+  }
+
+  if (!window.wsjrdpCopyFromParticipantBound) {
+    window.wsjrdpCopyFromParticipantBound = true
+    document.addEventListener("click", onClick)
+    document.addEventListener("input", onInput)
+  }
+  document.querySelectorAll(BUTTON).forEach(refresh)
+})()
+<% end %>

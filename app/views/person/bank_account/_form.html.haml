@@ -1,0 +1,60 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The bank account form, in place of the section's button
+-#  (Person::BankAccountController), with its scripts, wherever it stands.
+.bank-account-form.alert.alert-warning.mt-2.mb-2.py-2
+  %h4.h6.mb-2= t("people.sepa_account.edit")
+  = standard_form person, url: person_bank_account_path(person), method: :put do |f|
+    = f.error_messages
+    = f.labeled_input_field :sepa_name
+    - {sepa_address: :address, sepa_mail: :email}.each do |attr, kind|
+      = f.labeled_input_field attr,
+        aside: render("people/copy_from_participant", person: person, kind: kind, target: "person_#{attr}")
+    = f.labeled_input_field :sepa_iban
+    = f.labeled_input_field :sepa_bic
+    = f.labeled_input_field :sepa_mandate_id, help: t("people.sepa_account.mandate_id_help", id: person.id)
+    -# Today by default, after a refused save as typed; the button takes the
+    -# previous date back. The button and the hint for a date in the past:
+    -# _form_script.
+    - mandate_text = params.key?(:person) ? params.dig(:person, :sepa_mandate_date).to_s : I18n.l(Time.zone.today)
+    - mandate_date = ActiveModel::Type::Date.new.cast(mandate_text.presence)
+    - previous = previous_mandate_date && I18n.l(previous_mandate_date)
+    = f.labeled(:sepa_mandate_date) do
+      .d-flex.flex-wrap.align-items-center.gap-2
+        .flex-grow-0{style: "width: 10rem"}= f.date_field :sepa_mandate_date, value: mandate_text,
+          data: {sepa_mandate_date: true}
+        - if previous
+          %button.btn.btn-sm.btn-outline-secondary{type: "button", data: {sepa_mandate_date_set: previous}}
+            = t("people.sepa_account.mandate_date_previous", date: previous)
+      .form-text.text-danger{hidden: !(mandate_date && mandate_date < Time.zone.today),
+        data: {sepa_mandate_date_past: true}}
+        = icon(:"exclamation-triangle")
+        = t("people.sepa_account.mandate_date_past")
+      .form-text
+        = t("people.sepa_account.mandate_date_help")
+        - if previous
+          = t("people.sepa_account.mandate_date_help_previous", date: previous)
+    - if announced_debits.any?
+      = f.labeled(:debit_ids, t("people.sepa_account.announced")) do
+        - announced_debits.each do |debit|
+          .form-check
+            = check_box_tag "debit_ids[]", debit.id, selected_debit_ids.include?(debit.id),
+                id: "debit_ids_#{debit.id}", class: "form-check-input"
+            = label_tag "debit_ids_#{debit.id}", class: "form-check-label" do
+              = t("people.sepa_account.announced_debit", date: l(debit.collection_date),
+                  amount: format_cents_de(debit.amount_cents, zero_cents: ",00"), purpose: debit.description)
+              .small.text-muted= t("people.sepa_account.announced_iban", iban: debit.dbtr_iban)
+    = f.labeled(:comment, t("people.sepa_account.comment")) do
+      = text_area_tag :comment, comment, rows: 2, class: "form-control form-control-sm mw-100 mw-md-60ch"
+      .form-text= t("people.sepa_account.comment_help")
+    .d-flex.flex-wrap.align-items-center.gap-2.mt-2.offset-md-3.offset-xl-2
+      = f.button(t("people.sepa_account.save"), class: "btn btn-sm btn-primary")
+      = link_to(t("global.button.cancel"), buttons_person_bank_account_path(person),
+          class: "btn btn-sm btn-link", data: {turbo_stream: true})
+= render "person/bank_account/form_script"
+= render "people/copy_from_participant_script"

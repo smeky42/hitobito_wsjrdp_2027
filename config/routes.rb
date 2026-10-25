@@ -239,6 +239,11 @@ Rails.application.routes.draw do
         post :activate
         post :discard
       end
+      # The bank account section of the person finance page.
+      resource :bank_account, controller: "person/bank_account", only: [:edit, :update] do
+        get :buttons
+        get :mandate
+      end
       # The installment plan section of the person finance page: plan, activate or
       # discard an individual installment plan.
       resource :installments, controller: "person/installments", only: [:edit, :update] do

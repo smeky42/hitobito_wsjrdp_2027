@@ -55,6 +55,17 @@ module Wsjrdp2027::StandardFormBuilder
       template.render("shared/wsjrdp/country_select_js")
   end
 
+  # A field with something beside it, e.g. a button: beside the field
+  # while the row has room for it, beyond the field's column too, else
+  # below it, at the field's right edge. The aside is left out while
+  # all it holds is hidden.
+  def with_aside(field, aside)
+    content_tag(:div, class: "wsjrdp-field-aside") do
+      content_tag(:div, field, class: "wsjrdp-field-aside-field") +
+        content_tag(:div, aside, class: "wsjrdp-field-aside-content")
+    end + template.render("shared/wsjrdp/field_aside_js")
+  end
+
   def mail_addresses_field(attr, html_options = {})
     html_options[:class] = html_options[:class].to_s
     html_options[:class] += " is-invalid" if errors_on?(attr)
@@ -116,6 +127,22 @@ module Wsjrdp2027::StandardFormBuilder
   end
 
   private
+
+  # aside: of the labeled_ fields (#with_aside), between the field and its
+  # help.
+  def build_labeled_field(field_method, *args)
+    options = args.extract_options!
+    aside = options.delete(:aside)
+    return super(field_method, *args, options) if aside.blank?
+
+    super(:labeled_field_with_aside, *args, options.merge(field_aside: [field_method, aside]))
+  end
+
+  def labeled_field_with_aside(*args)
+    options = args.extract_options!
+    field_method, aside = options.delete(:field_aside)
+    with_aside(send(field_method, *args, options), aside)
+  end
 
   # As wide as the other fields of the form; a placeholder: shows while
   # nothing is chosen.

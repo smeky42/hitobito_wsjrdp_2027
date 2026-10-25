@@ -1,0 +1,82 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later. See the COPYING
+-#  file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Places the asides of Wsjrdp2027::StandardFormBuilder#with_aside: beside
+-# the field while it fits up to the row's right edge, else below it, at the
+-# field's right edge. Again on resizing, on a form coming in by Turbo and on
+-# showing or hiding a part of the aside. Once per page.
+- return if @wsjrdp_field_aside_js_emitted
+- @wsjrdp_field_aside_js_emitted = true
+:javascript
+  (function () {
+    if (window.wsjrdpFieldAside) return window.wsjrdpFieldAside.scan()
+
+    const BOX = ".wsjrdp-field-aside"
+    const CONTROL = "input:not([type=hidden]), select, textarea, .ts-wrapper"
+
+    function control(box) {
+      const part = box.querySelector(".wsjrdp-field-aside-field")
+      return Array.from(part.querySelectorAll(CONTROL)).find((el) => el.offsetWidth > 0) || part
+    }
+
+    // The row's right edge, inside its column's padding.
+    function limit(box) {
+      const row = box.closest(".row")
+      if (!row) return box.getBoundingClientRect().right
+      const column = Array.from(row.children).find((child) => child.contains(box))
+      const padding = column ? parseFloat(getComputedStyle(column).paddingRight) : 0
+      return row.getBoundingClientRect().right - padding
+    }
+
+    function layout(box) {
+      const aside = box.querySelector(".wsjrdp-field-aside-content")
+      if (!aside || !aside.getClientRects().length) return
+      aside.classList.remove("is-beside")
+      Object.assign(aside.style, {left: "", top: "", marginRight: "", maxWidth: "none"})
+      const width = aside.getBoundingClientRect().width
+      const boxRect = box.getBoundingClientRect()
+      const field = control(box).getBoundingClientRect()
+      const gap = parseFloat(getComputedStyle(aside).columnGap) || 8
+      if (field.right + gap + width <= limit(box)) {
+        aside.classList.add("is-beside")
+        aside.style.left = field.right - boxRect.left + gap + "px"
+        aside.style.top = field.top - boxRect.top + (field.height - aside.offsetHeight) / 2 + "px"
+        aside.style.maxWidth = ""
+      } else {
+        aside.style.marginRight = boxRect.right - field.right + "px"
+        aside.style.maxWidth = field.width + "px"
+      }
+    }
+
+    const resized = new ResizeObserver((entries) => {
+      entries.forEach((entry) => entry.target.querySelectorAll(BOX).forEach(layout))
+    })
+
+    function scan() {
+      document.querySelectorAll(BOX).forEach((box) => {
+        resized.observe(box.closest(".row") || box.parentElement)
+        layout(box)
+      })
+    }
+
+    new MutationObserver((mutations) => {
+      const boxes = new Set()
+      mutations.forEach((mutation) => {
+        const target = mutation.target.nodeType === 1 ? mutation.target : mutation.target.parentElement
+        if (mutation.type === "childList" && mutation.addedNodes.length) {
+          boxes.add("scan")
+        } else if (target && target.closest(BOX)) {
+          boxes.add(target.closest(BOX))
+        }
+      })
+      if (boxes.has("scan")) return scan()
+      boxes.forEach(layout)
+    }).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"]})
+
+    window.wsjrdpFieldAside = {scan: scan}
+    scan()
+  })()

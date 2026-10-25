@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Kontoverbindung ändern, and the updated SEPA mandate, signed on the
+-#  mandate date: in a new tab, or as a download. Disabled, with what is
+-#  missing, while the mandate cannot be made.
+- missing = sepa_mandate_missing_labels(person)
+- missing_text = t("people.sepa_account.mandate_missing", fields: missing.join(", ")) if missing.any?
+.mt-2.d-flex.flex-wrap.align-items-center.gap-2
+  = action_button(t("people.sepa_account.edit"), edit_person_bank_account_path(person),
+      :edit, remote: false, data: {turbo_stream: true})
+  - if missing.empty?
+    = action_button(t("people.sepa_account.mandate_view"), mandate_person_bank_account_path(person),
+        :"file-pdf", target: "_blank", data: {turbo: false})
+    = action_button(t("people.sepa_account.mandate_download"), mandate_person_bank_account_path(person, download: 1),
+        :download, data: {turbo: false})
+  - else
+    = action_button(t("people.sepa_account.mandate_view"), nil, :"file-pdf", disabled: missing_text)
+    = action_button(t("people.sepa_account.mandate_download"), nil, :download, disabled: missing_text)
+- if missing_text
+  .form-text.sepa-mandate-missing= missing_text
