@@ -20,6 +20,10 @@ class WsjrdpDirectDebitPreNotification < ActiveRecord::Base
   belongs_to :subject, polymorphic: true
   belongs_to :author, polymorphic: true
 
+  has_paper_trail meta: {main_id: ->(debit) { debit.person_subject_id },
+                         main_type: ->(debit) { debit.person_subject_id && Person.sti_name }},
+    skip: %w[updated_at]
+
   has_one :accounting_entry,
     foreign_key: "direct_debit_pre_notification_id",
     inverse_of: :direct_debit_pre_notification,
@@ -56,6 +60,14 @@ class WsjrdpDirectDebitPreNotification < ActiveRecord::Base
 
   eur_attribute :amount_eur, cents_attr: :amount_cents
   eur_attribute :pre_notified_amount_eur, cents_attr: :pre_notified_amount_cents
+
+  def person_subject_id = (subject_type == "Person") ? subject_id : nil
+
+  # The debit in a log entry: when and how much.
+  def to_s(*)
+    date = collection_date && " zum #{I18n.l(collection_date)}"
+    "Einzug#{date} über #{amount_eur_display}€"
+  end
 
   def link_name(length: 80)
     pre = "[#{id}] "

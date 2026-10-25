@@ -17,7 +17,35 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     content_tag(:div, wsjrdp_event_text)
   end
 
+  # The changes in short, "Betrag 400,00€ → 450,00€, IBAN … → …".
+  def compact_changeset
+    safe_join(model.changeset.map do |attr, (from, to)|
+      safe_join([item_class.human_attribute_name(attr), " ",
+        normalize(attr, from).presence || WSJRDP_MISSING_VALUE, " → ",
+        normalize(attr, to).presence || WSJRDP_MISSING_VALUE])
+    end, ", ")
+  end
+
+  # Who made the change, as plain text.
+  def author_name = h.strip_tags(author.to_s).presence
+
+  # A debit's change in a person's log names the debit by its id.
+  def association_change
+    return super unless item_class <= ::WsjrdpDirectDebitPreNotification
+
+    text = I18n.t("version.association_change.wsjrdp_direct_debit_pre_notification.#{model.event}",
+      model: safe_join([item_class.model_name.human, " ", debit_link]),
+      changeset: (model.event == "update") ? changeset_list : nil)
+    h.sanitize(text, tags: %w[i a], attributes: %w[href target rel])
+  end
+
   private
+
+  def debit_link
+    debit = model.item
+    h.link_to_if(debit && can?(:log, debit), "##{model.item_id}",
+      h.wsjrdp_direct_debit_pre_notification_path(model.item_id), target: "_blank", rel: "noopener")
+  end
 
   # What a value of a log entry shows when it is missing or empty.
   WSJRDP_MISSING_VALUE = "–"
@@ -137,6 +165,16 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # Zusatzdaten, gender) is written out by its labels, "Grundkenntnisse"
   # rather than "basic"; a value without a label as stored.
   def i18n_enum_attr?(attr) = item_class.respond_to?(:"#{attr}_labels")
+
+  # Overrides the core's value formatting of every attribute change
+  # (PaperTrail::VersionDecorator#attribute_change_args, and
+  # #compact_changeset): an amount in cents (amount_cents, …) as euros,
+  # "450,00€".
+  def normalize(attr, value)
+    return super unless attr.to_s.end_with?("_cents") && value.is_a?(Integer)
+
+    h.h(h.format_cents_de(value, zero_cents: ",00", space: ""))
+  end
 
   def jamboree_page_attr?(attr) = item_class <= ::Person && JAMBOREE_PAGE_ATTRS.include?(attr.to_s)
 

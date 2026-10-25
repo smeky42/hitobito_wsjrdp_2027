@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The changes made to a debit in Hitobito, newest first, worded as in the
+-#  person's log. Locals: debit, compact (one line each, for a row of the
+-#  Beitrag page's entries)
+- compact = local_assigns.fetch(:compact, false)
+- debit_change_versions(debit).each do |version|
+  - change = PaperTrail::VersionDecorator.new(version)
+  - if compact
+    .debit-change.small
+      %span.text-muted{title: change.author_name}= l(version.created_at, format: "%d.%m.%Y %H:%M")
+      = change.compact_changeset
+  - else
+    .debit-change.small
+      .text-muted= change.header
+      = change.changeset_list

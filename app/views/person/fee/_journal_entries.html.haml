@@ -40,6 +40,10 @@
               %div
                 %span.fw-light.muted= "#{t('activerecord.attributes.accounting_entry.endtoend_id')}: "
                 %span.fw-light= entry.endtoend_id
+            -# A debit's changes, for whoever sees the person's log.
+            - if entry.is_a?(WsjrdpDirectDebitPreNotification) && fee_page_privileged?(@person) && debit_change_versions(entry).any?
+              .debit-changes.mt-1.ps-2{style: "border-left: 2px solid var(--bs-border-color); font-variant-numeric: tabular-nums;"}
+                = render "fin/direct_debits/changes", debit: entry, compact: true
             - if entry.respond_to?(:camt_transaction) && entry.camt_transaction.present? && can?(:show, entry.camt_transaction)
               %div
                 %span.fw-light.muted= "Kontobewegung: "
