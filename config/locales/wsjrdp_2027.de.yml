@@ -66,6 +66,9 @@ de:
       wsjrdp_sub_cost_center:
         one: Unterkostenstelle
         other: Unterkostenstellen
+      wsjrdp_direct_debit_pre_notification:
+        one: Vorabankündigung
+        other: Vorabankündigungen
 
     alert:
       only_pdf_allowed: Du kannst nur PDF Dateien hochladen.
@@ -2007,6 +2010,7 @@ de:
       debit_label: "Einzug #%{id}"
       debit_notice_label: "Vorabankündigung Einzug #%{id}"
       debit_saved: "Einzug #%{id} gespeichert."
+      debit_changes: Änderungen
       debit_help:
         try_skip: "Wichtig: \"Einzug aussetzen\" hat keine Auswirkung, wenn die SEPA XML Datei für die Übermittlung zur Bank bereits erzeugt wurde."
         comment: "Nur sichtbar für Personen mit Buchhaltungs-Rechten"
@@ -2262,6 +2266,12 @@ de:
       ist: "IST"
 
   version:
+    association_change:
+      # A debit is named by its id (Wsjrdp2027::PaperTrail::VersionDecorator).
+      wsjrdp_direct_debit_pre_notification:
+        create: "%{model} wurde hinzugefügt."
+        update: "%{model}: %{changeset}"
+        destroy: "%{model} wurde gelöscht."
     block_person: 'Im Tab "Sicherheit" wurde der Login gesperrt'
     unblock_person: 'Im Tab "Sicherheit" wurde der Login entsperrt'
     wsjrdp_add_tag: 'Tag <i>%{tag_name}</i> hinzugefügt'

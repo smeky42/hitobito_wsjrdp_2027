@@ -147,6 +147,12 @@ module Fin::PaymentDetailsHelper
     editing ? help.merge(try_skip: {help: t("fin.payments.debit_help.try_skip")}) : help
   end
 
+  # The updates of a debit made in Hitobito, newest first (fin/direct_debits/_changes).
+  def debit_change_versions(debit)
+    PaperTrail::Version.where(item_type: WsjrdpDirectDebitPreNotification.sti_name, item_id: debit.id,
+      event: "update").reorder(created_at: :desc, id: :desc)
+  end
+
   def fin_format_wsjrdp_direct_debit_pre_notification_creditor_id(debit) = payment_mono(debit.creditor_id)
 
   def fin_format_wsjrdp_direct_debit_pre_notification_mandate_date(debit) = payment_time(fin_date(debit.mandate_date))

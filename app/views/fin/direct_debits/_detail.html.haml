@@ -61,5 +61,8 @@
       **edit.call(:dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
   - d.attrs :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address
   - d.attrs :payment_role, :created_at, :updated_at
+  - if !editing.nil? && debit_change_versions(debit).any?
+    - d.custom key: :changes, title: t("fin.payments.debit_changes") do
+      = render "fin/direct_debits/changes", debit: debit
   - d.raw_data do
     - d.raw_entries :additional_info, title: t("fin.payments.additional_info")
