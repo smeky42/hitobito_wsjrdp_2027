@@ -30,6 +30,16 @@ describe Person::StatusController, type: :controller do
     person.update!(Wsjrdp2027::ParticipationFee.person_installments_attrs(person.active_fee_rule))
   end
 
+  it "shows the contract with its date and as stored" do
+    person.update_columns(contract_status: "confirmed", contract_confirmed_at: Time.zone.local(2025, 10, 12, 9))
+    get :show, params: {group_id: person.primary_group_id, id: person.id}
+
+    contract = Nokogiri::HTML(response.body).css("dt").find { |dt| dt.text.strip == "Vertrag" }.next_element
+    expect(contract.text).to include(Settings.contract_status.confirmed).and include("12.10.2025")
+      .and include("(confirmed)")
+    expect(contract.at_css("span.fin-status-confirmed")).to be_present
+  end
+
   it "shows the plan in effect in two lines with a link, on the page and in the form, nothing to plan" do
     rule("planned", custom_installments_cents: [0, 0, 5_000])
 

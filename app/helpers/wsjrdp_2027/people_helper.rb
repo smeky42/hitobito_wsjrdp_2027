@@ -221,6 +221,22 @@ module Wsjrdp2027::PeopleHelper
     end
   end
 
+  # The contract in colour (Fin::PersonStatusHelper::CONTRACT_CLASSES, none
+  # grey; the page renders fin/_person_status_styles): in a word in the
+  # person's aside, with its date on the status page.
+  def format_person_contract_status(person)
+    person_contract_status_tag(person, Settings.contract_status[person.contract_status].presence ||
+      person.contract_status)
+  end
+
+  def format_person_contract_status_display(person)
+    person_contract_status_tag(person, person.contract_status_display)
+  end
+
+  def person_contract_status_tag(person, text)
+    tag.span(text, class: Fin::PersonStatusHelper::CONTRACT_CLASSES.fetch(person.contract_status.to_s, "text-muted"))
+  end
+
   def format_person_sepa_mail(person)
     format_email_or_nil(person.sepa_mail)
   end

@@ -1,8 +1,9 @@
 - content_for(:toolbar, render('actions_show'))
+= render 'fin/person_status_styles'
 
 #main.row
   = render_attrs_list do
-    = labeled_attrs(@person, :birthday, :status_log_display, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role)
+    = labeled_attrs(@person, :birthday, :status_log_display, :contract_status_display, :print_at, :contract_upload_at, :complete_document_upload_at, :payment_role)
     - if @person.wsj_role.present?
       = labeled_attr(@person, :wsj_role)
     - else

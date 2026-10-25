@@ -411,6 +411,14 @@ module Wsjrdp2027::Person
         [Settings.status[status].presence, "(#{status})"].compact.join(" ")
       end
 
+      # The contract as the status page shows it: its label (Settings.contract_status),
+      # since or on which day, the status as stored.
+      def contract_status_display
+        date = {"confirmed" => contract_confirmed_at, "ended" => contract_ended_at}[contract_status]
+        since = date && "#{(contract_status == "ended") ? "am" : "seit"} #{I18n.l(date.to_date)}"
+        [Settings.contract_status[contract_status].presence, since, "(#{contract_status})"].compact.join(" ")
+      end
+
       def sepa_status_log_display
         [Settings.sepa_status[sepa_status].presence, "(#{sepa_status})"].compact.join(" ")
       end
