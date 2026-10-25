@@ -479,6 +479,7 @@ de:
         wsjrdp_total_fee: Beitrag
         wsjrdp_total_fee_override: Beitrag (überschrieben)
         contract_status: Vertrag
+        contract_status_display: Vertrag
         contract_confirmed_at: Vertrag bestätigt am
         contract_ended_at: Vertrag beendet am
         contract_confirmed_by: Vertrag bestätigt von

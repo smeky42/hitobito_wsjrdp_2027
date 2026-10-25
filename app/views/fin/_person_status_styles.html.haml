@@ -8,8 +8,10 @@
 -#  The colours of a person's status in the lists of the Beiträge area
 -#  (Fin::PersonStatusHelper#fin_person_status): confirmed green, a noted
 -#  deregistration orange, a deregistration red -- set here, as the theme's
--#  "success" is a petrol. Rendered with the first list; the guard emits it
--#  only once per request.
+-#  "success" is a petrol. The contract's colours too, also in the person's
+-#  aside (people/_status) and on the status page (person/status/show;
+-#  Wsjrdp2027::PeopleHelper#person_contract_status_tag).
+-#  Rendered with the first use; the guard emits it only once per request.
 - return if @fin_person_status_styles_emitted
 - @fin_person_status_styles_emitted = true
 :css

@@ -2,4 +2,5 @@
   = t('people.status')
 = raw(t("people.status_help.#{entry.status}", default: 'Unknown Status'))
 - entry.status = Settings.status[entry.status]
-= render_attrs(entry, :status)
+= render 'fin/person_status_styles'
+= render_attrs(entry, :status, :contract_status)
