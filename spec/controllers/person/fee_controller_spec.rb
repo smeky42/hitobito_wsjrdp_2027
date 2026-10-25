@@ -56,6 +56,40 @@ describe Person::FeeController do
   # The entries of the page as a PDF. It sits behind the page's own
   # authorization, so everybody who may read the page may print it -- the
   # person themselves included.
+  # "Kontoverbindung": the bank account fields of "SEPA" on the person's page
+  # (without "Einmalzahlung?"), for everybody who sees the Beitrag page -- the
+  # person themselves and the audit tier.
+  describe "the bank account" do
+    let(:yp) { people(:yp_a_1) }
+    let(:auditor) do
+      Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
+        group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person
+    end
+
+    before do
+      ensure_payment_plan(yp)
+      yp.update_columns(sepa_name: "Erika Mustermann", sepa_iban: "DE02120300000000202051",
+        sepa_bic: "BYLADEM1001")
+    end
+
+    [:yp, :auditor].each do |viewer|
+      it "shows the account holder, IBAN, BIC and mandate to #{viewer}" do
+        sign_in(send(viewer))
+
+        get :show, params: {person_id: yp.id}
+
+        section = Capybara.string(response.body).find("section.bank-account")
+        expect(section).to have_css("h2", text: "Kontoverbindung")
+        expect(section).to have_text("Erika Mustermann")
+          .and have_text("BYLADEM1001")
+          .and have_text(yp.sepa_mandate_id)
+        expect(section.text.delete(" ")).to include("DE02120300000000202051")
+        expect(section).to have_no_text(Person.human_attribute_name(:early_payer))
+        expect(section).to have_css("a.sepa-account-change[href^='mailto:finanzen@worldscoutjamboree.de?']")
+      end
+    end
+  end
+
   describe "the statement" do
     let(:yp) { people(:yp_a_1) }
 

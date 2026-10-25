@@ -48,5 +48,6 @@
 
   -# Outside the form above: the sections carry buttons of their own.
   = render 'installments', person: @person
+  = render 'bank_account', person: @person
   - if fee_page_privileged?(@person)
     = render 'fee_reduction', person: @person

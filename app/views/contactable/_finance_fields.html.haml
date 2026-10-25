@@ -5,10 +5,10 @@
 
 .row.mt-4
   .col
-    %h4= t('activerecord.attributes.person.early_payer')
+    %h4= t('people.finance_fields.early_payer_header')
     %p.text-muted= raw(t('people.finance_fields.early_payer_help'))
     - if (@person.status == 'registered')
-      = f.labeled(:early_payer) do
+      = f.labeled(:early_payer, t('people.finance_fields.early_payer_header')) do
         - { true  => 'Einmalzahlung', false => 'Ratenzahlung' }.each do |value, label|
           = f.inline_radio_button(:early_payer, value, label)
     - else
