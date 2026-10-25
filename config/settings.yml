@@ -9,6 +9,8 @@ email:
   sender: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <anmeldung@worldscoutjamboree.de>" %>
   reply_to: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <info@worldscoutjamboree.de>" %>
   mass_recipient: <%= "Deutsches Kontingent zum World Scout Jamboree 2027  <anmeldung@worldscoutjamboree.de>" %>
+  # Where change requests about payments go, e.g. a new bank account.
+  finance: finanzen@worldscoutjamboree.de
 
 status:
   registered: Registriert # Jeder der sich initial eingelogged hat

@@ -225,6 +225,48 @@ module Wsjrdp2027::PeopleHelper
     format_email_or_nil(person.sepa_mail)
   end
 
+  # A mail to the finance team (Settings.email.finance) asking to
+  # change the person's bank account.
+  def sepa_account_change_mail_to(person)
+    body = [
+      "Hallo,", "",
+      "ich möchte die Kontoverbindung ändern.",
+      *sepa_account_change_announced_lines(person),
+      "",
+      "Neue Kontoverbindung:",
+      "",
+      "Kontoinhaber*in: #{person.sepa_name}",
+      "Adresse: #{person.sepa_address}",
+      "IBAN: #{person.sepa_iban}",
+      "BIC: #{person.sepa_bic}",
+      "Mailadresse: #{person.sepa_mail}",
+      "",
+      "Viele Grüße",
+      ""
+    ].join("\r\n")
+    mail_to(Settings.email.finance, subject: "Änderung Kontoverbindung #{person.role_id_name}", body: body,
+      class: "sepa-account-change") do
+      safe_join([icon(:envelope), " ", t("people.sepa_account.change_request")])
+    end
+  end
+
+  # Helper for sepa_account_change_mail_to to describe the "open"
+  # pre-notified direct debit collections.
+  def sepa_account_change_announced_lines(person)
+    announced = person.direct_debit_pre_notifications.where(payment_status: "pre_notified")
+    return [] if announced.empty?
+
+    [
+      "Bitte die Kontoverbindung auch für den bereits angekündigten Lastschrifteinzug anpassen:", "",
+      *announced.map do |debit|
+        "  Einzug zum #{I18n.l(debit.collection_date)} über " \
+          "#{format_cents_de(debit.amount_cents, zero_cents: ",00", space: " ")}: " \
+          "#{debit.description}\r\n" \
+        "    (bisher IBAN #{debit.dbtr_iban})"
+      end
+    ]
+  end
+
   def format_person_additional_contact_email_a(person)
     format_email_or_nil(person.additional_contact_email_a)
   end

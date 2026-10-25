@@ -1,0 +1,15 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  "Kontoverbindung" on the person's Beitrag page: what the person's page
+-#  shows under "SEPA" (people/_sepa_account_attrs), for everybody who sees
+-#  the Beitrag page.
+-#
+-#  Locals: person
+%section.bank-account.mt-3
+  %h2.mt-3.mb-3 Kontoverbindung
+  = render "people/sepa_account_attrs", person: person
