@@ -225,6 +225,17 @@ module Wsjrdp2027::PeopleHelper
     format_email_or_nil(person.sepa_mail)
   end
 
+  # What the bank account takes over from the participant
+  # (people/_copy_from_participant): the address as one line, or the mail.
+  def participant_copy_value(person, kind)
+    case kind.to_sym
+    when :email then person.email.to_s
+    when :address
+      [[person.street, person.housenumber].compact_blank.join(" "),
+        [person.zip_code, person.town].compact_blank.join(" ")].compact_blank.join(", ")
+    end
+  end
+
   # A mail to the finance team (Settings.email.finance) asking to
   # change the person's bank account.
   def sepa_account_change_mail_to(person)

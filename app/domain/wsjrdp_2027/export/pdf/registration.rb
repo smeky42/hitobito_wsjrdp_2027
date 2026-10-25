@@ -14,9 +14,11 @@ module Wsjrdp2027
           new_pdf(person, pdf_preview).render
         end
 
+        # only: the sections to render instead of all of them; options go to
+        # each section (Sepa: signed_on, full_plan).
         # rubocop:disable Metrics/AbcSize
         # rubocop:disable Metrics/MethodLength
-        def new_pdf(person, pdf_preview)
+        def new_pdf(person, pdf_preview, only: nil, **options)
           pdf = Prawn::Document.new(page_size: "A4", page_layout: :portrait, margin: 2.cm, bottom_margin: 1.cm)
 
           pdf.font_families.update("Montserrat" => {
@@ -30,10 +32,11 @@ module Wsjrdp2027
 
           @person = person
 
-          sections.each do |section|
+          rendered = only || sections
+          rendered.each do |section|
             pstart = pdf.page_number
             current_section = section.name || ""
-            section.new(pdf, @person).render
+            section.new(pdf, @person, **options).render
             pend = pdf.page_number
 
             pdf.repeat pstart..pend do
@@ -43,7 +46,7 @@ module Wsjrdp2027
               end
             end
 
-            pdf.start_new_page if section != sections.last
+            pdf.start_new_page if section != rendered.last
           end
 
           # define header & footer variables
@@ -111,6 +114,12 @@ module Wsjrdp2027
 
       def self.new_pdf(person, pdf_preview)
         runner.new.new_pdf(person, pdf_preview)
+      end
+
+      # The SEPA mandate alone, with the person's current bank account, signed
+      # on `signed_on`, and the whole installment plan.
+      def self.render_sepa_mandate(person, signed_on:)
+        runner.new.new_pdf(person, false, only: [Sepa], signed_on: signed_on, full_plan: true).render
       end
     end
   end

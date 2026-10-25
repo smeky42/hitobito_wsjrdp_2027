@@ -22,6 +22,7 @@ describe PeopleController, type: :controller do
   end
 
   it "shows the bank account under SEPA" do
+    yp.update_columns(print_at: Date.new(2025, 9, 1))
     get :show, params: {group_id: yp.primary_group_id, id: yp.id}
 
     html = Capybara.string(response.body)
@@ -29,6 +30,8 @@ describe PeopleController, type: :controller do
     expect(html).to have_css("dt", text: "Einmalzahlung?")
     expect(html).to have_text("Erika Mustermann").and have_text("BYLADEM1001")
       .and have_text(yp.sepa_mandate_id)
+    expect(html).to have_css("dt", text: "Mandatsdatum")
+    expect(html).to have_css("dd", text: "01.09.2025")
   end
 
   # The mail's body, decoded from the link on the page.
@@ -61,5 +64,17 @@ describe PeopleController, type: :controller do
 
     expect(mail_query["body"]).to include("05.11.2026").and include("300,00 €")
       .and include("WSJ 2027 6. Rate November 2026")
+  end
+
+  it "offers the participant's address and mail in the SEPA fields of the edit form" do
+    yp.update_columns(status: "registered", street: "Musterstraße", housenumber: "1", zip_code: "12345",
+      town: "Musterstadt", email: "erika@example.org")
+
+    get :edit, params: {group_id: yp.primary_group_id, id: yp.id}
+
+    html = Capybara.string(response.body)
+    expect(html).to have_css("button[data-copy-from-participant='address'][data-copy-target='#person_sepa_address']" \
+      "[data-copy-value='Musterstraße 1, 12345 Musterstadt']")
+    expect(html).to have_css("button[data-copy-from-participant='email'][data-copy-value='erika@example.org']")
   end
 end

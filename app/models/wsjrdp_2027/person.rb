@@ -206,6 +206,9 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :sepa_mandate_id, strip: true
       attribute :sepa_mandate_id, :string
 
+      # Signature date of the SEPA mandate. Falls back to `print_at` if not present.
+      jsonb_accessor :additional_info, :sepa_mandate_date, cast: :date
+
       jsonb_accessor :additional_info, :debit_return_issue, strip: true
       attribute :debit_return_issue, :string
 
@@ -672,6 +675,10 @@ module Wsjrdp2027::Person
       def sepa_mandate_id=(value)
         super
         super(nil) if value == "wsjrdp2027#{id}"
+      end
+
+      def sepa_mandate_date
+        super || print_at
       end
 
       def sepa_mandate_id_change

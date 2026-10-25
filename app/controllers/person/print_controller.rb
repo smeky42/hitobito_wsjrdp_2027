@@ -41,6 +41,8 @@ class Person::PrintController < ApplicationController
 
       @person.status = "printed"
       @person.print_at = Time.zone.now.strftime("%Y-%m-%d-%H-%M-%S")
+      # The PDF's mandate is signed today (Registration::Sepa).
+      @person.sepa_mandate_date = Time.zone.today
       @person.generated_registration_pdf = full_name
       @person.save
 

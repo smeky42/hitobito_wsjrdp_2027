@@ -16,6 +16,22 @@ module PersonFinancePagesHelper
 
   def total_fee_anchor(person) = "total_fee_#{person.id}"
 
+  # What the SEPA mandate still lacks, as labels; empty when it can be made.
+  def sepa_mandate_missing_labels(person)
+    Wsjrdp2027::SepaMandateRequirements.missing(person).map do |attr|
+      (attr == :payment_plan) ? t("people.sepa_account.mandate_missing_plan") : Person.human_attribute_name(attr)
+    end
+  end
+
+  # Where the "Kontoverbindung" section's button or form stands.
+  def bank_account_actions_id(person) = "bank_account_actions_#{person.id}"
+
+  # The notice of the last bank account change, for that person's section.
+  def bank_account_notice(person)
+    notice = flash[:bank_account_notice]
+    notice["text"] if notice.is_a?(Hash) && notice["person_id"].to_s == person.id.to_s
+  end
+
   # The Finanzen tab: whoever may see the person, and the finance audit tier,
   # which reads the Beitrag page (:show_finance) without seeing the person
   # otherwise.

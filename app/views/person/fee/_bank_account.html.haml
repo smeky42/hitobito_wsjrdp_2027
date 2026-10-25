@@ -12,4 +12,10 @@
 -#  Locals: person
 %section.bank-account.mt-3
   %h2.mt-3.mb-3 Kontoverbindung
+  - if (notice = bank_account_notice(person)).present?
+    .alert.alert-success.py-1.px-2.mb-2= notice
   = render "people/sepa_account_attrs", person: person
+  -# The button, or the form in its place (Person::BankAccountController).
+  - if can?(:update_finance, person)
+    %div{id: bank_account_actions_id(person)}
+      = render "person/bank_account/buttons", person: person

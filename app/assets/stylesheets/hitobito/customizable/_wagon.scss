@@ -277,3 +277,27 @@ body {
 .alert ul:last-child {
   margin-bottom: 0;
 }
+
+// Something beside a field: below it, at its right edge, until room beside is found.
+.wsjrdp-field-aside {
+  position: relative;
+}
+
+.wsjrdp-field-aside-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  width: max-content;
+  max-width: 100%;
+  margin: .25rem 0 0 auto;
+
+  &.is-beside {
+    position: absolute;
+    margin: 0;
+  }
+
+  &:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+}

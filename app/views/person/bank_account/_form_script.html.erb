@@ -1,0 +1,51 @@
+<%#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+
+  This file is part of hitobito_wsjrdp_2027 and licensed under the
+  Affero General Public License version 3 or later. See the COPYING
+  file at the top-level directory or at
+  https://github.com/smeky42/hitobito_wsjrdp_2027 %>
+<%= javascript_tag nonce: true do %>
+// The mandate date of the bank account form (person/bank_account/_form):
+// the previous date's button fills it in, and a hint shows while the date
+// lies in the past. Listens on the document, as the form comes in by Turbo stream.
+(function () {
+  const INPUT = "input[data-sepa-mandate-date]"
+
+  function today() {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  }
+
+  // "25.10.2026" as a date; null for anything else.
+  function parse(value) {
+    const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((value || "").trim())
+    return match ? new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1])) : null
+  }
+
+  function syncHint(input) {
+    const hint = input.closest("form").querySelector("[data-sepa-mandate-date-past]")
+    const date = parse(input.value)
+    if (hint) hint.hidden = !(date && date < today())
+  }
+
+  function onClick(event) {
+    const button = event.target.closest("[data-sepa-mandate-date-set]")
+    if (!button) return
+    const input = button.closest("form").querySelector(INPUT)
+    if (!input) return
+    input.value = button.getAttribute("data-sepa-mandate-date-set")
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+  }
+
+  function onChange(event) {
+    if (event.target.matches && event.target.matches(INPUT)) syncHint(event.target)
+  }
+
+  if (!window.wsjrdpBankAccountFormBound) {
+    window.wsjrdpBankAccountFormBound = true
+    document.addEventListener("click", onClick)
+    document.addEventListener("change", onChange)
+    document.addEventListener("input", onChange)
+  }
+})()
+<% end %>

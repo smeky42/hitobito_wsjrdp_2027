@@ -225,6 +225,7 @@ de:
         sepa_status: Finanzstatus
         early_payer: Einmalzahlung?
         sepa_mandate_id: Mandatsreferenz
+        sepa_mandate_date: Mandatsdatum
         medical_stiko_vaccinations: Impfungen nach STIKO-Empfehlung
         medical_additional_vaccinations: Weitere Impfungen
         medical_preexisting_conditions: Bekannte Vorerkrankungen / Operationen / Kinderkrankheiten
@@ -1125,6 +1126,27 @@ de:
       invalid_iban: ist keine gültige IBAN
     sepa_account:
       change_request: Änderung der Kontoverbindung per E-Mail mitteilen
+      edit: Kontoverbindung ändern
+      save: Kontoverbindung speichern
+      saved: Kontoverbindung gespeichert.
+      saved_with_debits: "Kontoverbindung gespeichert, auch im angekündigten Einzug zum %{dates}."
+      announced: Angekündigte Einzüge
+      announced_debit: "Auch hier ändern: %{date} · %{amount} · %{purpose}"
+      announced_iban: "bisher IBAN %{iban}"
+      comment: Kommentar
+      comment_help: Wird als Notiz an der Person gespeichert.
+      mandate_date_help: Das Datum der Unterschrift des SEPA-Mandats.
+      mandate_date_help_previous: "Bisher: %{date}."
+      mandate_date_previous: "Bisher: %{date}"
+      mandate_date_past: Das Mandatsdatum liegt in der Vergangenheit.
+      mandate_date_invalid: ist kein gültiges Datum
+      mandate_view: SEPA-Mandat ansehen
+      mandate_download: SEPA-Mandat herunterladen
+      mandate_missing: "Für das SEPA-Mandat fehlt: %{fields}."
+      mandate_missing_plan: Ratenplan
+      note_prefix: Kontoverbindung geändert
+      mandate_id_help: "Die Skripte erkennen die Person an der Mandatsreferenz: „wsjrdp2027“, optional „-“, dann die Personen-ID %{id}. Danach darf ein Zusatz folgen, der nicht mit einer Ziffer beginnt, z. B. „wsjrdp2027%{id}b“ oder „wsjrdp2027-%{id}-2“. Gespeichert wird in Kleinbuchstaben."
+      mandate_id_invalid: "muss „wsjrdp2027“ und die Personen-ID %{id} enthalten (danach keine Ziffer), höchstens 35 Zeichen aus A–Z, a–z, 0–9 und + ? / - : ( ) . , ' Leerzeichen"
     association_fields:
       buddy_id_header: Mit diesen Personen möchte ich in eine Unit
       rdp_association_header: Verbandszugehörigkeit
@@ -1138,6 +1160,7 @@ de:
       header_wished_ul: Wünschen sich dich als Unit Leader
     buttons:
       copy_data: aus Teilnehmer*in Daten übernehmen
+      copy_data_title: "Übernimmt: %{value}"
       print_preview: Vorschau drucken
       print_preview_info: Hier kannst du dir ein Vorschau-PDF deiner Anmeldung genererieren. <br/> Überprüfe damit ob du deine Daten richtig angegeben hast. <br/> Das Vorschau PDF darf nicht hochgeladen werden und ist keine Anmeldung.
       print_preview_hint: Zur Kontrolle der Anmeldung

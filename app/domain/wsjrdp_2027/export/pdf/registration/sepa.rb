@@ -69,7 +69,7 @@ module Wsjrdp2027
         end
         pdf.move_down 3.mm
 
-        if @person.single_payment_contract?
+        if @person.single_payment_contract? && !@options[:full_plan]
           text "Der Einzug des Gesamtbetrages von #{format_eur_de(@person.total_fee_eur)} erfolgt am 5. Januar 2026."
         else
           text "Der Einzug erfolgt am 5. des jeweiligen Monats bzw. am " \
@@ -108,7 +108,7 @@ module Wsjrdp2027
 
         pdf.move_down 3.mm
         pdf.make_table([
-          [{content: @person.town + ", den " + Time.zone.today.strftime("%d.%m.%Y"),
+          [{content: @person.town + ", den " + (@options[:signed_on] || Time.zone.today).strftime("%d.%m.%Y"),
             height: 30}],
           ["______________________________", ""],
           [{content: @person.sepa_name, height: 30}, ""]

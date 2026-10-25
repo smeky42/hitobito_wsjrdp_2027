@@ -32,18 +32,14 @@
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_address')
       .col
-        .d-flex.flex-row.mb-2
-          = f.input_field :sepa_address, input_html: { id: 'person_sepa_address' }
-          %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyAddressToTargetId("#person_sepa_address")' }
-            = t('people.buttons.copy_data')
+        .mb-2= f.with_aside(f.input_field(:sepa_address, input_html: { id: 'person_sepa_address' }),
+          render('people/copy_from_participant', person: @person, kind: :address, target: 'person_sepa_address'))
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
         = t('activerecord.attributes.person.sepa_mail')
       .col
-        .d-flex.flex-row.mb-2
-          = f.input_field :sepa_mail, input_html: { id: 'person_sepa_mail' }
-          %button.btn.btn-sm.btn-primary.ml-3{ type: 'button', onclick: 'copyEmailToTargetId("#person_sepa_mail")' }
-            = t('people.buttons.copy_data')
+        .mb-2= f.with_aside(f.input_field(:sepa_mail, input_html: { id: 'person_sepa_mail' }),
+          render('people/copy_from_participant', person: @person, kind: :email, target: 'person_sepa_mail'))
 
     .row
       %label.col-md-3.col-xl-2.pb-1.col-form-label.text-md-end
@@ -75,35 +71,4 @@
                     :sepa_bic,
                     :sepa_mandate_id)
 
-:javascript
-  function copyAddressToTargetId(targetId) {
-    const street = $('#person_street').val() || '';
-    const houseNumber = $('#person_housenumber').val() || '';
-    const zip = $('#person_zip_code').val() || '';
-    const town = $('#person_town').val() || '';
-
-    const target = $(targetId);
-
-    if (target.length === 0) {
-      console.warn(`Target field ${targetId} not found.`);
-      return;
-    }
-
-    const addressLine1 = [street, houseNumber].filter(Boolean).join(' ').trim();
-    const addressLine2 = [zip, town].filter(Boolean).join(' ').trim();
-    const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(', ');
-
-    target.val(fullAddress);
-  }
-
-  function copyEmailToTargetId(targetId) {
-    const email = "#{j(@person.email || '')}";
-    const target = $(targetId);
-
-    if (target.length === 0) {
-      console.warn(`Target field ${targetId} not found.`);
-      return;
-    }
-
-    target.val(email);
-  }
+= render 'people/copy_from_participant_script'
