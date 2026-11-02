@@ -112,10 +112,19 @@ module Fin::PaymentQueries
     ) infos ON TRUE
   SQL
 
-  # Per order: its debits that were skipped.
+  # Per order: its debits that were skipped; all its pre-notifications with
+  # the sum they announced; and those of them not collected at all (skipped,
+  # or the amount cut to nothing) with the sum they had announced.
   ORDER_NOTICES_JOIN = <<~SQL.squish
     LEFT JOIN LATERAL (
-      SELECT COUNT(*) FILTER (WHERE notices.payment_status = 'skipped') AS skipped_count
+      SELECT COUNT(*) FILTER (WHERE notices.payment_status = 'skipped') AS skipped_count,
+             COUNT(*) AS notice_count,
+             SUM(COALESCE(notices.pre_notified_amount_cents, notices.amount_cents)) AS pre_notified_sum_cents,
+             COUNT(*) FILTER (WHERE notices.payment_status = 'skipped' OR notices.amount_cents = 0)
+               AS not_collected_count,
+             SUM(COALESCE(notices.pre_notified_amount_cents, notices.amount_cents))
+               FILTER (WHERE notices.payment_status = 'skipped' OR notices.amount_cents = 0)
+               AS not_collected_sum_cents
       FROM wsjrdp_direct_debit_pre_notifications notices
       WHERE notices.payment_initiation_id = wsjrdp_payment_initiations.id
     ) notices ON TRUE
@@ -207,7 +216,8 @@ module Fin::PaymentQueries
     WsjrdpPaymentInitiation
       .select("wsjrdp_payment_initiations.*", "#{WsjrdpPaymentInitiation.kind_sql} AS kind",
         "infos.first_date", "infos.last_date", "infos.sequence_types", "infos.info_count",
-        "notices.skipped_count", "COALESCE(returns.return_count, 0) AS return_count",
+        "notices.skipped_count", "notices.notice_count", "notices.pre_notified_sum_cents",
+        "notices.not_collected_count", "notices.not_collected_sum_cents", "COALESCE(returns.return_count, 0) AS return_count",
         "COALESCE(returns.return_sum_cents, 0) AS return_sum_cents",
         "accounts.id AS fin_account_id", "accounts.short_name AS fin_account_short_name",
         "accounts.account_identification AS fin_account_identification",
@@ -217,10 +227,50 @@ module Fin::PaymentQueries
       .joins(ORDER_CREDITS_JOIN)
   end
 
-  # The sums under a list of orders: {count:, sum_cents:, return_count:,
-  # return_sum_cents:}.
+  # The bank credits of an order (the credits of #credits_join), each with
+  # its amount in cents and the sequence type of its Sammler: by value date,
+  # id, amount (larger first) and sequence type.
+  def order_credits(order_id)
+    WsjrdpCamtTransaction.where(payment_initiation_id: order_id, deleted_at: nil, replaced_by_id: nil,
+      return_reason: nil, debit_credit: "C", entry_or_details: "entry")
+      .joins("LEFT JOIN wsjrdp_direct_debit_payment_infos infos " \
+        "ON infos.id = wsjrdp_camt_transactions.direct_debit_payment_info_id")
+      .select("wsjrdp_camt_transactions.id", "wsjrdp_camt_transactions.value_date", "infos.debit_sequence_type",
+        "#{return_cents("wsjrdp_camt_transactions")} AS amount_cents")
+      .order(Arel.sql("wsjrdp_camt_transactions.value_date, wsjrdp_camt_transactions.id, amount_cents DESC, " \
+        "infos.debit_sequence_type"))
+  end
+
+  # The announced amounts of an order's pre-notifications not collected at all
+  # (skipped, or the amount cut to nothing), as [cents, count] pairs: the most
+  # frequent first, the larger amount first among equally frequent ones.
+  def order_not_collected_amounts(order_id)
+    announced = "COALESCE(pre_notified_amount_cents, amount_cents)"
+    WsjrdpDirectDebitPreNotification.where(payment_initiation_id: order_id)
+      .where("payment_status = 'skipped' OR amount_cents = 0")
+      .group(Arel.sql(announced)).order(Arel.sql("COUNT(*) DESC, #{announced} DESC"))
+      .pluck(Arel.sql(announced), Arel.sql("COUNT(*)"))
+  end
+
+  # The amounts of an order's or a Sammler's returns as the bank statement
+  # holds them, as [cents, count] pairs: the most frequent first, the larger
+  # amount first among equally frequent ones.
+  def order_return_amounts(order_id) = return_amounts("order_id", order_id)
+
+  def info_return_amounts(info_id) = return_amounts("info_id", info_id)
+
+  def return_amounts(column, id)
+    WsjrdpPaymentInitiation.connection.select_rows(WsjrdpPaymentInitiation.sanitize_sql_array([
+      "SELECT amount_cents, COUNT(*) FROM (#{RETURN_DEBITS_SQL}) returns WHERE #{column} = ? " \
+      "GROUP BY amount_cents ORDER BY COUNT(*) DESC, ABS(amount_cents) DESC", id
+    ])).map { |cents, count| [cents.to_i, count.to_i] }
+  end
+
+  # The sums under a list of orders: {count:, sum_cents:, pre_notified_count:,
+  # pre_notified_sum_cents:, return_count:, return_sum_cents:}.
   def order_totals(orders)
     totals(orders, count: "SUM(o.number_of_transactions)", sum_cents: "SUM(o.control_sum_cents)",
+      pre_notified_count: "SUM(o.notice_count)", pre_notified_sum_cents: "SUM(o.pre_notified_sum_cents)",
       return_count: "SUM(o.return_count)", return_sum_cents: "SUM(o.return_sum_cents)")
   end
 
@@ -234,8 +284,19 @@ module Fin::PaymentQueries
       .joins(DEBIT_ENTRY_JOIN).joins(DEBIT_RETURNS_JOIN).joins(DEBIT_PERSON_JOIN)
   end
 
+  # The sums of a debits list: announced (the pre-notified amount, else the
+  # amount); collected, skipped (at their announced amount) and still open,
+  # each with its count; and the returns.
   def debit_totals(debits)
-    totals(debits, count: "COUNT(*)", sum_cents: "SUM(o.amount_cents)",
+    announced = "COALESCE(o.pre_notified_amount_cents, o.amount_cents)"
+    by_status = ->(sql, status) { "#{sql} FILTER (WHERE o.payment_status = '#{status}')" }
+    totals(debits, count: "COUNT(*)", announced_cents: "SUM(#{announced})",
+      collected_count: by_status.call("COUNT(*)", "xml_generated"),
+      collected_cents: by_status.call("SUM(o.amount_cents)", "xml_generated"),
+      skipped_count: by_status.call("COUNT(*)", "skipped"),
+      skipped_cents: by_status.call("SUM(#{announced})", "skipped"),
+      open_count: by_status.call("COUNT(*)", "pre_notified"),
+      open_cents: by_status.call("SUM(o.amount_cents)", "pre_notified"),
       return_count: "SUM(o.return_count)", return_sum_cents: "SUM(o.return_sum_cents)")
   end
 

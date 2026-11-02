@@ -10,6 +10,8 @@
 -#              pages (WsjrdpFormHelper#form_like_labeled): one .row per field,
 -#              its labels lightened by .fin-detail-list (fin/shared/_detail_styles)
 -#    :compact  the dense label/value rows of an embedded detail pane
+-#              -- a field with span: 2 takes the full width, without the
+-#              63ch limit that keeps running text readable
 -#    :grid     cells, with span: 2 for a wide one and align: :end for amounts
 -#  Value, help line, tooltip and the blank marker are the same in all three
 -#  (Fin::DetailHelper#fin_detail_content), so a layout never changes content.
@@ -40,7 +42,7 @@
       - rows.each do |row|
         .row.mb-2
           %dt.col-md-3.col-xl-2.text-md-end.text-muted{title: row.tooltip}= row.label
-          %dd.col-md-9.col-lg-8.col-xl-8.mw-63ch.mb-0.text-break<
+          %dd.col-md-9.mb-0.text-break{class: (row.span == 2 ? "col-xl-10" : "col-lg-8 col-xl-8 mw-63ch")}<
             - if row.editable && f
               %span.fin-edit-display= fin_detail_content(row, editable_shown)
               %span.fin-edit-input

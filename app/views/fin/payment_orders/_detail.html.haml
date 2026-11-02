@@ -16,10 +16,11 @@
 -#          ctx (Fin::AttrFormatContext)
 = render "fin/payments/styles"
 = fin_detail(order, ctx) do |d|
-  - d.header back: payment_orders_path, back_label: t("fin.payments.back_to", tab: t("fin.tabs.payment_orders")),
-      label: t("fin.payments.order_label", id: order.id), title: payment_kind_label(order.kind)
+  - d.header label: t("fin.payments.order_label", id: order.id), title: payment_kind_label(order.kind)
   - d.attrs :kind, :fin_account, :initiating_party_name, :status, :created_at
-  - d.attrs :number_of_transactions, :control_sum_cents, :returns, :bank
+  - d.attrs :number_of_transactions, :control_sum_cents, :not_collected, :returns, :bank,
+      not_collected: {span: 2}, returns: {span: 2},
+      bank: {span: 2, label: (t("fin.payments.bank_credits") if order.credit_count.to_i > 1)}
   - d.attrs :message_identification, :sepa_schema
   - if infos.any?
     - d.custom title: t("fin.payments.payment_infos"), key: :payment_infos do

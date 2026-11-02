@@ -11,11 +11,29 @@
 -#  the order's own in the same cells (Fin::PaymentsHelper#payment_order_stack).
 -#  A row opens into the order's head and Sammler
 -#  (show, in its turbo frame); the order's page adds its debits. The footer sums the whole filtered list. Cells: Fin::PaymentsHelper.
+-#  Above the list, tiles of all direct debit orders and their returns,
+-#  whatever the filter (Fin::PaymentsOverview).
 
 #main
   = render "fin/payments/styles"
   %h1= t("fin.tabs.payment_orders")
   %p.text-muted= t("fin.payments.orders_lead")
+
+  - ov = Fin::PaymentsOverview.new
+  - dd = ov.direct_debit_orders
+  .d-flex.flex-wrap.gap-3.mb-3
+    .border.rounded.p-3
+      .fs-3.fw-semibold= payment_count(dd.count)
+      .text-muted.small= t("fin.payments.tiles.direct_debit_orders")
+    .border.rounded.p-3
+      .fs-3.fw-semibold= payment_count(dd.transactions)
+      .text-muted.small= t("fin.payments.tiles.collected_debits")
+    .border.rounded.p-3
+      .fs-3.fw-semibold= safe_join(["Σ ", payment_cents(dd.sum_cents)])
+      .text-muted.small= t("fin.payments.tiles.collected_sum")
+    .border.rounded.p-3
+      .fs-3.fw-semibold.text-danger= safe_join(["Σ ", payment_cents(ov.direct_debit_returns[:return_sum_cents])])
+      .text-muted.small= t("fin.payments.tiles.returns_sum", count: payment_count(ov.direct_debit_returns[:return_count]))
 
   = wsjrdp_expandable_table do |t|
     - t.rows payment_orders, id: "po"

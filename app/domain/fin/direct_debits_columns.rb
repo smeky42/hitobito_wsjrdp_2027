@@ -12,7 +12,7 @@
 # Fin::PaymentQueries.debits, with its collection entry and its returns. The
 # tab adds Auftrag, the order's page leaves it out (it is that order).
 #
-# Where the table would scroll sideways Bezahlungs-Rolle, Sequenz, Status and
+# Where the table would scroll sideways Bezahlungs-Rolle, Seq., Status and
 # Buchung give way (narrow: false); the row's detail shows them.
 module Fin::DirectDebitsColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "ddcol") do |c|
@@ -24,10 +24,12 @@ module Fin::DirectDebitsColumns
       sort: "wsjrdp_direct_debit_pre_notifications.payment_initiation_id", sort_first: "desc", default: true
     c.column key: "collection_date", abbr: "cd", label: "Einzug", width: "6.5rem", tabular_nums: true,
       sort: "wsjrdp_direct_debit_pre_notifications.collection_date", sort_first: "desc", default: true
-    c.column key: "sequence", abbr: "seq", label: "Sequenz", width: "5rem", narrow: false,
+    c.column key: "sequence", abbr: "seq", label: "Seq.", width: "4rem", narrow: false,
+      header_tooltip: "Lastschrift-Sequenztypen: FRST erste, RCUR Folge-, OOFF einmalige, FNAL letzte Lastschrift",
       sort: "wsjrdp_direct_debit_pre_notifications.debit_sequence_type", default: true
     c.column key: "amount", abbr: "a", label: "Betrag", numeric: true, width: "7rem", tabular_nums: true,
-      sort: "wsjrdp_direct_debit_pre_notifications.amount_cents", sort_first: "desc", default: true
+      sort: "CASE WHEN wsjrdp_direct_debit_pre_notifications.payment_status = 'skipped' THEN 0 " \
+        "ELSE wsjrdp_direct_debit_pre_notifications.amount_cents END", sort_first: "desc", default: true
     c.column key: "pre_notified_amount", abbr: "pa", label: "Angekündigt", numeric: true, width: "7rem",
       tabular_nums: true, header_tooltip: "Der in der Vorabankündigung genannte Betrag",
       sort: "wsjrdp_direct_debit_pre_notifications.pre_notified_amount_cents", sort_first: "desc"

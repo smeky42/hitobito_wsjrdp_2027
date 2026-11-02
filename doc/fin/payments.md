@@ -58,7 +58,8 @@ date hitobito's date field.
 
 Another page may link either page with `return_url`, a path of this
 application (`direct_debit_path(id, return_url: request.fullpath)`). The
-debit's page then leads "Zurück" there instead of to its tab, "Bearbeiten", the form and
+debit's page then shows a "Zurück" link there (without one, the tabs lead
+back), "Bearbeiten", the form and
 "Abbrechen" carry it along, and a save returns to it ("Speichern und weiter
 bearbeiten" stays on the edit page). Anything but a local path -- another
 host, `//host`, a `javascript:` URL -- is ignored.

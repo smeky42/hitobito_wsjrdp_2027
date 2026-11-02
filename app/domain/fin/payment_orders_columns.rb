@@ -15,7 +15,7 @@
 # list names nobody -- its figures are the order's own and the sums of its
 # debits and returns -- so whoever sees the accounts sees it.
 #
-# Where the table would scroll sideways ID, Konto, Erstellt, Sequenz, Status
+# Where the table would scroll sideways ID, Konto, Erstellt, Seq., Status
 # and Bankbuchung give way (narrow: false); the order's page shows them.
 module Fin::PaymentOrdersColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "pocol") do |c|
@@ -30,19 +30,33 @@ module Fin::PaymentOrdersColumns
     c.column key: "execution_date", abbr: "ex", label: "Ausführung", width: "7.75rem", tabular_nums: true,
       header_tooltip: "Das (früheste) Einzugs- bzw. Ausführungsdatum des Auftrags",
       sort: "infos.first_date", sort_first: "desc", default: true
-    c.column key: "sequence", abbr: "seq", label: "Sequenz", width: "5.5rem", narrow: false,
+    c.column key: "sequence", abbr: "seq", label: "Seq.", width: "3.5rem", narrow: false,
       header_tooltip: "Lastschrift-Sequenztypen: FRST erste, RCUR Folge-, OOFF einmalige, FNAL letzte Lastschrift",
       sort: "infos.sequence_types", default: true
-    c.column key: "count", abbr: "n", label: "Anzahl", numeric: true, width: "5rem",
+    # What the SEPA file collects and, beside it, what the pre-notifications
+    # announced, each as count and sum under a bracket of its own.
+    c.column key: "count", abbr: "n", label: "Anzahl eingezogen", header_label: "Anzahl", group: "Eingezogen",
+      numeric: true, width: "5rem",
       sort: "wsjrdp_payment_initiations.number_of_transactions", sort_first: "desc", default: true
-    c.column key: "sum", abbr: "sum", label: "Betrag", numeric: true, width: "8rem", tabular_nums: true,
+    c.column key: "sum", abbr: "sum", label: "Betrag eingezogen", header_label: "Betrag", group: "Eingezogen",
+      numeric: true, width: "8rem", tabular_nums: true,
       sort: "wsjrdp_payment_initiations.control_sum_cents", sort_first: "desc", default: true
-    c.column key: "returns", abbr: "ret", label: "Retouren", numeric: true, width: "8.5rem", tabular_nums: true,
-      header_tooltip: "Anzahl und Summe der Rücklastschriften zu den Einzügen des Auftrags",
+    c.column key: "pre_notified_count", abbr: "pn", label: "Anzahl vorangekündigt", header_label: "Anzahl",
+      group: "Vorangekündigt", numeric: true, width: "5rem",
+      sort: "notices.notice_count", sort_first: "desc", default: true
+    c.column key: "pre_notified_sum", abbr: "psum", label: "Betrag vorangekündigt", header_label: "Betrag",
+      group: "Vorangekündigt", numeric: true, width: "8rem", tabular_nums: true,
+      sort: "notices.pre_notified_sum_cents", sort_first: "desc", default: true
+    c.column key: "return_count", abbr: "retn", label: "Anzahl Retouren", header_label: "Anzahl", group: "Retouren",
+      numeric: true, width: "4.5rem", header_tooltip: "Anzahl der Rücklastschriften zu den Einzügen des Auftrags",
+      sort: "COALESCE(returns.return_count, 0)", sort_first: "desc", default: true
+    c.column key: "returns", abbr: "ret", label: "Summe Retouren", header_label: "Σ Betrag", group: "Retouren",
+      numeric: true, width: "7.5rem", tabular_nums: true,
+      header_tooltip: "Summe der Rücklastschriften zu den Einzügen des Auftrags",
       sort: "COALESCE(returns.return_sum_cents, 0)", sort_first: "asc", default: true
     c.column key: "status", abbr: "st", label: "Status", width: "7.5rem", narrow: false,
       sort: "wsjrdp_payment_initiations.status", default: true
-    c.column key: "bank", abbr: "bk", label: "Bankbuchung", width: "7.75rem", narrow: false,
+    c.column key: "bank", abbr: "bk", label: "Bankbuchung", width: "9rem", narrow: false,
       header_tooltip: "Die Gutschrift(en) der Bank zu den Sammlern des Auftrags laut Kontoauszug",
       sort: "credits.credit_date", sort_first: "desc", default: true
     c.column key: "skipped", abbr: "sk", label: "Übersprungen", numeric: true, width: "6.5rem",

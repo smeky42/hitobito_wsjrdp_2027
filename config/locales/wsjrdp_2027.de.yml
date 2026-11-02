@@ -770,6 +770,7 @@ de:
         created_at: Erstellt
         number_of_transactions: Anzahl
         control_sum_cents: Betrag
+        not_collected: Nicht eingezogen
         returns: Retouren
         bank: Bankbuchung
         message_identification: Nachrichten-ID
@@ -2039,6 +2040,20 @@ de:
       debits_shown:
         one: "Ein Einzug"
         other: "%{count} Einzüge"
+      breakdown_more: "… mehr"
+      bank_credits: "Bankbuchungen"
+      announced_differs: "Weicht vom Eingezogenen ab"
+      debit_totals:
+        announced: "%{debits} · angekündigt %{amount}"
+        collected: "eingezogen %{amount} (%{count})"
+        skipped: "übersprungen %{amount} (%{count})"
+        open: "noch offen %{amount} (%{count})"
+        returns: "Rücklastschriften %{amount} (%{count})"
+      debit_amount_tooltip:
+        announced: "Angekündigt: %{amount}"
+        collected: "Eingezogen: %{amount}"
+        planned: "Geplant: %{amount}"
+        difference: "Differenz: %{amount}"
       returns_shown: "%{count} Rückläufer, davon %{unassigned} nicht zuordenbar"
       kinds:
         direct_debit: "Lastschrift"
@@ -2114,6 +2129,10 @@ de:
         returns: "Rückläufer"
         unassigned: "davon nicht zuordenbar"
         last_order: "Letzter Auftrag"
+        direct_debit_orders: "Lastschrift-Aufträge"
+        collected_debits: "Eingezogene Lastschriften"
+        collected_sum: "Eingezogen"
+        returns_sum: "Rücklastschriften (%{count})"
     # Verwaltung, erster Tab: der Gruppen-Finanzzugriff einzelner Personen
     # (people.additional_info["finance_group_ids"]).
     finance_groups:
