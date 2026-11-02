@@ -526,6 +526,7 @@ de:
         deregistration_form_show_contractual_compensation: 'Entschädigung nach T&R im Abmelde-Formular'
         deregistration_open_cents: Ausstehender Beitrag
         debit_return_issue: Ticket Rücklastschrift
+        late_confirmation_issue: Ticket späte Bestätigung
         finance_group_ids: "Finanzzugriff auf Gruppen"
         wsjrdp_email: "Contingent E-Mail"
         wsjrdp_email_is_mailbox: "Mailbox für Contingent E-Mail"
