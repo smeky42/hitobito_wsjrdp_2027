@@ -39,8 +39,7 @@ module Fin::PaymentQueries
   # The debit of the return `camt` (an SQL alias) as `notice`: the one it links
   # to; an unlinked return's the one with its end-to-end id, else the newest
   # collected one of its mandate within MANDATE_DAYS before its value date.
-  # `matched_by` says which way, `info_id` its Sammler
-  # (.payment_info_debit_condition).
+  # `matched_by` says which way, `info_id` its Sammler (.payment_info_debits).
   def self.return_notice_join(camt)
     by_endtoend = "(#{camt}.direct_debit_pre_notification_id IS NULL AND notices.endtoend_id = #{camt}.endtoend_id)"
     <<~SQL.squish
@@ -49,10 +48,8 @@ module Fin::PaymentQueries
                CASE WHEN notices.id = #{camt}.direct_debit_pre_notification_id THEN '#{MATCHED_BY_LINK}'
                     WHEN #{by_endtoend} THEN '#{MATCHED_BY_ENDTOEND}'
                     ELSE '#{MATCHED_BY_MANDATE}' END AS matched_by,
-               COALESCE(notices.direct_debit_payment_info_id, (
-                 SELECT infos.id FROM wsjrdp_direct_debit_payment_infos infos
-                 WHERE #{payment_info_debit_condition("notices", "infos")}
-                 ORDER BY infos.id LIMIT 1)) AS info_id
+               CASE WHEN notices.payment_status = 'xml_generated'
+                    THEN notices.direct_debit_payment_info_id END AS info_id
         FROM wsjrdp_direct_debit_pre_notifications notices
         WHERE notices.id = #{camt}.direct_debit_pre_notification_id
            OR #{by_endtoend}
@@ -87,17 +84,6 @@ module Fin::PaymentQueries
   # A bank transaction's amount in cents (a return's negative: money taken
   # back).
   def self.return_cents(camt) = "ROUND(#{camt}.signed_base_amount * 100)::bigint"
-
-  # Whether the debit `notice` belongs to the payment info `info` (SQL
-  # aliases): it names the payment info, or -- as the debits of the later
-  # orders do, which name none -- it has the payment info's order, sequence
-  # type and collection date.
-  def self.payment_info_debit_condition(notice, info)
-    "(#{notice}.direct_debit_payment_info_id = #{info}.id OR (#{notice}.direct_debit_payment_info_id IS NULL " \
-      "AND #{notice}.payment_initiation_id = #{info}.payment_initiation_id " \
-      "AND #{notice}.debit_sequence_type = #{info}.debit_sequence_type " \
-      "AND #{notice}.collection_date = #{info}.requested_collection_date))"
-  end
 
   # Every return with its debit, Sammler and order -- the one place the lists'
   # return figures come from.
@@ -288,10 +274,11 @@ module Fin::PaymentQueries
   # One payment info with the returns of its debits.
   def payment_info(id) = payment_infos.reorder(nil).find(id)
 
-  # The debits of a payment info (.payment_info_debit_condition).
+  # The debits of a payment info: those that name it and were collected -- a
+  # skipped or only announced debit is in no payment info.
   def payment_info_debits(info)
-    debits.joins("JOIN wsjrdp_direct_debit_payment_infos info ON info.id = #{Integer(info.id)}")
-      .where(Arel.sql(payment_info_debit_condition("wsjrdp_direct_debit_pre_notifications", "info")))
+    debits.where(wsjrdp_direct_debit_pre_notifications:
+      {direct_debit_payment_info_id: info.id, payment_status: "xml_generated"})
   end
 
   def payment_info_totals(infos)

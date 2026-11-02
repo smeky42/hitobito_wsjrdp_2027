@@ -91,10 +91,11 @@ Sammler only.
 The Sammler have a list and pages of their own
 (`/fin/direct_debit_payment_infos`, `/fin/direct_debit_payment_infos/:id`):
 a Sammler's page shows its head, its creditor, the returns of its debits and
-its debits. A debit belongs to a Sammler when it names it
-(`direct_debit_payment_info_id`), or -- the debits of the later orders name
-none -- when it has the Sammler's order, sequence type and collection date
-(`Fin::PaymentQueries.payment_info_debit_condition`). The debits section of
+its debits. A debit belongs to the Sammler it names
+(`direct_debit_payment_info_id`, set by `sepa_direct_debit.py` of
+wsjrdp_scripts) when it was collected (status `xml_generated`); a skipped or
+only announced debit is in no Sammler (`Fin::PaymentQueries.payment_info_debits`).
+A Sammler's page thus shows exactly the count and amount of its PmtInf. The debits section of
 an order's and a Sammler's page is one (`Fin::DirectDebitsSection`).
 
 ## Returns
