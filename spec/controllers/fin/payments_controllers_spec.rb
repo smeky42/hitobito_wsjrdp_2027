@@ -644,8 +644,8 @@ describe "Zahlungsverkehr", type: :request do
 
       context "of a debit only announced" do
         let(:changes) do
-          {amount_eur: "1.234,50", mandate_date: "09.10.2025", dbtr_iban: "DE02120300000000202051",
-           try_skip: "1", comment: "neu"}
+          {amount_eur: "1.234,50", mandate_id: "wsjrdp-neu", mandate_date: "09.10.2025",
+           dbtr_iban: "DE02120300000000202051", try_skip: "1", comment: "neu"}
         end
 
         before { returned_debit.update!(payment_status: "pre_notified") }
@@ -653,7 +653,7 @@ describe "Zahlungsverkehr", type: :request do
         it "changes its payment data, with hitobito's date field and the money input" do
           get edit_direct_debit_path(returned_debit)
           expect(inputs).to contain_exactly("amount_eur", "description", "endtoend_id", "try_skip", "comment",
-            "mandate_date", "dbtr_name", "dbtr_iban", "dbtr_bic", "dbtr_address")
+            "mandate_id", "mandate_date", "dbtr_name", "dbtr_iban", "dbtr_bic", "dbtr_address")
           expect(html).to have_css("input.date[name$='[mandate_date]']")
           expect(html).to have_field("wsjrdp_direct_debit_pre_notification[amount_eur]", with: "200,00")
           expect(html).to have_text(I18n.t("fin.payments.debit_help.try_skip"))
@@ -662,7 +662,7 @@ describe "Zahlungsverkehr", type: :request do
           patch direct_debit_path(returned_debit), params: params.merge(stay: "1")
 
           expect(response).to redirect_to(edit_direct_debit_path(returned_debit))
-          expect(returned_debit.reload).to have_attributes(amount_cents: 123_450,
+          expect(returned_debit.reload).to have_attributes(amount_cents: 123_450, mandate_id: "wsjrdp-neu",
             mandate_date: Date.new(2025, 10, 9), try_skip: true, comment: "neu")
         end
       end
@@ -679,7 +679,7 @@ describe "Zahlungsverkehr", type: :request do
         get fin_payments_path(max_finance_permission: "finance_manage")
       end
 
-      it "also changes the status and the mandate reference of a debit only announced" do
+      it "also changes the status of a debit only announced" do
         returned_debit.update!(payment_status: "pre_notified")
 
         get edit_direct_debit_path(returned_debit)
@@ -714,24 +714,23 @@ describe "Zahlungsverkehr", type: :request do
       returned_debit.update!(payment_status: "pre_notified")
 
       get edit_direct_debit_path(returned_debit)
-      expect(inputs).not_to include("payment_status", "mandate_id")
+      expect(inputs).not_to include("payment_status")
     end
 
     context "for the write tier, below manage" do
-      let(:changes) { {payment_status: "skipped", mandate_id: "wsjrdp-neu", comment: "ok"} }
+      let(:changes) { {payment_status: "skipped", comment: "ok"} }
 
       before do
         sign_in(accountant)
         returned_debit.update!(payment_status: "pre_notified")
       end
 
-      it "leaves status and mandate reference alone" do
+      it "leaves the status alone" do
         get edit_direct_debit_path(returned_debit)
-        expect(inputs).not_to include("payment_status", "mandate_id")
+        expect(inputs).not_to include("payment_status")
 
         patch direct_debit_path(returned_debit), params: params
         expect(returned_debit.reload).to have_attributes(payment_status: "pre_notified", comment: "ok")
-        expect(returned_debit.mandate_id).not_to eq("wsjrdp-neu")
       end
     end
 

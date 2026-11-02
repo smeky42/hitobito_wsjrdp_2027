@@ -48,13 +48,20 @@ Each links the other ("Auch unter"). Reading takes `:log` on the
 pre-notification (the audit tier up), editing `:update` (the finance tier
 and up); the reading page shows "Bearbeiten" to them only. The edit page
 changes (`Fin::DebitEditing`): while the debit is only announced (`pre_notified`) the
-skip flag, amount, purpose, comment, reference, debtor and mandate date; once
-it is in a SEPA file or skipped, the comment alone. The manage tier
-(`:admin_finance` on the pre-notification -- an elevated tier, so only in a
-session that picked it, `?max_finance_permission=finance_manage`) also sets the
-status, in any status, from `Settings.pre_notification_payment_status`, and
-the mandate reference of a debit only announced. The amount takes the kit's money input, the mandate
-date hitobito's date field.
+skip flag, amount, purpose, comment, reference, debtor and mandate (reference
+and date); once it is in a SEPA file or skipped, the comment alone. The
+manage tier (`:admin_finance` on the pre-notification -- an elevated tier, so
+only in a session that picked it, `?max_finance_permission=finance_manage`)
+also sets the status, in any status, from
+`Settings.pre_notification_payment_status`. The amount takes the kit's money
+input, the mandate date hitobito's date field.
+
+The bank account form on a person's fee page (`Person::BankAccountController`,
+`:update_finance` on the person) carries the new account and mandate into the
+person's announced debits the viewer may `:update`, as checked; those they may
+not are named in the form and left alone. A new IBAN under the stored mandate
+reference gets a hint, not an error: a new account usually comes with a new
+mandate.
 
 Another page may link either page with `return_url`, a path of this
 application (`direct_debit_path(id, return_url: request.fullpath)`). The

@@ -1150,6 +1150,9 @@ de:
       mandate_missing: "Für das SEPA-Mandat fehlt: %{fields}."
       mandate_missing_plan: Ratenplan
       note_prefix: Kontoverbindung geändert
+      mandate_id_new_account: "Neue IBAN mit der bisherigen Mandatsreferenz: Für ein neues Konto ist ein neues SEPA-Mandat mit neuer Mandatsreferenz üblich, z. B. „wsjrdp2027%{id}b“."
+      announced_locked: "Diese angekündigten Einzüge darfst du nicht ändern; die neue Kontoverbindung wird dort nicht übernommen:"
+      announced_locked_debit: "%{date} · %{amount} · %{purpose}"
       mandate_id_help: "Die Skripte erkennen die Person an der Mandatsreferenz: „wsjrdp2027“, optional „-“, dann die Personen-ID %{id}. Danach darf ein Zusatz folgen, der nicht mit einer Ziffer beginnt, z. B. „wsjrdp2027%{id}b“ oder „wsjrdp2027-%{id}-2“. Gespeichert wird in Kleinbuchstaben."
       mandate_id_invalid: "muss „wsjrdp2027“ und die Personen-ID %{id} enthalten (danach keine Ziffer), höchstens 35 Zeichen aus A–Z, a–z, 0–9 und + ? / - : ( ) . , ' Leerzeichen"
     association_fields:

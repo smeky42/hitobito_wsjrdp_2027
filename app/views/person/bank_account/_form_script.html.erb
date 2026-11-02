@@ -5,11 +5,28 @@
   file at the top-level directory or at
   https://github.com/smeky42/hitobito_wsjrdp_2027 %>
 <%= javascript_tag nonce: true do %>
-// The mandate date of the bank account form (person/bank_account/_form):
-// the previous date's button fills it in, and a hint shows while the date
-// lies in the past. Listens on the document, as the form comes in by Turbo stream.
+// The mandate of the bank account form (person/bank_account/_form): the
+// previous date's button fills the date in, a hint shows while the date lies
+// in the past, and another while a new IBAN keeps the stored mandate
+// reference. Listens on the document, as the form comes in by Turbo stream.
 (function () {
   const INPUT = "input[data-sepa-mandate-date]"
+  const IBAN = "input[data-sepa-iban]"
+  const MANDATE_ID = "input[data-sepa-mandate-id]"
+
+  function compact(value) {
+    return (value || "").replace(/\s+/g, "").toUpperCase()
+  }
+
+  function syncMandateIdHint(form) {
+    const iban = form.querySelector(IBAN)
+    const mandateId = form.querySelector(MANDATE_ID)
+    const hint = form.querySelector("[data-sepa-mandate-id-hint]")
+    if (!iban || !mandateId || !hint) return
+    const newIban = compact(iban.value) !== "" && compact(iban.value) !== iban.getAttribute("data-sepa-iban")
+    const keptId = mandateId.value.trim().toLowerCase() === mandateId.getAttribute("data-sepa-mandate-id")
+    hint.hidden = !(newIban && keptId)
+  }
 
   function today() {
     const now = new Date()
@@ -38,7 +55,11 @@
   }
 
   function onChange(event) {
-    if (event.target.matches && event.target.matches(INPUT)) syncHint(event.target)
+    if (!event.target.matches) return
+    if (event.target.matches(INPUT)) syncHint(event.target)
+    if (event.target.matches(IBAN) || event.target.matches(MANDATE_ID)) {
+      syncMandateIdHint(event.target.closest("form"))
+    }
   }
 
   if (!window.wsjrdpBankAccountFormBound) {

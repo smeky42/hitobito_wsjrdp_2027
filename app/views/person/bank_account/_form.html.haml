@@ -15,9 +15,17 @@
     - {sepa_address: :address, sepa_mail: :email}.each do |attr, kind|
       = f.labeled_input_field attr,
         aside: render("people/copy_from_participant", person: person, kind: kind, target: "person_#{attr}")
-    = f.labeled_input_field :sepa_iban
+    -# A new IBAN under the previous mandate reference gets a hint (not an
+    -# error): a new account usually comes with a new mandate. _form_script.
+    = f.labeled_input_field :sepa_iban, data: {sepa_iban: stored_account[:iban]}
     = f.labeled_input_field :sepa_bic
-    = f.labeled_input_field :sepa_mandate_id, help: t("people.sepa_account.mandate_id_help", id: person.id)
+    = f.labeled(:sepa_mandate_id) do
+      = f.input_field :sepa_mandate_id, data: {sepa_mandate_id: stored_account[:mandate_id]}
+      .form-text.text-warning{hidden: !mandate_id_kept_for_new_iban?,
+        data: {sepa_mandate_id_hint: true}}
+        = icon(:"exclamation-triangle")
+        = t("people.sepa_account.mandate_id_new_account", id: person.id)
+      .form-text= t("people.sepa_account.mandate_id_help", id: person.id)
     -# Today by default, after a refused save as typed; the button takes the
     -# previous date back. The button and the hint for a date in the past:
     -# _form_script.
@@ -39,9 +47,9 @@
         = t("people.sepa_account.mandate_date_help")
         - if previous
           = t("people.sepa_account.mandate_date_help_previous", date: previous)
-    - if announced_debits.any?
+    - if editable_debits.any?
       = f.labeled(:debit_ids, t("people.sepa_account.announced")) do
-        - announced_debits.each do |debit|
+        - editable_debits.each do |debit|
           .form-check
             = check_box_tag "debit_ids[]", debit.id, selected_debit_ids.include?(debit.id),
                 id: "debit_ids_#{debit.id}", class: "form-check-input"
@@ -49,6 +57,16 @@
               = t("people.sepa_account.announced_debit", date: l(debit.collection_date),
                   amount: format_cents_de(debit.amount_cents, zero_cents: ",00"), purpose: debit.description)
               .small.text-muted= t("people.sepa_account.announced_iban", iban: debit.dbtr_iban)
+    -# Announced debits the viewer may not change: named, untouched.
+    - if locked_debits.any?
+      = f.labeled(:locked_debits, t("people.sepa_account.announced")) do
+        .form-text.text-warning
+          = icon(:"exclamation-triangle")
+          = t("people.sepa_account.announced_locked")
+        %ul.small.mb-0
+          - locked_debits.each do |debit|
+            %li= t("people.sepa_account.announced_locked_debit", date: l(debit.collection_date),
+                amount: format_cents_de(debit.amount_cents, zero_cents: ",00"), purpose: debit.description)
     = f.labeled(:comment, t("people.sepa_account.comment")) do
       = text_area_tag :comment, comment, rows: 2, class: "form-control form-control-sm mw-100 mw-md-60ch"
       .form-text= t("people.sepa_account.comment_help")
