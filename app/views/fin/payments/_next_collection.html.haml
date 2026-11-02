@@ -1,0 +1,40 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The next collection, a box of its own under the direct debit strip on the
+-#  overview and the Aufträge list, on the strip's columns (half its width, the
+-#  whole on a narrow screen; fin/payments/_styles) (Fin::PaymentsOverview#next_collection): the date and the days to it, how
+-#  many debits are announced for it and their sum (a link to them for whoever
+-#  may see them), those
+-#  asking to be skipped, and -- in the warning colour -- the announced debits
+-#  whose date has passed.
+-#
+-#  Locals: ov (Fin::PaymentsOverview)
+- nc = ov.next_collection
+= render "fin/payments/styles"
+.payment-tiles-row.mb-4
+  .payment-strip.payment-strip-single
+    .payment-strip-cell
+      .text-muted.small= t("fin.payments.next_collection.title")
+      - if nc&.date
+        - days = (nc.date - Date.current).to_i
+        .fs-5.fw-semibold.payment-tabular
+          = fin_date(nc.date)
+          %span.small.fw-normal.text-muted= days.zero? ? t("fin.payments.next_collection.today") : t("fin.payments.next_collection.in_days", count: days)
+        - debits = t("fin.payments.next_collection.debits", count: payment_count(nc.count), sum: payment_cents(nc.sum_cents))
+        .small
+          -# The debits are person-level payment data: a link only for who may see them.
+          - if can?(:log, WsjrdpFinAccount)
+            = link_to debits, direct_debits_filtered_path(["status", "in", Fin::DebitEditing::PRE_NOTIFIED])
+          - else
+            = debits
+        - if nc.try_skip_count.positive?
+          .small.text-muted= t("fin.payments.next_collection.try_skip", count: payment_count(nc.try_skip_count))
+      - else
+        .text-muted= t("fin.payments.next_collection.none")
+      - if nc&.overdue_count.to_i.positive?
+        .small.text-warning.fw-semibold= t("fin.payments.next_collection.overdue", count: payment_count(nc.overdue_count))

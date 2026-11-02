@@ -1,0 +1,35 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The key figures of all direct debit orders, whatever a list's filter
+-#  (Fin::PaymentsOverview), as one strip of cells divided by lines
+-#  (fin/payments/_styles): how many orders, the debits they collected, the sum
+-#  collected and the returns that belong to them. Above the Aufträge list,
+-#  and on the overview, where each cell links to the Aufträge list pressed on
+-#  direct debits. Four columns where there is room, else two; where even
+-#  two leave the sums no room, the counts share a row and each sum takes one
+-#  (fin/payments/_styles).
+-#
+-#  Locals: ov (Fin::PaymentsOverview), link (true: cells are links)
+- dd = ov.direct_debit_orders
+- returns = ov.direct_debit_returns
+- url = (payment_orders_filtered_path(["kind", "in", WsjrdpPaymentInitiation::DIRECT_DEBIT]) if link)
+- cells = [[t("fin.payments.tiles.direct_debit_orders"), payment_count(dd.count), nil, false],
+  [t("fin.payments.tiles.collected_debits"), payment_count(dd.transactions), nil, false],
+  [t("fin.payments.tiles.collected_sum"), safe_join(["Σ ", payment_cents(dd.sum_cents)]), nil, true],
+  [t("fin.payments.tiles.returns_sum", count: payment_count(returns[:return_count])),
+    safe_join(["Σ ", payment_cents(returns[:return_sum_cents])]), "text-danger", true]]
+= render "fin/payments/styles"
+.payment-strip.mb-3
+  - cells.each do |label, figure, figure_class, wide|
+    - content = capture do
+      .text-muted.small= label
+      .fs-5.fw-semibold.payment-tabular.text-nowrap{class: figure_class}= figure
+    - if url
+      = link_to content, url, class: ["payment-strip-cell text-reset text-decoration-none", ("payment-strip-wide" if wide)]
+    - else
+      .payment-strip-cell{class: ("payment-strip-wide" if wide)}= content

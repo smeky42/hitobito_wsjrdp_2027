@@ -18,6 +18,6 @@
 -#  Locals: apply_url (the host's apply_debits route)
 - if section_debits?
   = turbo_frame_tag "debits-section", target: "_top" do
-    %h2.h5.mt-4= t("fin.tabs.direct_debits")
+    %h2.mt-4.mb-3= t("fin.tabs.direct_debits")
     = render "fin/direct_debits/table", rows: section_debits, totals: section_debit_totals, id: "d",
       apply_url: apply_url, columns: direct_debit_table_columns.reject { |col| col[:key] == "order" }

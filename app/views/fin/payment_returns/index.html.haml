@@ -5,15 +5,32 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Rückläufer (Zahlungsverkehr): every return debit with the debit and order
--#  its end-to-end id names; the not assignable ones are marked. A row opens
--#  into the return's page (show, in its turbo frame). Cells:
+-#  Rückläufer (Zahlungsverkehr) in two sections. Rücklastschriften: every
+-#  return of one of our direct debits with the debit and order its end-to-end
+-#  id names; the not assignable ones are marked. A row opens into the return's
+-#  page (show, in its turbo frame). Weitere Rückläufer: every other payment
+-#  that came back, a row leading to its page, without a sum -- the kinds
+-#  differ too much to add up; the section shows
+-#  only when there is one. The Rücklastschriften section ends with the
+-#  statistics of their reasons (fin/payments/_return_reasons). Cells:
 -#  Fin::PaymentsHelper.
 
 #main
   %h1= t("fin.tabs.payment_returns")
-  %p.text-muted= t("fin.payments.returns_lead")
+  -# A small table of contents: one link per section, with its count whatever
+  -# the filter; the other returns and the reasons only when they show.
+  - all_returns_count = Fin::PaymentQueries.returns.count(:all)
+  %nav.small{aria: {label: t("fin.tabs.payment_returns")}}
+    = link_to "#{t("fin.payments.direct_debit_returns")} (#{payment_count(all_returns_count)})",
+      "#direct-debit-returns"
+    - if all_returns_count.positive?
+      %span.text-muted.mx-1 ·
+      = link_to t("fin.payments.return_reasons.title"), "#return-reasons"
+    - if other_returns.total_count.positive?
+      %span.text-muted.mx-1 ·
+      = link_to "#{t("fin.payments.other_returns")} (#{payment_count(other_returns.total_count)})", "#other-returns"
 
+  %h2.mt-4.mb-3#direct-debit-returns= t("fin.payments.direct_debit_returns")
   = wsjrdp_expandable_table do |t|
     - t.rows payment_returns, id: "pr"
     - t.columns payment_return_table_columns, menu: true
@@ -28,3 +45,18 @@
   %p.text-muted.small.mt-2
     = t("fin.payments.returns_shown", count: payment_returns.total_count,
       unassigned: payment_return_totals[:unassigned_count])
+
+  = render "fin/payments/return_reasons", ov: Fin::PaymentsOverview.new(person_level: true)
+
+  - if other_returns.total_count.positive?
+    %h2.mt-4.mb-2#other-returns= t("fin.payments.other_returns")
+    %p.text-muted.small= t("fin.payments.other_returns_lead")
+    = wsjrdp_expandable_table do |t|
+      - t.rows other_returns, id: "or"
+      - t.columns other_return_table_columns, menu: true
+      - t.gaps max: "2rem", grow_max: "24rem"
+      - t.row_key { |ret| ret.id }
+      - t.detail_page { |ret| payment_return_path(ret) }
+
+    %p.text-muted.small.mt-2
+      = t("fin.payments.other_returns_shown", count: other_returns.total_count)

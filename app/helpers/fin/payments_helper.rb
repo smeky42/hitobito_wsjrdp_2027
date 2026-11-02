@@ -115,6 +115,152 @@ module Fin::PaymentsHelper
     Fin::PaymentReturnsColumns::COLUMNS.map { |col| col.to_table_column(cell: cells.fetch(col.key)) }
   end
 
+  # A bank transaction's ISO code ("PMNT+ICDT+RRTN") and under it, small and
+  # muted, the German labels of its parts -- the English names of the ISO list
+  # as tooltip (Fin::BankTransactionCodes); a part not listed shows its code.
+  def payment_iso_code(code)
+    return nil if code.blank?
+
+    parts = Fin::BankTransactionCodes.iso_parts(code)
+    payment_code_with_meaning(code, parts.map { |part| part.label || part.code },
+      parts.map { |part| part.name || part.code })
+  end
+
+  # The code of the German banks ("NRTI+159+00931") and under it the meaning of
+  # its SWIFT code, its GVC and a Textschlüsselergänzung -- without the
+  # Primanota, a batch number of the bank.
+  def payment_dk_code(code)
+    return nil if code.blank?
+
+    parts = Fin::BankTransactionCodes.dk_parts(code)
+    labels = payment_dk_code_texts(parts, :label)
+    payment_code_with_meaning(code, labels, payment_dk_code_texts(parts, :name))
+  end
+
+  def payment_dk_code_texts(parts, field)
+    [
+      parts[:swift] && [parts[:swift].code, parts[:swift].public_send(field)].compact.join(" "),
+      parts[:gvc] && ["GVC #{parts[:gvc].code}", parts[:gvc].public_send(field)].compact.join(" "),
+      parts[:text_key] && t("fin.payments.text_key", code: parts[:text_key].code)
+    ].compact
+  end
+
+  def payment_code_with_meaning(code, labels, names)
+    safe_join([content_tag(:span, code, class: "font-monospace"),
+      content_tag(:div, labels.join(" · "), class: "small text-muted", title: names.join(" · "))])
+  end
+
+  # The meaning of a code cell of a list: its German labels and, in a second
+  # line, the English names -- a tooltip.
+  def payment_codes_tooltip(ret)
+    parts = Fin::BankTransactionCodes.iso_parts(ret.bank_transaction_code)
+    dk = Fin::BankTransactionCodes.dk_parts(ret.bank_transaction_code_dk)
+    [(parts + [dk[:gvc]]).compact.map { |part| part.label || part.code }.join(" · "),
+      (parts + [dk[:gvc]]).compact.map { |part| part.name || part.code }.join(" · ")].join("\n")
+  end
+
+  # The input of a return's original on its edit page: the candidates
+  # (fin/payment_returns/_original_candidates).
+  def payment_return_original_input(f, _row) = render("fin/payment_returns/original_candidates", f: f, ret: f.object)
+
+  # The candidates for the original of the other return `ret`
+  # (Fin::ReturnOriginalColumns), each a radio button of the edit form `f`;
+  # the linked one chosen, none else.
+  def return_original_table_columns(f, ret)
+    party = Fin::ReturnOriginals::RULES.dig(ret.return_kind, :party)
+    cells = {
+      "choose" => ->(c) {
+        f.radio_button(:reverses_id, c.id, checked: c.id == ret.reverses_id, class: "form-check-input",
+          aria: {label: t("fin.payments.camt_link", id: c.id)})
+      },
+      "score" => ->(c) { c.score },
+      "date" => ->(c) { fin_date(c.transaction.value_date) },
+      "amount" => ->(c) { payment_cents((c.transaction.signed_base_amount * 100).round) },
+      "code" => ->(c) { payment_short_code(c.transaction) },
+      "party" => ->(c) { party ? c.transaction.public_send(:"#{party}_name") : c.transaction.cdtr_name || c.transaction.dbtr_name },
+      "matches" => ->(c) { payment_original_matches(ret, c) },
+      "description" => ->(c) { c.transaction.description },
+      "id" => ->(c) { link_to("##{c.id}", wsjrdp_camt_transaction_path(c.id), data: {turbo_frame: "_top"}) }
+    }
+    Fin::ReturnOriginalColumns::COLUMNS.map { |col| col.to_table_column(cell: cells.fetch(col.key)) }
+  end
+
+  # What else matched besides the amount, and how many days lie between; the
+  # tooltip compares every feature, matched or not.
+  def payment_original_matches(ret, candidate)
+    parts = [t("fin.payments.original_matches.amount")] +
+      candidate.matches.map { |key| t("fin.payments.original_matches.#{key}") }
+    content_tag(:span, safe_join([content_tag(:span, parts.map { |p| "#{p} ✓" }.join(" "), class: "text-success"),
+      t("fin.payments.original_days", count: candidate.days)], " · "),
+      title: payment_original_comparison(ret, candidate), class: "payment-original-matches")
+  end
+
+  # One line per feature: matched (✓) or not (✗), with both values where they
+  # differ.
+  def payment_original_comparison(ret, candidate)
+    tx = candidate.transaction
+    rule = Fin::ReturnOriginals::RULES.fetch(ret.return_kind, {})
+    party = rule[:party]
+    lines = [t("fin.payments.original_compare.amount",
+      amount: payment_cents((tx.signed_base_amount * 100).round))]
+    lines << payment_compare_line(:endtoend, ret.endtoend_id, tx.endtoend_id,
+      usable: Fin::ReturnOriginals.usable_endtoend?(ret))
+    if party
+      lines << payment_compare_line(:"#{party}_iban", ret.public_send(:"#{party}_iban"), tx.public_send(:"#{party}_iban"))
+      lines << payment_compare_line(:"#{party}_name", ret.public_send(:"#{party}_name"), tx.public_send(:"#{party}_name"),
+        same: ->(a, b) { a.to_s.casecmp?(b.to_s) })
+    end
+    lines << payment_compare_line(:mandate, ret.mandate_id, tx.mandate_id) if rule[:mandate]
+    lines << t("fin.payments.original_compare.days", count: candidate.days)
+    lines.join("\n")
+  end
+
+  def payment_compare_line(key, own, other, usable: own.present?, same: ->(a, b) { a == b })
+    label = t("fin.payments.original_compare.labels.#{key}")
+    return t("fin.payments.original_compare.missing", label: label) unless usable
+
+    if same.call(own, other)
+      t("fin.payments.original_compare.same", label: label, value: own)
+    else
+      t("fin.payments.original_compare.differs", label: label, own: own, other: other.presence || "–")
+    end
+  end
+
+  # "ICDT+ESCT · 177": the ISO family and sub-family and the GVC of a bank
+  # transaction, the meaning as tooltip.
+  def payment_short_code(tx)
+    content_tag(:span, [[tx.bank_transaction_family, tx.bank_transaction_sub_family].compact.join("+").presence,
+      tx.gvc].compact.join(" · "), class: "font-monospace small", title: payment_codes_tooltip(tx))
+  end
+
+  # A bank transaction in one line, linked: "#425 · -519.311,62 € ·
+  # ICDT+ESCT · 28.04.2026".
+  def payment_transaction_link(tx)
+    text = ["##{tx.id}", payment_cents((tx.signed_base_amount * 100).round),
+      [tx.bank_transaction_family, tx.bank_transaction_sub_family].compact.join("+").presence,
+      fin_date(tx.value_date)].compact.join(" · ")
+    link_to(text, wsjrdp_camt_transaction_path(tx), data: {turbo_frame: "_top"})
+  end
+
+  def other_return_table_columns
+    cells = {
+      "date" => ->(ret) { fin_date(ret.booking_date || ret.value_date) },
+      "kind" => ->(ret) { t("fin.payments.return_kinds.#{ret.return_kind}") },
+      "amount" => ->(ret) { payment_cents(ret.amount_cents) },
+      "counterparty" => ->(ret) {
+        %w[credit_transfer received_direct_debit].include?(ret.return_kind) ? ret.cdtr_name : ret.dbtr_name
+      },
+      "reason" => ->(ret) { payment_return_reasons(ret.return_reason, long: true) },
+      "code" => ->(ret) {
+        content_tag(:span, [[ret.bank_transaction_family, ret.bank_transaction_sub_family].compact.join("+").presence,
+          ret.gvc && "GVC #{ret.gvc}"].compact.join(" · "), class: "font-monospace small", title: payment_codes_tooltip(ret))
+      },
+      "description" => ->(ret) { ret.description },
+      "id" => ->(ret) { link_to(ret.id, wsjrdp_camt_transaction_path(ret.id), data: {turbo_frame: "_top"}) }
+    }
+    Fin::OtherReturnsColumns::COLUMNS.map { |col| col.to_table_column(cell: cells.fetch(col.key)) }
+  end
+
   def direct_debit_payment_info_table_columns
     cells = {
       "order" => ->(info) { payment_order_link(info.payment_initiation_id) },
@@ -165,10 +311,25 @@ module Fin::PaymentsHelper
   # kind tiles, the Beiträge overview's Lastschriften link and an account's
   # orders.
   def payment_orders_filtered_path(*slots)
+    payment_list_filtered_path(payment_orders_path, Fin::PaymentOrdersFilterSchema, Fin::PaymentOrdersController, slots)
+  end
+
+  # The Rückläufer and the Einzüge list filtered the same way (the overview's
+  # open work and next collection).
+  def payment_returns_filtered_path(*slots)
+    payment_list_filtered_path(payment_returns_path, Fin::PaymentReturnsFilterSchema, Fin::PaymentReturnsController, slots)
+  end
+
+  def direct_debits_filtered_path(*slots)
+    payment_list_filtered_path(direct_debits_path, Fin::DirectDebitsFilterSchema, Fin::DirectDebitsController, slots)
+  end
+
+  # Each slot a condition of its own, all of them to hold.
+  def payment_list_filtered_path(path, schema, controller, slots)
     query = Wsjrdp::Filtering::Query.parse(slots.map { |slot| [slot] })
-    rison = Wsjrdp::Filtering::UrlCodec.encode(query, schema: Fin::PaymentOrdersFilterSchema.bound)
-    param = Fin::PaymentOrdersController::POLICY.param_name(:filter)
-    "#{payment_orders_path}?#{param}=#{Wsjrdp::Filtering::UrlCodec.escape_for_query(rison)}"
+    rison = Wsjrdp::Filtering::UrlCodec.encode(query, schema: schema.bound)
+    param = controller::POLICY.param_name(:filter)
+    "#{path}?#{param}=#{Wsjrdp::Filtering::UrlCodec.escape_for_query(rison)}"
   end
 
   # The payment order of an accounting entry: its own, else -- for the entry
@@ -509,9 +670,12 @@ module Fin::PaymentsHelper
   # The accounting entry booked for a return, a tick linked to it; none in the
   # warning colour -- the return still has to be booked on the person.
   def payment_return_entry_cell(entry_id)
-    return payment_entry_mark(entry_id) if entry_id
-
-    content_tag(:span, icon(:"exclamation-triangle"), class: "text-warning", title: t("fin.payments.no_return_entry"))
+    mark = if entry_id
+      payment_entry_mark(entry_id)
+    else
+      content_tag(:span, icon(:"exclamation-triangle"), class: "text-warning", title: t("fin.payments.no_return_entry"))
+    end
+    content_tag(:div, mark, class: "text-center")
   end
 
   # The announced amount, marked where it differs from the collected one.

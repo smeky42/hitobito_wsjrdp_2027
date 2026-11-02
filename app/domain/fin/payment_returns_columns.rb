@@ -7,8 +7,9 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# Columns of the Rückläufer list (/fin/payments/returns): one return (a bank
-# transaction with a return reason) per row over Fin::PaymentQueries.returns,
+# Columns of the section "Rücklastschriften" of the Rückläufer tab
+# (/fin/payments/returns): one return of our direct debits (a bank
+# transaction) per row over Fin::PaymentQueries.returns,
 # with the debit and the order it belongs to and the accounting entry booked
 # for it.
 module Fin::PaymentReturnsColumns

@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The reasons of all returned direct debits -- other returns are too few for
+-#  statistics --, in the Rücklastschriften section of the Rückläufer tab
+-#  (Fin::PaymentsOverview#return_reasons): the most frequent first with their
+-#  wording (Fin::ReturnReasons), how often and their share; each links to the
+-#  Rücklastschriften list on that reason. Only for whoever may see
+-#  person-level payment data.
+-#
+-#  Locals: ov (Fin::PaymentsOverview)
+- reasons = ov.return_reasons
+- if ov.person_level? && reasons.any?
+  %h3.h4.mt-4.mb-3#return-reasons= t("fin.payments.return_reasons.title")
+  %table.table.table-sm.small.mb-4{style: "max-width: 40rem"}
+    %thead
+      %tr
+        %th= t("fin.payments.return_reasons.reason")
+        %th.text-end= t("fin.payments.return_reasons.count")
+        %th.text-end= t("fin.payments.return_reasons.share")
+    %tbody
+      - reasons.each do |r|
+        %tr
+          %td= link_to [r.code, Fin::ReturnReasons.label(r.code)].compact.join(" – "), payment_returns_filtered_path(["reason", "in", r.code])
+          %td.text-end.payment-tabular= payment_count(r.count)
+          %td.text-end.payment-tabular= number_to_percentage(100 * r.share, precision: 0)

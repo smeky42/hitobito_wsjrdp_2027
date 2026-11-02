@@ -245,6 +245,18 @@ module Fin::PaymentDetailsHelper
 
   # --- the return (a WsjrdpCamtTransaction with a return reason) --------------
 
+  # The field options of a return's editable fields (Fin::ReturnEditing) where
+  # the detail carries a form (`editable`): the edit page, a list row's inline
+  # edit; none elsewhere.
+  def payment_return_edit_options(editable)
+    return {} unless editable
+
+    Fin::ReturnEditing::FIELDS.to_h do |attr, input|
+      options = (input == :wide_select) ? Fin::ReturnEditing.statuses.map { |value, label| [label, value] } : nil
+      [attr, {editable: true, input: input, options: options}.compact]
+    end
+  end
+
   def fin_format_wsjrdp_camt_transaction_subject(ret) = payment_person(ret.subject)
 
   def fin_format_wsjrdp_camt_transaction_return_date(ret) = payment_time(fin_date(ret.booking_date || ret.value_date))
@@ -289,6 +301,40 @@ module Fin::PaymentDetailsHelper
 
     link_to(t("fin.payments.entry_link", id: ret.return_entry_id), accounting_entry_path(ret.return_entry_id),
       data: {turbo_frame: "_top"})
+  end
+
+  def fin_format_wsjrdp_camt_transaction_bank_transaction_code(ret) = payment_iso_code(ret.bank_transaction_code)
+
+  def fin_format_wsjrdp_camt_transaction_bank_transaction_code_dk(ret) = payment_dk_code(ret.bank_transaction_code_dk)
+
+  # What came back, and below it what that means (another return than one of
+  # our direct debits).
+  def fin_format_wsjrdp_camt_transaction_return_kind(ret)
+    return nil if ret.return_kind.blank?
+
+    safe_join([t("fin.payments.return_kinds.#{ret.return_kind}"),
+      content_tag(:div, t("fin.payments.return_kind_hints.#{ret.return_kind}"), class: "small text-muted")])
+  end
+
+  # The bank transaction another return brought back (Fin::ReturnOriginals),
+  # how long before it; "nicht verknüpft" without one.
+  def fin_format_wsjrdp_camt_transaction_original(ret)
+    original = ret.reverses
+    return content_tag(:span, t("fin.payments.original_unlinked_hint"), class: "text-muted") unless original
+
+    days = ((ret.booking_date || ret.value_date) - original.value_date).to_i
+    safe_join([payment_transaction_link(original),
+      content_tag(:div, t("fin.payments.original_before", count: days), class: "small text-muted")])
+  end
+
+  # The other party of another return (Fin::OtherReturnsColumns), its IBAN
+  # below.
+  def fin_format_wsjrdp_camt_transaction_counterparty(ret)
+    payee = %w[credit_transfer received_direct_debit].include?(ret.return_kind)
+    name, iban = payee ? [ret.cdtr_name, ret.cdtr_iban] : [ret.dbtr_name, ret.dbtr_iban]
+    return nil if name.blank? && iban.blank?
+
+    safe_join([name, (content_tag(:div, iban, class: "small text-muted font-monospace") if iban.present?)].compact)
   end
 
   def fin_format_wsjrdp_camt_transaction_camt_transaction(ret)

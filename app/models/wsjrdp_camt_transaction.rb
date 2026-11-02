@@ -36,6 +36,11 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   belongs_to :direct_debit_pre_notification, optional: true, class_name: "WsjrdpDirectDebitPreNotification"
   belongs_to :direct_debit_payment_info, optional: true, class_name: "WsjrdpDirectDebitPaymentInfo"
   belongs_to :payment_initiation, optional: true, class_name: "WsjrdpPaymentInitiation"
+  # A return and the bank transaction it brought back (Fin::ReturnOriginals):
+  # the return names it in reverses_id, the original names the return in
+  # reversed_by_id.
+  belongs_to :reverses, optional: true, class_name: "WsjrdpCamtTransaction"
+  belongs_to :reversed_by, optional: true, class_name: "WsjrdpCamtTransaction"
 
   # Neither deleted nor replaced by a later statement's copy.
   scope :current, -> { where(deleted_at: nil, replaced_by_id: nil) }

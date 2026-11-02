@@ -268,6 +268,10 @@ module Fin::DetailHelper
     when :wide_select
       f.select row.attr, row.options, {include_blank: false},
         class: "form-select form-select-sm", style: "width: auto; max-width: 100%"
+    # A field's own input: a helper named by `options:`, called with the form
+    # builder and the row.
+    when :helper
+      public_send(row.options, f, row)
     else
       fin_detail_amount_input(f, row.attr)
     end

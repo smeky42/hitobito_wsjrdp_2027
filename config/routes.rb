@@ -321,7 +321,7 @@ Rails.application.routes.draw do
       resources :direct_debits, path: "payments/debits", only: [:index, :show, :edit, :update] do
         collection { post :apply }
       end
-      resources :payment_returns, path: "payments/returns", only: [:index, :show] do
+      resources :payment_returns, path: "payments/returns", only: [:index, :show, :edit, :update] do
         collection { post :apply }
       end
       # "Beiträge" section: its overview page at /fin/fees; the two lists it

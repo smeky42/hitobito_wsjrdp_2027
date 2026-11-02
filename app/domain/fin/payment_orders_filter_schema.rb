@@ -69,6 +69,11 @@ module Fin::PaymentOrdersFilterSchema
     s.attribute key: :bank, short_key: :bk, label: "Mit Bankbuchung",
       type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
       column: ->(_t) { yes_no("credits.credit_count > 0") }, options: YES_NO
+    s.attribute key: :credit_differs, short_key: :cdf, label: "Bankbuchung ≠ Betrag",
+      type: Wsjrdp::Filtering::Types::ENUM, operators: %i[in not_in],
+      column: ->(_t) {
+        yes_no("credits.credit_count > 0 AND credits.credit_sum_cents <> wsjrdp_payment_initiations.control_sum_cents")
+      }, options: YES_NO
     s.attribute key: :message_identification, short_key: :q, label: "Nachrichten-ID",
       type: Wsjrdp::Filtering::Types::TEXT, operators: Fin::DatevBookingsFilterSchema::TEXT_OPERATORS,
       column: :message_identification

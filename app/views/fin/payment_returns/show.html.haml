@@ -5,7 +5,15 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The page of a return (fin/payment_returns/_detail), also the row detail of
--#  the Rückläufer list.
+-#  The page of a return: a return of our direct debits
+-#  (fin/payment_returns/_detail, also the row detail of the Rücklastschriften
+-#  section), or any other (fin/payment_returns/_other_detail). On its own page
+-#  it is the reading page, with "Bearbeiten" for whoever may :update the bank
+-#  transaction (edit); in a list row that viewer edits status and comment in
+-#  place (the kit's inline toggle, saved within the row's frame).
+- may_update = can?(:update, @return)
 = wsjrdp_detail_frame("pr", @return.id) do
-  = render "detail", entry: @return, ctx: @ctx
+  = render (@return.return_kind == "direct_debit") ? "detail" : "other_detail", entry: @return, ctx: @ctx,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && may_update ? edit_payment_return_path(@return) : nil),
+    form_url: (!@ctx.regular? && may_update ? payment_return_path(@return) : nil)

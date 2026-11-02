@@ -608,8 +608,11 @@ de:
         references: Referenzen
         endtoend_id: Kundenreferenz
         mandate_id: Mandatsreferenz
-        bank_transaction_code: Geschäftsvorfall
-        bank_transaction_code_dk: Geschäftsvorfall nach DK
+        bank_transaction_code: ISO-Buchungscode
+        bank_transaction_code_dk: DK-Buchungscode
+        return_kind: Rückläufer-Art
+        original: Original-Buchung
+        counterparty: Gegenpartei
         return_reason: Rückgabe-Grund
         return_status: Retoure-Status
         return_status_display: Retoure-Status
@@ -2030,10 +2033,28 @@ de:
       top_ups: "Einzahlungen"
     # Zahlungsverkehr (doc/fin/payments.md): Aufträge, Einzüge, Rückläufer.
     payments:
-      overview_lead: "Zahlungsaufträge an die Bank – je Auftrag eine SEPA-Datei –, die Einzüge der Lastschriften und ihre Rückläufer."
+      overview_lead: "Alles zum Thema Zahlungsverkehr mit unseren Bank-Konten."
       orders_lead: "Alle Zahlungsaufträge an die Bank, je Auftrag eine SEPA-Datei (Lastschrift oder Überweisung), mit den Retouren seiner Einzüge."
       debits_lead: "Alle Einzüge der Lastschriften, je Person und Auftrag eine Vorabankündigung, mit Beitragsbuchung und Rücklastschrift."
-      returns_lead: "Alle Rücklastschriften laut Kontoauszug, mit ihrem Einzug – verknüpft, sonst über End-to-End-ID oder Mandatsreferenz gefunden –, dessen Auftrag und der Beitragsbuchung dazu."
+      direct_debit_returns: "Rücklastschriften"
+      other_returns: "Weitere Rückläufer"
+      other_returns_lead: "Andere zurückgekommene Zahlungen, etwa zurückgegebene Überweisungen."
+      other_returns_shown:
+        one: "Ein weiterer Rückläufer"
+        other: "%{count} weitere Rückläufer"
+      text_key: "Textschlüsselergänzung %{code}"
+      return_kind_hints:
+        direct_debit: "Eine unserer Lastschriften kam zurück."
+        credit_transfer: "Eine von uns gesendete Überweisung kam zurück."
+        received_credit_transfer: "Eine bei uns eingegangene Überweisung ging zurück."
+        received_direct_debit: "Eine Lastschrift, mit der wir belastet wurden, wurde wieder gutgeschrieben."
+        other: "Eine andere Zahlung kam zurück."
+      return_kinds:
+        direct_debit: "Rücklastschrift"
+        credit_transfer: "Rücküberweisung"
+        received_credit_transfer: "Rückgabe Zahlungseingang"
+        received_direct_debit: "Wiedergutschrift Lastschrift"
+        other: "Sonstiger Rückläufer"
       orders_shown:
         one: "Ein Auftrag"
         other: "%{count} Aufträge"
@@ -2054,7 +2075,7 @@ de:
         collected: "Eingezogen: %{amount}"
         planned: "Geplant: %{amount}"
         difference: "Differenz: %{amount}"
-      returns_shown: "%{count} Rückläufer, davon %{unassigned} nicht zuordenbar"
+      returns_shown: "%{count} Rücklastschriften, davon %{unassigned} nicht zuordenbar"
       kinds:
         direct_debit: "Lastschrift"
         credit_transfer: "Überweisung"
@@ -2082,6 +2103,41 @@ de:
       debit_label: "Einzug #%{id}"
       debit_notice_label: "Vorabankündigung Einzug #%{id}"
       debit_saved: "Einzug #%{id} gespeichert."
+      return_saved: "Rückläufer #%{id} gespeichert."
+      original: "Original-Buchung"
+      original_unlinked_hint: "nicht verknüpft"
+      original_before:
+        one: "einen Tag vor dem Rückläufer"
+        other: "%{count} Tage vor dem Rückläufer"
+      original_days:
+        one: "1 Tag"
+        other: "%{count} Tage"
+      original_matches:
+        amount: "Betrag"
+        endtoend: "End-to-End-ID"
+        iban: "IBAN"
+        mandate: "Mandat"
+        name: "Name"
+      original_by_id: "andere Buchung (ID)"
+      original_none: "keine Verknüpfung"
+      original_compare:
+        amount: "✓ Betrag %{amount} (genau, umgekehrtes Vorzeichen)"
+        same: "✓ %{label}: %{value}"
+        differs: "✗ %{label}: Rückläufer %{own}, Buchung %{other}"
+        missing: "– %{label}: beim Rückläufer nicht angegeben"
+        days:
+          one: "Abstand: 1 Tag vor dem Rückläufer"
+          other: "Abstand: %{count} Tage vor dem Rückläufer"
+        labels:
+          endtoend: "End-to-End-ID"
+          cdtr_iban: "IBAN Empfänger"
+          cdtr_name: "Name Empfänger"
+          dbtr_iban: "IBAN Zahler"
+          dbtr_name: "Name Zahler"
+          mandate: "Mandat"
+      original_not_candidate: "Diese Buchung passt nicht als Original: Betrag, Richtung, Zeitraum oder Art stimmen nicht, oder sie ist schon verknüpft."
+      no_original_candidates: "Keine passende Buchung in den %{days} Tagen davor."
+      came_back: "Zurückgekommen"
       debit_changes: Änderungen
       debit_help:
         try_skip: "Wichtig: \"Einzug aussetzen\" hat keine Auswirkung, wenn die SEPA XML Datei für die Übermittlung zur Bank bereits erzeugt wurde."
@@ -2123,16 +2179,48 @@ de:
       fees_hint: "Eingezogen werden die Beiträge per Lastschrift:"
       direct_debit_orders: "Lastschrift-Aufträge im Zahlungsverkehr"
       tiles:
-        orders: "Aufträge"
-        debits: "Einzüge"
-        skipped: "davon übersprungen"
-        returns: "Rückläufer"
-        unassigned: "davon nicht zuordenbar"
-        last_order: "Letzter Auftrag"
         direct_debit_orders: "Lastschrift-Aufträge"
         collected_debits: "Eingezogene Lastschriften"
         collected_sum: "Eingezogen"
         returns_sum: "Rücklastschriften (%{count})"
+        direct_debits_heading: "Lastschriften"
+      open_work:
+        title: "Offene Arbeit"
+        returns_in_review: "Rücklastschriften in Überprüfung"
+        returns_without_entry: "Rücklastschriften ohne Beitragsbuchung"
+        returns_unassigned: "Rücklastschriften nicht zuordenbar"
+        other_returns_unlinked: "Weitere Rückläufer ohne Original"
+        orders_without_credit: "Lastschrift-Aufträge ohne Bankgutschrift"
+        orders_credit_differs: "Bankgutschrift ≠ Betrag"
+        done:
+          one: "1 weiterer Punkt erledigt"
+          other: "%{count} weitere Punkte erledigt"
+        all_done:
+          one: "Alles erledigt (1 Punkt)"
+          other: "Alles erledigt (%{count} Punkte)"
+      next_collection:
+        title: "Nächster Einzug"
+        today: "heute"
+        in_days:
+          one: "morgen"
+          other: "in %{count} Tagen"
+        debits: "%{count} angekündigte Einzüge · Σ %{sum}"
+        try_skip: "davon %{count} mit Bitte um Aussetzen"
+        none: "Kein Einzug angekündigt."
+        overdue: "%{count} angekündigte Einzüge mit vergangenem Datum"
+      months:
+        title: "Einzüge je Monat"
+        month: "Monat"
+        count: "Einzüge"
+        sum: "Betrag"
+        returns: "Rücklastschriften"
+        returns_count: "Anzahl"
+        rate: "Quote"
+      return_reasons:
+        title: "Rückgabegründe"
+        reason: "Grund"
+        count: "Anzahl"
+        share: "Anteil"
     # Verwaltung, erster Tab: der Gruppen-Finanzzugriff einzelner Personen
     # (people.additional_info["finance_group_ids"]).
     finance_groups:

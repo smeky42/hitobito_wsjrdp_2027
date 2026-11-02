@@ -1,0 +1,50 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The collections by month of the Zahlungsverkehr overview
+-#  (Fin::PaymentsOverview#months): per month of the Sammler's collection date
+-#  the debits collected, their sum as a bar against the largest month, and the
+-#  returns with their share of the debits -- as a number and a bar on a scale
+-#  up to 15 %, orange above 5 %, red above 10 %, under a common header. The
+-#  newest month first.
+-#
+-#  Locals: ov (Fin::PaymentsOverview)
+- months = ov.months
+- if months.any?
+  = render "fin/payments/styles"
+  - max = months.map(&:sum_cents).max.to_f
+  %h2.mt-4.mb-3= t("fin.payments.months.title")
+  .table-responsive
+    %table.table.table-sm.small.mb-4{style: "max-width: 52rem"}
+      %thead
+        %tr
+          %th.align-bottom{rowspan: 2}= t("fin.payments.months.month")
+          %th.text-end.align-bottom{rowspan: 2}= t("fin.payments.months.count")
+          %th.text-end.align-bottom{rowspan: 2}= t("fin.payments.months.sum")
+          %th{rowspan: 2}
+          %th.text-center.border-bottom{colspan: 3}= t("fin.payments.months.returns")
+        %tr
+          %th.text-end= t("fin.payments.months.returns_count")
+          %th.text-end= t("fin.payments.months.rate")
+          %th
+      %tbody
+        - months.reverse_each do |m|
+          %tr
+            %td.payment-tabular= l(m.month, format: "%m/%Y")
+            %td.text-end.payment-tabular= payment_count(m.count)
+            %td.text-end.payment-tabular.text-nowrap= payment_cents(m.sum_cents)
+            %td.align-middle{style: "width: 30%"}
+              .bg-secondary-subtle.rounded{style: "height: .6rem"}
+                .bg-primary.rounded{style: "height: .6rem; width: #{max.positive? ? (100 * m.sum_cents / max).round(1) : 0}%"}
+            %td.text-end.payment-tabular{class: ("text-danger" if m.return_count.positive?)}= payment_count(m.return_count)
+            - rate_class = if m.return_rate > 0.10 then "danger" elsif m.return_rate > 0.05 then "warning" end
+            %td.text-end.payment-tabular{class: ("text-#{rate_class} fw-semibold" if rate_class)}
+              = number_to_percentage(100 * m.return_rate, precision: 1, separator: ",")
+            %td.align-middle{style: "width: 12%"}
+              .bg-secondary-subtle.rounded{style: "height: .6rem"}
+                .rounded{class: "bg-#{rate_class || "secondary"}",
+                  style: "height: .6rem; width: #{(100 * [m.return_rate / 0.15, 1].min).round(1)}%"}
