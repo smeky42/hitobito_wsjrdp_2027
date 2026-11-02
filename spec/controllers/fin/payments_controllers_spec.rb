@@ -229,6 +229,14 @@ describe "Zahlungsverkehr", type: :request do
       expect(html).to have_no_css("td.ddcol-order")
     end
 
+    it "lets the debits section of an order's and a Sammler's page navigate the whole page" do
+      [payment_order_path(debit_order), direct_debit_payment_info_path(payment_info)].each do |path|
+        get path
+
+        expect(html).to have_css("turbo-frame#debits-section[target='_top'] a.flt-preset")
+      end
+    end
+
     it "shows the figures of each Sammler under an order's own, without sub-rows or links" do
       second = WsjrdpDirectDebitPaymentInfo.create!(payment_initiation: debit_order,
         payment_information_identification: "PMT-2", debit_sequence_type: "FRST",
