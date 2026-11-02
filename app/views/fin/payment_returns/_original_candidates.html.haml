@@ -1,0 +1,29 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The input of another return's original on its edit page, inside the edit
+-#  form (Fin::ReturnOriginals): "keine Verknüpfung", the candidates -- the best
+-#  first, each with a radio button, the linked one chosen, none chosen else --
+-#  and a field for the id of a bank transaction that is no proposal (it must
+-#  still be a candidate). Saved with the form.
+-#
+-#  Locals: f (the edit form), ret (a row of Fin::PaymentQueries.other_returns)
+- candidates = original_candidates
+.form-check.mb-1
+  = f.radio_button :reverses_id, "", checked: ret.reverses_id.nil?, class: "form-check-input", id: "original-none"
+  %label.form-check-label{for: "original-none"}= t("fin.payments.original_none")
+- if candidates.total_count.positive?
+  = wsjrdp_expandable_table do |t|
+    - t.rows candidates, id: "oc"
+    - t.columns return_original_table_columns(f, ret)
+    - t.gaps max: "2rem", grow_max: "20rem"
+    - t.row_key { |c| c.id }
+- else
+  %p.text-muted.small.mb-1= t("fin.payments.no_original_candidates", days: Fin::ReturnOriginals::WINDOW_DAYS)
+.d-flex.align-items-center.gap-2.mt-1
+  %label.text-muted.small{for: "original_id_other"}= t("fin.payments.original_by_id")
+  = text_field_tag "original_id_other", nil, class: "form-control form-control-sm", style: "width: 9ch", placeholder: "#"

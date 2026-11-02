@@ -60,7 +60,7 @@ describe "Zahlungsverkehr", type: :request do
   def camt_return(amount, **attrs)
     WsjrdpCamtTransaction.create!(fin_account: account, camt_type: "CAMT052",
       account_identification: account.account_identification, account_servicer_reference: SecureRandom.hex(8),
-      credit_debit_indication: "DBIT",
+      credit_debit_indication: "DBIT", bank_transaction_code: "PMNT+IDDT+UPDD", bank_transaction_code_dk: "NRTI+109",
       signed_base_amount: amount, base_currency: "EUR", value_date: Date.new(2026, 5, 5),
       booking_date: Date.new(2026, 5, 12), description: "Retoure", subject: person, **attrs)
   end
@@ -175,18 +175,39 @@ describe "Zahlungsverkehr", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(html).to have_css("ul.nav-sub li", text: I18n.t("fin.tabs.direct_debits"))
-      expect(html).to have_css("#main a", text: I18n.t("fin.payments.tiles.debits"))
-      expect(html).to have_css("#main a", text: I18n.t("fin.payments.tiles.unassigned"))
+      expect(html).to have_css(".payment-checklist-done a[href='#{payment_returns_path}#other-returns']",
+        text: I18n.t("fin.payments.open_work.other_returns_unlinked"), visible: :all)
+      orders = controller.view_context.payment_orders_filtered_path(["kind", "in", "direct_debit"])
+      expect(html).to have_link(href: orders, text: I18n.t("fin.payments.tiles.collected_debits"))
+    end
+
+    it "shows the open work, the next collection and the months on the overview, the reasons on the returns tab" do
+      paid_debit.update!(payment_status: "pre_notified", collection_date: Date.current + 3)
+      get fin_payments_path
+
+      expect(html).to have_css("h2", text: I18n.t("fin.payments.open_work.title"))
+      in_review = controller.view_context.payment_returns_filtered_path(["status", "in", "in_review"])
+      expect(html).to have_link(href: in_review, text: I18n.t("fin.payments.open_work.returns_in_review"))
+      expect(html).to have_text(I18n.t("fin.payments.next_collection.in_days", count: 3))
+      expect(html).to have_link(text: /1 angekündigte Einzüge · Σ 100,00/)
+      expect(html).to have_css("h2", text: I18n.t("fin.payments.months.title"))
+      expect(html).to have_css("table td", text: "05/2026")
+      expect(html).to have_no_link(text: /^MD06 – /)
+
+      get payment_returns_path
+      expect(html).to have_css("#return-reasons", text: I18n.t("fin.payments.return_reasons.title"))
+      expect(html).to have_link(text: /^MD06 – /)
     end
 
     it "lists the orders with kind, account, returns and sums" do
       get payment_orders_path
 
       expect(response).to have_http_status(:ok)
-      expect(html).to have_css(".border.rounded", text: /^1\s*Lastschrift-Aufträge$/)
-      expect(html).to have_css(".border.rounded", text: /^2\s*Eingezogene Lastschriften$/)
-      expect(html).to have_css(".border.rounded", text: /Σ 300,00.*Eingezogen/m)
-      expect(html).to have_css(".border.rounded .text-danger", text: "Σ -200,00")
+      expect(html).to have_css(".payment-strip-cell", text: /^Lastschrift-Aufträge\s*1$/)
+      expect(html).to have_css(".payment-strip-cell", text: /^Eingezogene Lastschriften\s*2$/)
+      expect(html).to have_css(".payment-strip-cell", text: /Eingezogen\s*Σ 300,00/)
+      expect(html).to have_css(".payment-strip-cell .text-danger", text: "Σ -200,00")
+      expect(html).to have_css(".payment-strip-single", text: I18n.t("fin.payments.next_collection.title"))
       row = html.find("tr.exp-row", text: "MSG-DD-1", match: :first) if html.has_css?("tr.exp-row", text: "MSG-DD-1")
       row ||= html.all("tr.exp-row").find { |tr| tr.has_css?("td.pocol-id", text: debit_order.id.to_s) }
       expect(row).to have_css("td.pocol-kind", text: "Lastschrift")
@@ -422,6 +443,102 @@ describe "Zahlungsverkehr", type: :request do
 
       get direct_debit_path(skipped.first)
       expect(html).to have_css(".fin-detail-list dd .payment-amount-skipped", text: /50,00.*0,00/)
+    end
+
+    it "lists a returned credit transfer under the other returns, not as a returned direct debit" do
+      transfer = camt_return(150, credit_debit_indication: "CRDT", bank_transaction_code: "PMNT+ICDT+RRTN",
+        bank_transaction_code_dk: "NRTI+159", return_reason: "MS03", cdtr_name: "Beispiel GmbH", endtoend_id: nil)
+      expect(transfer.reload).to have_attributes(return_kind: "credit_transfer", gvc: "159",
+        bank_transaction_family: "ICDT", bank_transaction_sub_family: "RRTN")
+
+      get payment_returns_path
+
+      expect(html).to have_css("h2", text: I18n.t("fin.payments.other_returns"))
+      expect(html).to have_css("td.orcol-kind", text: I18n.t("fin.payments.return_kinds.credit_transfer"))
+      expect(html).to have_css("td.orcol-counterparty", text: "Beispiel GmbH")
+      expect(html).to have_css("td.orcol-code", text: "ICDT+RRTN · GVC 159")
+      expect(Fin::PaymentQueries.returns.where(id: transfer.id)).to be_empty
+
+      get payment_return_path(transfer)
+      expect(html).to have_css("h1", text: I18n.t("fin.payments.return_kinds.credit_transfer"))
+      expect(html).to have_css(".fin-detail-list dd", text: /PMNT\+ICDT\+RRTN.*Ausgehende Überweisung/m)
+      expect(html).to have_css(".fin-detail-list dd .text-muted[title*='Issued Credit Transfers']")
+      expect(html).to have_css(".fin-detail-list dd", text: /NRTI\+159.*GVC 159/m)
+      expect(html).to have_css(".fin-detail-list dt", text: "Retoure-Status")
+      expect(html).to have_css(".fin-detail-list dt", text: "Kommentar")
+
+      get wsjrdp_camt_transaction_path(transfer)
+      expect(html).to have_text("ISO-Buchungscode")
+      expect(html).to have_link(href: payment_return_path(transfer))
+    end
+
+    it "edits the status and comment of a return on its edit page" do
+      transfer = camt_return(150, credit_debit_indication: "CRDT", bank_transaction_code: "PMNT+ICDT+RRTN",
+        return_reason: "MS03", endtoend_id: nil)
+
+      get payment_return_path(transfer)
+      expect(html).to have_link(href: edit_payment_return_path(transfer))
+      get edit_payment_return_path(transfer)
+      expect(html).to have_css("select[name='wsjrdp_camt_transaction[return_status]']")
+      expect(html).to have_css("textarea[name='wsjrdp_camt_transaction[comment]']")
+
+      changes = {return_status: "paid", comment: "Neu angewiesen", description: "nicht erlaubt"}
+      patch payment_return_path(transfer), params: {wsjrdp_camt_transaction: changes}
+      expect(response).to redirect_to(payment_return_path(transfer))
+      expect(transfer.reload).to have_attributes(return_status: "paid", comment: "Neu angewiesen", description: "Retoure")
+
+      patch payment_return_path(transfer), params: {wsjrdp_camt_transaction: {return_status: "bogus"}, stay: "1"}
+      expect(response).to redirect_to(edit_payment_return_path(transfer))
+      expect(transfer.reload.return_status).to eq("paid")
+    end
+
+    it "proposes the original of a returned credit transfer on the edit page and links it both ways" do
+      transfer = camt_return(150, credit_debit_indication: "CRDT", bank_transaction_code: "PMNT+ICDT+RRTN",
+        return_reason: "MS03", endtoend_id: nil, cdtr_iban: "BE79967040785533", value_date: Date.new(2026, 5, 6))
+      sent = camt_return(-150, bank_transaction_code: "PMNT+ICDT+ESCT", return_reason: nil, endtoend_id: nil,
+        cdtr_iban: "BE79967040785533", value_date: Date.new(2026, 4, 28), description: "Überweisung")
+      other = camt_return(-120, bank_transaction_code: "PMNT+ICDT+ESCT", return_reason: nil, endtoend_id: nil,
+        value_date: Date.new(2026, 4, 28))
+
+      get payment_return_path(transfer)
+      expect(html).to have_no_css("input[type=radio]")
+      expect(html).to have_css(".fin-detail-list dd", text: I18n.t("fin.payments.original_unlinked_hint"))
+
+      get edit_payment_return_path(transfer)
+      radio = "input[type=radio][name='wsjrdp_camt_transaction[reverses_id]']"
+      expect(html).to have_css("#{radio}[value='#{sent.id}']:not([checked])")
+      expect(html).to have_css("#{radio}#original-none[checked]")
+      expect(html).to have_no_css("#{radio}[value='#{other.id}']")
+      expect(html).to have_no_css("th", text: "Treffer")
+      expect(html).to have_css("td.occol-matches span[title*='✓ IBAN Empfänger']", text: "IBAN ✓")
+
+      patch payment_return_path(transfer), params: {wsjrdp_camt_transaction: {comment: "x"}, original_id_other: other.id}
+      expect(response).to have_http_status(422)
+      expect(transfer.reload).to have_attributes(reverses_id: nil, comment: "")
+
+      patch payment_return_path(transfer), params: {wsjrdp_camt_transaction: {comment: "x", reverses_id: sent.id}}
+      expect(transfer.reload).to have_attributes(reverses_id: sent.id, comment: "x")
+      expect(sent.reload.reversed_by_id).to eq(transfer.id)
+
+      get payment_return_path(transfer)
+      expect(html).to have_link(href: wsjrdp_camt_transaction_path(sent), text: /##{sent.id}/)
+      get wsjrdp_camt_transaction_path(sent)
+      expect(html).to have_link(href: payment_return_path(transfer))
+
+      patch payment_return_path(transfer), params: {wsjrdp_camt_transaction: {reverses_id: ""}}
+      expect([transfer.reload.reverses_id, sent.reload.reversed_by_id]).to eq([nil, nil])
+    end
+
+    it "edits the status and comment of a returned direct debit inside its list row" do
+      frame = {"Turbo-Frame" => "bkframe-pr-#{returned.id}"}
+      get payment_return_path(returned), headers: frame
+      expect(html).to have_css("form[action='#{payment_return_path(returned)}'][data-fin-editing='false']")
+      expect(html).to have_css("textarea[name='wsjrdp_camt_transaction[comment]']")
+
+      patch payment_return_path(returned), headers: frame,
+        params: {wsjrdp_camt_transaction: {return_status: "planned", comment: "Rückruf"}, stay: "1"}
+      expect(response).to redirect_to(payment_return_path(returned))
+      expect(returned.reload).to have_attributes(return_status: "planned", comment: "Rückruf")
     end
 
     it "lists the returns and marks the one that cannot be assigned" do
@@ -762,7 +879,7 @@ describe "Zahlungsverkehr", type: :request do
     it "shows the orders, but neither the debits nor the returns" do
       get fin_payments_path
       expect(html).to have_no_css("ul.nav-sub li", text: I18n.t("fin.tabs.direct_debits"))
-      expect(html).to have_no_css("#main a", text: I18n.t("fin.payments.tiles.debits"))
+      expect(html).to have_no_text(I18n.t("fin.payments.open_work.returns_in_review"))
 
       get payment_order_path(debit_order)
       expect(response).to have_http_status(:ok)

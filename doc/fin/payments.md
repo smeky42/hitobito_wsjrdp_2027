@@ -11,7 +11,7 @@ reads; the orders are made by the scripts (`wsjrdp_scripts`).
 | Aufträge | `/fin/payments/orders` | `Fin::PaymentOrdersController` | `wsjrdp_payment_initiations` |
 | Sammler | `/fin/direct_debit_payment_infos` | `Fin::DirectDebitPaymentInfosController` | `wsjrdp_direct_debit_payment_infos` |
 | Einzüge | `/fin/payments/debits` | `Fin::DirectDebitsController` | `wsjrdp_direct_debit_pre_notifications` |
-| Rückläufer | `/fin/payments/returns` | `Fin::PaymentReturnsController` | `wsjrdp_camt_transactions` with a return reason |
+| Rückläufer | `/fin/payments/returns` | `Fin::PaymentReturnsController` | `wsjrdp_camt_transactions` with a `return_kind` |
 
 Every list is an expandable table with the CNF filter; its rows are SQL
 relations (`Fin::PaymentQueries`), so sorting, filtering and the footer sums
@@ -101,8 +101,55 @@ an order's and a Sammler's page is one (`Fin::DirectDebitsSection`).
 
 ## Returns
 
-A return is a bank transaction (`wsjrdp_camt_transactions`) with a
-`return_reason` -- the bank statement is the record. The accounting entry
+A return is a bank transaction (`wsjrdp_camt_transactions`) that brings a
+payment back -- the bank statement is the record. Its generated column
+`return_kind` says what came back, from the bank transaction codes:
+
+| `return_kind` | Codes (ISO family + sub-family, GVC) | What came back |
+|---|---|---|
+| `direct_debit` | `IDDT` + `UPDD`/`RCDD`/`PRDD` (GVC 108, 109, 193) | one of our direct debits: return, refund, reject or reversal |
+| `credit_transfer` | `ICDT`/`IRCT` + `RRTN`/`XRTN` (GVC 159, 160) | a credit transfer we sent |
+| `received_credit_transfer` | `RCDT`/`RRCT` + `RRTN`/`XRTN` (GVC 159, 160, 201) | a credit transfer we received, sent back |
+| `received_direct_debit` | `RDDT` + `UPDD`/`RCDD`/`PRDD` (GVC 181, 184) | a direct debit we were charged, credited back |
+| `other` | other return sub-families (`UPCT`, `UPCQ`, ...), or a return reason without a usable code | anything else returned |
+
+A transaction with a return reason but no usable code counts as a
+`direct_debit` return when it names a mandate, else as `other`. The codes are
+the ISO 20022 Bank Transaction Code (`bank_transaction_code`, split into
+`bank_transaction_domain`, `bank_transaction_family`,
+`bank_transaction_sub_family`) and the code of the German banks
+(`bank_transaction_code_dk`, its GVC in `gvc`); their meaning and the mapping
+GVC to ISO code are those of DFÜ-Abkommen Anlage 3 and its Anhang 1.
+A bank transaction's page (`/fin/tx/:id`) and a return's page show both
+codes with the meaning of their parts -- German labels, the English names as
+tooltip -- from the curated list `Fin::BankTransactionCodes`; the Primanota
+(a batch number of the bank) is left out, a code not listed shows as it is.
+
+The Rückläufer tab has two sections: "Rücklastschriften" lists the
+`direct_debit` returns -- everything below is about them -- and "Weitere
+Rückläufer" every other kind. A return's page (`/fin/payments/returns/:id`)
+serves both; for another kind it shows what came back, the other party and
+the codes. Its edit page (`/fin/payments/returns/:id/edit`, for whoever may
+update the bank transaction) changes the processing status and the comment
+(`Fin::ReturnEditing`), the fields of the page a bank transaction lets edit;
+in a row of the Rücklastschriften list the same viewer edits them in place
+(the kit's inline toggle, saved within the row).
+
+Another return names the bank transaction it brought back -- its original --
+in `reverses_id`, the original names it in `reversed_by_id`
+(`Fin::ReturnOriginals`). The return's page shows the original. Its edit page
+offers the candidates as a field of the edit form: the opposite amount
+exactly (no partial returns), within 90 days before the return, of the side
+and ISO families the return's kind says, no return themselves and not linked
+to another return. They are ordered by a score -- 50 for the amount, plus the
+end-to-end id (50), the IBAN of the other party or the mandate (30), its name
+(10) and closeness in time (up to 10) -- that does not show; a candidate's
+"Merkmale" tooltip compares every feature, matched or not. A radio button
+chooses one (none is chosen unless linked), "keine Verknüpfung" unlinks, and a
+field beside takes the id of a bank transaction that is no proposal (it must
+still be a candidate); "Speichern" saves the choice. The original's bank
+transaction page shows "Zurückgekommen" with a link to the return. The
+accounting entry
 booked for it on the person's fee account (`accounting_entries` with
 `camt_transaction_id`) is derived from it; the Rückläufer list shows it in its
 Beitragsbuchung column and flags a return without one (preset "ohne

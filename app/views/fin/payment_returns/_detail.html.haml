@@ -8,17 +8,28 @@
 -#  The detail of a return (a bank transaction with a return reason,
 -#  doc/fin/detail_partials.md): the person, the return, the debit -- found by
 -#  the end-to-end id, else by the mandate reference, marked so; flagged when
--#  there is none --, its Sammler and order, the bank's references, and the
+-#  there is none --, its Sammler and order, the bank's references and codes, and the
 -#  accounting entry booked for it with the bank transaction itself. Shown on
 -#  the return's page and inside the Rückläufer list's row -- `ctx` says which.
 -#  The values come from Fin::PaymentDetailsHelper, the labels from
 -#  de.activerecord.attributes.wsjrdp_camt_transaction.
 -#
 -#  Locals: entry (a row of Fin::PaymentQueries.returns), ctx
+-#          editing:    the kit's edit mode -- nil a list row, false the
+-#                      reading page, true the edit page (Fin::ReturnEditing)
+-#          form_url:   the PATCH target -- the edit page, or a list row's
+-#                      inline edit; its presence makes status and comment
+-#                      editable
+-#          edit_url, cancel_url: as the detail kit takes them
+- editing = local_assigns.fetch(:editing, nil)
 = render "fin/payments/styles"
-= fin_detail(entry, ctx) do |d|
+= fin_detail(entry, ctx, editing: editing, form_url: local_assigns[:form_url], edit_url: local_assigns[:edit_url],
+    cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
   - d.header label: t("fin.payments.return_label", id: entry.id), title: entry.subject&.short_full_name_with_nickname
-  - d.attrs :subject, :return_date, :amount_cents, :return_reason, :return_status
+  - d.attrs :subject, :return_date, :amount_cents, :return_reason, :return_status, :comment,
+      **{comment: {blank: :dash}}.deep_merge(payment_return_edit_options(local_assigns[:form_url].present?))
   - d.attrs :debit, :payment_info, :payment_order
   - d.attrs :endtoend_id, :mandate_id, :description
+  - d.attrs :bank_transaction_code, :bank_transaction_code_dk,
+      bank_transaction_code: {span: 2}, bank_transaction_code_dk: {span: 2}
   - d.attrs :entry, :camt_transaction

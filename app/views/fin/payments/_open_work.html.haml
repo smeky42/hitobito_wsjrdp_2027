@@ -1,0 +1,39 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The open work of the Zahlungsverkehr overview (Fin::PaymentsOverview) as a
+-#  checklist: the points with something to do first, each a link to the list
+-#  it concerns, filtered on it, with its count in the warning colour; the
+-#  points done (0) folded into one line that opens them. The returns only for
+-#  whoever may see person-level payment data.
+-#
+-#  Locals: ov (Fin::PaymentsOverview)
+- items = []
+- if ov.person_level?
+  - items << [ov.returns_in_review_count, t("fin.payments.open_work.returns_in_review"), payment_returns_filtered_path(["status", "in", "in_review"])]
+  - items << [ov.returns[:without_entry_count], t("fin.payments.open_work.returns_without_entry"), payment_returns_filtered_path(["entry", "in", "nein"])]
+  - items << [ov.returns[:unassigned_count], t("fin.payments.open_work.returns_unassigned"), payment_returns_filtered_path(["assigned", "in", "nein"])]
+  - items << [ov.other_returns_unlinked_count, t("fin.payments.open_work.other_returns_unlinked"), "#{payment_returns_path}#other-returns"]
+- items << [ov.orders_without_credit_count, t("fin.payments.open_work.orders_without_credit"),
+  payment_orders_filtered_path(["kind", "in", WsjrdpPaymentInitiation::DIRECT_DEBIT], ["status", "in", "xml_generated"], ["bank", "in", "nein"])]
+- items << [ov.orders_credit_differs_count, t("fin.payments.open_work.orders_credit_differs"), payment_orders_filtered_path(["credit_differs", "in", "ja"])]
+- open, done = items.partition { |count, _, _| count.to_i.positive? }
+= render "fin/payments/styles"
+%h2.mt-4.mb-3= t("fin.payments.open_work.title")
+.payment-checklist.mb-4
+  - open.each do |count, label, url|
+    = link_to url, class: "payment-checklist-row text-reset text-decoration-none" do
+      %span= label
+      %span.badge.rounded-pill.text-bg-warning= payment_count(count.to_i)
+  - if done.any?
+    %details.payment-checklist-done
+      %summary.payment-checklist-row.text-muted
+        %span= open.any? ? t("fin.payments.open_work.done", count: done.size) : t("fin.payments.open_work.all_done", count: done.size)
+      - done.each do |_count, label, url|
+        = link_to url, class: "payment-checklist-row text-muted text-decoration-none" do
+          %span= label
+          %span.badge.rounded-pill.text-bg-light.border 0

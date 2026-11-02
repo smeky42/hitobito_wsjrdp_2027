@@ -26,9 +26,16 @@
 module Fin::PaymentQueries
   MANDATE_DAYS = 5
 
-  # A return, on the bank transactions aliased `camt`.
+  # A return of one of our direct debits (return, refund, reject or reversal,
+  # WsjrdpCamtTransaction#return_kind), on the bank transactions aliased `camt`.
   def self.return_condition(camt)
-    "#{camt}.return_reason IS NOT NULL AND #{camt}.deleted_at IS NULL AND #{camt}.replaced_by_id IS NULL"
+    "#{camt}.return_kind = 'direct_debit' AND #{camt}.deleted_at IS NULL AND #{camt}.replaced_by_id IS NULL"
+  end
+
+  # Any other payment that came back (a returned credit transfer, a refunded
+  # direct debit we were charged, ...), on the bank transactions aliased `camt`.
+  def self.other_return_condition(camt)
+    "#{camt}.return_kind <> 'direct_debit' AND #{camt}.deleted_at IS NULL AND #{camt}.replaced_by_id IS NULL"
   end
 
   # How a return found its debit (`notice.matched_by`).
@@ -311,6 +318,13 @@ module Fin::PaymentQueries
         "COALESCE(notice.info_id, wsjrdp_camt_transactions.direct_debit_payment_info_id) AS info_id",
         "entry.id AS return_entry_id")
       .joins(RETURN_NOTICE_JOIN).joins(RETURN_ENTRY_JOIN).joins(RETURN_PERSON_JOIN)
+  end
+
+  # Every other payment that came back (.other_return_condition) with its
+  # amount in cents.
+  def other_returns
+    WsjrdpCamtTransaction.where(Arel.sql(other_return_condition("wsjrdp_camt_transactions")))
+      .select("wsjrdp_camt_transactions.*", "#{return_cents("wsjrdp_camt_transactions")} AS amount_cents")
   end
 
   def return_totals(returns)

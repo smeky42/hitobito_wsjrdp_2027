@@ -7,8 +7,8 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# The Rückläufer dataset (Fin::PaymentReturnsController) for the generic CNF
-# filter, over Fin::PaymentQueries.returns (bank transactions). The quick
+# The Rücklastschriften dataset (Fin::PaymentReturnsController) for the
+# generic CNF filter, over Fin::PaymentQueries.returns (bank transactions). The quick
 # filters: the returns no debit and no order can be assigned to, those that
 # do not link their debit, and those without an accounting entry.
 module Fin::PaymentReturnsFilterSchema

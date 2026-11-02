@@ -286,7 +286,8 @@ inside the partial's form (`form_url:`), `input:` picks which one (`:text`,
 `:wide_text` for a long single-line value such as an IBAN, `:date` -- hitobito's
 date field with its datepicker --,
 `:textarea`, `:check_box`, `:select` with `options:` (`:wide_select` for options
-wider than the narrow select); the default is the amount
+wider than the narrow select), `:helper` for an input of its own -- `options:`
+names a helper, called with the form builder and the row; the default is the amount
 input). The amount input is a text field with a € suffix that shows the amount
 German-formatted, `1.234,56` (`Fin::MoneyInput.format`) — a number field cannot
 show thousands points. The budget writers of `WsjrdpBudgetable` read that text

@@ -20,20 +20,9 @@
   %p.text-muted= t("fin.payments.orders_lead")
 
   - ov = Fin::PaymentsOverview.new
-  - dd = ov.direct_debit_orders
-  .d-flex.flex-wrap.gap-3.mb-3
-    .border.rounded.p-3
-      .fs-3.fw-semibold= payment_count(dd.count)
-      .text-muted.small= t("fin.payments.tiles.direct_debit_orders")
-    .border.rounded.p-3
-      .fs-3.fw-semibold= payment_count(dd.transactions)
-      .text-muted.small= t("fin.payments.tiles.collected_debits")
-    .border.rounded.p-3
-      .fs-3.fw-semibold= safe_join(["Σ ", payment_cents(dd.sum_cents)])
-      .text-muted.small= t("fin.payments.tiles.collected_sum")
-    .border.rounded.p-3
-      .fs-3.fw-semibold.text-danger= safe_join(["Σ ", payment_cents(ov.direct_debit_returns[:return_sum_cents])])
-      .text-muted.small= t("fin.payments.tiles.returns_sum", count: payment_count(ov.direct_debit_returns[:return_count]))
+  .payment-tiles
+    = render "fin/payments/direct_debit_tiles", ov: ov, link: false
+    = render "fin/payments/next_collection", ov: ov
 
   = wsjrdp_expandable_table do |t|
     - t.rows payment_orders, id: "po"

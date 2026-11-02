@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_20_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1760,14 +1760,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_20_000100) do
     t.virtual "base_amount", type: :decimal, precision: 20, scale: 3, comment: "Sign-less base-currency amount", as: "abs(signed_base_amount)", stored: true
     t.virtual "debit_credit", type: :string, comment: "Debit/credit (C/D) derived from the ISO credit_debit_indication", as: "\nCASE\n    WHEN ((credit_debit_indication)::text = 'CRDT'::text) THEN 'C'::text\n    ELSE 'D'::text\nEND", stored: true
     t.bigint "direct_debit_pre_notification_id", comment: "The debit this bank transaction concerns: its return, or its single collection (TxDtls)"
+    t.virtual "bank_transaction_domain", type: :string, comment: "ISO Bank Transaction Code: Domain (e.g. PMNT), from bank_transaction_code", as: "NULLIF(split_part((bank_transaction_code)::text, '+'::text, 1), ''::text)", stored: true
+    t.virtual "bank_transaction_family", type: :string, comment: "ISO Bank Transaction Code: Family (e.g. IDDT), from bank_transaction_code", as: "NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text)", stored: true
+    t.virtual "bank_transaction_sub_family", type: :string, comment: "ISO Bank Transaction Code: SubFamily (e.g. UPDD), from bank_transaction_code", as: "NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text)", stored: true
+    t.virtual "gvc", type: :string, comment: "Geschäftsvorfallcode of the German banks (e.g. 109), from bank_transaction_code_dk", as: "NULLIF(split_part((bank_transaction_code_dk)::text, '+'::text, 2), ''::text)", stored: true
+    t.virtual "return_kind", type: :string, comment: "What came back: direct_debit, credit_transfer, received_credit_transfer, received_direct_debit, other; NULL for no return", as: "\nCASE\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = 'IDDT'::text) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['UPDD'::text, 'RCDD'::text, 'PRDD'::text]))) THEN 'direct_debit'::text\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = ANY (ARRAY['ICDT'::text, 'IRCT'::text])) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['RRTN'::text, 'XRTN'::text]))) THEN 'credit_transfer'::text\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = ANY (ARRAY['RCDT'::text, 'RRCT'::text])) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['RRTN'::text, 'XRTN'::text]))) THEN 'received_credit_transfer'::text\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = 'RDDT'::text) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['UPDD'::text, 'RCDD'::text, 'PRDD'::text]))) THEN 'received_direct_debit'::text\n    WHEN (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['UPCT'::text, 'UPCQ'::text, 'RRTN'::text, 'XRTN'::text])) THEN 'other'::text\n    WHEN ((return_reason IS NOT NULL) AND ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) IS NULL) OR (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = 'NTAV'::text))) THEN\n    CASE\n        WHEN (mandate_id IS NOT NULL) THEN 'direct_debit'::text\n        ELSE 'other'::text\n    END\n    WHEN (return_reason IS NOT NULL) THEN 'other'::text\n    ELSE NULL::text\nEND", stored: true
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
+    t.index ["bank_transaction_family", "bank_transaction_sub_family"], name: "index_wsjrdp_camt_transactions_btc_family_sub_family"
     t.index ["datev_booking_batch_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_batch_id"
     t.index ["datev_booking_id"], name: "index_wsjrdp_camt_transactions_on_datev_booking_id", unique: true
     t.index ["direct_debit_payment_info_id"], name: "index_wsjrdp_camt_transactions_on_direct_debit_payment_info_id"
     t.index ["direct_debit_pre_notification_id"], name: "idx_on_direct_debit_pre_notification_id_c68aaccc0f"
     t.index ["entry_id"], name: "index_wsjrdp_camt_transactions_on_entry_id"
+    t.index ["gvc"], name: "index_wsjrdp_camt_transactions_on_gvc"
     t.index ["payment_initiation_id"], name: "index_wsjrdp_camt_transactions_on_payment_initiation_id"
+    t.index ["return_kind"], name: "index_wsjrdp_camt_transactions_on_return_kind", where: "(return_kind IS NOT NULL)"
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
     t.check_constraint "base_currency::text = 'EUR'::text", name: "chk_wsjrdp_camt_tx_base_currency"
     t.check_constraint "credit_debit_indication::text = ANY (ARRAY['CRDT'::character varying::text, 'DBIT'::character varying::text])", name: "chk_wsjrdp_camt_tx_credit_debit_indication"
