@@ -141,6 +141,36 @@ describe Person::BankAccountController, type: :controller do
       expect(yp.reload.sepa_mandate_date).to eq(Date.new(2025, 9, 1))
     end
 
+    it "carries a new mandate reference into the announced debit, without the manage tier" do
+      update(person: account.merge(sepa_mandate_id: "wsjrdp2027#{yp.id}b"), debit_ids: [announced.id])
+
+      expect(announced.reload.mandate_id).to eq("wsjrdp2027#{yp.id}b")
+    end
+
+    it "hints at a new mandate for a new IBAN under the stored mandate reference" do
+      yp.update!(sepa_iban: "DE02120300000000202051")
+
+      get :edit, params: {person_id: yp.id, format: :turbo_stream}
+      html = Capybara.string(Nokogiri::HTML(response.body).at("template").inner_html)
+      expect(html).to have_css("[data-sepa-mandate-id-hint][hidden]", visible: :all)
+      expect(html).to have_css("input[data-sepa-iban='DE02120300000000202051']")
+
+      # A refused save shows the form as typed: new IBAN, same reference.
+      update(person: account.merge(sepa_mandate_date: "31.02.2026"))
+      html = Capybara.string(Nokogiri::HTML(response.body).at("template").inner_html)
+      expect(html).to have_css("[data-sepa-mandate-id-hint]:not([hidden])",
+        text: I18n.t("people.sepa_account.mandate_id_new_account", id: yp.id))
+    end
+
+    it "saves a new IBAN under the stored mandate reference all the same" do
+      yp.update!(sepa_iban: "DE02120300000000202051")
+
+      update
+
+      expect(response).to have_http_status(:ok)
+      expect(yp.reload.sepa_iban).to eq("DE89370400440532013000")
+    end
+
     it "refuses an invalid IBAN and keeps everything" do
       update(person: account.merge(sepa_iban: "DE00 1234"), debit_ids: [announced.id])
 
@@ -204,6 +234,35 @@ describe Person::BankAccountController, type: :controller do
 
     expect(yp.reload.sepa_mandate_date).to eq(Date.new(2026, 10, 20))
     expect(announced.reload.mandate_date).to eq(Date.new(2026, 10, 20))
+  end
+
+  context "for an admin whose session works at the read tier" do
+    let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+
+    before do
+      sign_in(admin)
+      session[:max_finance_permission] = "finance_read"
+    end
+
+    it "names the announced debits it may not change, without offering them" do
+      get :edit, params: {person_id: yp.id, format: :turbo_stream}
+
+      html = Capybara.string(Nokogiri::HTML(response.body).at("template").inner_html)
+      expect(html).to have_no_field("debit_ids_#{announced.id}")
+      expect(html).to have_text(I18n.t("people.sepa_account.announced_locked"))
+    end
+
+    it "saves the account, but not in the announced debit" do
+      update
+
+      expect(yp.reload.sepa_iban).to eq("DE89370400440532013000")
+      expect(announced.reload.dbtr_iban).to eq("DE02120300000000202051")
+    end
+
+    it "refuses an announced debit sent along" do
+      expect { update(debit_ids: [announced.id]) }.to raise_error(CanCan::AccessDenied)
+      expect(announced.reload.dbtr_iban).to eq("DE02120300000000202051")
+    end
   end
 
   it "is closed to the audit tier" do

@@ -8,7 +8,8 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 # Changes the bank account of a person. Optionally also in the
-# person's pre notified direct debits
+# person's pre notified direct debits -- those the viewer may :update
+# (Fin::DebitEditing), with the account and the mandate (reference and date).
 class Person::BankAccountController < ApplicationController
   ATTRS = %i[sepa_name sepa_address sepa_mail sepa_iban sepa_bic sepa_mandate_id sepa_mandate_date].freeze
   DEBIT_ATTRS = {dbtr_name: :sepa_name, dbtr_address: :sepa_address, dbtr_iban: :sepa_iban,
@@ -16,7 +17,8 @@ class Person::BankAccountController < ApplicationController
 
   before_action :authorize_action
 
-  helper_method :person, :announced_debits, :comment, :selected_debit_ids, :previous_mandate_date
+  helper_method :person, :editable_debits, :locked_debits, :comment, :selected_debit_ids, :previous_mandate_date,
+    :stored_account, :mandate_id_kept_for_new_iban?
 
   def edit
   end
@@ -41,7 +43,9 @@ class Person::BankAccountController < ApplicationController
   end
 
   def update
+    authorize_selected_debits
     previous_mandate_date
+    stored_account
     person.attributes = account_params
     if [mandate_id_valid?, mandate_date_valid?].all? && save_account
       leave_form
@@ -65,6 +69,12 @@ class Person::BankAccountController < ApplicationController
     @announced_debits ||= person.direct_debit_pre_notifications.where(payment_status: "pre_notified").to_a
   end
 
+  # The announced debits the viewer may change, and those they may not (the
+  # form names them, the account does not reach them).
+  def editable_debits = @editable_debits ||= announced_debits.select { |debit| can?(:update, debit) }
+
+  def locked_debits = announced_debits - editable_debits
+
   # IBAN and BIC without spaces and upper case, as the SEPA files write them;
   # the IBAN is validated by the person (Person#validate_iban_format).
   def account_params
@@ -85,15 +95,32 @@ class Person::BankAccountController < ApplicationController
     @previous_mandate_date = person.sepa_mandate_date
   end
 
+  # IBAN and mandate reference as stored before this change.
+  def stored_account
+    @stored_account ||= {iban: person.sepa_iban.to_s.gsub(/\s+/, "").upcase, mandate_id: person.sepa_mandate_id}
+  end
+
+  # A new IBAN under the stored mandate reference (the form's hint).
+  def mandate_id_kept_for_new_iban?
+    iban = person.sepa_iban.to_s.gsub(/\s+/, "").upcase
+    iban.present? && iban != stored_account[:iban] && person.sepa_mandate_id == stored_account[:mandate_id]
+  end
+
   def signed_on
     ActiveModel::Type::Date.new.cast(params[:signed_on].presence) || person.sepa_mandate_date || Time.zone.today
   end
 
-  # Without a form submitted (edit) all announced debits are preselected.
+  # Without a form submitted (edit) all editable debits are preselected.
   def selected_debit_ids
-    return announced_debits.map(&:id) unless params.key?(:person)
+    return editable_debits.map(&:id) unless params.key?(:person)
 
-    Array(params[:debit_ids]).map(&:to_i) & announced_debits.map(&:id)
+    Array(params[:debit_ids]).map(&:to_i) & editable_debits.map(&:id)
+  end
+
+  # A debit sent along that the viewer may not change is refused.
+  def authorize_selected_debits
+    requested = Array(params[:debit_ids]).map(&:to_i)
+    locked_debits.each { |debit| authorize!(:update, debit) if requested.include?(debit.id) }
   end
 
   # A mandate date that is no date would be dropped and fall back to the
@@ -117,21 +144,21 @@ class Person::BankAccountController < ApplicationController
     Person.transaction do
       raise ActiveRecord::Rollback unless person.save
 
-      @updated_debits = announced_debits.select { |debit| selected_debit_ids.include?(debit.id) }
-      @updated_debits.each { |debit| debit.update!(debit_changes(debit)) }
+      @updated_debits = editable_debits.select { |debit| selected_debit_ids.include?(debit.id) }
+      @updated_debits.each { |debit| debit.update!(debit_changes) }
       Note.create!(subject: person, author: current_user, text: note_text) if comment.present?
       true
     end
   end
 
-  # The account in the debit; the mandate reference only where the viewer may
-  # change it there (Fin::DebitEditing: the manage tier).
-  def debit_changes(debit)
+  # The account and the mandate in the debit: a new account comes with its
+  # own mandate, reference and date together.
+  def debit_changes
     changes = DEBIT_ATTRS.transform_values { |attr| person.public_send(attr) }
     changes[:dbtr_iban] = Wsjrdp2027::SepaAccount.iban(person)
     changes[:dbtr_bic] = Wsjrdp2027::SepaAccount.bic(person).presence
     changes[:mandate_date] = person.sepa_mandate_date
-    changes[:mandate_id] = person.sepa_mandate_id if can?(:admin_finance, debit)
+    changes[:mandate_id] = person.sepa_mandate_id
     changes
   end
 

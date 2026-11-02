@@ -9,13 +9,12 @@
 
 # What the edit pages of a debit (/fin/payments/debits/:id/edit and
 # /fin/pn/:id/edit, Fin::DebitPages) let change: while it is only announced
-# (pre_notified), its payment data; once it is in a SEPA file or skipped, the
-# comment alone. The order, Sammler and group header hold the sequence type,
-# the collection date, the creditor and the creditor id; the status follows
-# the run. The manage tier (:admin_finance on the pre-notification)
-# may also set its status, in any status, and -- while it is only announced --
-# its mandate reference. Each field with the input it gets
-# (Fin::DetailHelper).
+# (pre_notified), its payment data, the mandate (reference and date) with it;
+# once it is in a SEPA file or skipped, the comment alone. The order, Sammler
+# and group header hold the sequence type, the collection date, the creditor
+# and the creditor id; the status follows the run. The manage tier
+# (:admin_finance on the pre-notification) may also set its status, in any
+# status. Each field with the input it gets (Fin::DetailHelper).
 module Fin::DebitEditing
   PRE_NOTIFIED = "pre_notified"
 
@@ -29,13 +28,12 @@ module Fin::DebitEditing
     dbtr_iban: :wide_text,
     dbtr_bic: :text,
     dbtr_address: :wide_text,
+    mandate_id: :wide_text,
     mandate_date: :date
   }.freeze
 
-  # What the manage tier may change on top: the status always, the mandate
-  # reference while only announced.
+  # What the manage tier may change on top: the status, always.
   MANAGE_ALWAYS = {payment_status: :wide_select}.freeze
-  MANAGE_WHILE_PRE_NOTIFIED = {mandate_id: :wide_text}.freeze
 
   AFTERWARDS = {comment: :textarea}.freeze
 
@@ -48,7 +46,7 @@ module Fin::DebitEditing
     fields = pre_notified ? WHILE_PRE_NOTIFIED : AFTERWARDS
     return fields unless manage
 
-    fields.merge(MANAGE_ALWAYS).merge(pre_notified ? MANAGE_WHILE_PRE_NOTIFIED : {})
+    fields.merge(MANAGE_ALWAYS)
   end
 
   # The statuses a debit can be set to, as the select offers them
