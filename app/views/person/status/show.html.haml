@@ -13,6 +13,7 @@
     - if @person.ist?
       = labeled_attr(@person, :is_preallocated_ist)
     = labeled_attr(@person, :unit_code)
+    = labeled_attr(@person, :late_confirmation_issue)
   = render_attrs_list do
     = labeled_attr(@person, :deregistration_issue)
     = labeled(@person.deregistration_requested_date_label) do

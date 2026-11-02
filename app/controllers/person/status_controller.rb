@@ -27,6 +27,7 @@ class Person::StatusController < ApplicationController
     :deregistration_requested_date,
     :deregistration_effective_date,
     :debit_return_issue,
+    :late_confirmation_issue,
     :payment_role,
     :wsj_role,
     :is_preallocated_ist

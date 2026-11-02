@@ -55,6 +55,19 @@ describe Person::StatusController, type: :controller do
     end
   end
 
+  it "saves the late confirmation ticket into the person log and shows it as a link when editing" do
+    with_versioning do
+      put :update, params: {group_id: person.primary_group_id, id: person.id,
+                            person: {late_confirmation_issue: "HELP-42"}}
+    end
+
+    expect(person.reload.late_confirmation_issue).to eq("HELP-42")
+    expect(person.versions.reorder(:id).last.changeset.keys).to include("late_confirmation_issue")
+
+    get :edit, params: {group_id: person.primary_group_id, id: person.id}
+    expect(response.body).to include("https://helpdesk.worldscoutjamboree.de/browse/HELP-42")
+  end
+
   describe "total fee reduction" do
     before { person.update!(wsjrdp_total_fee_reduction: 500, wsjrdp_total_fee_reduction_hint: "Härtefall") }
 

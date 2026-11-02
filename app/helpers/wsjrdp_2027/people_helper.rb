@@ -363,6 +363,10 @@ module Wsjrdp2027::PeopleHelper
     auto_link_escaped_multiline(person.deregistration_issue) if person.deregistration_issue.present?
   end
 
+  def format_person_late_confirmation_issue(person)
+    auto_link_escaped_multiline(person.late_confirmation_issue) if person.late_confirmation_issue.present?
+  end
+
   def format_person_debit_return_issue(person)
     auto_link_escaped_multiline(person.debit_return_issue) if person.debit_return_issue.present?
   end

@@ -14,6 +14,8 @@
       - if @person.ist?
         = f.labeled_boolean_field :is_preallocated_ist
       = f.labeled_input_field :unit_code
+      - late_confirmation_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.late_confirmation_issue) unless @person.late_confirmation_issue.blank?
+      = f.labeled_input_field :late_confirmation_issue, help_inline: late_confirmation_issue_help
     = field_set_tag do
       - deregistration_issue_help = "Bisheriger Wert: ".html_safe + auto_link_escaped_multiline(@person.deregistration_issue) unless @person.deregistration_issue.blank?
       = f.labeled_input_fields :deregistration_issue, help_inline: deregistration_issue_help
