@@ -158,9 +158,12 @@
     var KEY = "wsjrdp.exptbl.scroll";
     function remember() { try { sessionStorage.setItem(KEY, String(window.scrollY || document.documentElement.scrollTop || 0)); } catch (e) {} }
     // A control inside a turbo frame navigates the frame, not the page --
-    // unless it targets the page itself --, so there is nothing to keep.
+    // unless it or its frame targets the page itself --, so there is nothing
+    // to keep.
     function reloadsPage(el) {
-      return !el.closest("turbo-frame") || el.getAttribute("data-turbo-frame") === "_top";
+      var frame = el.closest("turbo-frame");
+      var target = el.getAttribute("data-turbo-frame") || (frame && frame.getAttribute("target"));
+      return !frame || target === "_top";
     }
     document.addEventListener("click", function (e) {
       var link = e.target.closest(".bk-pagination a, a.exp-sort, .flt-presets a, .exp-view a");
