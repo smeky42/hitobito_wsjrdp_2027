@@ -9,8 +9,15 @@
 -#  (Fin::DirectDebitsSection): the debits table without the order column,
 -#  filtered on its own; nothing without :log on WsjrdpFinAccount.
 -#
+-#
+-#  The host page wraps its detail in the record's detail frame. A frame of its
+-#  own with target _top makes the section's quick-select, filter and sort
+-#  navigate the whole page instead of that frame -- whose frame response is the
+-#  embedded detail, without this section.
+-#
 -#  Locals: apply_url (the host's apply_debits route)
 - if section_debits?
-  %h2.h5.mt-4= t("fin.tabs.direct_debits")
-  = render "fin/direct_debits/table", rows: section_debits, totals: section_debit_totals, id: "d",
-    apply_url: apply_url, columns: direct_debit_table_columns.reject { |col| col[:key] == "order" }
+  = turbo_frame_tag "debits-section", target: "_top" do
+    %h2.h5.mt-4= t("fin.tabs.direct_debits")
+    = render "fin/direct_debits/table", rows: section_debits, totals: section_debit_totals, id: "d",
+      apply_url: apply_url, columns: direct_debit_table_columns.reject { |col| col[:key] == "order" }
