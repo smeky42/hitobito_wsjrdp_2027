@@ -24,6 +24,9 @@ module Fin::MoneyHelper
   # break, so what joins them is a non-breaking space.
   NBSP = "\u00A0"
 
+  # The narrow non-breaking space of #fin_money_compact.
+  NNBSP = "\u202F"
+
   # The symbol of a currency code, the code itself when there is none. A module
   # function as well, because ContractHelper#format_cents_de reads the same map
   # and is included in models, where a view helper is not available.
@@ -39,5 +42,17 @@ module Fin::MoneyHelper
     number = number_to_currency(amount, separator: ",", delimiter: ".", format: "%n")
     symbol = fin_currency_symbol(currency)
     symbol.present? ? "#{number}#{NBSP}#{symbol}" : number
+  end
+
+  # The compact form for lists of amounts inside a text ("2× 400 €"): the
+  # decimals only where they are not all zero, and a narrow non-breaking space
+  # before the symbol -- "400 €", "-504,47 €".
+  def fin_money_compact(amount, currency = "EUR")
+    return nil if amount.blank?
+
+    precision = (amount.to_d % 1).zero? ? 0 : 2
+    number = number_to_currency(amount, separator: ",", delimiter: ".", format: "%n", precision: precision)
+    symbol = fin_currency_symbol(currency)
+    symbol.present? ? "#{number}#{NNBSP}#{symbol}" : number
   end
 end

@@ -62,4 +62,14 @@ describe Fin::MoneyHelper do
       expect(helper.fin_money("")).to be_nil
     end
   end
+
+  describe "an amount in compact form" do
+    it "drops decimals that are all zero and joins the symbol with a narrow non-breaking space" do
+      expect(helper.fin_money_compact(400)).to eq("400\u202F€")
+      expect(helper.fin_money_compact(-2700.0)).to eq("-2.700\u202F€")
+      expect(helper.fin_money_compact(BigDecimal("-504.47"))).to eq("-504,47\u202F€")
+      expect(helper.fin_money_compact(12.5)).to eq("12,50\u202F€")
+      expect(helper.fin_money_compact(nil)).to be_nil
+    end
+  end
 end

@@ -13,6 +13,10 @@
 # Fin::PaymentReturnsColumns), and the sums of their footers. The rows are
 # the relations of Fin::PaymentQueries, whose figures arrive as attributes.
 module Fin::PaymentsHelper
+  # How many amounts a breakdown names at first, and how many more each click
+  # on its "mehr" shows (#payment_count_with_breakdown).
+  BREAKDOWN_LIMIT = 20
+
   # The order statuses under which the bank has the SEPA file, so a credit is
   # due.
   CREDIT_DUE_STATUSES = %w[xml_generated].freeze
@@ -42,9 +46,21 @@ module Fin::PaymentsHelper
       "sum" => ->(order) {
         payment_order_stack(order, payment_cents(order.control_sum_cents)) { |info| payment_cents(info.control_sum_cents) }
       },
+      "pre_notified_count" => ->(order) {
+        payment_announced_cell(order, payment_count(order.notice_count), order.notice_count == order.number_of_transactions)
+      },
+      "pre_notified_sum" => ->(order) {
+        payment_announced_cell(order, payment_cents(order.pre_notified_sum_cents),
+          order.pre_notified_sum_cents == order.control_sum_cents)
+      },
+      "return_count" => ->(order) {
+        payment_order_stack(order, payment_return_count(order.return_count)) { |info|
+          payment_count(info.return_count) if info.return_count.to_i.positive?
+        }
+      },
       "returns" => ->(order) {
-        payment_order_stack(order, payment_returns_cell(order.return_count, order.return_sum_cents)) { |info|
-          payment_returns_cell(info.return_count, info.return_sum_cents)
+        payment_order_stack(order, payment_return_sum(order.return_count, order.return_sum_cents)) { |info|
+          payment_return_sum(info.return_count, info.return_sum_cents) if info.return_count.to_i.positive?
         }
       },
       "status" => ->(order) { payment_status_label(order.status) },
@@ -65,7 +81,7 @@ module Fin::PaymentsHelper
       "order" => ->(debit) { payment_order_link(debit.payment_initiation_id) },
       "collection_date" => ->(debit) { fin_date(debit.collection_date) },
       "sequence" => ->(debit) { debit.debit_sequence_type },
-      "amount" => ->(debit) { payment_cents(debit.amount_cents) },
+      "amount" => ->(debit) { payment_debit_amount_cell(debit) },
       "pre_notified_amount" => ->(debit) { payment_pre_notified_cell(debit) },
       "status" => ->(debit) { payment_status_label(debit.payment_status) },
       "entry" => ->(debit) { payment_entry_mark(debit.entry_id) },
@@ -110,7 +126,8 @@ module Fin::PaymentsHelper
       "sequence" => ->(info) { info.debit_sequence_type },
       "count" => ->(info) { payment_count(info.number_of_transactions) },
       "sum" => ->(info) { payment_cents(info.control_sum_cents) },
-      "returns" => ->(info) { payment_returns_cell(info.return_count, info.return_sum_cents) },
+      "return_count" => ->(info) { payment_return_count(info.return_count) },
+      "returns" => ->(info) { payment_return_sum(info.return_count, info.return_sum_cents) },
       "bank" => ->(info) { payment_info_credit_cell(info) },
       "creditor_id" => ->(info) { content_tag(:span, info.creditor_id, class: "font-monospace") }
     }
@@ -137,7 +154,8 @@ module Fin::PaymentsHelper
     case col[:key]
     when "count" then payment_count(totals[:count])
     when "sum" then payment_cents(totals[:sum_cents])
-    when "returns" then payment_returns_cell(totals[:return_count], totals[:return_sum_cents])
+    when "return_count" then payment_return_count(totals[:return_count])
+    when "returns" then payment_return_sum(totals[:return_count], totals[:return_sum_cents])
     end
   end
 
@@ -169,15 +187,106 @@ module Fin::PaymentsHelper
     case col[:key]
     when "count" then payment_count(totals[:count])
     when "sum" then payment_cents(totals[:sum_cents])
-    when "returns" then payment_returns_cell(totals[:return_count], totals[:return_sum_cents])
+    when "pre_notified_count"
+      payment_announced_total(payment_count(totals[:pre_notified_count]), totals[:pre_notified_count] == totals[:count])
+    when "pre_notified_sum"
+      payment_announced_total(payment_cents(totals[:pre_notified_sum_cents]),
+        totals[:pre_notified_sum_cents] == totals[:sum_cents])
+    when "return_count" then payment_return_count(totals[:return_count])
+    when "returns" then payment_return_sum(totals[:return_count], totals[:return_sum_cents])
     end
   end
 
-  def direct_debit_footer(col, totals)
-    case col[:key]
-    when "amount" then payment_cents(totals[:sum_cents])
-    when "return" then payment_returns_cell(totals[:return_count], totals[:return_sum_cents])
+  # The returns of the orders and the Sammler list in two columns: how many -- a muted 0
+  # without any --, and their (negative) sum in red, a muted dash without any;
+  # a Sammler's stacked line without any shows the stack's dash in both.
+  def payment_return_count(count)
+    count.to_i.positive? ? payment_count(count) : content_tag(:span, "0", class: "text-muted")
+  end
+
+  def payment_return_sum(count, sum_cents)
+    return content_tag(:span, "–", class: "text-muted") unless count.to_i.positive?
+
+    content_tag(:span, payment_cents(sum_cents), class: "text-danger")
+  end
+
+  # What an order's pre-notifications announced, in the orange of the finance
+  # pages where it differs from what the SEPA file collects; nothing for an
+  # order without any (a credit transfer).
+  def payment_announced_cell(order, text, same)
+    return nil unless order.notice_count.to_i.positive?
+
+    payment_announced_total(text, same)
+  end
+
+  def payment_announced_total(text, same)
+    return text if same
+
+    content_tag(:span, text, class: "payment-amount-lower", title: t("fin.payments.announced_differs"))
+  end
+
+  # The lines under a debits table: how many, what was announced, how much of
+  # it was collected, skipped or is still open, and the returns. Parts without
+  # debits are left out.
+  def direct_debit_totals_lines(totals)
+    scope = "fin.payments.debit_totals"
+    parts = %i[collected skipped open].filter_map do |key|
+      next unless totals[:"#{key}_count"].positive?
+
+      t("#{scope}.#{key}", amount: payment_cents(totals[:"#{key}_cents"]), count: payment_count(totals[:"#{key}_count"]))
     end
+    lines = [t("#{scope}.announced", debits: t("fin.payments.debits_shown", count: totals[:count]),
+      amount: payment_cents(totals[:announced_cents]))]
+    lines << parts.join(" · ") if parts.any?
+    if totals[:return_count].positive?
+      lines << t("#{scope}.returns", amount: payment_cents(totals[:return_sum_cents]),
+        count: payment_count(totals[:return_count]))
+    end
+    lines
+  end
+
+  # The amount a debit collects (fin/payments/_styles): the collected one,
+  # nothing for a skipped one, the planned one while it is only announced.
+  # Where it differs from the announced amount, that one stands struck through
+  # in front, and the colour tells the case: orange less, red more, blue still
+  # planned, muted skipped. The tooltip names announced, actual and the
+  # difference.
+  def payment_debit_amount_cell(debit)
+    announced = debit.pre_notified_amount_cents
+    actual = payment_debit_actual_cents(debit)
+    return payment_cents(actual) if announced.nil? || announced == actual
+
+    kind = payment_debit_amount_kind(debit, announced, actual)
+    parts = [content_tag(:s, payment_cents(announced), class: "payment-amount-announced"),
+      content_tag(:span, payment_cents(actual))]
+    parts << icon(:"exclamation-triangle") if kind == "higher"
+    content_tag(:span, safe_join(parts, " "), class: ["payment-amount-differs", "payment-amount-#{kind}"],
+      title: payment_debit_amount_tooltip(debit, announced, actual))
+  end
+
+  def payment_debit_actual_cents(debit)
+    (debit.payment_status == "skipped") ? 0 : debit.amount_cents
+  end
+
+  def payment_debit_amount_kind(debit, announced, actual)
+    return "skipped" if debit.payment_status == "skipped"
+    return "planned" if debit.payment_status == Fin::DebitEditing::PRE_NOTIFIED
+
+    (actual > announced) ? "higher" : "lower"
+  end
+
+  # Announced, actual and -- unless the actual is nothing -- the difference,
+  # one per line.
+  def payment_debit_amount_tooltip(debit, announced, actual)
+    scope = "fin.payments.debit_amount_tooltip"
+    actual_key = (debit.payment_status == Fin::DebitEditing::PRE_NOTIFIED) ? "planned" : "collected"
+    lines = [t("#{scope}.announced", amount: payment_cents(announced)),
+      t("#{scope}.#{actual_key}", amount: payment_cents(actual))]
+    unless actual.zero?
+      diff = actual - announced
+      lines << t("#{scope}.difference", amount: "#{"+" if diff.positive?}#{payment_cents(diff)}")
+    end
+    lines.join("\n")
   end
 
   def payment_return_footer(col, totals)
@@ -220,12 +329,50 @@ module Fin::PaymentsHelper
   def payment_sequences(types)
     return nil if types.blank?
 
-    safe_join(types.split.map { |type| content_tag(:span, type, class: "badge text-bg-light border me-1") })
+    safe_join(types.split.map { |type| content_tag(:span, type, class: "badge text-bg-light border me-1 payment-seq-badge") })
   end
 
   def payment_count(count) = count && number_with_delimiter(count, delimiter: ".")
 
   def payment_cents(cents) = cents && fin_money(cents.to_d / 100)
+
+  # A figure with the announced one beside it, muted and light in brackets
+  # -- "(vorab informiert: …)" (fin/payments/_styles); the figure alone
+  # without an announced one.
+  def payment_with_announced(text, announced)
+    return text if announced.nil?
+
+    note = content_tag(:span, "(#{t("fin.payments.pre_notified_note", amount: announced)})",
+      class: "payment-pre-notified text-muted fw-light")
+    content_tag(:span, safe_join([content_tag(:span, text), note]), class: "payment-amount-with-note")
+  end
+
+  # A count and, a gap apart, its sum ("Σ …"); where the sum is made of more
+  # than one amount, below it small and muted its amounts, the most frequent
+  # first ("k× amount · …"; `amounts`: [cents, count] pairs in that order).
+  # The first `limit` show; the rest wait behind a "mehr" button that shows
+  # `limit` more per click (fin/payments/_styles). A count of 0 stands alone.
+  def payment_count_with_breakdown(count, sum_html, amounts, limit: BREAKDOWN_LIMIT)
+    return payment_count(count) unless count.positive?
+
+    line = content_tag(:span, safe_join([content_tag(:span, payment_count(count)), sum_html]),
+      class: "payment-amount-with-note")
+    return line unless amounts.size > 1
+
+    safe_join([line, payment_breakdown(amounts, limit)])
+  end
+
+  def payment_breakdown(amounts, limit)
+    items = amounts.each_with_index.map do |(cents, n), i|
+      content_tag(:span, "#{" · " if i.positive?}#{payment_count(n)}×#{Fin::MoneyHelper::NBSP}#{fin_money_compact(cents.to_d / 100)}",
+        class: "payment-breakdown-item", hidden: i >= limit)
+    end
+    if amounts.size > limit
+      items << content_tag(:button, t("fin.payments.breakdown_more"), type: "button",
+        class: "payment-breakdown-more btn btn-link btn-sm p-0 align-baseline")
+    end
+    content_tag(:div, safe_join(items), class: "payment-breakdown text-muted small", data: {step: limit})
+  end
 
   # The returns of an order or a debit: how many and their (negative) sum;
   # empty without any.
@@ -314,9 +461,11 @@ module Fin::PaymentsHelper
     payment_credit_cell(info, due: CREDIT_DUE_STATUSES.include?(info.order_status))
   end
 
-  # The credit's value date, linked to the (first) bank transaction, with the
-  # count where there are several; in the warning colour where the credits do
-  # not add up to the control sum, or where a due one is missing.
+  # The credit as "#id value-date", linked to the (first) bank transaction,
+  # with the count where there are several -- as large in a Sammler's stacked
+  # line as in a row of its own (fin/payments/_styles); in the warning colour
+  # where the credits do not add up to the control sum, or where a due one is
+  # missing.
   def payment_credit_cell(record, due:)
     if record.credit_count.to_i.zero?
       return payment_mark(nil) unless due
@@ -325,14 +474,36 @@ module Fin::PaymentsHelper
         class: "text-warning", title: t("fin.payments.no_credit_hint"))
     end
 
-    text = fin_date(record.credit_date)
+    text = "##{record.credit_id} #{fin_date(record.credit_date)}"
     text = "#{text} (#{record.credit_count} ×)" if record.credit_count.to_i > 1
-    link = link_to(text, wsjrdp_camt_transaction_path(record.credit_id), data: {turbo_frame: "_top"})
+    link = link_to(text, wsjrdp_camt_transaction_path(record.credit_id), class: "payment-credit-link",
+      data: {turbo_frame: "_top"})
     return link if record.credit_sum_cents.to_i == record.control_sum_cents.to_i
 
     content_tag(:span, safe_join([icon(:"exclamation-triangle"), link], " "), class: "text-warning",
       title: t("fin.payments.credit_differs", credit: payment_cents(record.credit_sum_cents),
         control: payment_cents(record.control_sum_cents)))
+  end
+
+  # Every bank credit of an order, linked to the bank transaction: "#id
+  # amount sequence-type value-date", side by side where there is room, a
+  # line break only between two credits. Without credits, and
+  # where they do not add up to the control sum, as #payment_order_credit_cell
+  # has it.
+  def payment_order_credits_list(order)
+    return payment_order_credit_cell(order) if order.credit_count.to_i.zero?
+
+    lines = Fin::PaymentQueries.order_credits(order.id).map do |credit|
+      text = ["##{credit.id}", fin_money_compact(credit.amount_cents.to_d / 100), credit.debit_sequence_type,
+        fin_date(credit.value_date)].compact.join(" ")
+      link_to(text, wsjrdp_camt_transaction_path(credit.id), class: "text-nowrap", data: {turbo_frame: "_top"})
+    end
+    list = content_tag(:span, safe_join(lines, " · "))
+    return list if order.credit_sum_cents.to_i == order.control_sum_cents.to_i
+
+    content_tag(:div, safe_join([icon(:"exclamation-triangle"), list], " "), class: "text-warning d-flex gap-1",
+      title: t("fin.payments.credit_differs", credit: payment_cents(order.credit_sum_cents),
+        control: payment_cents(order.control_sum_cents)))
   end
 
   # The accounting entry booked for a return, a tick linked to it; none in the

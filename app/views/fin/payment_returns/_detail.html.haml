@@ -17,8 +17,7 @@
 -#  Locals: entry (a row of Fin::PaymentQueries.returns), ctx
 = render "fin/payments/styles"
 = fin_detail(entry, ctx) do |d|
-  - d.header back: payment_returns_path, back_label: t("fin.payments.back_to", tab: t("fin.tabs.payment_returns")),
-      label: t("fin.payments.return_label", id: entry.id), title: entry.subject&.short_full_name_with_nickname
+  - d.header label: t("fin.payments.return_label", id: entry.id), title: entry.subject&.short_full_name_with_nickname
   - d.attrs :subject, :return_date, :amount_cents, :return_reason, :return_status
   - d.attrs :debit, :payment_info, :payment_order
   - d.attrs :endtoend_id, :mandate_id, :description

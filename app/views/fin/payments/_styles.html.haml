@@ -11,10 +11,16 @@
 -#  fits, a gap apart, else on a line of its own, flush with the amount (a
 -#  flex row's column gap separates only what shares a line) --, an amount
 -#  that differs from the collected one in the orange of the finance pages
--#  (fin/_person_status_styles); dates and times with digits of one width; the
+-#  (fin/_person_status_styles); a debit's amount that differs from the
+-#  announced one (Fin::PaymentsHelper#payment_debit_amount_cell) with the
+-#  announced one small and struck through in front -- on a line of its own
+-#  where the column has no room --, coloured by the case; dates and times with digits of one width; the
 -#  per-Sammler lines under an order's value (Fin::PaymentsHelper#payment_order_stack),
 -#  small and muted, their row aligned to the top so every cell's first line is
--#  the order's.
+-#  the order's; sequence type badges as small in a row of their own as in
+-#  those lines. Also the "mehr" button of an amounts breakdown
+-#  (Fin::PaymentsHelper#payment_count_with_breakdown): each click shows the
+-#  next data-step hidden amounts and goes away once none is left.
 - unless @payment_styles_rendered
   - @payment_styles_rendered = true
   :css
@@ -22,6 +28,30 @@
     .payment-pre-notified { display: inline-block; white-space: nowrap; }
     .payment-tabular { font-variant-numeric: tabular-nums; }
     .payment-pre-notified-differs { color: #e8590c; font-weight: 600; }
+    .payment-amount-differs { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; column-gap: .3em; white-space: nowrap; }
+    .payment-amount-announced { font-size: .8em; font-weight: 300; color: var(--bs-secondary-color, #6c757d); }
+    .payment-amount-lower { color: #e8590c; }
+    .payment-amount-higher { color: var(--bs-danger); }
+    .payment-amount-planned { color: var(--bs-primary); }
+    .payment-amount-skipped { color: var(--bs-secondary-color, #6c757d); }
     .payment-stack-line { font-size: .8em; line-height: 1.5; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; }
     .payment-stack-head { white-space: nowrap; }
+    .payment-seq-badge { font-size: .525rem; }
+    .payment-credit-link { white-space: nowrap; }
+    .payment-stack-line .payment-credit-link { font-size: 1.25em; }
     tr:has(.payment-stack-head) > td { vertical-align: top; }
+    .payment-breakdown-more { font-size: inherit; margin-left: .4em; vertical-align: baseline; }
+  :javascript
+    (function () {
+      if (window.__paymentBreakdownMore) return;
+      window.__paymentBreakdownMore = true;
+      document.addEventListener("click", function (e) {
+        var button = e.target.closest(".payment-breakdown-more");
+        if (!button) return;
+        var box = button.closest(".payment-breakdown");
+        var hidden = box.querySelectorAll(".payment-breakdown-item[hidden]");
+        var step = parseInt(box.dataset.step, 10) || hidden.length;
+        for (var i = 0; i < Math.min(step, hidden.length); i++) hidden[i].hidden = false;
+        if (hidden.length <= step) button.remove();
+      });
+    })();

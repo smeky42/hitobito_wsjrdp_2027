@@ -162,7 +162,8 @@ describe "Zahlungsverkehr", type: :request do
 
     it "sums a whole list" do
       totals = Fin::PaymentQueries.order_totals(Fin::PaymentQueries.orders.where(id: [debit_order, transfer_order]))
-      expect(totals).to eq(count: 3, sum_cents: 35_000, return_count: 1, return_sum_cents: -20_000)
+      expect(totals).to eq(count: 3, sum_cents: 35_000, pre_notified_count: 2, pre_notified_sum_cents: 30_000,
+        return_count: 1, return_sum_cents: -20_000)
     end
   end
 
@@ -182,12 +183,21 @@ describe "Zahlungsverkehr", type: :request do
       get payment_orders_path
 
       expect(response).to have_http_status(:ok)
+      expect(html).to have_css(".border.rounded", text: /^1\s*Lastschrift-Aufträge$/)
+      expect(html).to have_css(".border.rounded", text: /^2\s*Eingezogene Lastschriften$/)
+      expect(html).to have_css(".border.rounded", text: /Σ 300,00.*Eingezogen/m)
+      expect(html).to have_css(".border.rounded .text-danger", text: "Σ -200,00")
       row = html.find("tr.exp-row", text: "MSG-DD-1", match: :first) if html.has_css?("tr.exp-row", text: "MSG-DD-1")
       row ||= html.all("tr.exp-row").find { |tr| tr.has_css?("td.pocol-id", text: debit_order.id.to_s) }
       expect(row).to have_css("td.pocol-kind", text: "Lastschrift")
-      expect(row).to have_css("td.pocol-returns .text-danger", text: "1 ×")
+      expect(row).to have_css("td.pocol-return_count", text: "1")
+      expect(row).to have_css("td.pocol-returns .text-danger", text: "-200,00")
       expect(row).to have_css("td.pocol-bank .text-warning", text: I18n.t("fin.payments.no_credit"))
       expect(html).to have_css("tfoot td.pocol-count, tr.exp-footer td.pocol-count", text: /\d/)
+      expect(row).to have_css("td.pocol-pre_notified_sum", text: "300,00")
+      expect(row).to have_no_css("td.pocol-pre_notified_sum .payment-amount-lower")
+      expect(html).to have_css("tfoot td.pocol-pre_notified_sum .payment-amount-lower, " \
+        "tr.exp-footer td.pocol-pre_notified_sum .payment-amount-lower", text: "300,00")
 
       get payment_order_path(debit_order)
       expect(html).to have_link("Beispielkonto", href: wsjrdp_fin_account_path(account))
@@ -199,7 +209,7 @@ describe "Zahlungsverkehr", type: :request do
       get direct_debit_payment_infos_path
       row = html.all("tr.exp-row").find { |tr| tr.has_css?("td.dpcol-order", text: "##{debit_order.id}") }
       expect(row).to have_css("td.dpcol-bank .text-warning a[href='#{wsjrdp_camt_transaction_path(credit)}']",
-        text: "05.05.2026")
+        text: "##{credit.id} 05.05.2026")
 
       credit.update!(signed_base_amount: 300)
       get direct_debit_payment_info_path(payment_info)
@@ -208,6 +218,8 @@ describe "Zahlungsverkehr", type: :request do
 
       get payment_order_path(debit_order)
       expect(html).to have_link("05.05.2026", href: wsjrdp_camt_transaction_path(credit))
+      expect(html).to have_link(href: wsjrdp_camt_transaction_path(credit), text: /^##{credit.id} 300.€ RCUR 05\.05\.2026$/)
+      expect(html).to have_css(".fin-detail-list dt", text: /^Bankbuchung$/)
     end
 
     it "filters the orders on their kind" do
@@ -267,7 +279,7 @@ describe "Zahlungsverkehr", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(html).to have_text("PMT-1")
-      expect(html).to have_css(".text-danger", text: "1 ×")
+      expect(html).to have_css(".fin-detail-list .payment-amount-with-note", text: /^1\s*Σ.-200,00/)
       expect(html).to have_css("tr.exp-row td.ddcol-person", count: 1)
       expect(html).to have_link(href: payment_order_path(debit_order))
     end
@@ -305,7 +317,8 @@ describe "Zahlungsverkehr", type: :request do
       expect(html).to have_css("ul.nav-sub li.active", text: I18n.t("fin.tabs.direct_debit_payment_infos"))
       row = html.all("tr.exp-row").find { |tr| tr.has_css?("td.dpcol-order", text: "##{debit_order.id}") }
       expect(row).to have_css("td.dpcol-order a", text: "##{debit_order.id}")
-      expect(row).to have_css("td.dpcol-returns .text-danger", text: "1 ×")
+      expect(row).to have_css("td.dpcol-return_count", text: "1")
+      expect(row).to have_css("td.dpcol-returns .text-danger", text: "-200,00")
       expect(html).to have_no_css("th.dpcol-identification").and have_no_css("th.dpcol-creditor_id")
 
       get direct_debit_payment_info_path(payment_info)
@@ -341,7 +354,7 @@ describe "Zahlungsverkehr", type: :request do
       returned_debit.update!(payment_status: "pre_notified")
       get direct_debit_path(returned_debit)
       expect(html).to have_css("h1", text: "Vorabankündigung Einzug ##{returned_debit.id}")
-      expect(html).to have_link("Zurück zu Einzüge", href: direct_debits_path)
+      expect(html).to have_no_link("Zurück zu Einzüge")
       returned_debit.update!(payment_status: "xml_generated")
       get direct_debit_path(returned_debit)
       expect(html.all(".fin-detail-list dt").map { |dt| dt.text.strip }.first(9))
@@ -372,6 +385,43 @@ describe "Zahlungsverkehr", type: :request do
       get direct_debit_path(returned_debit)
       expect(html).to have_css(".fin-detail-list dd span[title='RegularPayer::Group::Unit::Member']",
         text: "YP · Ratenzahler")
+    end
+
+    it "shows a debit's amount against the announced one and sums the list in lines below it" do
+      paid_debit.update!(pre_notified_amount_cents: 12_000)
+      skipped = debit("E2E-3", 5_000)
+      skipped.update!(payment_status: "skipped")
+      get direct_debits_path
+
+      expect(html).to have_css("td.ddcol-amount .payment-amount-lower[title*='Differenz: -20,00']", text: /120,00.*100,00/)
+      expect(html).to have_css("td.ddcol-amount .payment-amount-skipped", text: /50,00.*0,00/)
+      expect(html).to have_no_css("td.ddcol-amount .payment-amount-skipped[title*='Differenz']")
+      expect(html).to have_no_css("td.ddcol-amount .payment-amount-differs", text: "200,00")
+      expect(html).to have_no_css("tfoot")
+      expect(html).to have_css(".text-muted.small.fw-light div", text: "3 Einzüge · angekündigt 370,00")
+      expect(html).to have_css(".text-muted.small.fw-light div", text: /eingezogen 300,00.*\(2\) · übersprungen 50,00.*\(1\)/)
+      expect(html).to have_css(".text-muted.small.fw-light div", text: "Rücklastschriften")
+    end
+
+    it "shows what an order announced, what was not collected and its returns" do
+      get payment_order_path(debit_order)
+      expect(html).to have_css(".fin-detail-list dd .payment-pre-notified.fw-light", text: "vorab informiert: 300,00")
+      expect(html).to have_css(".fin-detail-list dd .payment-pre-notified.fw-light", text: "vorab informiert: 2")
+      not_collected = html.all(".fin-detail-list .row").find { |row| row.find("dt").text.strip == "Nicht eingezogen" }
+      expect(not_collected.find("dd").text.strip).to eq("0")
+      expect(html).to have_css(".fin-detail-list dd .payment-amount-with-note .text-danger", text: "Σ\u00A0-200,00")
+      expect(html).to have_no_css(".fin-detail-list dd div.small", text: "1×")
+
+      skipped = [5_000, 7_000, 5_000].each_with_index.map do |cents, i|
+        debit("E2E-S#{i}", cents).tap { |debit| debit.update!(payment_status: "skipped") }
+      end
+      get payment_order_path(debit_order)
+      expect(html).to have_css(".fin-detail-list dd .payment-pre-notified.fw-light", text: "(vorab informiert: 470,00")
+      expect(html).to have_css(".fin-detail-list dd .payment-amount-with-note", text: /^3\s*Σ.170,00/)
+      expect(html).to have_css(".fin-detail-list dd div.text-muted.small", text: "2×\u00A050\u202F€ · 1×\u00A070\u202F€")
+
+      get direct_debit_path(skipped.first)
+      expect(html).to have_css(".fin-detail-list dd .payment-amount-skipped", text: /50,00.*0,00/)
     end
 
     it "lists the returns and marks the one that cannot be assigned" do
@@ -452,7 +502,7 @@ describe "Zahlungsverkehr", type: :request do
         %w[https://example.com/x //example.com/x javascript:alert(1)].each do |url|
           it "ignores #{url}, which is no path of this application" do
             get direct_debit_path(returned_debit, return_url: url)
-            expect(html).to have_link("Zurück zu Einzüge", href: direct_debits_path)
+            expect(html).to have_no_link("Zurück zu Einzüge")
 
             patch direct_debit_path(returned_debit, return_url: url), params: params
             expect(response).to redirect_to(direct_debit_path(returned_debit))

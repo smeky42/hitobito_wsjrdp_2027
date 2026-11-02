@@ -12,7 +12,7 @@
 # debit and return figures are person-level sums and only computed for whoever
 # may see them (`person_level:`). Every figure is memoized.
 class Fin::PaymentsOverview
-  Kind = Struct.new(:kind, :count, :sum_cents, keyword_init: true)
+  Kind = Struct.new(:kind, :count, :sum_cents, :transactions, keyword_init: true)
 
   def initialize(person_level: false)
     @person_level = person_level
@@ -27,9 +27,29 @@ class Fin::PaymentsOverview
   def orders_by_kind
     @orders_by_kind ||= begin
       rows = WsjrdpPaymentInitiation.group(Arel.sql(WsjrdpPaymentInitiation.kind_sql))
-        .pluck(Arel.sql(WsjrdpPaymentInitiation.kind_sql), Arel.sql("COUNT(*)"), Arel.sql("SUM(control_sum_cents)"))
-        .to_h { |kind, count, sum| [kind, Kind.new(kind: kind, count: count, sum_cents: sum.to_i)] }
+        .pluck(Arel.sql(WsjrdpPaymentInitiation.kind_sql), Arel.sql("COUNT(*)"), Arel.sql("SUM(control_sum_cents)"),
+          Arel.sql("SUM(number_of_transactions)"))
+        .to_h do |kind, count, sum, transactions|
+          [kind, Kind.new(kind: kind, count: count, sum_cents: sum.to_i, transactions: transactions.to_i)]
+        end
       WsjrdpPaymentInitiation::KINDS.filter_map { |kind| rows[kind] }
+    end
+  end
+
+  # The direct debit orders as one Kind (all zero without any).
+  def direct_debit_orders
+    orders_by_kind.find { |k| k.kind == WsjrdpPaymentInitiation::DIRECT_DEBIT } ||
+      Kind.new(kind: WsjrdpPaymentInitiation::DIRECT_DEBIT, count: 0, sum_cents: 0, transactions: 0)
+  end
+
+  # The returns that belong to a direct debit order -- through their debit
+  # or the order they name (Fin::PaymentQueries::RETURN_DEBITS_SQL) --, as
+  # {return_count:, return_sum_cents:}; returns nothing assigns are left out.
+  def direct_debit_returns
+    @direct_debit_returns ||= begin
+      orders = Fin::PaymentQueries.orders
+        .where(Arel.sql("#{WsjrdpPaymentInitiation.kind_sql} = '#{WsjrdpPaymentInitiation::DIRECT_DEBIT}'"))
+      Fin::PaymentQueries.order_totals(orders).slice(:return_count, :return_sum_cents)
     end
   end
 

@@ -29,9 +29,39 @@ module Fin::PaymentDetailsHelper
 
   def fin_format_wsjrdp_payment_initiation_message_identification(order) = payment_mono(order.message_identification)
 
-  def fin_format_wsjrdp_payment_initiation_returns(order) = payment_returns_cell(order.return_count, order.return_sum_cents)
+  # The number of debits in the SEPA file and the sum, each with what the
+  # order's pre-notifications announced beside it, muted in brackets
+  # (Fin::PaymentsHelper#payment_with_announced); an order without any (a
+  # credit transfer) shows its figure alone.
+  def fin_format_wsjrdp_payment_initiation_number_of_transactions(order)
+    payment_with_announced(payment_count(order.number_of_transactions),
+      (payment_count(order.notice_count) if order.notice_count.to_i.positive?))
+  end
 
-  def fin_format_wsjrdp_payment_initiation_bank(order) = payment_order_credit_cell(order)
+  def fin_format_wsjrdp_payment_initiation_control_sum_cents(order)
+    payment_with_announced(payment_cents(order.control_sum_cents),
+      (payment_cents(order.pre_notified_sum_cents) if order.notice_count.to_i.positive?))
+  end
+
+  # How many pre-notifications were not collected at all -- skipped, or the
+  # amount cut to nothing --, with their announced sum and most frequent
+  # amounts (Fin::PaymentsHelper#payment_count_with_breakdown).
+  def fin_format_wsjrdp_payment_initiation_not_collected(order)
+    return nil unless order.notice_count.to_i.positive?
+
+    payment_count_with_breakdown(order.not_collected_count, "Σ\u00A0#{payment_cents(order.not_collected_sum_cents)}",
+      Fin::PaymentQueries.order_not_collected_amounts(order.id))
+  end
+
+  # The returns: how many, with their sum and most frequent amounts as the
+  # bank statement holds them (fees included).
+  def fin_format_wsjrdp_payment_initiation_returns(order)
+    payment_count_with_breakdown(order.return_count.to_i,
+      content_tag(:span, "Σ\u00A0#{payment_cents(order.return_sum_cents)}", class: "text-danger"),
+      Fin::PaymentQueries.order_return_amounts(order.id))
+  end
+
+  def fin_format_wsjrdp_payment_initiation_bank(order) = payment_order_credits_list(order)
 
   # --- the Sammler (WsjrdpDirectDebitPaymentInfo) ------------------------------
 
@@ -49,8 +79,11 @@ module Fin::PaymentDetailsHelper
 
   def fin_format_wsjrdp_direct_debit_payment_info_creditor_id(info) = payment_mono(info.creditor_id)
 
+  # The returns as on the order's page (#fin_format_wsjrdp_payment_initiation_returns).
   def fin_format_wsjrdp_direct_debit_payment_info_returns(info)
-    payment_returns_cell(info.return_count, info.return_sum_cents)
+    payment_count_with_breakdown(info.return_count.to_i,
+      content_tag(:span, "Σ\u00A0#{payment_cents(info.return_sum_cents)}", class: "text-danger"),
+      Fin::PaymentQueries.info_return_amounts(info.id))
   end
 
   def fin_format_wsjrdp_direct_debit_payment_info_bank(info) = payment_info_credit_cell(info)
@@ -103,8 +136,12 @@ module Fin::PaymentDetailsHelper
   end
 
   # The amount, and beside it -- or below, where the line has no room -- the
-  # announced one (Fin::PaymentsHelper#payment_pre_notified_note).
+  # announced one (Fin::PaymentsHelper#payment_pre_notified_note). A skipped
+  # debit shows as in the table: nothing collected, the announced amount
+  # struck through (Fin::PaymentsHelper#payment_debit_amount_cell).
   def fin_format_wsjrdp_direct_debit_pre_notification_amount_cents(debit)
+    return payment_debit_amount_cell(debit) if debit.payment_status == "skipped"
+
     amount = payment_cents(debit.amount_cents)
     return amount if debit.pre_notified_amount_cents.nil?
 
