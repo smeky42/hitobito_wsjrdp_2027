@@ -63,13 +63,12 @@ module Fin::PaymentDetailsHelper
     payment_order_link(debit.payment_initiation_id)
   end
 
-  # The Sammler the debit names, else the one its order, sequence type and
-  # collection date pick (Fin::PaymentQueries.payment_info_debit_condition).
+  # The Sammler a collected debit names (Fin::PaymentQueries.payment_info_debits);
+  # a skipped or only announced debit has none.
   def fin_format_wsjrdp_direct_debit_pre_notification_direct_debit_payment_info(debit)
-    id = debit.direct_debit_payment_info_id || WsjrdpDirectDebitPaymentInfo.where(
-      payment_initiation_id: debit.payment_initiation_id, debit_sequence_type: debit.debit_sequence_type,
-      requested_collection_date: debit.collection_date
-    ).pick(:id)
+    return nil unless debit.payment_status == "xml_generated"
+
+    id = debit.direct_debit_payment_info_id
     id && link_to(t("fin.payments.payment_info_label", id: id), direct_debit_payment_info_path(id),
       data: {turbo_frame: "_top"})
   end

@@ -272,13 +272,14 @@ describe "Zahlungsverkehr", type: :request do
       expect(html).to have_link(href: payment_order_path(debit_order))
     end
 
-    it "takes a debit that names no Sammler by the Sammler's order, sequence type and collection date" do
-      returned_debit.update!(direct_debit_payment_info: nil)
+    it "leaves a skipped debit out of the Sammler it names" do
+      paid_debit.update!(payment_status: "skipped")
 
       get direct_debit_payment_info_path(payment_info)
+      expect(html).to have_css("tr.exp-row td.ddcol-person", count: 1)
 
-      expect(html).to have_css("tr.exp-row td.ddcol-person", count: 2)
-      expect(html).to have_css(".text-danger", text: "1 ×")
+      get direct_debit_path(paid_debit)
+      expect(html).to have_no_link(href: direct_debit_payment_info_path(payment_info))
     end
 
     it "warns where the collection entry books another amount, and prefixes the people in the lists" do
