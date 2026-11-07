@@ -42,7 +42,10 @@ class Group::PatrolsController < ApplicationController
         Person.where(id: pairs.map(&:first)).update_all(patrol: patrol)
       end
     end
-    redirect_to group_patrols_path(group), notice: "Patrols wurden gespeichert."
+    flash[:notice] = "Patrols wurden gespeichert."
+    warnings = assignment_warnings(assignment)
+    flash[:alert] = warnings.join(" ") if warnings.any?
+    redirect_to group_patrols_path(group)
   end
 
   private
@@ -53,9 +56,13 @@ class Group::PatrolsController < ApplicationController
       if ids.size > MAX_PATROL_SIZE
         errors << "Patrol #{patrol} hat #{ids.size} Personen (maximal #{MAX_PATROL_SIZE})."
       end
-      unless ids.intersect?(ul_ids)
-        errors << "In Patrol #{patrol} ist kein UL."
-      end
+    end
+  end
+
+  def assignment_warnings(assignment)
+    PATROLS.filter_map do |patrol|
+      ids = assignment.select { |_, v| v == patrol }.keys
+      "In Patrol #{patrol} ist kein UL." unless ids.intersect?(ul_ids)
     end
   end
 

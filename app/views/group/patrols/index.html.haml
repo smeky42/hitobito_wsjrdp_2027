@@ -11,12 +11,13 @@
   .patrol-item { cursor: grab; user-select: none; }
   .patrol-item.dragging { opacity: 0.5; }
   .patrol-card.patrol-invalid { border-color: #dc3545; }
+  .patrol-card.patrol-warning { border-color: #ffc107; }
 
 = form_tag group_patrols_path(@group), method: :put, id: "patrols-form" do
   %p.text-muted
     Personen per Drag & Drop in die Patrols ziehen. Änderungen werden erst mit
-    „Speichern“ übernommen. In jeder Patrol muss mindestens ein UL sein,
-    maximal #{@max_patrol_size} Personen pro Patrol.
+    „Speichern“ übernommen. Maximal #{@max_patrol_size} Personen pro Patrol.
+    Nach Möglichkeit sollte in jeder Patrol mindestens ein UL sein.
 
   .row.row-cols-1.row-cols-md-3.row-cols-xl-5.g-3{ data: { max: @max_patrol_size } }
     - ([nil] + @patrols).each do |patrol|
@@ -34,6 +35,7 @@
                   %span.badge{ class: ul ? "bg-primary" : "bg-light text-dark" }= ul ? "UL" : "YP"
                   = hidden_field_tag "patrols[#{p.id}]", patrol.to_s, id: nil, class: "patrol-input"
             .patrol-errors.small.text-danger.mt-2
+            .patrol-warnings.small.text-warning-emphasis.mt-1
 
   .mt-3.d-flex.align-items-center.gap-3
     = submit_tag "Speichern", class: "btn btn-primary", id: "patrols-save"
@@ -60,13 +62,16 @@
       form.querySelectorAll(".patrol-card").forEach(function (card) {
         var items = card.querySelectorAll(".patrol-item");
         var errors = [];
+        var warnings = [];
         card.querySelector(".patrol-count").textContent = items.length;
         if (card.dataset.patrol) {
           if (items.length > max) errors.push("Maximal " + max + " Personen.");
-          if (!card.querySelector(".patrol-item[data-ul='true']")) errors.push("Kein UL in der Patrol.");
+          if (!card.querySelector(".patrol-item[data-ul='true']")) warnings.push("Kein UL in der Patrol.");
         }
         card.querySelector(".patrol-errors").textContent = errors.join(" ");
+        card.querySelector(".patrol-warnings").textContent = warnings.join(" ");
         card.classList.toggle("patrol-invalid", errors.length > 0);
+        card.classList.toggle("patrol-warning", errors.length === 0 && warnings.length > 0);
         if (errors.length > 0) valid = false;
       });
       saveBtn.disabled = !valid;
