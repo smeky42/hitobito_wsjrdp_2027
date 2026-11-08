@@ -5,16 +5,24 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The account's own master data, below whichever statement the page rendered.
--#  Shared verbatim by the camt statement and the Moss wallet.
-= standard_form(fin_account, {url: fin_account_path, method: :put, data: {turbo: false}}) do |f|
+-#  The form of the account's master data, on its edit page. In the detail's
+-#  frame it submits through Turbo and stays there until it is saved
+-#  (Fin::WsjrdpFinAccountsController#redirect_after_save).
+-#
+-#  Speichern and Abbrechen stand once, at the top, in the line that stays in
+-#  sight while the form scrolls (fin/shared/_sticky_form_actions).
+= render "fin/shared/sticky_form_actions"
+- form_data = turbo_frame_request? ? {} : {turbo: false}
+= standard_form(fin_account, {url: fin_account_path, method: :put, data: form_data}) do |f|
   = hidden_field_tag("return_url", return_url)
   = f.error_messages
-  = form_buttons_if_editable(f, cancel_url: cancel_url)
+  - if permitted_attrs.present?
+    .fin-account-form-actions
+      = form_buttons_if_editable(f, cancel_url: cancel_url)
 
-  .mt-3
+  -# The first group needs no rule of its own: the action line above ends in one.
   = field_set_tag do
-    %div.border-top.py-2
+    %div.pt-3
     = input_or_render_attrs(f, :short_name)
     = input_or_render_attrs(f, :account_identification)
     = input_or_render_attrs(f, :account_product)
@@ -29,9 +37,18 @@
     = input_or_render_attrs(f, :servicer_short_name)
     = input_or_render_attrs(f, :servicer_bic)
     = input_or_render_attrs(f, :servicer_address)
+    -# Only for an account without an IBAN. With one, whoever may edit the block
+    -# sees it disabled, which says why; nobody else sees it at all. The controller
+    -# keeps these fields out of the save as well (#permitted_params).
+    - top_up_applicable = fin_account.top_up_applicable?
+    - if top_up_applicable || permitted_attr?(:top_up_iban)
+      %div.border-top.py-2
+      .row.mb-2
+        .col-md-9.offset-md-3.col-xl-8.offset-xl-2.text-muted.small
+          = t(top_up_applicable ? "fin.accounts.top_up_hint" : "fin.accounts.top_up_disabled_hint")
+      = input_or_render_attrs(f, :top_up_recipient_name, :top_up_iban, :top_up_bic, :top_up_purpose,
+        **(top_up_applicable ? {} : {disabled: true}))
     %div.border-top.py-2
     = input_or_render_attrs(f, :created_at, :updated_at)
     = input_or_render_attrs(f, :status)
     = input_or_render_attrs(f, :position)
-
-  = form_buttons_if_editable(f, cancel_url: cancel_url)

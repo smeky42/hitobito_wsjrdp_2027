@@ -1,0 +1,106 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The shared transaction picker (doc/wsjrdp/transaction_picker.md): pick bank
+-#  and Moss transactions of the own accounts inside a host form. A button opens
+-#  the panel with the filters (account chips, a window around the anchor date,
+-#  "gleicht aus", an amount, words) and the results, searched on the server
+-#  (Fin::TransactionPickerController) and reloaded in their frame on every
+-#  change. A picked row goes into the tray below the button: a chip with ✕ and
+-#  a hidden field `name` = the row's key ("camt:12", "moss:34"), which the host
+-#  form submits. The tray stays visible when the panel is closed. Nothing here
+-#  submits anything; the host form does.
+-#
+-#  A hidden field carries data-tp-chosen and data-amount, and every change of
+-#  the tray bubbles a "change" event, so a host can sum the choice (the
+-#  Umbuchung form does). A host whose open rest changes calls
+-#  window.wsjrdpTransactionPicker.setTarget(picker, amount) (nil/0 = none).
+-#
+-#  Locals: id          unique on the page (word characters and dashes)
+-#          name        the field name of a picked row, e.g. "add_legs[]"
+-#          label       the button's text (default "Buchung auswählen")
+-#          sign        "out" (money leaving), "in" (arriving) or nil
+-#          sources     %w[camt moss] by default
+-#          accounts    the accounts offered as chips (default: every one, in display order)
+-#          anchor      the date the window centres on, nil = the last 30 days
+-#          anchor_label what the anchor is, shown next to it (default "Bezugsdatum")
+-#          target      a signed amount a row would have to balance, nil = none
+-#          multi       several rows (true) or one (false)
+-#          exclude     leg keys never to offer (the rows already chosen)
+-#          data        further data attributes of the picker, for the host's script
+- label = local_assigns.fetch(:label, "Buchung auswählen")
+- sources = local_assigns.fetch(:sources, %w[camt moss])
+- accounts = local_assigns.fetch(:accounts) { WsjrdpFinAccount.display_order.to_a }
+- anchor = local_assigns[:anchor]
+- anchor_label = local_assigns.fetch(:anchor_label, "Bezugsdatum")
+- target = local_assigns[:target]
+- multi = local_assigns.fetch(:multi, true)
+- data = {tp: id, url: transaction_picker_path, name: name, sign: local_assigns[:sign], sources: sources.join(","),
+    anchor: anchor&.iso8601, target: target&.to_s, multi: multi ? "1" : "0",
+    exclude: Array(local_assigns[:exclude]).join(","), window: anchor ? "10" : "30"}
+- data = local_assigns.fetch(:data, {}).merge(data)
+= render "shared/wsjrdp/transaction_picker_assets"
+.tp{data: data}
+  %details.tp-panel
+    -# The button opens the panel; while it is open the button hides and the
+    -# panel closes itself ("Auswahl schließen" on top, the foot below).
+    %summary.btn.btn-sm.btn-outline-primary
+      = icon(:plus)
+      = label
+    .tp-body.border.rounded.p-2
+      .tp-top
+        %button.btn.btn-sm.btn-link.ms-auto{type: "button", data: {tp_close: true}}
+          = icon(:"chevron-up")
+          Auswahl schließen
+      .tp-filters
+        .tp-filter
+          %span.tp-label Konto
+          %button.tp-chip{type: "button", data: {tp_account: ""}, "aria-pressed": "true"} alle eigenen
+          - accounts.each do |account|
+            %button.tp-chip{type: "button", data: {tp_account: account.id}, "aria-pressed": "false"}
+              = account.short_name.presence || account.to_s
+        .tp-filter
+          %span.tp-label Zeitraum
+          .btn-group.btn-group-sm{role: "group", "aria-label": "Zeitraum"}
+            -# In a narrow picker the unit goes (.tp-days), so the group stays on one line.
+            - (anchor ? [["3", "±3"], ["10", "±10"], ["30", "±30"]] : [["30", "30"], ["90", "90"]]).each do |value, text|
+              %button.btn.btn-outline-secondary{type: "button", data: {tp_window: value}, "aria-pressed": (value == data[:window]).to_s,
+                class: ("active" if value == data[:window]), "aria-label": "#{text} Tage"}
+                = text
+                %span.tp-days Tage
+            %button.btn.btn-outline-secondary{type: "button", data: {tp_window: "all"}, "aria-pressed": "false"} frei
+        -# What the window is measured from, and the dates it covers now.
+        .tp-filter.tp-filter-note.small.text-muted
+          - if anchor
+            %span= "um #{fin_date(anchor)} (#{anchor_label})"
+          - else
+            %span bis heute
+          %span.tp-num{data: {tp_range: true}}
+        .tp-filter
+          %span.tp-label Betrag
+          -# Always there, hidden without a target: a host may change the target
+          -# later (wsjrdpTransactionPicker.setTarget), e.g. when its sum changes.
+          %button.tp-chip{type: "button", data: {tp_balances: true}, "aria-pressed": "true",
+            hidden: !(target.present? && !target.zero?)}
+            = "gleicht aus: #{fin_money(target)}" if target.present? && !target.zero?
+          %input.form-control.form-control-sm.tp-input{type: "search", placeholder: "z. B. 677 oder 600-700",
+            data: {tp_amount: true}, "aria-label": "Betrag"}
+        .tp-filter
+          %span.tp-label Text
+          %input.form-control.form-control-sm.tp-input.tp-input-text{type: "search",
+            placeholder: "Verwendungszweck, Gegenpartei", data: {tp_text: true}, "aria-label": "Text"}
+        %label.small.text-muted
+          %input.form-check-input.tp-check{type: "checkbox", data: {tp_linked: true}}
+          auch schon verknüpfte zeigen
+      = turbo_frame_tag "tp-results-#{id}", data: {tp_results: true} do
+        .small.text-muted.p-2 Wird geladen …
+      .tp-foot
+        %span.small{data: {tp_summary: true}}
+        -# "Abbrechen" puts the tray back as it was when the panel opened.
+        %button.btn.btn-sm.btn-link.ms-auto{type: "button", data: {tp_cancel: true}} Abbrechen
+        %button.btn.btn-sm.btn-primary{type: "button", data: {tp_close: true}} Übernehmen
+  .tp-tray{data: {tp_tray: true}}

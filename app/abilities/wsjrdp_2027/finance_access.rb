@@ -37,6 +37,10 @@ module Wsjrdp2027::FinanceAccess
   # tier up.
   def self.person_level_models = [AccountingEntry, WsjrdpDirectDebitPreNotification]
 
+  # What the write and the manage tier may do with an Umbuchung
+  # (WsjrdpInternalTransfer): the same, everything.
+  INTERNAL_TRANSFER_ACTIONS = %i[show log create update destroy].freeze
+
   def if_finance_read
     finance_tiers.any?
   end

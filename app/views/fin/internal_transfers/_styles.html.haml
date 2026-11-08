@@ -1,0 +1,51 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The styles of the Umbuchung detail and form, once per response.
+- unless @internal_transfer_styles
+  - @internal_transfer_styles = true
+  :css
+    .it-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .it-wrap-num { font-variant-numeric: tabular-nums; }
+    /* The sub-headings of a transfer's detail (h2, sized like the house's .h6). */
+    .it-h { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 .5rem; }
+    .it-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: .5rem; align-items: center; }
+    .it-side { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+    .it-card { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .5rem; padding: .6rem .8rem;
+      min-width: 0; overflow-wrap: anywhere; }
+    .it-card-missing { border-style: dashed; }
+    /* In the form the sides grow with their pickers: keep both at the top. */
+    .it-flow-form { align-items: start; }
+    .it-flow-form > .it-flow-arrow { align-self: start; margin-top: 2.5rem; }
+    .it-flow-arrow { display: flex; flex-direction: column; align-items: center; min-width: 8rem; padding: 0 .25rem; }
+    .it-arrow-line { display: flex; align-items: center; width: 100%; color: var(--bs-secondary-color, #6c757d); }
+    .it-arrow-line span { flex: 1; height: 2px; background: currentColor; }
+    .it-arrow-line i { margin-left: -.35rem; }
+    .it-text { min-width: 12rem; }
+    .min-w-0 { min-width: 0; }
+    /* A checkbox stays a square, whatever surrounds it -- in a table cell too,
+       where the core widens every checkbox of a first cell to 20px
+       (`table tr :first-child input[type="checkbox"]`, hitobito/_table.scss). */
+    .it-check { flex: 0 0 auto; width: 1rem; height: 1rem; min-width: 1rem; max-width: 1rem; aspect-ratio: 1 / 1;
+      margin: 0; }
+    /* Bootstrap's focus ring is a wide shadow that shows on every click and is
+       half covered by the next cell's background; a thin outline instead, for
+       keyboard focus only, drawn above the neighbours. */
+    .it-check:focus, .tp-check:focus { box-shadow: none; }
+    .it-check:focus-visible, .tp-check:focus-visible { outline: 2px solid var(--bs-primary, #21697c);
+      outline-offset: 2px; position: relative; z-index: 2; }
+    .it-meta { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: .25rem .75rem; margin: 0; }
+    .it-meta dt { font-weight: 400; color: var(--bs-secondary-color, #6c757d); }
+    .it-meta dd { margin: 0; }
+    @media (max-width: 575.98px) {
+      .it-flow { grid-template-columns: minmax(0, 1fr); }
+      .it-flow-arrow { flex-direction: row; gap: .5rem; justify-content: flex-start; min-width: 0; }
+      .it-arrow-line { width: 2rem; transform: rotate(90deg); }
+      .it-flow-form > .it-flow-arrow { transform: rotate(90deg); justify-content: center; width: 1.5rem; }
+      .it-meta { grid-template-columns: minmax(0, 1fr); }
+      .it-meta dd { margin-bottom: .4rem; }
+    }

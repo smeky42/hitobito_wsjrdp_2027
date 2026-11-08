@@ -1,0 +1,42 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The master data of one finance account, reading only. Knows nothing of what
+-#  surrounds it, so the account page opens it from its head line (_summary) and
+-#  an expandable table can show it in a row's detail pane. The values come from
+-#  Fin::FinAccountsHelper, the labels from
+-#  de.activerecord.attributes.wsjrdp_fin_account.
+-#
+-#  Locals: account (WsjrdpFinAccount), ctx (Fin::AttrFormatContext)
+-#          edit_url: the edit page behind "Bearbeiten"; nil = no button
+-#          edit_turbo_frame: where that page opens, the whole page by default
+-#
+-#  The button reaches into the first rows without moving their columns: those
+-#  rows keep its width free, so a long value wraps before it.
+- edit_url = local_assigns[:edit_url]
+:css
+  .fin-account-detail { position: relative; }
+  .fin-account-detail .fin-detail-list:first-of-type { border-top: 0 !important; }
+  .fin-copy > * { pointer-events: none; }
+  /* One gap for the icons behind a value: the copy icon and the new-tab link
+     (whose helper sets .ms-1, an !important utility). */
+  .fin-account-detail .fin-copy, .fin-account-detail a.ms-1[target="_blank"] { margin-left: .65rem !important; }
+  .fin-account-detail-edit { position: absolute; top: 0; right: 0; z-index: 1; }
+  .fin-account-detail-editable .fin-detail-list:first-of-type > .row:nth-child(-n+2) > dd { padding-right: 6.5rem; }
+.fin-account-detail{class: ("fin-account-detail-editable" if edit_url)}
+  - if edit_url
+    .fin-account-detail-edit.p-2
+      = link_to "Bearbeiten", edit_url, class: "btn btn-sm btn-outline-primary",
+        data: {turbo_frame: local_assigns.fetch(:edit_turbo_frame, "_top")}
+  -# The page's layout in a list's pane too: the button above needs its rows.
+  = fin_detail(account, ctx, editing: false, layout: :list) do |d|
+    - d.attrs :short_name, :account_identification, :account_product, :opening_balance_eur,
+        :opening_balance_date, :description
+    - d.attrs :iban, :owner_name, :owner_address, :servicer_name, :servicer_short_name,
+        :servicer_bic, :servicer_address
+    - d.attrs :top_up_recipient_name, :top_up_iban, :top_up_bic, :top_up_purpose if account.top_up_applicable?
+    - d.attrs :bookkeeping_account_number, :status, :position, :created_at, :updated_at

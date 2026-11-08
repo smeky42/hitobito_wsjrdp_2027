@@ -7,6 +7,8 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+require "iban-tools"
+
 class WsjrdpFinAccount < ActiveRecord::Base
   include I18nEnums
   include WsjrdpNumberHelper
@@ -52,6 +54,24 @@ class WsjrdpFinAccount < ActiveRecord::Base
 
   validates :position, numericality: {only_integer: true}, allow_nil: true
 
+  # IBAN and BIC without spaces and upper case, as the SEPA files write them and
+  # as a person's bank account stores them (Person::BankAccountController); a
+  # blank one is nil. Normalized on assignment, so a stored value only changes
+  # once it is assigned again.
+  normalizes :iban, :top_up_iban, :servicer_bic, :top_up_bic,
+    with: ->(value) { value.gsub(/\s+/, "").upcase.presence }
+
+  validate :validate_iban_formats
+
+  def validate_iban_formats
+    %i[iban top_up_iban].each do |attr|
+      value = public_send(attr)
+      next if value.blank? || IBANTools::IBAN.valid?(value)
+
+      errors.add(attr, I18n.t("people.finance_fields.invalid_iban"))
+    end
+  end
+
   # The order of the accounts wherever they are listed (Konten list, overview
   # card): closed accounts last, then the manual position (accounts without
   # one after those with one), then the account product in the order of
@@ -90,6 +110,16 @@ class WsjrdpFinAccount < ActiveRecord::Base
       camt_transactions
     end
   end
+
+  # The status' German label, the stored value if there is none; the form's
+  # read-only rendering picks a <attr>_display up by itself.
+  def status_display
+    I18n.t("activerecord.attributes.wsjrdp_fin_account.statuses.#{status}", default: status)
+  end
+
+  # The top-up fields say how to pay into an account without a usable IBAN of its
+  # own (a wallet, a non-SEPA account); with an IBAN they do not apply.
+  def top_up_applicable? = iban.blank?
 
   def to_s
     if account_identification.present?

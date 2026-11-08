@@ -13,7 +13,8 @@ module Sheet
   # account's statement (/fin/acc/:id) and the camt transactions behind it
   # (/fin/tx/:id).
   #
-  # Two tabs: Übersicht (the account list at /fin/acc) and Konten. The account
+  # Three tabs: Übersicht (the account list at /fin/acc), Konten and Umbuchungen
+  # (/fin/acc/internal_transfers, Fin::InternalTransfersController). The account
   # and transaction pages render this sheet (always_render_parent); there the
   # Konten tab is active and a second tab bar lists the accounts with a tab of
   # their own (WsjrdpFinAccount.tab_visible), the page's account active.
@@ -26,6 +27,7 @@ module Sheet
     tab "fin.tabs.overview", :wsjrdp_fin_accounts_path, no_alt: true
     tab "fin.tabs.accounts", :fin_accounts_tab_path,
       if: ->(view, *) { view.fin_tab_accounts.any? }
+    tab "fin.tabs.internal_transfers", :internal_transfers_path
 
     def left_nav?
       true
@@ -37,6 +39,13 @@ module Sheet
 
     def title
       I18n.t("fin.nav.accounts")
+    end
+
+    # The core leaves the tabs out on new/create (meant for the sheet of one
+    # record); this section keeps them, so "Neue Umbuchung" still shows where
+    # it belongs and how to get back.
+    def render_main_tabs
+      render_tabs
     end
 
     def render_tabs

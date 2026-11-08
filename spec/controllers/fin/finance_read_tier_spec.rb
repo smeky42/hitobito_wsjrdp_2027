@@ -376,7 +376,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
 
       it "offers the account form to the write tier" do
         sign_in(accountant)
-        get :show, params: {id: bank.id}
+        get :edit, params: {id: bank.id}
 
         expect(response).to be_successful
         expect(save_buttons).not_to be_empty

@@ -66,6 +66,9 @@ de:
       wsjrdp_sub_cost_center:
         one: Unterkostenstelle
         other: Unterkostenstellen
+      wsjrdp_internal_transfer:
+        one: Umbuchung
+        other: Umbuchungen
       wsjrdp_direct_debit_pre_notification:
         one: Vorabankündigung
         other: Vorabankündigungen
@@ -577,6 +580,7 @@ de:
 
       # de.activerecord.attributes.wsjrdp_camt_transaction
       wsjrdp_camt_transaction:
+        internal_transfer: Umbuchung
         camt_type: CAMT-Typ
         fin_account: Konto
         account_identification: Konto
@@ -643,6 +647,7 @@ de:
 
       # de.activerecord.attributes.moss_transaction (L1: one Moss payment)
       moss_transaction:
+        internal_transfer: Umbuchung
         fin_account: Konto
         type: Art
         moss_transaction_state: Transaktionsstatus (Moss)
@@ -923,8 +928,13 @@ de:
       # de.activerecord.attributes.wsjrdp_fin_account
       wsjrdp_fin_account:
         account_identification: Konto
-        opening_balance_eur: Eröffnungs-Saldo in Euro
-        opening_balance_eur_display: Eröffnungs-Saldo in Euro
+        top_up_recipient_name: Empfänger für Einzahlungen
+        top_up_iban: IBAN für Einzahlungen
+        top_up_bic: BIC für Einzahlungen
+        top_up_purpose: Verwendungszweck für Einzahlungen
+        bookkeeping_account_number: Sachkonto
+        opening_balance_eur: Eröffnungs-Saldo
+        opening_balance_eur_display: Eröffnungs-Saldo
         opening_balance_currency: Währung
         opening_balance_date: Eröffnung
         #
@@ -952,6 +962,10 @@ de:
         updated_at: Geändert
         deleted_at: Gelöscht
         status: Status
+        statuses:
+          active: aktiv
+          closed: geschlossen
+          deleted: gelöscht
 
       # Beschreibungen der eigenen Berechtigungen (siehe lib/hitobito_wsjrdp_2027/wagon.rb);
       # die Berechtigungen des Cores beschreibt der Core selbst.
@@ -2006,6 +2020,7 @@ de:
         purpose: "Zahlungscodes, Finanzzugriff auf Gruppen und Kostenstellen der Gruppen."
     tabs:
       accounts: "Konten"
+      internal_transfers: "Umbuchungen"
       payment_orders: "Aufträge"
       direct_debit_payment_infos: "Sammler"
       direct_debits: "Einzüge"
@@ -2036,6 +2051,9 @@ de:
       reimbursements: "Erstattungen"
       top_ups: "Einzahlungen"
     # Zahlungsverkehr (doc/fin/payments.md): Aufträge, Einzüge, Rückläufer.
+    accounts:
+      top_up_hint: "Diese Felder geben die Kontoverbindung für Einzahlungen auf ein Wallet oder ein Nicht-SEPA-Konto an."
+      top_up_disabled_hint: "Die Kontoverbindung für Einzahlungen ist nur ohne IBAN bearbeitbar, also bei einem Wallet oder einem Nicht-SEPA-Konto."
     payments:
       overview_lead: "Alles zum Thema Zahlungsverkehr mit unseren Bank-Konten."
       orders_lead: "Alle Zahlungsaufträge an die Bank, je Auftrag eine SEPA-Datei (Lastschrift oder Überweisung), mit den Retouren seiner Einzüge."

@@ -1,0 +1,24 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One side of an Umbuchung's flow: a card per leg, or a dashed card while the
+-#  side has none yet.
+-#
+-#  Locals: label ("Von" / "Nach"), legs (Fin::InternalTransferLeg)
+.it-side
+  - if legs.empty?
+    .it-card.it-card-missing
+      .small.text-muted= label
+      .text-muted noch keine Buchung
+  - legs.each do |leg|
+    .it-card
+      .small.text-muted= label
+      .fw-semibold= internal_transfer_account_link(leg.account)
+      - if (identifier = leg.account && fin_account_summary_identifier(leg.account))
+        .small.text-muted.it-wrap-num= identifier
+      .it-num.fs-5.fw-semibold.mt-1= internal_transfer_amount(leg.amount)
+      .small.text-muted.it-num= "#{leg.moss? ? "Buchung" : "Valuta"} #{fin_date(leg.date)}"

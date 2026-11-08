@@ -29,6 +29,7 @@
 class MossTransaction < ActiveRecord::Base
   include ActionView::Helpers::NumberHelper
   include ActionView::Helpers::TextHelper
+  include WsjrdpInternalTransferLeg
 
   # Moss record pages. Every URL is DERIVED from a stored uuid -- Moss URLs are
   # stable, so storing them would only add a second source of truth. The
@@ -58,6 +59,10 @@ class MossTransaction < ActiveRecord::Base
   # matched on amount + date.
   belongs_to :camt_transaction, optional: true, class_name: "WsjrdpCamtTransaction"
 
+  # The transfer between own accounts this transaction is a leg of, if any.
+  belongs_to :internal_transfer, optional: true, class_name: "WsjrdpInternalTransfer",
+    inverse_of: :moss_transactions
+
   # The chain accounts, matched on their unique `number`; the generated
   # `*_type` columns carry the polymorphic target class (see the migration).
   belongs_to :supplier_account, polymorphic: true, optional: true,
@@ -77,6 +82,8 @@ class MossTransaction < ActiveRecord::Base
     dependent: :destroy
 
   validates :type, inclusion: {in: %w[MossCardTransaction MossInvoice MossReimbursement MossTopUp]}
+
+  scope :without_internal_transfer, -> { where(internal_transfer_id: nil) }
 
   # --- other_moss_columns ----------------------------------------------------
   # Raw Moss fields without a column, kept UNDER THEIR CSV HEADER; these

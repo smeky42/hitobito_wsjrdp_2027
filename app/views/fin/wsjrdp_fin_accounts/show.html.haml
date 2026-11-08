@@ -14,7 +14,14 @@
 -#      chips, the filter and its four kind presets;
 -#    * every BANK account -> _camt_statement: the plain camt table, unchanged.
 -#
--#  Both end with the account's own form (_account_form).
+-#  Above both stands the account's head line with its detail (_summary); the
+-#  form is the edit page (edit, _account_form).
+-# The stream action redirect_top, which a save from the detail's frame answers
+-# with -- and the wallet's person-linking buttons with theirs.
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+= render "fin/wsjrdp_fin_accounts/summary", account: fin_account,
+  edit_url: (edit_wsjrdp_fin_account_path(fin_account) if can?(:update, fin_account))
 - if moss_wallet?
   = render "fin/wsjrdp_fin_accounts/moss_wallet"
 - else

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_07_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1084,9 +1084,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
     t.string "sender_name"
     t.date "value_date", comment: "CSV Value date (custom statement)"
     t.virtual "moss_object_uuid", type: :uuid, null: false, comment: "Identity of the row: Moss Expense id (reimbursement, invoice) or the first seen Transaction ID (card, top-up)", as: "COALESCE(moss_reimbursement_uuid, moss_invoice_uuid, moss_transaction_uuid)", stored: true
+    t.bigint "internal_transfer_id"
     t.index ["all_moss_transaction_uuids"], name: "index_moss_transactions_all_uuids", using: :gin
     t.index ["camt_transaction_id"], name: "index_moss_transactions_camt"
     t.index ["clearing_datev_booking_id"], name: "index_moss_transactions_clearing_datev"
+    t.index ["internal_transfer_id"], name: "index_moss_transactions_on_internal_transfer_id", where: "(internal_transfer_id IS NOT NULL)"
     t.index ["invoice_number"], name: "index_moss_transactions_invoice_number"
     t.index ["moss_invoice_uuid"], name: "index_moss_transactions_invoice_uuid", unique: true, where: "(moss_invoice_uuid IS NOT NULL)"
     t.index ["moss_object_uuid"], name: "index_moss_transactions_object_uuid", unique: true
@@ -1765,6 +1767,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
     t.virtual "bank_transaction_sub_family", type: :string, comment: "ISO Bank Transaction Code: SubFamily (e.g. UPDD), from bank_transaction_code", as: "NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text)", stored: true
     t.virtual "gvc", type: :string, comment: "Geschäftsvorfallcode of the German banks (e.g. 109), from bank_transaction_code_dk", as: "NULLIF(split_part((bank_transaction_code_dk)::text, '+'::text, 2), ''::text)", stored: true
     t.virtual "return_kind", type: :string, comment: "What came back: direct_debit, credit_transfer, received_credit_transfer, received_direct_debit, other; NULL for no return", as: "\nCASE\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = 'IDDT'::text) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['UPDD'::text, 'RCDD'::text, 'PRDD'::text]))) THEN 'direct_debit'::text\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = ANY (ARRAY['ICDT'::text, 'IRCT'::text])) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['RRTN'::text, 'XRTN'::text]))) THEN 'credit_transfer'::text\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = ANY (ARRAY['RCDT'::text, 'RRCT'::text])) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['RRTN'::text, 'XRTN'::text]))) THEN 'received_credit_transfer'::text\n    WHEN ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = 'RDDT'::text) AND (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['UPDD'::text, 'RCDD'::text, 'PRDD'::text]))) THEN 'received_direct_debit'::text\n    WHEN (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 3), ''::text) = ANY (ARRAY['UPCT'::text, 'UPCQ'::text, 'RRTN'::text, 'XRTN'::text])) THEN 'other'::text\n    WHEN ((return_reason IS NOT NULL) AND ((NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) IS NULL) OR (NULLIF(split_part((bank_transaction_code)::text, '+'::text, 2), ''::text) = 'NTAV'::text))) THEN\n    CASE\n        WHEN (mandate_id IS NOT NULL) THEN 'direct_debit'::text\n        ELSE 'other'::text\n    END\n    WHEN (return_reason IS NOT NULL) THEN 'other'::text\n    ELSE NULL::text\nEND", stored: true
+    t.bigint "internal_transfer_id"
     t.index ["account_identification", "camt_type", "account_servicer_reference", "transaction_details_index"], name: "idx_on_account_identification_camt_type_account_ser_ed8a97a4ae", unique: true, where: "(deleted_at IS NULL)"
     t.index ["account_identification"], name: "index_wsjrdp_camt_transactions_on_account_identification"
     t.index ["bank_transaction_family", "bank_transaction_sub_family"], name: "index_wsjrdp_camt_transactions_btc_family_sub_family"
@@ -1774,6 +1777,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
     t.index ["direct_debit_pre_notification_id"], name: "idx_on_direct_debit_pre_notification_id_c68aaccc0f"
     t.index ["entry_id"], name: "index_wsjrdp_camt_transactions_on_entry_id"
     t.index ["gvc"], name: "index_wsjrdp_camt_transactions_on_gvc"
+    t.index ["internal_transfer_id"], name: "index_wsjrdp_camt_transactions_on_internal_transfer_id", where: "(internal_transfer_id IS NOT NULL)"
     t.index ["payment_initiation_id"], name: "index_wsjrdp_camt_transactions_on_payment_initiation_id"
     t.index ["return_kind"], name: "index_wsjrdp_camt_transactions_on_return_kind", where: "(return_kind IS NOT NULL)"
     t.index ["subject_id", "subject_type"], name: "index_wsjrdp_camt_transactions_on_subject_id_and_subject_type"
@@ -2043,8 +2047,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
     t.integer "position"
     t.string "servicer_short_name", comment: "Short name of the account-servicing institution, for display"
     t.string "account_product", default: "unknown", null: false, comment: "Account product (code list in WsjrdpFinAccount)"
+    t.string "top_up_iban"
+    t.string "top_up_bic"
+    t.string "top_up_purpose"
+    t.string "top_up_recipient_name"
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
     t.index ["bookkeeping_account_type", "bookkeeping_account_number"], name: "index_wsjrdp_fin_accounts_on_bookkeeping_account"
+  end
+
+  create_table "wsjrdp_internal_transfers", comment: "Linking internal transfers", force: :cascade do |t|
+    t.text "comment", default: "", null: false
+    t.jsonb "link_meta", default: {}, null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "wsjrdp_ledger_accounts", comment: "Ledger accounts (Sachkonten)", force: :cascade do |t|
@@ -2302,6 +2318,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
   add_foreign_key "moss_expenses", "moss_transactions", on_delete: :cascade
   add_foreign_key "moss_transactions", "datev_bookings", column: "clearing_datev_booking_id", on_delete: :nullify
   add_foreign_key "moss_transactions", "wsjrdp_camt_transactions", column: "camt_transaction_id", on_delete: :nullify
+  add_foreign_key "moss_transactions", "wsjrdp_internal_transfers", column: "internal_transfer_id", on_delete: :nullify
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade
@@ -2320,6 +2337,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_000100) do
   add_foreign_key "wsjrdp_camt_transactions", "datev_bookings", on_delete: :nullify
   add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_direct_debit_payment_infos", column: "direct_debit_payment_info_id", on_delete: :nullify
   add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_direct_debit_pre_notifications", column: "direct_debit_pre_notification_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_internal_transfers", column: "internal_transfer_id", on_delete: :nullify
   add_foreign_key "wsjrdp_camt_transactions", "wsjrdp_payment_initiations", column: "payment_initiation_id", on_delete: :nullify
   add_foreign_key "wsjrdp_cost_centers", "people", column: "manager_person_id"
   add_foreign_key "wsjrdp_deregistration_events", "wsjrdp_deregistrations", column: "deregistration_id", on_delete: :cascade

@@ -1,0 +1,38 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Umbuchungen: the h1 with "Neue Umbuchung", the suggestions to link
+-#  (_suggestions, for whoever may link), then the transfers as an expandable
+-#  table with the filter (Schnellauswahl: status; panel: accounts, amount, …). A row opens the transfer's detail (#show answers
+-#  the row's frame) with "Bearbeiten" in place.
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+
+#main
+  .d-flex.align-items-baseline.gap-2.flex-wrap
+    %h1 Umbuchungen
+    - if can?(:create, WsjrdpInternalTransfer)
+      = link_to new_internal_transfer_path, class: "btn btn-sm btn-outline-primary ms-auto" do
+        = icon(:plus)
+        Neue Umbuchung
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows transfers, id: "it"
+    -# The suggestions stand above the filter, as wide as the table at most.
+    - if can?(:create, WsjrdpInternalTransfer)
+      - t.above render("fin/internal_transfers/suggestions", detection: detection)
+    - t.columns internal_transfers_table_columns, menu: true
+    -# Room to spare: the accounts to their target, then accounts and text columns, then
+    -# the gaps -- so the table fills a wide screen instead of stopping early.
+    - t.gaps max: "5rem", grow_max: "20rem"
+    - t.row_key { |row| row.id }
+    - t.row_class { |row| "text-muted" if row.status == :open }
+    - t.filter apply_url: apply_internal_transfers_path
+    - t.detail_page(column: true) { |row| internal_transfer_path(row.transfer) }
+    - t.detail_src { |row| internal_transfer_path(row.transfer) }
+    - t.paging
+    - t.summary "#{transfers.total_count} Umbuchungen"
