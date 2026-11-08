@@ -46,14 +46,14 @@ describe Fin::AccountingEntriesController, type: :controller do
   end
 
   it "offers the checkbox to the manage tier" do
-    get :show, params: {id: entry.id}
+    get :edit, params: {id: entry.id}
 
     expect(checkbox).to be_present
   end
 
   it "leaves it out below the manage tier" do
     session[:max_finance_permission] = "finance"
-    get :show, params: {id: entry.id}
+    get :edit, params: {id: entry.id}
 
     expect(checkbox).to be_nil
   end
@@ -108,12 +108,12 @@ describe Fin::AccountingEntriesController, type: :controller do
     # Below the manage tier the row is read-only, and it has to say something.
     it "shows as ja or nein in the read-only row" do
       session[:max_finance_permission] = "finance"
-      get :show, params: {id: entry.id}
+      get :edit, params: {id: entry.id}
 
       expect(reconciliation_value).to eq("nein")
 
       entry.update!(excluded_from_fee_reconciliation: true)
-      get :show, params: {id: entry.id}
+      get :edit, params: {id: entry.id}
 
       expect(reconciliation_value).to eq("ja")
     end

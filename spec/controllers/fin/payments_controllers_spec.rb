@@ -853,8 +853,7 @@ describe "Zahlungsverkehr", type: :request do
         .and have_link(href: direct_debit_path(returned_debit))
 
       get accounting_entry_path(return_entry)
-      expect(html).to have_link(I18n.t("fin.payments.order_label", id: debit_order.id),
-        href: payment_order_path(debit_order))
+      expect(html).to have_link("##{debit_order.id}", href: payment_order_path(debit_order))
 
       get fees_path
       expect(html).to have_link(I18n.t("fin.payments.direct_debit_orders"))

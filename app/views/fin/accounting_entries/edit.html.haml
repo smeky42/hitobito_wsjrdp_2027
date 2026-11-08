@@ -1,0 +1,112 @@
+:javascript
+  function fill_in_rdp_account_44_as_creditor() {
+    $('#accounting_entry_cdtr_name').val('Ring deutscher Pfadfinder*innenverbände e.V.');
+    $('#accounting_entry_cdtr_iban').val('DE13370601932001939044');
+    $('#accounting_entry_cdtr_bic').val('GENODED1PAX');
+    $('#accounting_entry_cdtr_address').val('Chausseestraße 128/129, 10115 Berlin');
+  }
+
+#main.row
+
+  - permitted_attrs_set = Set.new(permitted_attrs)
+  = standard_form(accounting_entry, {url: url_for(accounting_entry), method: :put}) do |f|
+    = hidden_field_tag("return_url", return_url)
+    = f.error_messages
+    -# No editable field, no buttons
+    - if permitted_attrs.present?
+      = button_toolbar(f, toolbar_class: nil) do
+        = submit_button(f, ti(:"button.save"))
+        - if can?(:destroy, accounting_entry)
+          = action_button(t("global.link.delete"), url_for(accounting_entry), :"trash-alt", class: "btn-danger mr-4 mt-2", data: {method: :delete, confirm: I18n.t("global.confirm_delete")})
+        = cancel_link(cancel_url)
+
+    .mt-3
+    -# The same order and headings as the reading page (_detail); a field the
+    -# viewer may change gets its input (input_or_render_attrs), every other one
+    -# reads as it does there. The amount is never changed here: a booked amount
+    -# is corrected by a booking of its own (the controller leaves it out of the
+    -# permitted attributes), so it stands as a disabled field.
+    - e = f.object
+    - ctx = Fin::AttrFormatContext.regular
+    -# The headings and icons are the detail kit's; so are their styles.
+    = fin_detail_styles
+    = field_set_tag do
+      %div.border-top.py-2
+      = fin_accounting_entry_edit_fields(f, ctx, {booking_date: "Buchungsdatum", value_date: "Valuta",
+        description: "Verwendungszweck"})
+      = fin_accounting_entry_edit_fields(f, ctx, {comment: "Kommentar"},
+        help_inline: "Nur sichtbar für Personen mit Buchhaltungs-Rechten")
+      = f.labeled(:amount_eur_display, "Betrag") do
+        = text_field_tag "amount_eur_display", e.amount_eur_display, disabled: true,
+          class: "form-control form-control-sm w-auto"
+      - if !e.pre_notified_amount_cents.nil? && (e.pre_notified_amount_cents != e.amount_cents)
+        = fin_accounting_entry_edit_fields(f, ctx, {pre_notified_amount_eur: "Vorab angekündigt"})
+      = form_like_labeled("Person", fin_format_accounting_entry_subject(e))
+      - if (source = fin_format_accounting_entry_source(e))
+        = form_like_labeled("Quelle", source)
+      = form_like_labeled("Finanzstatus", e.new_sepa_status_display)
+      - if e.return_reason.present?
+        = form_like_labeled("Rückgabegrund", e.return_reason)
+
+      - link_attrs = %i[camt_transaction_id datev_booking_id direct_debit_pre_notification_id direct_debit_payment_info_id]
+      - links = link_attrs.filter_map { |a| fin_accounting_entry_readonly_row(e, a, ctx) }
+      - order_link = fin_format_accounting_entry_payment_order(e)
+      - reversals = %i[reverses_id reversed_by_id].filter_map { |a| fin_accounting_entry_readonly_row(e, a, ctx) }
+      - if links.any? || order_link || reversals.any? || e.moss_booking_id.present? || permitted_attr?(:moss_booking_id)
+        = fin_detail_heading("Verknüpfungen", ctx)
+        %div.py-2
+          = safe_join(links)
+          -# Finance manage may move or remove the Moss link: the number of the Moss
+          -# booking plus "Verknüpfung lösen"; the help names the stored link.
+          - if permitted_attr?(:moss_booking_id)
+            -# A plain number field: the generic input would read the _id column as
+            -# an association and offer a select of every Moss booking.
+            = f.labeled(:moss_booking_id, "Moss-Buchung") do
+              = f.number_field :moss_booking_id, class: "form-control form-control-sm w-auto", min: 1, step: 1
+              %span.form-text.d-block= moss_booking_link_help(e)
+            -# A plain request param, not a model attribute: the controller applies it
+            -# (Fin::AccountingEntriesController#apply_moss_booking_link_change).
+            - if e.moss_booking_id_in_database.present?
+              .row.mb-2
+                .offset-md-3.offset-xl-2.col-md-9.col-lg-8.col-xl-8
+                  .form-check
+                    = check_box_tag "unlink_moss_booking", "1", params[:unlink_moss_booking] == "1", class: "form-check-input"
+                    = label_tag "unlink_moss_booking", "Verknüpfung lösen", class: "form-check-label"
+          - elsif e.moss_booking_id.present?
+            = form_like_labeled_attr(e, :moss_booking)
+          - if order_link
+            = form_like_labeled(AccountingEntry.human_attribute_name(:payment_order), order_link)
+          = safe_join(reversals)
+
+      = fin_detail_heading("SEPA-Lastschrift", ctx)
+      %div.py-2
+        = fin_accounting_entry_edit_fields(f, ctx, {mandate_id: "Mandats-ID", mandate_date: "Mandatsdatum",
+          debit_sequence_type: "Sequenztyp", endtoend_id: "Ende-zu-Ende-ID"})
+
+      = fin_detail_heading("Debitor (Zahlungspflichtig)", ctx)
+      %div.py-2
+        = fin_accounting_entry_edit_fields(f, ctx, {dbtr_name: "Name", dbtr_iban: "IBAN", dbtr_bic: "BIC",
+          dbtr_address: "Anschrift"})
+
+      = fin_detail_heading("Kreditor (Zahlungsempfänger*in)", ctx)
+      %div.py-2
+        - if can?(:admin_finance, accounting_entry)
+          %div.row.mb-2.mt-0
+            %div.offset-md-3.offset-xl-2
+              %div.btn-group
+                %button.btn.btn-sm.btn-primary.mt-2{ type: 'button', onclick: 'fill_in_rdp_account_44_as_creditor()' }
+                  = t('activerecord.attributes.accounting_entry.fill_in_rdp_account_44_as_creditor')
+        = fin_accounting_entry_edit_fields(f, ctx, {cdtr_name: "Name", cdtr_iban: "IBAN", cdtr_bic: "BIC",
+          cdtr_address: "Anschrift", creditor_id: "Gläubiger-ID"})
+
+      %div.border-top.py-2.mt-3
+        - if permitted_attr?(:excluded_from_fee_reconciliation)
+          = f.labeled_boolean_field :excluded_from_fee_reconciliation,
+            caption: 'Diese Buchung nimmt nicht an der Abstimmung der TN-Beiträge teil'
+        - elsif can?(:log, accounting_entry) || can?(:update, accounting_entry)
+          = input_or_render_attrs(f, :excluded_from_fee_reconciliation)
+
+      %div.border-top.py-2
+        = fin_accounting_entry_edit_fields(f, ctx, {created_at: "Erstellt", author: "Angelegt von", updated_at: "Zuletzt geändert"})
+
+    = form_buttons_if_editable(f, cancel_url: cancel_url)

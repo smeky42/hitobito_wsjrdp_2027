@@ -15,6 +15,21 @@
 -#  small, :grid .booking-detail-label) and need nothing here.
 :css
   .fin-detail-list dt { font-weight: 400; font-size: .875rem; }
+  /* The copy icon (Fin::FinAccountsHelper#fin_account_copyable) and the new-tab
+     icon (wsjrdp_newtab_link) beside a value: a little air; the copy handler
+     reads the clicked element, so the icon itself takes no clicks. */
+  .bk-item-detail .fin-copy, .bk-item-detail a.ms-1[target="_blank"] { margin-left: .65rem !important; }
+  .fin-copy > * { pointer-events: none; }
+  .bk-item-detail .fin-copy.fin-copy-tight { margin-left: 0 !important; }
+  .fin-detail-grid-group + .fin-detail-grid-group { margin-top: 1rem; }
+  /* A section heading (Fin::DetailHelper#fin_detail_heading): on a page the
+     page's own heading of its level -- size, weight and colour untouched --
+     with a rule under it; in a table row's pane smaller, semibold and muted;
+     a raw block's without the rule. */
+  .fin-detail-heading { padding-bottom: .3rem; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+  .fin-detail-heading-embedded { font-size: .875rem; font-weight: 600; line-height: 1.4;
+    color: var(--bs-secondary-color, #6c757d); }
+  .fin-detail-heading-sub { border-bottom: 0; padding-bottom: 0; }
   [data-fin-editing="false"] .fin-edit-input,
   [data-fin-editing="false"] .fin-edit-actions { display: none !important; }
   [data-fin-editing="true"] .fin-edit-display,

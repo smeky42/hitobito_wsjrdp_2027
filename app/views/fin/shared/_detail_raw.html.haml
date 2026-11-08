@@ -22,11 +22,11 @@
 - if blocks.any?
   .mt-3.pt-2.border-top
     %details.fin-detail-raw{open: fin_detail_raw_area_open?(section, ctx)}
-      %summary.booking-detail-label.text-muted.text-uppercase
+      %summary.booking-detail-label.text-muted
         = section.title || t("fin.detail.raw_title")
       - blocks.each do |title, entries|
         .mt-2
-          .booking-detail-label.text-muted.text-uppercase.mb-1= title
+          = fin_detail_heading(title, ctx, depth: 1, css: "mb-1")
           .small.font-monospace
             - entries.each do |key, value|
               .text-break

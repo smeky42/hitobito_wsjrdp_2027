@@ -48,9 +48,9 @@ describe Fin::AccountingEntriesController, type: :controller do
 
   def field = doc.at_css("input[name='accounting_entry[moss_booking_id]']")
 
-  describe "GET show" do
+  describe "GET edit" do
     it "offers the number field and the unlink box, with the stored link as help" do
-      get :show, params: {id: entry.id}
+      get :edit, params: {id: entry.id}
 
       expect(field["value"]).to eq linked.id.to_s
       expect(doc.at_css("input[type=checkbox][name='unlink_moss_booking']")).to be_present
@@ -61,7 +61,7 @@ describe Fin::AccountingEntriesController, type: :controller do
 
     it "only shows the link below the manage tier" do
       session[:max_finance_permission] = "finance"
-      get :show, params: {id: entry.id}
+      get :edit, params: {id: entry.id}
 
       expect(field).to be_nil
       expect(doc.text).to include("[#{linked.id}]")

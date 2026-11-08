@@ -201,7 +201,7 @@ describe Fin::DetailHelper do
 
     it "titles a group" do
       doc = detail { |d| d.section(title: "Bankverbindung") { |s| s.attrs :iban } }
-      expect(doc.at_css(".booking-detail-label").text).to eq("Bankverbindung")
+      expect(doc.at_css(".fin-detail-heading").text).to eq("Bankverbindung")
     end
   end
 
@@ -259,7 +259,7 @@ describe Fin::DetailHelper do
     end
 
     # The titles of the entries blocks; the area's own summary is no div.
-    def block_titles(doc) = doc.css("details.fin-detail-raw div.booking-detail-label").map(&:text)
+    def block_titles(doc) = doc.css("details.fin-detail-raw .fin-detail-heading").map(&:text)
 
     it "renders one collapsible area for the blocks declared inside it" do
       doc = two_blocks
@@ -503,7 +503,7 @@ describe Fin::DetailHelper do
         d.custom(title: "Verknüpfungen") { helper.content_tag(:span, "Widget", class: "custom") }
       end
       expect(doc.at_css("span.custom").text).to eq("Widget")
-      expect(doc.at_css(".booking-detail-label").text).to eq("Verknüpfungen")
+      expect(doc.at_css(".fin-detail-heading").text).to eq("Verknüpfungen")
     end
   end
 end

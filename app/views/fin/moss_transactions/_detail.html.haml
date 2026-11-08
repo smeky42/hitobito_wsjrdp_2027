@@ -14,6 +14,8 @@
 - tx = transaction
 - currency = tx.currency.presence || "EUR"
 = render "shared/wsjrdp/expandable_table_styles"
+-# The sub-headings are the detail kit's (Fin::DetailHelper#fin_detail_heading).
+= fin_detail_styles
 .bk-item-detail
   - head = [["Art", moss_kind_label(tx.type)],
       ["Status (Moss)", [tx.moss_transaction_state, tx.invoice_status].compact_blank.join(" · ")],
@@ -39,16 +41,16 @@
   - links = [["Moss", tx.moss_record_url && link_to("In Moss öffnen", tx.moss_record_url, target: "_blank", rel: "noopener")]]
   - links << ["DATEV-Ausgleich", tx.clearing_datev_booking_id && link_to("Buchung ##{tx.clearing_datev_booking_id}", booking_path(tx.clearing_datev_booking_id))]
   - links << ["WSJRDP-Konto", tx.fin_account && link_to(tx.fin_account.to_s, wsjrdp_fin_account_path(tx.fin_account))]
-  .mt-3.pt-2.border-top
-    .booking-detail-label.text-muted.text-uppercase.mb-1 Verknüpfungen
+  %div
+    = fin_detail_heading("Verknüpfungen", level: 3)
     = render "shared/wsjrdp/kv_grid", rows: [links]
 
   -# The person side of every booking that has one, read-only: the buttons sit
   -# in the listing's row, and after one of them is used this detail reloads as
   -# a whole (the `reload_frames` stream action).
   - person_bookings = tx.bookings.select { |booking| booking.accounting_entries.any? || booking.subject.present? }
-  .mt-3.pt-2.border-top
-    .booking-detail-label.text-muted.text-uppercase.mb-1 Personen
+  %div
+    = fin_detail_heading("Personen", level: 3)
     - if person_bookings.empty?
       .small.text-muted Keine Person verknüpft.
     - person_bookings.each do |booking|
@@ -59,5 +61,5 @@
 
   - if tx.comment.present?
     .mt-2
-      .booking-detail-label.text-muted.text-uppercase.mb-1 Kommentar
+      .booking-detail-label.text-muted.mb-1 Kommentar
       .small.text-break= tx.comment

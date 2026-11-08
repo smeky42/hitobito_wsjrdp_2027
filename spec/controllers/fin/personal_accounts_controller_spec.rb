@@ -681,7 +681,7 @@ describe Fin::PersonalAccountsController do
       expect(doc.css("details").size).to eq(1)
       expect(doc.css("details.fin-detail-raw[open]").size).to eq(1)
       expect(area.at_css("summary").text.strip).to eq("Rohdaten")
-      blocks = area.css("div.booking-detail-label")
+      blocks = area.css(".fin-detail-heading")
       expect(blocks.map { |title| title.text.strip })
         .to eq(["DATEV Rohdaten", "Moss Rohdaten"])
       expect(area.text).to include("2 Unternehmen")

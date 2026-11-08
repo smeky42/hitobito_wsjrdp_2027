@@ -34,11 +34,12 @@
 - rows = fin_detail_rows(record, section, ctx, blank, editable_shown: editable_shown)
 - f = local_assigns[:form]
 - if rows.any?
-  - if section.title.present?
-    .booking-detail-label.text-muted.text-uppercase.mb-1= section.title
+  - if section.title.present? && layout != :grid
+    = fin_detail_heading(section.title, ctx)
   - case layout
   - when :list
-    %dl.fin-detail-list.m-0.p-2.border-top
+    -# The heading carries the rule; an untitled group draws its own.
+    %dl.fin-detail-list.m-0.p-2{class: ("border-top" if section.title.blank?)}
       - rows.each do |row|
         .row.mb-2
           %dt.col-md-3.col-xl-2.text-md-end.text-muted{title: row.tooltip}= row.label
@@ -64,9 +65,14 @@
           - else
             = fin_detail_content(row, editable_shown)
   - when :grid
-    .row.g-3
-      - rows.each do |row|
-        - cols = (row.span == 2) ? "col-12 col-md-8 col-lg-6" : "col-6 col-md-4 col-lg-3"
-        %div{class: cols}
-          .booking-detail-label.text-muted.text-uppercase{title: row.tooltip}= row.label
-          .text-break{class: ("text-end" if row.align == :end)}= fin_detail_content(row, editable_shown)
+    -# Cells carry no rule of their own, so groups are set apart here by a gap;
+    -# a titled one is headed (with its rule) by its heading.
+    .fin-detail-grid-group
+      - if section.title.present?
+        = fin_detail_heading(section.title, ctx, css: "mb-2")
+      .row.g-3
+        - rows.each do |row|
+          - cols = (row.span == 2) ? "col-12 col-md-8 col-lg-6" : "col-6 col-md-4 col-lg-3"
+          %div{class: cols}
+            .booking-detail-label.text-muted{title: row.tooltip}= row.label
+            .text-break{class: ("text-end" if row.align == :end)}= fin_detail_content(row, editable_shown)

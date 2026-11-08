@@ -79,9 +79,8 @@
       = render "fin/shared/detail_raw", record: record, ctx: ctx, section: section
     - when :custom
       - if section.title.present?
-        .mt-3.pt-2.border-top
-          .booking-detail-label.text-muted.text-uppercase.mb-1= section.title
-          = section.html
+        = fin_detail_heading(section.title, ctx)
+        = section.html
       - else
         = section.html
     - when :bookings

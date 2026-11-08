@@ -55,6 +55,18 @@ class AccountingEntry < ActiveRecord::Base
     @person ||= ((subject_type == "Person") ? subject : nil) || Person.root
   end
 
+  # The mails a script sent about this entry as a returned direct debit
+  # (wsjrdp_scripts: accounting_tools/missing_installment.py): a list in
+  # additional_info, one hash per mail -- sent_at, email_to, email_cc,
+  # email_subject, email_message_id, debit_return_issue, log_version_id (the
+  # note in the person's log). Anything else the key may hold is left out.
+  DEBIT_RETURN_NOTIFICATIONS_KEY = "debit_return_notifications"
+
+  def debit_return_notifications
+    list = (additional_info || {})[DEBIT_RETURN_NOTIFICATIONS_KEY]
+    list.is_a?(Array) ? list.grep(Hash) : []
+  end
+
   def group
     @group ||= (person.primary_group_id.nil? ? Group.find(person.default_group_id) : person.primary_group)
   end

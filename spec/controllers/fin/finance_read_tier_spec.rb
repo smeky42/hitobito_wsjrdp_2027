@@ -469,7 +469,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
 
       it "offers the Speichern button to the write tier" do
         sign_in(accountant)
-        get :show, params: {id: entry.id}
+        get :edit, params: {id: entry.id}
 
         expect(response).to be_successful
         expect(save_buttons).not_to be_empty
@@ -492,8 +492,10 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
         # Read-only all the same, and no way into the person's own page.
         expect(save_buttons).to be_empty
         expect(response.body).not_to include("accounting_entry[comment]")
-        expect(Nokogiri::HTML(response.body).css("#main a").pluck("href"))
-          .not_to include("/people/#{entry.subject_id}")
+        hrefs = Nokogiri::HTML(response.body).css("#main a").pluck("href")
+        expect(hrefs).not_to include("/people/#{entry.subject_id}")
+        expect(hrefs).not_to include("/fin/ae/#{entry.id}/edit")
+        expect { get :edit, params: {id: entry.id} }.to raise_error(CanCan::AccessDenied)
       end
 
       it "closes the new forms for both read-only tiers (:create)" do
