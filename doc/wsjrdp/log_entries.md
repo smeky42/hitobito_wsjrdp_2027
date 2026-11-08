@@ -53,6 +53,7 @@ Categories of `wsjrdp_note` with a label (`version.wsjrdp_note_categories`):
 
 | Category | Label |
 |---|---|
+| `debit_return` | Rücklastschrift |
 | `pre_notification` | Vorabankündigung Lastschrift |
 
 Any other category is written and shown as it is. The message is shown on one

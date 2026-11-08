@@ -14,8 +14,16 @@ module Sheet
     # particular. Where a single entry hangs is decided per entry below.
     self.parent_sheet = Sheet::Fin::Fees
 
+    # "Buchung #id" muted and light, then a short summary of the entry
+    # (Fin::AccountingEntriesHelper#fin_accounting_entry_summary); plain text
+    # in the browser tab (Wsjrdp::SheetTitle). A new entry has neither.
     def title
-      "Buchung #{entry.id}"
+      return "Buchung #{entry.id}" unless entry.persisted?
+
+      label = "Buchung ##{entry.id}"
+      summary = view.fin_accounting_entry_summary(entry)
+      html = view.safe_join([view.content_tag(:span, label, class: "text-muted fw-light"), summary].compact_blank, " ")
+      Wsjrdp::SheetTitle.new([label, summary].compact_blank.join(" · "), html)
     end
 
     # Whether this entry is about somebody. Deliberately the subject and not

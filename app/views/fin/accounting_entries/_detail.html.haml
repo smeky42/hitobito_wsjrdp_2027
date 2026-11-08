@@ -5,16 +5,18 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Shared, read-only detail of an AccountingEntry (Beitragsbuchung). Mirrors the
--#  useful fields of the edit form (/fin/ae/:id) in a compact grid; used inside
--#  the reconciliation expandable table (and reusable elsewhere).
+-#  The read-only detail of an AccountingEntry (Beitragsbuchung), built on the
+-#  finance detail kit (doc/fin/detail_partials.md): on its own page (/fin/ae/:id)
+-#  as the list, inside the reconciliation table's row as its compact rows. The
+-#  form is the edit page's (edit). The values come from
+-#  Fin::AccountingEntriesHelper, the labels from
+-#  de.activerecord.attributes.accounting_entry.
 -#
 -#  Locals:
 -#    entry -- the AccountingEntry
+-#    ctx   -- Fin::AttrFormatContext (default: the page's)
 -#    hide  -- Array of element keys to omit (default []). Recognised:
--#               :excluded_flag  the "von der Abstimmung ausgenommen" note
--#             Debtor + creditor, the SEPA direct-debit block and the
--#             created/updated timestamps are ALWAYS shown when present.
+-#               :excluded_flag  the "von der Abstimmung ausgenommen" row
 - e = entry
 -# A Beitragsbuchung is one person's fee data (amount, mandate and end-to-end
 -# reference, debtor and creditor IBAN), so this detail follows the same gate as
@@ -22,69 +24,33 @@
 -# doc/roles.md "Finance tiers" -- gets nothing. Every host is expected to leave
 -# the block out in the first place; this is the backstop for a new one.
 - return unless can?(:show, e)
+- ctx = local_assigns[:ctx] || Fin::AttrFormatContext.regular
 - hide = Array(local_assigns.fetch(:hide, []))
--# assoc_link links only where the viewer may open the person, and the entry's
--# own page is closed to the read tier (:finance_read has no :show on
--# AccountingEntry) -- neither renders a link that could only answer 403.
-- person_val = e.subject.is_a?(Person) ? assoc_link(e.subject) : e.subject_type
-- source = e.direct_debit_pre_notification_id ? "SEPA-Einzug" : (e.camt_transaction_id ? "Kontoauszug" : (e.moss_booking_id ? "Moss" : nil))
-.bk-item-detail
-  -# Grid: Buchungsdatum / Valuta / Beschreibung (2 cols) first, then amount/meta.
-  - head_row = [["Buchungsdatum", e.booking_date&.strftime("%d.%m.%Y")], ["Valuta", e.value_date&.strftime("%d.%m.%Y")], ["Beschreibung", e.description, 2]]
-  - meta = [["Betrag", "#{cents_to_eur_display_or_nil(e.amount_cents)} €", 1, :end]]
-  - meta << ["Vorab angekündigt", "#{cents_to_eur_display_or_nil(e.pre_notified_amount_cents)} €", 1, :end] if e.pre_notified_amount_cents && e.pre_notified_amount_cents != e.amount_cents
-  - meta << ["Person", person_val]
-  - meta << ["Quelle", source]
-  - meta << ["Finanzstatus", e.new_sepa_status_display]
-  - meta << ["Rückgabegrund", e.return_reason] if e.return_reason.present?
-  = render "shared/wsjrdp/kv_grid", rows: [head_row, meta]
-
-  -# Verknüpfungen: the Beitragsbuchung itself, its bank transaction and its
-  -# pre-notification.
-  - links = [["Beitragsbuchung", link_to_if(can?(:show, e), "##{e.id}", accounting_entry_path(e))]]
-  - links << ["Bank-Transaktion", e.camt_transaction_id && link_to("##{e.camt_transaction_id}", wsjrdp_camt_transaction_path(e.camt_transaction_id))]
-  - links << ["Pre-Notification", e.direct_debit_pre_notification_id && link_to("##{e.direct_debit_pre_notification_id}", wsjrdp_direct_debit_pre_notification_path(e.direct_debit_pre_notification_id))]
-  - links << ["Moss-Buchung", link_to("##{e.moss_booking_id}", moss_booking_path(e.moss_booking_id))] if e.moss_booking_id
-  -# The payment order: the entry's own, or -- for a return -- its debit's.
-  - order_id = payment_order_id_of_entry(e)
-  - links << [t("fin.payments.fields.order"), link_to("##{order_id}", payment_order_path(order_id))] if order_id
-  .mt-3.pt-2.border-top
-    .booking-detail-label.text-muted.text-uppercase.mb-1 Verknüpfungen
-    = render "shared/wsjrdp/kv_grid", rows: [links]
-
-  -# SEPA direct-debit data (mandate + end-to-end reference), when present.
-  - sepa = [["Mandats-ID", e.mandate_id], ["Mandatsdatum", e.mandate_date&.strftime("%d.%m.%Y")], ["Sequenztyp", e.debit_sequence_type], ["Ende-zu-Ende-ID", e.endtoend_id]]
-  - if sepa.any? { |_l, v| v.present? }
-    .mt-3.pt-2.border-top
-      .booking-detail-label.text-muted.text-uppercase.mb-1 SEPA-Lastschrift
-      = render "shared/wsjrdp/kv_grid", rows: [sepa]
-
-  -# Debtor (Zahlungspflichtige:r) -- always shown when present.
-  - dbtr = [["Name", e.dbtr_name], ["IBAN", e.dbtr_iban], ["BIC", e.dbtr_bic], ["Anschrift", e.dbtr_address]]
-  - if dbtr.any? { |_l, v| v.present? }
-    .mt-3.pt-2.border-top
-      .booking-detail-label.text-muted.text-uppercase.mb-1 Zahlungspflichtige:r (Debitor)
-      = render "shared/wsjrdp/kv_grid", rows: [dbtr]
-
-  -# Creditor (Zahlungsempfänger:in) -- always shown when present.
-  - cdtr = [["Name", e.cdtr_name], ["IBAN", e.cdtr_iban], ["BIC", e.cdtr_bic], ["Anschrift", e.cdtr_address], ["Gläubiger-ID", e.creditor_id]]
-  - if cdtr.any? { |_l, v| v.present? }
-    .mt-3.pt-2.border-top
-      .booking-detail-label.text-muted.text-uppercase.mb-1 Zahlungsempfänger:in (Kreditor)
-      = render "shared/wsjrdp/kv_grid", rows: [cdtr]
-
-  - if e.comment.present?
-    .mt-2
-      .booking-detail-label.text-muted.text-uppercase.mb-1 Kommentar
-      .small.text-break= e.comment
-
-  - if !hide.include?(:excluded_flag) && e.excluded_from_fee_reconciliation?
-    .mt-2
-      %span.badge.text-bg-light.border
-        = icon(:"eye-slash")
-        Von der Beitrags-Abstimmung ausgenommen
-
-  -# Created / last updated -- always shown.
-  - stamps = [["Erstellt", e.created_at&.strftime("%d.%m.%Y %H:%M")], ["Zuletzt geändert", e.updated_at&.strftime("%d.%m.%Y %H:%M")]]
-  .mt-3.pt-2.border-top
-    = render "shared/wsjrdp/kv_grid", rows: [stamps]
+= fin_detail(e, ctx, editing: false) do |d|
+  - d.attrs :booking_date, :value_date, :description, :comment, :amount_cents, :pre_notified_amount_cents,
+      :subject, :source, :new_sepa_status, :return_reason,
+      description: {span: 2}, comment: {span: 2},
+      new_sepa_status: {label: "Finanzstatus"}
+  - d.section title: "Verknüpfungen" do
+    -# The bank transaction's summary may take the full width (span: 2).
+    - d.attrs :id, :camt_transaction_id, :datev_booking_id, :direct_debit_pre_notification_id,
+      :direct_debit_payment_info_id, :moss_booking_id, :payment_order, :reverses_id, :reversed_by_id,
+      camt_transaction_id: {span: 2}, datev_booking_id: {span: 2}
+  - d.section title: "SEPA-Lastschrift" do
+    - d.attrs :mandate_id, :mandate_date, :debit_sequence_type, :endtoend_id,
+      mandate_id: {label: "Mandats-ID"}, mandate_date: {label: "Mandatsdatum"},
+      debit_sequence_type: {label: "Sequenztyp"}, endtoend_id: {label: "Ende-zu-Ende-ID"}
+  - d.section title: "Debitor (Zahlungspflichtig)" do
+    - d.attrs :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address,
+      dbtr_name: {label: "Name"}, dbtr_iban: {label: "IBAN"}, dbtr_bic: {label: "BIC"},
+      dbtr_address: {label: "Anschrift"}
+  - d.section title: "Kreditor (Zahlungsempfänger*in)" do
+    - d.attrs :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address, :creditor_id,
+      cdtr_name: {label: "Name"}, cdtr_iban: {label: "IBAN"}, cdtr_bic: {label: "BIC"},
+      cdtr_address: {label: "Anschrift"}, creditor_id: {label: "Gläubiger-ID"}
+  - d.attrs :excluded_from_fee_reconciliation,
+      excluded_from_fee_reconciliation: {hide: hide.include?(:excluded_flag)}
+  - d.attrs :created_at, :author, :updated_at, updated_at: {label: "Zuletzt geändert"}
+  -# The mails a script sent about this entry as a returned direct debit.
+  - d.custom key: :debit_return_notices do
+    = render "fin/accounting_entries/debit_return_notices", entry: e, ctx: ctx

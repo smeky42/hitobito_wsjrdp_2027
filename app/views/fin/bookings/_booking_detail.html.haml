@@ -28,6 +28,8 @@
 -# too (idempotent once-guard) so the standalone /bookkeeping/bookings/:id page
 -# also gets the light labels.
 = render "shared/wsjrdp/expandable_table_styles"
+-# The sub-headings are the detail kit's (Fin::DetailHelper#fin_detail_heading).
+= fin_detail_styles
 .bk-item-detail
   - if top && (top_html = top.call(booking)).present?
     .mb-3= top_html
@@ -38,7 +40,7 @@
         - cols = (span == 2) ? "col-12 col-md-8 col-lg-6" : "col-6 col-md-4 col-lg-3"
         %div{ class: cols }
           - if label
-            .booking-detail-label.text-muted.text-uppercase= label
+            .booking-detail-label.text-muted= label
             .text-break{ class: ("text-end" if align == :end) }
               - if value.present?
                 = value
@@ -47,8 +49,8 @@
 
   - raw_fields = booking_raw_fields(booking)
   - if raw_fields.any? { |_label, value| value.present? }
-    .mt-3.pt-2.border-top
-      .booking-detail-label.text-muted.text-uppercase.mb-1 Rohdaten (DATEV)
+    %div
+      = fin_detail_heading("Rohdaten (DATEV)", level: 3)
       -# One field per line so the (potentially many) Beleginfo / Zusatzinformation
       -# Art/Inhalt pairs each stand on their own line.
       .small.font-monospace
@@ -71,8 +73,8 @@
   -# external auditor -- the block stays, but purely as a reading view: the link
   -# and its rating, no unlink button and no connect widget.
   - may_link = can?(:update, DatevBooking)
-  .mt-3.pt-2.border-top
-    .booking-detail-label.text-muted.text-uppercase.mb-2 Verknüpfungen
+  %div
+    = fin_detail_heading("Verknüpfungen", level: 3)
     - if booking.datev_booking_batch_id
       = wsjrdp_labeled_row("Buchungsstapel") do
         - batch = booking.batch

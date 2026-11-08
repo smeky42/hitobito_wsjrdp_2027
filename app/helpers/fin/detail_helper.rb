@@ -210,6 +210,22 @@ module Fin::DetailHelper
   # layout, selected by the .fin-detail-list class on its dl. Emitted once per
   # response on the first detail (project convention: view-local styles with an
   # ivar once-guard), so a page full of detail panes carries one style block.
+  # The heading of a group, a custom section or a raw block: an h2 under the
+  # page's h1, one level further down in a table row's pane (which sits under
+  # the table's own heading), `depth` more levels inside such a section; a
+  # partial without a context names its `level` (3 and below count as
+  # embedded). On a page it is the page's own heading of that level, with a
+  # rule under it; in a table row's pane a smaller, semibold, muted one; a raw
+  # block's has no rule (fin/shared/_detail_styles -- the caller's page has to
+  # carry them, fin_detail_styles). `css` adds the spacing.
+  def fin_detail_heading(title, ctx = nil, depth: 0, level: nil, css: "mt-3 mb-2")
+    embedded = ctx ? !ctx.regular? : level.to_i >= 3
+    level ||= (ctx&.regular? ? 2 : 3) + depth
+    classes = ["fin-detail-heading", ("fin-detail-heading-embedded" if embedded),
+      ("fin-detail-heading-sub" if depth.positive?), css]
+    content_tag(:"h#{level.clamp(2, 6)}", title, class: classes.compact.join(" "))
+  end
+
   def fin_detail_styles
     # rubocop:disable Rails/HelperInstanceVariable -- deliberate response-local
     # once-guard (see comment above), not view state.

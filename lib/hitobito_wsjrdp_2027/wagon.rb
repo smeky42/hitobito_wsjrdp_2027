@@ -110,6 +110,7 @@ module HitobitoWsjrdp2027
       Sheet::Group.include Wsjrdp2027::Sheet::Group
       NavigationHelper.include Wsjrdp2027::NavigationHelper
       FormatHelper.prepend Wsjrdp2027::FormatHelper
+      SheetHelper.prepend Wsjrdp2027::SheetHelper
       StandardFormBuilder.prepend Wsjrdp2027::StandardFormBuilder
 
       # Abilities

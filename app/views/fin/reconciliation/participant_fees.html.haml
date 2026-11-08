@@ -189,7 +189,8 @@
       "person" => ae_person,
       "source" => ae_source}
     - ae_columns = Fin::AccountingEntriesColumns::COLUMNS.map { |col| col.to_table_column(cell: ae_cells.fetch(col.key)) }
-    - ae_detail = ->(e) { render "fin/accounting_entries/detail", entry: e, hide: [:excluded_flag] }
+    - ae_detail_ctx = Fin::AttrFormatContext.embedded(Wsjrdp::TableContext.new(level: 1))
+    - ae_detail = ->(e) { render "fin/accounting_entries/detail", entry: e, ctx: ae_detail_ctx, hide: [:excluded_flag] }
 
     - ae_proposal_cell = ->(entry) do
       - match = entry_match_proposals[entry.id]

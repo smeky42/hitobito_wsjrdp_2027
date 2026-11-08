@@ -1,0 +1,42 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The mails about a returned direct debit (Fin::DebitReturnNoticesHelper),
+-#  one list per mail, oldest first; nothing when there is none. The rows use
+-#  the markup of the detail kit's groups (fin/shared/_detail_group): the
+-#  :list grid on the entry's own page, the compact rows in a table's pane. The
+-#  note in the person's log is linked where the viewer may open that log, the
+-#  ticket where the viewer holds :log on the entry.
+-#
+-#  Locals: entry (AccountingEntry), ctx (Fin::AttrFormatContext)
+- notices = fin_debit_return_notices(entry)
+- if notices.any?
+  -# The log's own markup is a div per entry; here it runs on with its icon.
+  :css
+    .fin-log-note > div { display: inline; }
+  - person = entry.subject if entry.subject.is_a?(Person)
+  - log_url = log_person_path(person) if person && can?(:log, person)
+  .fin-debit-return-notices
+    - notices.each do |n|
+      = fin_detail_heading("E-Mail-Versand Rücklastschrift", ctx)
+      - ticket = n.issue && (can?(:log, entry) ? auto_link_escaped_multiline(n.issue) : n.issue)
+      -# The note as the log shows it, with the icon that opens the log.
+      - log = n.log_note && content_tag(:span, safe_join([fin_debit_return_log_note(n.log_note), (wsjrdp_newtab_link(log_url) if log_url)].compact), class: "fin-log-note")
+      - rows = [["Versendet", n.sent_at&.strftime("%d.%m.%Y %H:%M")], ["Betreff", n.subject],
+        ["An", fin_mail_addresses(n.to)], ["Cc", fin_mail_addresses(n.cc)], ["Ticket", ticket],
+        ["Log-Eintrag", log], ["Message-ID", n.message_id]].select { |_label, value| value.present? }
+      - if ctx.regular?
+        %dl.fin-detail-list.m-0.p-2
+          - rows.each do |label, value|
+            .row.mb-2
+              %dt.col-md-3.col-xl-2.text-md-end.text-muted= label
+              %dd.col-md-9.col-lg-8.col-xl-8.mw-63ch.mb-0.text-break= value
+      - else
+        %dl.row.small.mb-3
+          - rows.each do |label, value|
+            %dt.col-sm-3.col-lg-2.text-sm-end.fw-normal.text-muted.mb-1= label
+            %dd.col-sm-9.col-lg-10.mb-1.text-break= value

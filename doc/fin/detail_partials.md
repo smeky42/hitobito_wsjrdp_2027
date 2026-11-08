@@ -371,9 +371,18 @@ The layout a group uses: the group's `layout:` → the partial's `layout:` (per
 mode when it is a Hash) → the mode's own default (`:regular` → `:list`,
 `:embedded` → `:compact`).
 
-A group's `title:` renders above it as a small uppercase muted label. **A group
-without a single visible row renders nothing at all** — no empty `dl`, no
-stray title.
+A group's `title:` renders above it as a sub-heading — an `h2` on the record's
+own page, an `h3` in a table row's pane (which sits under the table's own
+heading) — made by `Fin::DetailHelper#fin_detail_heading`, with a rule under
+it (`.fin-detail-heading` in `fin/shared/_detail_styles`). On a page it keeps
+the page's own heading style of its level; in a pane it is smaller, semibold
+and muted (`.fin-detail-heading-embedded`). The rule replaces the one a group draws above itself: a titled `:list`
+group has no `border-top` of its own. A `d.custom` section's `title:`, the
+headings a partial writes itself (the Beitragsbuchung's edit page and mail
+section, the DATEV booking and Moss transaction details, with `level: 3`) use
+the same helper; their page has to carry the kit's styles (`fin_detail_styles`).
+**A group without a single visible row renders nothing at all** — no empty
+`dl`, no stray title.
 
 **The column grid of `:list`.** The layout aligns label and value exactly like
 the wagon's own form-like pages (`/fin/tx/:id`, `/fin/ae/:id`): the column
@@ -443,7 +452,8 @@ several areas and they keep their order among themselves. A `d.raw_entries`
 outside a `d.raw_data` raises, as does a nested `d.raw_data` and one opened
 inside a `d.section`.
 
-An entries block puts its `title:` as a small uppercase muted label, under it
+An entries block puts its `title:` as a heading one level below the group
+headings (`fin_detail_heading(title, ctx, depth: 1)`, without the rule — `.fin-detail-heading-sub`), under it
 the entries of one jsonb column as monospace `Schlüssel: Wert` lines — one line
 per entry, keys **verbatim** as the export wrote them, in stored order. `also:`
 appends regular columns to the block, keyed by their **column name** (raw
@@ -581,17 +591,19 @@ layout.
 
 ## 11. What is not covered yet
 
-The Kreditoren, the Kostenstellen and the DATEV booking details are built on
-this kit — the booking on both of its hosts, `/fin/bookkeeping/bookings/:id` and
-the group's own route. The other finance details render through their own
+The Kreditoren, the Kostenstellen, the DATEV booking and the Beitragsbuchung
+details are built on this kit — the booking on both of its hosts,
+`/fin/bookkeeping/bookings/:id` and the group's own route; the Beitragsbuchung
+as the list on its reading page `/fin/ae/:id` (the form is its edit page
+`/fin/ae/:id/edit`) and as the compact rows in the reconciliation table's
+row. The other finance details render through their own
 partials:
 
 - **Sachkonten** through `fin/shared/_item_detail`, and the **Buchungsstapel**
   page directly, both over `shared/wsjrdp/_detail_fields` (flat
   `[label, value]` pairs from the `*_detail_fields` helpers of
   `Fin::BookkeepingHelper`, labels as German string literals).
-- **Beitragsbuchung** (`fin/accounting_entries/_detail`) and the **Moss
-  transaction** detail through `shared/wsjrdp/_kv_grid`.
+- the **Moss transaction** detail through `shared/wsjrdp/_kv_grid`.
 
 `doc/plans/2026-09_fin-detail-partials.md` §5 records the order in which they
 move onto the kit.

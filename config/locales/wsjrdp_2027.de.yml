@@ -541,6 +541,20 @@ de:
 
       # de.activerecord.attributes.accounting_entry
       accounting_entry:
+        id: Beitragsbuchung
+        booking_date: Buchungsdatum
+        amount_cents: Betrag
+        pre_notified_amount_cents: Vorab angekündigt
+        source: Quelle
+        return_reason: Rückgabegrund
+        camt_transaction_id: Bank-Transaktion
+        direct_debit_pre_notification_id: Pre-Notification
+        payment_order: SEPA-Auftrag
+        datev_booking_id: DATEV-Buchung
+        direct_debit_payment_info_id: Sammler
+        reverses_id: Storniert Buchung
+        reversed_by_id: Storniert durch
+        author: Angelegt von
         created_at: Erstellt
         updated_at: Geändert
         subject: Person
@@ -2465,6 +2479,7 @@ de:
     # Log entries of the wagon (Wsjrdp::LogEvents, doc/wsjrdp/log_entries.md).
     wsjrdp_note: '<i>%{category}</i>: %{message}'
     wsjrdp_note_categories:
+      debit_return: Rücklastschrift
       pre_notification: Vorabankündigung Lastschrift
     wsjrdp_detail: '%{label}: %{value}'
     wsjrdp_generic: 'Eintrag <i>%{event}</i>'

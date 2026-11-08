@@ -110,7 +110,8 @@ class Fin::ReconciliationController < Fin::FinController
     @entries ||= Wsjrdp::ExpandableTableRows.new(entries_table_state,
       unmatched_entries_relation,
       sort: Fin::AccountingEntriesColumns.sort_expressions,
-      preload: :subject,
+      # The row's detail (fin/accounting_entries/_detail) is rendered with it.
+      preload: [:subject, :author, :camt_transaction, :datev_booking, :direct_debit_payment_info],
       tiebreaker: "accounting_entries.id DESC",
       natural_order: method(:order_proposals_first))
   end

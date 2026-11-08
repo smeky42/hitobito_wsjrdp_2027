@@ -69,12 +69,20 @@ class Fin::AccountingEntriesController < Fin::FinController
     end
   end
 
+  # The reading page; "Bearbeiten" leads to #edit.
   def show
     @group ||= group
     @person ||= person
     @accounting_entry ||= accounting_entry
+  end
+
+  # The form; a save returns to the reading page (#return_url).
+  def edit
+    authorize!(:update, AccountingEntry)
+    @group ||= group
+    @person ||= person
+    @accounting_entry ||= accounting_entry
     @permitted_attrs ||= permitted_attrs
-    render "person/accounting_entries/show"
   end
 
   def update
@@ -88,7 +96,7 @@ class Fin::AccountingEntriesController < Fin::FinController
     unless params[:accounting_entry].blank?
       accounting_entry.attributes = params.require(:accounting_entry).permit(permitted_attrs)
       unless apply_moss_booking_link_change(accounting_entry) && accounting_entry.save
-        render "person/accounting_entries/show", status: :bad_request
+        render :edit, status: :bad_request
         return
       end
     end
@@ -109,7 +117,8 @@ class Fin::AccountingEntriesController < Fin::FinController
     elsif (action_name == "new") || (action_name == "create")
       permitted_attrs_for_new_entry
     elsif can?(:admin_finance, AccountingEntry)
-      permitted_attrs_for_new_entry + permitted_attrs_for_link_edit
+      # A booked amount is not changed on the edit page (it shows disabled).
+      permitted_attrs_for_new_entry - %i[amount_cents amount_eur] + permitted_attrs_for_link_edit
     else
       [:comment]
     end
