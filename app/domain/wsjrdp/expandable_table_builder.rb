@@ -151,6 +151,14 @@ class Wsjrdp::ExpandableTableBuilder
     @locals[:detail_src] = block
   end
 
+  # Content of the page that belongs to the table but stands above its filter
+  # line (an inbox, a hint): rendered first, and as wide as the table at most
+  # -- the same max-width the filter line and the table get with `t.gaps`.
+  #   t.above render("things/inbox")
+  def above(html)
+    @locals[:above] = html
+  end
+
   # Content injected at the top of each detail.
   def detail_top(&block)
     @locals[:detail_top] = block

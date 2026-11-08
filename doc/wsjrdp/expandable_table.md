@@ -1929,6 +1929,7 @@ method that sets each one is in brackets.
 | `extra_columns` | injected columns appended after the menu-managed ones, never in the picker [`t.columns …, extra:`] |
 | `row_key` | `->(row){ String }` unique key [`t.row_key`] |
 | `detail` / `detail_src` | inline (server) or lazy (turbo frame) detail [`t.detail` / `t.detail_src`] |
+| `above` | html above the filter line, as wide as the table at most (the `t.gaps` max-width) -- an inbox or a hint that belongs to the table [`t.above`] |
 | `detail_top` / `detail_extra` | `->(row){ html }` injected at the top / bottom of each detail [`t.detail_top` / `t.detail_extra`] |
 | `detail_page` | `->(row){ path }` the primary "Detailseite" double link of the detail's header line, rightmost in it [`t.detail_page`] |
 | `detail_links` | `[{label:, icon:, title:, title_new_tab:, url: ->(row){ url }}]` further double links, LEFT of the primary one and in declaration order; a `nil` URL renders no group for that row (§2) [`t.detail_link`, once per link] |

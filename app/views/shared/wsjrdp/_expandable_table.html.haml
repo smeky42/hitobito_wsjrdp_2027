@@ -25,6 +25,7 @@
 -#    row_key   -- ->(row){ String } unique key (URL param + DOM id + selection)
 -#    detail     -- ->(row){ html }   server-rendered detail  (OR)
 -#    detail_src -- ->(row){ url }     lazy-loaded detail (turbo frame)
+-#    above      -- html above the filter line, no wider than the table [t.above]
 -#    detail_top / detail_extra -- ->(row){ html } injected at the top / bottom
 -#                 of each detail (see fin/bookings/_booking_detail for the slots)
 -#    detail_page  -- ->(row){ path } the primary "Detailseite" double link of the
@@ -273,6 +274,10 @@
 = render "shared/wsjrdp/row_click_guard"
 - if selection
   = render "shared/wsjrdp/table_selection_js"
+
+-# `t.above`: page content above the filter line, no wider than the table.
+- if local_assigns[:above].present?
+  .exp-above{ style: max_width_style }= local_assigns[:above]
 
 -# The filter: a fixed LINE (presets + applied chips + the pane's toggle),
 -# then the pane, then the toolbar, then the table. Both lines are there in both
