@@ -12,7 +12,7 @@ require "spec_helper"
 # Filtering arrays with the CNF filter: both strategies give the same rows for
 # every operator, and the rows the SQL of the relation-backed tables gives.
 describe Wsjrdp::Filtering::ArrayCompiler do
-  let(:row) { Struct.new(:id, :name, :note, :amount, :day, :kind, :ref, :ref2, keyword_init: true) }
+  let(:row) { Struct.new(:id, :name, :note, :amount, :day, :kind, :ref, :ref2, :refs, keyword_init: true) }
 
   let(:source) do
     Wsjrdp::Filtering::ArraySource.define(:spec_rows) do |s|
@@ -24,6 +24,7 @@ describe Wsjrdp::Filtering::ArrayCompiler do
       s.field :kind, :text
       s.field :ref, :integer
       s.field :ref2, :integer
+      s.field :refs, :integer_list
     end
   end
 
@@ -43,20 +44,25 @@ describe Wsjrdp::Filtering::ArrayCompiler do
         options: Wsjrdp::Filtering::Options.values(-> { [%w[a A], %w[b B]] })
       s.attribute key: :ref, short_key: :r, label: "Bezug", type: Wsjrdp::Filtering::Types::REFERENCE,
         operators: %i[in not_in present blank], column: ->(t) { [t[:ref], t[:ref2]] }
+      s.attribute key: :refs, short_key: :rl, label: "Bezüge", type: Wsjrdp::Filtering::Types::REFERENCE,
+        operators: %i[in not_in present blank], column: :refs
+      s.attribute key: :any_ref, short_key: :ar, label: "Bezug oder Bezüge",
+        type: Wsjrdp::Filtering::Types::REFERENCE, operators: %i[in not_in present blank],
+        column: ->(t) { [t[:ref], t[:refs]] }
     end.bind(source)
   end
 
   let(:rows) do
     [
       row.new(id: 1, name: "Äpfel und Birnen", note: nil, amount: BigDecimal("10.5"), day: Date.new(2026, 1, 15),
-        kind: "a", ref: 1, ref2: nil),
+        kind: "a", ref: 1, ref2: nil, refs: [1, 2]),
       row.new(id: 2, name: "apfel", note: "50% Rabatt", amount: BigDecimal(0), day: Date.new(2026, 2, 1),
-        kind: "b", ref: nil, ref2: 2),
-      row.new(id: 3, name: nil, note: "a_b\\c", amount: nil, day: nil, kind: nil, ref: nil, ref2: nil),
+        kind: "b", ref: nil, ref2: 2, refs: []),
+      row.new(id: 3, name: nil, note: "a_b\\c", amount: nil, day: nil, kind: nil, ref: nil, ref2: nil, refs: nil),
       row.new(id: 4, name: "RK-2026-0001", note: "Zeile1\nZeile2", amount: BigDecimal(-3), day: Date.new(2025, 12, 31),
-        kind: "a", ref: 3, ref2: 3),
+        kind: "a", ref: 3, ref2: 3, refs: [3]),
       row.new(id: 5, name: "Birne", note: "", amount: BigDecimal(1000), day: Date.new(2026, 1, 31), kind: "c",
-        ref: 2, ref2: 9)
+        ref: 2, ref2: 9, refs: [2, 9])
     ]
   end
 
@@ -78,7 +84,9 @@ describe Wsjrdp::Filtering::ArrayCompiler do
     ["day", "between", "2026-01-01", "2026-01-31"], ["day", "in_month", "2026-01"], ["day", "in_year", "2025"],
     ["day", "present"], ["day", "blank"],
     ["kind", "in", "a", "c"], ["kind", "not_in", "a"],
-    ["ref", "in", "2", "3"], ["ref", "not_in", "3"], ["ref", "present"], ["ref", "blank"]
+    ["ref", "in", "2", "3"], ["ref", "not_in", "3"], ["ref", "present"], ["ref", "blank"],
+    ["refs", "in", "2"], ["refs", "in", "3", "9"], ["refs", "not_in", "2"], ["refs", "present"], ["refs", "blank"],
+    ["any_ref", "in", "1"], ["any_ref", "not_in", "3"], ["any_ref", "present"], ["any_ref", "blank"]
   ]
 
   conditions.each do |condition|
@@ -96,6 +104,19 @@ describe Wsjrdp::Filtering::ArrayCompiler do
     expect(ids([[%w[ref not_in 3]]], :ruby)).to eq([5])
     expect(ids([[%w[text contains %]]], :ruby)).to eq([2])
     expect(ids([[["day", "in_month", "2026-01"]]], :ruby)).to eq([1, 5])
+  end
+
+  # A list field (:integer_list) matches like several columns: any element
+  # for `ist`, none for `ist nicht` -- an empty or missing list included.
+  it "matches a list field by its elements" do
+    %i[ruby sql].each do |strategy|
+      expect(ids([[%w[refs in 2]]], strategy)).to eq([1, 5])
+      expect(ids([[%w[refs not_in 2]]], strategy)).to eq([2, 3, 4])
+      expect(ids([[%w[refs present]]], strategy)).to eq([1, 4, 5])
+      expect(ids([[%w[refs blank]]], strategy)).to eq([2, 3])
+      expect(ids([[%w[any_ref in 1]]], strategy)).to eq([1])
+      expect(ids([[%w[any_ref not_in 3]]], strategy)).to eq([1, 5])
+    end
   end
 
   it "ANDs the slots, ORs within a slot and keeps the order of the rows" do
