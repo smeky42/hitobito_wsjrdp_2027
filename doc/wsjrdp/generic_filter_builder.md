@@ -1739,10 +1739,19 @@ builder. Only the last step differs -- the rows the query leaves come from
 The pieces:
 
 - `Wsjrdp::Filtering::ArraySource` -- the dataset's "table": per field an SQL
-  type (`integer`, `bigint`, `numeric`, `text`, `date`, `boolean`) and a
-  reader `->(row) { ... }` (by default the method of the field's name). A
-  schema binds to it like to a relation; an attribute names fields as its
-  column (a symbol, or a lambda over the arel table returning several).
+  type (`integer`, `bigint`, `numeric`, `text`, `date`, `boolean`,
+  `integer_list`) and a reader `->(row) { ... }` (by default the method of the
+  field's name). A schema binds to it like to a relation; an attribute names
+  fields as its column (a symbol, or a lambda over the arel table returning
+  several).
+- An `integer_list` field holds several values per row (an Array of
+  Integers, nil counting as empty; `integer[]` in SQL), e.g. the accounts of
+  one side of an Umbuchung -- no fixed number of columns. A REFERENCE
+  attribute over it matches like one over several columns: `ist` if any
+  element is a chosen value, `ist nicht` if none is (an empty list too),
+  `hat Wert` / `ist leer` by whether the list has elements. Its column is an
+  `ArraySource::ListAttribute`, which renders these as `&&`, `NOT (… && …)`
+  and `cardinality(…)`; both strategies give the same rows.
 - `Wsjrdp::Filtering::ArrayFilterSchema` -- the filter schema protocol for
   such a dataset: the module extends it instead of `FilterSchema`, binds its
   `SCHEMA` to the source in `bound`, and `TableState::Filter#scope` then takes

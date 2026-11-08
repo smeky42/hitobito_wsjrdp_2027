@@ -44,4 +44,8 @@
       .flt-segment .btn { white-space: nowrap; }
       .flt-segment .btn[aria-pressed="true"] { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .12);
         border-color: var(--bs-primary, #21697c); position: relative; z-index: 1; font-weight: 500; }
+      /* Hovering the pressed segment keeps its text dark: Bootstrap's outline
+         hover turns it white, which is unreadable on the light tint. */
+      .flt-segment .btn[aria-pressed="true"]:hover { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .2);
+        color: var(--bs-btn-color); }
       .flt-segment .btn[aria-disabled="true"] { pointer-events: none; opacity: .55; }

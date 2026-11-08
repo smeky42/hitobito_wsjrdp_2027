@@ -98,8 +98,13 @@ module Wsjrdp::Filtering
           raise ArgumentError, "no Ruby predicate for #{attribute.type.key}/#{operator.key}"
         end
         prepared = RubyPredicates.prepare(attribute.type.key, operator.key, operands)
-        value_columns = fields.map { |field| columns[field] }
-        ->(index) { test.call(value_columns.pluck(index), prepared) }
+        value_columns = fields.map { |field| [columns[field], field.list?] }
+        # A list field contributes its elements, as if each were a column of
+        # its own (nil: the empty list).
+        ->(index) {
+          values = value_columns.flat_map { |column, list| list ? Array(column[index]) : [column[index]] }
+          test.call(values, prepared)
+        }
       end
     end
 
@@ -140,9 +145,8 @@ module Wsjrdp::Filtering
       # value cast to its field's type, so NULLs and the first row type the
       # columns alike.
       def values_sql(rows, fields)
-        readers = fields.map { |field| [field.reader, "::#{field.sql_type}"] }
         tuples = rows.each_with_index.map do |row, index|
-          "(#{index}#{readers.map { |reader, cast| ", #{quote(reader.call(row))}#{cast}" }.join})"
+          "(#{index}#{fields.map { |field| ", #{quote_field(field, field.reader.call(row))}" }.join})"
         end
         names = [ArraySource::INDEX, *fields.map(&:name)].map { |name| connection.quote_column_name(name) }
         "(VALUES #{tuples.join(", ")}) AS #{quoted_name}(#{names.join(", ")})"
@@ -155,6 +159,14 @@ module Wsjrdp::Filtering
       def quoted_name = connection.quote_table_name(@source.name)
 
       def quote(value) = value.nil? ? "NULL" : connection.quote(value)
+
+      # A value cast to its field's type; a list as an array literal of its
+      # integers (nil: the empty list, as in Ruby).
+      def quote_field(field, value)
+        return "#{quote(value)}::#{field.sql_cast}" unless field.list?
+
+        ArraySource::ListAttribute.literal(Array(value)).to_s
+      end
 
       # The fields the query's attributes name; all of them when one of its
       # columns is an SQL expression (which may read any field).
