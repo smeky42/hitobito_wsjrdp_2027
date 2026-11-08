@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The opened row of a BANK leg in "Buchungen der Umbuchung": the bank
+-#  transaction's fields as the key/value grid the Moss detail uses
+-#  (fin/moss_transactions/_detail, the Moss legs' detail), reading only. The
+-#  transaction's own page (the row's "Detailseite") has everything else.
+-#
+-#  Locals: tx (WsjrdpCamtTransaction)
+= render "shared/wsjrdp/expandable_table_styles"
+- debit = tx.signed_base_amount.to_d.negative?
+- party_name, party_iban = debit ? [tx.cdtr_name, tx.cdtr_iban] : [tx.dbtr_name, tx.dbtr_iban]
+.bk-item-detail
+  - head = [["Konto", internal_transfer_account_link(tx.fin_account)],
+      ["Valuta", fin_date(tx.value_date)],
+      ["Buchungstag", fin_date(tx.booking_date)],
+      ["Betrag", internal_transfer_amount(tx.signed_base_amount), 1, :end]]
+  - party = [[debit ? "Empfänger" : "Auftraggeber", party_name],
+      ["IBAN", fin_account_iban_display(party_iban)],
+      ["Verwendungszweck", tx.description, 2]]
+  - refs = [["End-to-End-ID", tx.endtoend_id], ["Mandatsreferenz", tx.mandate_id]]
+  - refs << ["Buchungsart", tx.additional_entry_info] if tx.additional_entry_info.present?
+  - refs << ["Kommentar", tx.comment, 2] if tx.comment.present?
+  - codes = [["Code (ISO)", payment_iso_code(tx.bank_transaction_code), 2],
+      ["Code (DK)", payment_dk_code(tx.bank_transaction_code_dk), 2]]
+  = render "shared/wsjrdp/kv_grid", rows: [head, party, refs, codes]

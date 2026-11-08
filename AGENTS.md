@@ -33,6 +33,13 @@ How-to guides — authoritative, follow them:
   Buchhaltung summaries, both reconciliation tables): expandable per-row detail,
   paging, sortable headers, the column hamburger, row selection, filters, detail
   nesting, and the `prefix` namespacing that lets several tables share one page.
+- [`doc/wsjrdp/transaction_picker.md`](doc/wsjrdp/transaction_picker.md) — the
+  shared picker for bank and Moss transactions inside a form (filters, server
+  search, the tray of hidden fields), and how to put it into another form.
+- [`doc/fin/internal_transfers.md`](doc/fin/internal_transfers.md) — Umbuchungen
+  (transfers between own accounts): the model and its legs, the detection rule
+  and its 10-day window, the marks on a leg, the pages, the rights and the
+  import API the scripts call with a service token.
 - [`doc/fin/detail_partials.md`](doc/fin/detail_partials.md) — the kit behind a
   finance record's detail partial (`fin_detail` with `Fin::AttrFormatContext`,
   `Fin::DetailValue`, `Fin::DetailBuilder`): the formatter lookup

@@ -40,27 +40,36 @@ module Fin::AccountsOverviewHelper
   # value date, the wallet's Moss bookings by booking date
   # (MossTransaction#value_date). The balance starts from each account's
   # opening balance in the month of its opening date, so its last point is the
-  # total balance of the open accounts. Months without rows count as 0;
-  # transfers between own accounts appear in Ein and Aus and cancel out in Saldo.
+  # total balance of the open accounts. Months without rows count as 0.
+  # The legs of an Umbuchung (WsjrdpInternalTransfer, linked or still open) stay
+  # out of Ein and Aus: the money only moved between own accounts. They do count
+  # for the balance line, which therefore still ends at the total balance.
   def fin_monthly_movements(rows)
     open_rows = fin_open_account_rows(rows)
     return [] if open_rows.empty?
 
     ids = open_rows.map { |account, _balance_cents| account.id }
     months = Hash.new { |hash, month| hash[month] = [0.to_d, 0.to_d] }
-    fin_monthly_sums(WsjrdpCamtTransaction.where(fin_account_id: ids),
+    camt = WsjrdpCamtTransaction.where(fin_account_id: ids)
+    moss = MossBooking.joins(:moss_transaction).where(moss_transactions: {fin_account_id: ids})
+    fin_monthly_sums(camt.without_internal_transfer,
       "wsjrdp_camt_transactions.value_date", "wsjrdp_camt_transactions.signed_base_amount", months)
-    fin_monthly_sums(MossBooking.joins(:moss_transaction).where(moss_transactions: {fin_account_id: ids}),
+    fin_monthly_sums(moss.merge(MossTransaction.without_internal_transfer),
       "moss_transactions.booking_date", "moss_bookings.signed_base_amount", months)
+    transfers = Hash.new(0.to_d)
+    fin_monthly_net(camt.where.not(internal_transfer_id: nil),
+      "wsjrdp_camt_transactions.value_date", "wsjrdp_camt_transactions.signed_base_amount", transfers)
+    fin_monthly_net(moss.where.not(moss_transactions: {internal_transfer_id: nil}),
+      "moss_transactions.booking_date", "moss_bookings.signed_base_amount", transfers)
     openings = Hash.new(0.to_d)
     open_rows.each do |account, _balance_cents|
       openings[account.opening_balance_date.strftime("%Y-%m")] += account.opening_balance_cents.to_d / 100
     end
 
-    keys = fin_month_range(*(months.keys + openings.keys).minmax)
+    keys = fin_month_range(*(months.keys + openings.keys + transfers.keys).minmax)
     flows = keys.to_h { |month| [month, months.fetch(month, [0.to_d, 0.to_d])] }
     balance = 0.to_d
-    running = keys.to_h { |month| [month, (balance += openings[month] + flows[month].sum).to_f] }
+    running = keys.to_h { |month| [month, (balance += openings[month] + flows[month].sum + transfers[month]).to_f] }
 
     [
       {name: "Ein", data: flows.transform_values { |inflow, _outflow| inflow.to_f }},
@@ -84,6 +93,13 @@ module Fin::AccountsOverviewHelper
       months[key][0] += inflow
       months[key][1] += outflow
     end
+  end
+
+  # Adds the scope's net amount per month ("YYYY-MM") into `sums`.
+  def fin_monthly_net(scope, date_column, amount_column, sums)
+    month = "to_char(#{date_column}, 'YYYY-MM')"
+    scope.where.not(date_column => nil).group(Arel.sql(month)).sum(Arel.sql(amount_column))
+      .each { |key, amount| sums[key] += amount }
   end
 
   # Every "YYYY-MM" from `first` to `last`.

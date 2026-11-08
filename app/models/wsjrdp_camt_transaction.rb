@@ -11,6 +11,7 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   include ActionView::Helpers::TextHelper
   include WsjrdpNumberHelper
   include WsjrdpTransaction
+  include WsjrdpInternalTransferLeg
 
   belongs_to :subject, polymorphic: true, optional: true
 
@@ -42,8 +43,13 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   belongs_to :reverses, optional: true, class_name: "WsjrdpCamtTransaction"
   belongs_to :reversed_by, optional: true, class_name: "WsjrdpCamtTransaction"
 
+  # The transfer between own accounts this transaction is a leg of, if any.
+  belongs_to :internal_transfer, optional: true, class_name: "WsjrdpInternalTransfer",
+    inverse_of: :camt_transactions
+
   # Neither deleted nor replaced by a later statement's copy.
   scope :current, -> { where(deleted_at: nil, replaced_by_id: nil) }
+  scope :without_internal_transfer, -> { where(internal_transfer_id: nil) }
   scope :returns, -> { where.not(return_reason: nil) }
   # Money the bank credited without a return reason -- on a debit's or a
   # Sammler's link, its collection.

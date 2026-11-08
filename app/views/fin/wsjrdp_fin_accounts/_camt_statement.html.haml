@@ -7,8 +7,8 @@
 -#
 -#  The statement of a BANK account: every camt transaction of the account, in
 -#  one plain table, newest first (Fin::WsjrdpFinAccountsController
--#  #ordered_transactions). Unchanged -- the Moss wallet moved to the expandable
--#  table (_moss_wallet), this markup stays exactly what it has always been.
+-#  #ordered_transactions), the opening balance below them. The current balance
+-#  is the page's head line (_summary).
 :css
   .amount {
     text-align: right;
@@ -42,11 +42,6 @@
         %th Beschreibung
         %th
     %tbody
-      %tr
-        %td
-        %td.amount= @wsjrdp_fin_account.closing_balance_eur_display
-        %td Aktuelles Saldo
-        %td
       - ordered_transactions.each do |tx|
         - if tx.respond_to?(:return_reason) && tx.return_reason.present?
           - return_msg = "#{Settings.return_debit_status[tx.return_status]}: Retoure mit Rückgabe-Grund #{tx.return_reason}"
@@ -132,5 +127,3 @@
           = fin_account.opening_balance_eur_display
         %td Eröffnungs-Saldo
         %td
-
-  = render "fin/wsjrdp_fin_accounts/account_form"

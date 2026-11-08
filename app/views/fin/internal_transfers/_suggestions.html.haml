@@ -1,0 +1,125 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The suggestions box above the list (Fin::InternalTransferDetection), in
+-#  three groups: the unique pairs (checked, linked or dismissed together), the
+-#  groups of competing pairs (one is picked, or "keine davon") and the rows
+-#  naming another own account without a partner -- "waiting" for 3 bank days,
+-#  then "ohne Gegenseite". Gone once nothing is left to decide.
+-#
+-#  Locals: detection (Fin::InternalTransferDetection)
+:css
+  .it-suggestions { border: 1px solid var(--bs-warning-border-subtle, #ffe69c); }
+  .it-suggestions h3 { font-size: .95rem; font-weight: 600; margin: 1rem 0 .4rem; }
+  .it-case { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.4fr); gap: .75rem;
+    align-items: center; }
+  .it-case .it-missing { border: 1px dashed var(--bs-border-color, #dee2e6); border-radius: .375rem; padding: .5rem; }
+  .it-suggestions .it-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  @media (max-width: 575.98px) {
+    .it-suggestions { padding: .5rem !important; }
+    .it-suggestions table { font-size: .8rem; }
+    .it-suggestions td, .it-suggestions th { padding-left: .2rem; padding-right: .2rem; }
+    .it-case { grid-template-columns: minmax(0, 1fr); }
+    .it-case > .it-arrow { transform: rotate(90deg); justify-self: start; }
+  }
+= render "fin/internal_transfers/styles"
+- unique = detection.unique
+- ambiguous = detection.ambiguous
+- missing = detection.without_counterpart
+- waiting = detection.waiting
+- if unique.any? || ambiguous.any? || missing.any? || waiting.any?
+  .it-suggestions.rounded.p-3.mb-3#internal-transfer-suggestions
+    .d-flex.align-items-center.gap-2.flex-wrap
+      %strong Vorschläge zur Verknüpfung
+      - if detection.open_count.positive?
+        %span.badge.text-bg-warning= "#{detection.open_count} offen"
+
+    - if unique.any?
+      %h3= "Eindeutig (#{unique.size})"
+      = form_tag link_internal_transfers_path, id: "it-unique-form" do
+        .table-responsive
+          %table.table.table-sm.align-middle.mb-2
+            %thead
+              %tr
+                %th{style: "width: 2rem"}
+                  %input.form-check-input.it-check{type: "checkbox", checked: true, "aria-label": "Alle auswählen",
+                    onclick: "this.closest('table').querySelectorAll('tbody input').forEach(function (b) { b.checked = this.checked }, this)"}
+                %th Datum
+                %th Von → Nach
+                %th.d-none.d-sm-table-cell Erkannt durch
+                %th.text-end Betrag
+            %tbody
+              - unique.each do |pair|
+                %tr
+                  %td
+                    %input.form-check-input.it-check{type: "checkbox", name: "pairs[]", value: pair.key, checked: true,
+                      "aria-label": "Auswählen"}
+                  %td.it-num= fin_date(pair.from.date)
+                  %td
+                    = "#{internal_transfer_account_name(pair.from.account)} → #{internal_transfer_account_name(pair.to.account)}"
+                    -# On a phone the rule goes under the accounts instead of a column of its own.
+                    .small.text-muted.d-sm-none= internal_transfer_rule_label(pair.rule)
+                  %td.text-muted.d-none.d-sm-table-cell= internal_transfer_rule_label(pair.rule)
+                  %td.text-end.it-num= fin_money(pair.amount)
+        .d-flex.gap-2.flex-wrap
+          %button.btn.btn-sm.btn-primary{type: "submit"}= "Ausgewählte verknüpfen"
+          %button.btn.btn-sm.btn-outline-secondary{type: "submit", formaction: dismiss_internal_transfers_path,
+            data: {turbo_confirm: "Die ausgewählten Vorschläge verwerfen?"}} Ausgewählte verwerfen
+
+    - if ambiguous.any?
+      %h3= "Mehrere Kandidaten (#{ambiguous.size})"
+      - ambiguous.each_with_index do |group, index|
+        = form_tag link_internal_transfers_path, class: "border rounded p-2 mb-2" do
+          - group.each_with_index do |pair, pair_index|
+            %label.it-case.mb-1
+              %span
+                %input.form-check-input.me-1{type: "radio", name: "choice[#{index}]", value: pair.key,
+                  checked: pair_index.zero?}
+                %strong= internal_transfer_account_name(pair.from.account)
+                %span.it-num.text-danger= "#{fin_money(pair.from.amount)} · #{fin_date(pair.from.date)}"
+              %span.it-arrow.text-muted= icon(:"arrow-right")
+              %span
+                %strong= internal_transfer_account_name(pair.to.account)
+                %span.it-num.text-success= "+#{fin_money(pair.to.amount)} · #{fin_date(pair.to.date)}"
+                %span.small.text-muted= pair.to.text.truncate(60)
+          %label.small.text-muted.d-block.mb-2
+            %input.form-check-input.me-1{type: "radio", name: "choice[#{index}]", value: "none"}
+            keine davon
+          - group.each do |pair|
+            %input{type: "hidden", name: "group_pairs[]", value: pair.key}
+          .d-flex.gap-2.flex-wrap
+            %button.btn.btn-sm.btn-primary{type: "submit"} Mit Auswahl verknüpfen
+            %button.btn.btn-sm.btn-outline-secondary{type: "submit", formaction: dismiss_internal_transfers_path,
+              data: {turbo_confirm: "Keine dieser Buchungen gehört zusammen?"}} Keine Umbuchung
+
+    - if missing.any?
+      %h3= "Ohne Gegenseite (#{missing.size})"
+      - missing.each do |entry|
+        .border.rounded.p-2.mb-2
+          .it-case.mb-2
+            %span
+              %strong= internal_transfer_account_name(entry.leg.account)
+              %span.it-num{class: entry.leg.from? ? "text-danger" : "text-success"}
+                = "#{fin_money(entry.leg.amount)} · #{fin_date(entry.leg.date)}"
+              %span.small.text-muted.d-block= entry.leg.text.truncate(80)
+            %span.it-arrow.text-muted= icon(:"arrow-right")
+            %span.it-missing.text-muted
+              = "#{internal_transfer_account_name(entry.named_account)}: keine passende Gegenbuchung bis #{fin_date(entry.waiting_until)}"
+          .d-flex.gap-2.flex-wrap
+            = button_to "Als offene Umbuchung anlegen", internal_transfers_path, params: {add_legs: [entry.leg.key]},
+              class: "btn btn-sm btn-outline-primary", form: {class: "d-inline"}
+            = button_to "Keine Umbuchung", dismiss_internal_transfers_path, params: {legs: [entry.leg.key]},
+              class: "btn btn-sm btn-outline-secondary", form: {class: "d-inline"}
+
+    - if waiting.any?
+      %h3= "Wartet auf Gegenbuchung (#{waiting.size})"
+      %ul.list-unstyled.small.mb-0
+        - waiting.each do |entry|
+          %li
+            %span.it-num= "#{fin_date(entry.leg.date)} · #{fin_money(entry.leg.amount)}"
+            = "#{internal_transfer_account_name(entry.leg.account)} → #{internal_transfer_account_name(entry.named_account)}"
+            %span.text-muted= "(bis #{fin_date(entry.waiting_until)})"

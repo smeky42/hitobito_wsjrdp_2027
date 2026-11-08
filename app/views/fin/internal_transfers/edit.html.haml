@@ -1,0 +1,19 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit mode of an Umbuchung: in the frame it was opened in (the
+-#  transfer's page or a row of the list), or as a page of its own.
+- if turbo_frame_request?
+  = wsjrdp_detail_frame(Fin::InternalTransfersController::PAGE_FRAME_PREFIX, transfer.id) do
+    .px-3.pt-2.pb-3= render "fin/internal_transfers/form", transfer: transfer
+- else
+  - content_for :head do
+    = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+  #main
+    = render "fin/shared/detail_header", back: nil, back_label: nil, toolbar: nil,
+      label: internal_transfer_page_label(transfer), title: "bearbeiten"
+    = render "fin/internal_transfers/form", transfer: transfer

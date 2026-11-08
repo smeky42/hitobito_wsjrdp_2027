@@ -1,0 +1,302 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Styles and script of the transaction picker (_transaction_picker), once per
+-#  response. The script is installed once per page and works on every picker
+-#  by delegation, so a picker that arrives later in a frame needs nothing more.
+- unless @wsjrdp_transaction_picker_assets
+  - @wsjrdp_transaction_picker_assets = true
+  :css
+    .tp-panel > summary { list-style: none; }
+    .tp-panel[open] > summary { display: none; }
+    /* Room for the sticky bars when closing scrolls the button back into view. */
+    .tp-panel > summary { scroll-margin-top: 7rem; scroll-margin-bottom: 1rem; }
+    .tp-top { display: flex; align-items: center; gap: .5rem; margin: -.25rem 0 .35rem; white-space: nowrap; }
+    .tp-top .btn, .tp-foot .btn-link { text-decoration: none; padding-left: .25rem; padding-right: .25rem; }
+    .tp-filter-note { padding-left: 4.55rem; margin-top: -.15rem; }
+    .tp-panel > summary::-webkit-details-marker { display: none; }
+    .tp-filters { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .5rem; }
+    .tp-filter { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+    .tp-label { font-size: .75rem; color: var(--bs-secondary-color, #6c757d); min-width: 4.2rem; }
+    .tp-chip { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 999px; background: transparent;
+      padding: .05rem .6rem; font-size: .8rem; white-space: nowrap; }
+    .tp-chip[aria-pressed="true"] { background: var(--bs-primary, #21697c); border-color: var(--bs-primary, #21697c);
+      color: #fff; }
+    .tp-input { width: 11rem; }
+    .tp-filter .btn-group .btn { white-space: nowrap; }
+    .tp-input-text { flex: 1 1 10rem; width: auto; min-width: 0; }
+    .tp-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* Square checkboxes, also in a table cell (hitobito/_table.scss widens those). */
+    .tp-check { width: 1rem; height: 1rem; min-width: 1rem; max-width: 1rem; aspect-ratio: 1 / 1; margin: 0; }
+    /* Focus: a thin outline for the keyboard, not Bootstrap's wide shadow on every click. */
+    .tp-check:focus { box-shadow: none; }
+    .tp-check:focus-visible { outline: 2px solid var(--bs-primary, #21697c); outline-offset: 2px; }
+    .tp-count { margin: .25rem 0; }
+    .tp-results { max-height: 22rem; overflow-y: auto; }
+    .tp-item { display: grid; grid-template-columns: 1.4rem 5.5rem 9rem 7rem minmax(0, 1fr) 1.2rem;
+      column-gap: .5rem; align-items: center; padding: .3rem .2rem; border-top: 1px solid var(--bs-border-color, #dee2e6);
+      margin: 0; cursor: pointer; }
+    .tp-head { font-size: .75rem; color: var(--bs-secondary-color, #6c757d); border-top: 0; cursor: default; }
+    .tp-account, .tp-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .tp-text { color: var(--bs-secondary-color, #6c757d); font-size: .85rem; }
+    .tp-taken { color: var(--bs-secondary-color, #6c757d); cursor: default; }
+    .tp-foot .btn { white-space: nowrap; }
+    .tp-foot [data-tp-summary]:empty { display: none; }
+    .tp-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding-top: .5rem;
+      border-top: 1px solid var(--bs-border-color, #dee2e6); margin-top: .25rem; }
+    .tp-tray { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem; }
+    .tp-tray:empty { display: none; }
+    .tp-picked { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--bs-border-color, #dee2e6);
+      border-radius: .375rem; padding: .1rem .3rem .1rem .5rem; font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .tp-picked button { border: 0; background: transparent; padding: 0 .2rem; line-height: 1; }
+    /* The picker adapts to the room it has, not to the window: in a narrow
+       column the rows turn into cards (the same rules as on a phone). */
+    .tp { container-type: inline-size; }
+    @container (max-width: 30rem) {
+      .tp-head { display: none; }
+      .tp-item { grid-template-columns: 1.4rem auto minmax(0, 1fr) 1.2rem;
+        grid-template-areas: "check amount amount link" "check date account link" "check text text link"; }
+      .tp-item > .tp-check { grid-area: check; }
+      .tp-item > .tp-date { grid-area: date; }
+      .tp-item > .tp-amount { grid-area: amount; text-align: left !important; }
+      .tp-item > .tp-account { grid-area: account; font-size: .85rem; }
+      .tp-item > .tp-text { grid-area: text; }
+      .tp-item > .tp-link { grid-area: link; }
+      .tp-label { min-width: 0; }
+      .tp-filter-note { padding-left: 0; }
+      .tp-filter .btn-group .btn { padding-left: .4rem; padding-right: .4rem; }
+      .tp-days { display: none; }
+      .tp-foot [data-tp-summary] { flex: 1 1 100%; }
+    }
+    @media (max-width: 575.98px) {
+      .tp-head { display: none; }
+      .tp-item { grid-template-columns: 1.4rem auto minmax(0, 1fr) 1.2rem;
+        grid-template-areas: "check amount amount link" "check date account link" "check text text link"; }
+      .tp-item > .tp-check { grid-area: check; }
+      .tp-item > .tp-date { grid-area: date; }
+      .tp-item > .tp-amount { grid-area: amount; text-align: left !important; }
+      .tp-item > .tp-account { grid-area: account; font-size: .85rem; }
+      .tp-item > .tp-text { grid-area: text; }
+      .tp-item > .tp-link { grid-area: link; }
+      .tp-label { min-width: 0; }
+      .tp-filter-note { padding-left: 0; }
+      .tp-input { flex: 1 1 8rem; width: auto; min-width: 0; }
+    }
+  :javascript
+    (function () {
+      // The listeners go onto the document once per page and call the handlers
+      // of the newest script: Turbo keeps the window across visits, so a page
+      // that arrives with a changed script must not keep running the old one.
+      var api = window.wsjrdpTransactionPicker;
+      if (!api || typeof api !== "object") api = window.wsjrdpTransactionPicker = {handlers: {}, bound: {}};
+      function on(type, handler, capture) {
+        api.handlers[type] = handler;
+        if (api.bound[type]) return;
+        api.bound[type] = true;
+        document.addEventListener(type, function (event) { api.handlers[type](event); }, !!capture);
+      }
+
+      function pickerOf(el) { return el.closest && el.closest("[data-tp]"); }
+      function iso(date) { return date.toISOString().slice(0, 10); }
+      function addDays(date, days) { var d = new Date(date); d.setDate(d.getDate() + days); return d; }
+      function euro(value) {
+        return value.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+      }
+
+      function chosen(picker) { return Array.prototype.slice.call(picker.querySelectorAll("[data-tp-chosen]")); }
+
+      // The search the filters describe, as the results frame's URL.
+      function url(picker) {
+        var d = picker.dataset, params = new URLSearchParams();
+        params.set("picker", d.tp);
+        if (d.sign) params.set("sign", d.sign);
+        if (d.sources) params.set("sources", d.sources);
+        var accounts = Array.prototype.slice.call(picker.querySelectorAll("[data-tp-account][aria-pressed=true]"))
+          .map(function (b) { return b.dataset.tpAccount; }).filter(Boolean);
+        if (accounts.length) params.set("accounts", accounts.join(","));
+        var anchor = d.anchor ? new Date(d.anchor + "T12:00:00") : new Date();
+        if (d.window !== "all") {
+          var days = parseInt(d.window, 10);
+          params.set("from", iso(addDays(anchor, -days)));
+          params.set("to", iso(d.anchor ? addDays(anchor, days) : anchor));
+          var range = picker.querySelector("[data-tp-range]");
+          if (range) range.textContent = "· " + addDays(anchor, -days).toLocaleDateString("de-DE") + " – " +
+            (d.anchor ? addDays(anchor, days) : anchor).toLocaleDateString("de-DE");
+        } else {
+          var range2 = picker.querySelector("[data-tp-range]");
+          if (range2) range2.textContent = "· ohne Grenze";
+        }
+        if (d.anchor) params.set("anchor", d.anchor);
+        var balances = picker.querySelector("[data-tp-balances]");
+        if (balances && !balances.hidden && balances.getAttribute("aria-pressed") === "true") params.set("target", d.target);
+        var amount = picker.querySelector("[data-tp-amount]").value.trim();
+        if (amount) params.set("amount", amount);
+        var text = picker.querySelector("[data-tp-text]").value.trim();
+        if (text) params.set("q", text);
+        if (picker.querySelector("[data-tp-linked]").checked) params.set("linked", "1");
+        var exclude = (d.exclude || "").split(",").filter(Boolean);
+        if (exclude.length) params.set("exclude", exclude.join(","));
+        return d.url + "?" + params.toString();
+      }
+
+      function reload(picker) {
+        var frame = picker.querySelector("[data-tp-results]");
+        frame.src = url(picker);
+      }
+
+      var timers = {};
+      function reloadSoon(picker) {
+        clearTimeout(timers[picker.dataset.tp]);
+        timers[picker.dataset.tp] = setTimeout(function () { reload(picker); }, 300);
+      }
+
+      // The tray: one chip and one hidden field per picked row.
+      function pick(picker, box) {
+        var tray = picker.querySelector("[data-tp-tray]");
+        if (picker.dataset.multi !== "1") chosen(picker).forEach(function (input) { unpick(picker, input.value, true); });
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = picker.dataset.name;
+        input.value = box.dataset.tpPick;
+        input.dataset.tpChosen = "";
+        input.dataset.amount = box.dataset.amount;
+        var chip = document.createElement("span");
+        chip.className = "tp-picked";
+        chip.dataset.tpKey = box.dataset.tpPick;
+        chip.appendChild(document.createTextNode(box.dataset.label));
+        var remove = document.createElement("button");
+        remove.type = "button";
+        remove.dataset.tpUnpick = box.dataset.tpPick;
+        remove.setAttribute("aria-label", "Auswahl entfernen");
+        remove.textContent = "✕";
+        chip.appendChild(remove);
+        chip.appendChild(input);
+        tray.appendChild(chip);
+        sync(picker);
+      }
+
+      function unpick(picker, key, quiet) {
+        var chip = picker.querySelector('[data-tp-tray] [data-tp-key="' + CSS.escape(key) + '"]');
+        if (chip) chip.remove();
+        if (!quiet) sync(picker);
+      }
+
+      // Ticks the results the tray holds, writes the summary and tells the host.
+      function sync(picker) {
+        var keys = chosen(picker).map(function (input) { return input.value; });
+        picker.querySelectorAll("[data-tp-pick]").forEach(function (box) {
+          box.checked = keys.indexOf(box.dataset.tpPick) !== -1;
+        });
+        var sum = chosen(picker).reduce(function (total, input) { return total + parseFloat(input.dataset.amount); }, 0);
+        var summary = picker.querySelector("[data-tp-summary]");
+        if (summary) summary.textContent = keys.length ? keys.length + " ausgewählt · " + euro(Math.round(sum * 100) / 100) : "";
+        picker.dispatchEvent(new Event("change", {bubbles: true}));
+      }
+
+      // A host sets the amount "gleicht aus" offers (null or 0: none). An open
+      // panel searches again; a closed one on its next opening.
+      api.setTarget = function (picker, value) {
+        value = value ? Math.round(value * 100) / 100 : 0;
+        var old = parseFloat(picker.dataset.target || "0") || 0;
+        if (value === old) return;
+        picker.dataset.target = value ? String(value) : "";
+        var chip = picker.querySelector("[data-tp-balances]");
+        if (chip) {
+          chip.hidden = !value;
+          chip.textContent = value ? "gleicht aus: " + euro(value) : "";
+        }
+        var frame = picker.querySelector("[data-tp-results]");
+        if (picker.querySelector(".tp-panel").open) reload(picker); else frame.removeAttribute("src");
+      };
+
+      // Closing hands the focus back to the button, which shows again.
+      function close(picker) {
+        var panel = picker.querySelector(".tp-panel");
+        panel.open = false;
+        var summary = panel.querySelector("summary");
+        summary.focus({preventScroll: true});
+        summary.scrollIntoView({block: "nearest"});
+      }
+
+      on("click", function (event) {
+        var target = event.target, picker = pickerOf(target);
+        if (!picker) return;
+        var account = target.closest("[data-tp-account]");
+        if (account) {
+          var all = picker.querySelector('[data-tp-account=""]');
+          if (account === all) {
+            picker.querySelectorAll("[data-tp-account]").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+            all.setAttribute("aria-pressed", "true");
+          } else {
+            account.setAttribute("aria-pressed", account.getAttribute("aria-pressed") === "true" ? "false" : "true");
+            var any = picker.querySelector('[data-tp-account]:not([data-tp-account=""])[aria-pressed=true]');
+            all.setAttribute("aria-pressed", any ? "false" : "true");
+          }
+          reload(picker);
+        }
+        var windowButton = target.closest("[data-tp-window]");
+        if (windowButton) {
+          picker.dataset.window = windowButton.dataset.tpWindow;
+          picker.querySelectorAll("[data-tp-window]").forEach(function (b) {
+            var on = b === windowButton;
+            b.classList.toggle("active", on);
+            b.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+          reload(picker);
+        }
+        var balances = target.closest("[data-tp-balances]");
+        if (balances) {
+          balances.setAttribute("aria-pressed", balances.getAttribute("aria-pressed") === "true" ? "false" : "true");
+          reload(picker);
+        }
+        var unpickButton = target.closest("[data-tp-unpick]");
+        if (unpickButton) unpick(picker, unpickButton.dataset.tpUnpick);
+        if (target.closest("[data-tp-cancel]")) {
+          picker.querySelector("[data-tp-tray]").innerHTML = picker.tpSnapshot || "";
+          sync(picker);
+          close(picker);
+        }
+        if (target.closest("[data-tp-close]")) close(picker);
+      });
+
+      on("change", function (event) {
+        var target = event.target, picker = pickerOf(target);
+        if (!picker || target === picker) return;
+        if (target.matches("[data-tp-pick]")) {
+          if (target.checked) pick(picker, target); else unpick(picker, target.dataset.tpPick);
+        }
+        if (target.matches("[data-tp-linked]")) reload(picker);
+      });
+
+      on("input", function (event) {
+        var picker = pickerOf(event.target);
+        if (picker && event.target.matches("[data-tp-amount], [data-tp-text]")) reloadSoon(picker);
+      });
+
+      // Enter in a filter field must not submit the host form.
+      on("keydown", function (event) {
+        if (event.key === "Enter" && pickerOf(event.target) && event.target.matches("[data-tp-amount], [data-tp-text]")) {
+          event.preventDefault();
+          reload(pickerOf(event.target));
+        }
+      });
+
+      // Opening the panel remembers the tray (for "Abbrechen") and loads the
+      // results with the filters as they stand.
+      on("toggle", function (event) {
+        var panel = event.target;
+        if (!panel.matches || !panel.matches(".tp-panel") || !panel.open) return;
+        var picker = pickerOf(panel), frame = picker.querySelector("[data-tp-results]");
+        picker.tpSnapshot = picker.querySelector("[data-tp-tray]").innerHTML;
+        if (!frame.getAttribute("src")) reload(picker);
+      }, true);
+
+      on("turbo:frame-load", function (event) {
+        var picker = pickerOf(event.target);
+        if (picker) sync(picker);
+      });
+    })();

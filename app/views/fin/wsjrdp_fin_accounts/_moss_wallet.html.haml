@@ -11,10 +11,9 @@
 -#  every row -- the chip in "Art" and the coloured rail on the row's first cell
 -#  (shared/wsjrdp/_moss_kind_styles paints both).
 -#
--#  The two BALANCE lines sit OUTSIDE the table on purpose: they are not
--#  bookings, so they must not be sorted, filtered, paged or counted with them.
--#  Aktuelles Saldo stays above the rows, Eröffnungs-Saldo below -- the reading
--#  order of a statement, and the same order the camt table shows them in.
+-#  The Eröffnungs-Saldo sits OUTSIDE the table on purpose: it is no booking, so
+-#  it must not be sorted, filtered, paged or counted with them. The current
+-#  balance is the page's head line (_summary).
 -#
 -#  A row has no detail of its own -- it already shows everything the booking's
 -#  page would repeat -- so opening it reveals nothing but the header line of
@@ -27,7 +26,7 @@
   .mw-name { font-weight: 500; }
   /* The green of a linked contribution booking, as on the camt statement. */
   .ae-linked { color: #00a030; }
-  /* The balance lines: label left, amount right, in the table's own rhythm.
+  /* The balance line: label left, amount right, in the table's own rhythm.
      Only the vertical padding is set here: the line is a direct child of the
      Bootstrap .row, whose gutter padding keeps it flush with "Zurück" and the
      table -- overriding it would push the line into the row's negative margin. */
@@ -37,22 +36,11 @@
 
 = render "shared/wsjrdp/moss_kind_styles"
 -# The `replace_all` / `reload_frames` answers of the person-linking buttons
--# (Fin::MossBookingsController#respond_after_subject_link).
-- content_for :head do
-  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
-
+-# (Fin::MossBookingsController#respond_after_subject_link) need the stream
+-# actions show.html.haml loads.
 #main.row
   %p
     %a{href: return_url} Zurück
-
-  -# The closing balance is the sum over EVERY booking of the wallet, so it is
-  -# shown only while the table shows every booking too: with a filter applied
-  -# the rows below would not add up to it. (Paging does not narrow the set,
-  -# only the page.)
-  - if wallet_bookings.state.filter.effective_slots.empty?
-    .mw-balance.fw-semibold.mb-3
-      %span Aktuelles Saldo
-      %span.mw-balance-amount= fin_money(@wsjrdp_fin_account.closing_balance_eur)
 
   = wsjrdp_expandable_table do |t|
     - t.rows    wallet_bookings, id: "wallet"
@@ -74,5 +62,3 @@
   .mw-balance.mt-2
     %span Eröffnungs-Saldo
     %span.mw-balance-amount= fin_money(fin_account.opening_balance_eur)
-
-  = render "fin/wsjrdp_fin_accounts/account_form"

@@ -28,16 +28,19 @@
 # person may them. An acting person's own tier caps the API key's.
 module Wsjrdp2027::TokenAbility
   # Per finance permission: the actions on the ladder models, on the
-  # person-level models, on a person and on a group. Each lists the actions
-  # of the ones below as well (doc/roles.md, "Finance tiers"); :manage is
-  # CanCanCan's wildcard.
+  # person-level models, on an Umbuchung, on a person and on a group. Each
+  # lists the actions of the ones below as well (doc/roles.md, "Finance
+  # tiers"); :manage is CanCanCan's wildcard.
   FINANCE_ACTIONS = {
-    finance_read: {ladder: %i[show], person_level: [], person: [], group: []},
-    finance_audit: {ladder: %i[show log], person_level: %i[show log], person: [], group: %i[show_finance]},
+    finance_read: {ladder: %i[show], person_level: [], internal_transfer: %i[show], person: [], group: []},
+    finance_audit: {ladder: %i[show log], person_level: %i[show log], internal_transfer: %i[show log],
+                    person: [], group: %i[show_finance]},
     finance: {ladder: %i[show log create update], person_level: %i[show log create update],
+              internal_transfer: Wsjrdp2027::FinanceAccess::INTERNAL_TRANSFER_ACTIONS,
               person: %i[update_finance], group: %i[show_finance update_finance]},
     finance_manage: {ladder: %i[show log create update admin_finance manage],
                      person_level: %i[show log create update admin_finance manage],
+                     internal_transfer: Wsjrdp2027::FinanceAccess::INTERNAL_TRANSFER_ACTIONS,
                      person: %i[update_finance admin_finance destroy_finance],
                      group: %i[show_finance update_finance configure_finance]}
   }.freeze
@@ -66,6 +69,7 @@ module Wsjrdp2027::TokenAbility
     actions = ->(key) { held.flat_map { |entry| entry[key] }.uniq }
     delegate_to_dynamic_user(actions.call(:ladder), Wsjrdp2027::FinanceAccess.ladder_models)
     delegate_to_dynamic_user(actions.call(:person_level), Wsjrdp2027::FinanceAccess.person_level_models)
+    delegate_to_dynamic_user(actions.call(:internal_transfer), [WsjrdpInternalTransfer])
     delegate_to_dynamic_user(actions.call(:person), [Person, PersonDecorator])
     delegate_to_dynamic_user(actions.call(:group), [Group])
   end

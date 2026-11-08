@@ -1,0 +1,116 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The form of an Umbuchung, for a new one and for the edit mode: the comment,
+-#  and per side the legs -- each with "entfernen" -- and "Buchung hinzufügen",
+-#  the shared transaction picker (shared/wsjrdp/_transaction_picker) for the
+-#  free rows of that side: one row for "Von" (rarely more than one), any number
+-#  for "Nach". The sum below follows every tick and pick, so it shows before
+-#  saving whether the transfer balances; an unbalanced one may be saved all
+-#  the same (it stays "offen").
+-#
+-#  In a frame (the transfer's page, a row of the list) it submits through Turbo
+-#  and stays there until it is saved; as a page of its own it submits plainly.
+-#
+-#  Locals: transfer (WsjrdpInternalTransfer, new or persisted)
+= render "fin/internal_transfers/styles"
+= render "fin/shared/sticky_form_actions"
+:javascript
+  (function () {
+    // Handlers are replaced by a newer copy of this script (Turbo keeps the
+    // window across visits); the listener goes on once.
+    var api = window.internalTransferForm = window.internalTransferForm || {};
+    function amountOf(inputs) {
+      return inputs.reduce(function (total, input) { return total + parseFloat(input.dataset.amount); }, 0);
+    }
+    api.update = function (form) {
+      var sum = 0;
+      form.querySelectorAll("[data-it-leg]").forEach(function (leg) {
+        var remove = leg.querySelector("[data-it-remove]");
+        if (!remove || !remove.checked) sum += parseFloat(leg.dataset.amount);
+      });
+      sum += amountOf(Array.prototype.slice.call(form.querySelectorAll("[data-tp-chosen]")));
+      sum = Math.round(sum * 100) / 100;
+      // Each side's picker offers the rest the other rows leave open -- not
+      // counting its own picks, so picking a row keeps the list as it is.
+      if (window.wsjrdpTransactionPicker && window.wsjrdpTransactionPicker.setTarget) {
+        form.querySelectorAll("[data-tp][data-it-side]").forEach(function (picker) {
+          var rest = -(sum - amountOf(Array.prototype.slice.call(picker.querySelectorAll("[data-tp-chosen]"))));
+          var fits = picker.dataset.itSide === "to" ? rest > 0 : rest < 0;
+          window.wsjrdpTransactionPicker.setTarget(picker, fits ? rest : 0);
+        });
+      }
+      var out = form.querySelector("[data-it-sum]");
+      if (!out) return;
+      out.textContent = sum.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+      out.classList.toggle("text-success", sum === 0);
+      out.classList.toggle("text-warning", sum !== 0);
+      var hint = form.querySelector("[data-it-sum-hint]");
+      if (hint) hint.hidden = sum === 0;
+    };
+    if (!api.bound) {
+      api.bound = true;
+      document.addEventListener("change", function (event) {
+        var form = event.target.closest && event.target.closest("form[data-it-form]");
+        if (form) api.update(form);
+      });
+    }
+  })();
+- in_frame = turbo_frame_request?
+- balance = transfer.persisted? ? transfer.balance : 0.to_d
+- leg_keys = transfer.persisted? ? transfer.transfer_legs.map(&:key) : []
+- url = transfer.persisted? ? internal_transfer_path(transfer) : internal_transfers_path
+- cancel = if in_frame then internal_transfer_path(transfer) elsif transfer.persisted? then internal_transfer_path(transfer) else internal_transfers_path end
+= standard_form(transfer, {url: url, method: (transfer.persisted? ? :patch : :post),
+    data: (in_frame ? {it_form: true} : {it_form: true, turbo: false})}) do |f|
+  = f.error_messages
+  .fin-account-form-actions
+    = form_buttons(f, cancel_url: cancel)
+
+  .it-flow.it-flow-form.pt-3
+    - [["from", "Von", transfer.persisted? ? transfer.from_legs : []], ["to", "Nach", transfer.persisted? ? transfer.to_legs : []]].each_with_index do |(side, label, legs), index|
+      - if index == 1
+        .it-flow-arrow.text-muted{"aria-hidden": "true"}= icon(:"arrow-right")
+      .it-side
+        .small.text-muted.fw-semibold= label
+        - legs.each do |leg|
+          .it-card{data: {it_leg: true, amount: leg.amount.to_s}}
+            .d-flex.gap-2.align-items-start
+              .flex-grow-1.min-w-0
+                .fw-semibold= internal_transfer_account_name(leg.account)
+                .it-num= internal_transfer_amount(leg.amount)
+                .small.text-muted= "#{fin_date(leg.date)} · #{leg.text.truncate(60)}"
+              %label.small.text-nowrap.d-inline-flex.align-items-center.gap-1
+                %input.form-check-input.it-check{type: "checkbox", name: "remove_legs[]", value: leg.key, data: {it_remove: true}}
+                entfernen
+        -# The open rest a row of this side would balance: what has left
+        -# but not arrived for "Nach", what has arrived but not left for "Von".
+        - target = (side == "to") ? (-balance if balance.negative?) : (-balance if balance.positive?)
+        = render "shared/wsjrdp/transaction_picker", id: "it-#{transfer.id || "new"}-#{side}",
+          name: "add_legs[]", label: "Buchung hinzufügen", sign: (side == "from") ? "out" : "in",
+          anchor: transfer.persisted? ? transfer.date : nil, anchor_label: "Datum der Umbuchung",
+          target: target, multi: side == "to",
+          exclude: leg_keys, data: {it_side: side}
+
+  -# Bootstrap 5.2 has no column-gap-* utilities; gap-2 sets both directions.
+  .d-flex.flex-wrap.gap-2.align-items-baseline.mt-3
+    %span.text-muted.text-nowrap Summe nach dem Speichern:
+    %span.it-num.fw-semibold{data: {it_sum: true}, class: balance.zero? ? "text-success" : "text-warning"}= fin_money(balance)
+    %span.small.text-muted{data: {it_sum_hint: true}, hidden: (transfer.persisted? ? transfer.balance.zero? : true)}
+      noch nicht ausgeglichen -- die Umbuchung bleibt offen
+
+  -# A plain text area: the form builder's would cap its width (mw-md-60ch).
+  .mt-3
+    = label_tag "wsjrdp_internal_transfer_comment", "Kommentar", class: "form-label"
+    = text_area_tag "wsjrdp_internal_transfer[comment]", transfer.comment, rows: 2, class: "form-control",
+      id: "wsjrdp_internal_transfer_comment"
+
+- if transfer.persisted? && can?(:destroy, transfer)
+  .mt-3.text-end
+    = button_to "Umbuchung auflösen", internal_transfer_path(transfer), method: :delete,
+      class: "btn btn-sm btn-outline-danger", form: (in_frame ? {} : {data: {turbo: false}}),
+      data: {turbo_confirm: "Umbuchung auflösen? Die Buchungen bleiben erhalten, nur die Verknüpfung wird gelöst."}

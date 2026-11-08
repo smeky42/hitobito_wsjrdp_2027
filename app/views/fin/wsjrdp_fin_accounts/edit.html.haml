@@ -1,0 +1,17 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of one finance account: a page of its own, and the frame that
+-#  "Bearbeiten" opens in place of the detail -- on the account's page or in a
+-#  row of the list. A failed save shows its errors right there; saving and
+-#  "Abbrechen" return to the reading view. Turbo swaps only the frame's
+-#  content, so the padding sits inside it.
+- if turbo_frame_request?
+  = wsjrdp_detail_frame(Fin::WsjrdpFinAccountsController::PAGE_FRAME_PREFIX, fin_account.id) do
+    .px-3.pt-2.pb-3= render "fin/wsjrdp_fin_accounts/account_form"
+- else
+  = render "fin/wsjrdp_fin_accounts/account_form"

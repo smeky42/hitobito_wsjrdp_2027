@@ -287,6 +287,17 @@ there: issues, planned plans and reductions, histories, comments --,
 `update_finance` from the write tier up, `admin_finance` and
 `destroy_finance` at the manage tier.
 
+An Umbuchung (`WsjrdpInternalTransfer`, a transfer between the
+contingent's own accounts) has its own block: the read and the audit tier
+see it as usual, but the write tier may already do everything the manage
+tier may -- `create`, `update` and `destroy`
+(`Wsjrdp2027::FinanceAccess::INTERNAL_TRANSFER_ACTIONS`). A transfer only
+links statement rows the write tier works on anyway, and destroying one
+keeps the rows. A service token gets the same per scope (`internal_transfer`
+in `Wsjrdp2027::TokenAbility::FINANCE_ACTIONS`), capped by its acting
+person. [`spec/abilities/internal_transfer_ability_spec.rb`](../spec/abilities/internal_transfer_ability_spec.rb)
+covers it.
+
 `AccountingEntry` is not in the read tier. All the financial aspects are
 exposed through other models, so nothing is hidden from a finance view
 perspective; showing `AccountingEntry` could expose additional

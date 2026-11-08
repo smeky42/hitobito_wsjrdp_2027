@@ -1,0 +1,55 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The Speichern / Abbrechen line of a finance form: rendered once, at the top,
+-#  inside `.fin-account-form-actions`, it stays in sight while the form
+-#  scrolls -- below the session bars, like the sticky actions of the detail kit
+-#  (fin/shared/_detail_styles). Used by the account form and the Umbuchung form.
+-#
+-#  In a row of an expandable list the form sits inside the table's scroll box
+-#  (.exp-table-wrap, overflow: auto), and `position: sticky` keeps to that box,
+-#  not to the window. There the script below moves the line instead, as far as
+-#  the form reaches. It is installed once per page and finds every such line
+-#  itself, so a form loaded into a row later needs nothing more.
+:css
+  .fin-account-form-actions { position: sticky; top: var(--wsjrdp-session-bars-height, 0px); z-index: 5;
+    background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+  /* Moved by the script below; `top` would shift a relative element for good. */
+  .exp-table-wrap .fin-account-form-actions { position: relative; top: 0; }
+  /* While the form stands in a row, the row's link bar ("Detailseite") is gone. */
+  .exp-detail:has(.fin-account-form-actions) .exp-detail-linkbar { display: none; }
+  /* The core's button row brings its own margins (.row.mb-2, .btn-group's,
+     the button's .mt-2); the line sets the spacing itself instead. */
+  .fin-account-form-actions { padding: .5rem 0; }
+  .fin-account-form-actions .row { margin-bottom: 0 !important; }
+  /* Its column is an offset without a col class, i.e. the full width plus the
+     offset: in a list row that widened the table's scroll box. */
+  .fin-account-form-actions .row > * { width: auto; flex: 0 1 auto; }
+  .fin-account-form-actions .btn-group { margin-bottom: 0; }
+  .fin-account-form-actions .btn { margin-top: 0 !important; }
+:javascript
+  (function () {
+    if (window.finAccountFormActionsFloat) return;
+    window.finAccountFormActionsFloat = true;
+    function place() {
+      var offset = parseFloat(getComputedStyle(document.documentElement)
+        .getPropertyValue("--wsjrdp-session-bars-height")) || 0;
+      document.querySelectorAll(".exp-table-wrap .fin-account-form-actions").forEach(function (bar) {
+        var form = bar.closest("form");
+        if (!form) return;
+        var shift = parseFloat(bar.dataset.shift || "0");
+        var top = bar.getBoundingClientRect().top - shift;
+        var room = form.getBoundingClientRect().bottom - top - bar.offsetHeight;
+        var next = Math.max(0, Math.min(offset - top, room));
+        bar.dataset.shift = String(next);
+        bar.style.transform = next ? "translateY(" + next + "px)" : "";
+      });
+    }
+    window.addEventListener("scroll", place, {passive: true});
+    window.addEventListener("resize", place);
+    document.addEventListener("turbo:frame-load", place);
+  })();

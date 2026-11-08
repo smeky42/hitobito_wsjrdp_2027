@@ -1,0 +1,81 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One Umbuchung, reading only (doc/fin/internal_transfers.md): the two sides as
+-#  cards with the arrow and the amount between them, the legs with their sum,
+-#  and how they were linked. Shown on the transfer's page and in a row of the
+-#  list; "Bearbeiten" opens the form in the same frame (edit_turbo_frame), the
+-#  trash can beside it dissolves the transfer (with a confirmation).
+-#
+-#  Locals: transfer (WsjrdpInternalTransfer)
+-#          edit_url: the edit page behind "Bearbeiten"; nil = no button
+-#          edit_turbo_frame: the frame the form opens in
+= render "fin/internal_transfers/styles"
+- edit_url = local_assigns[:edit_url]
+.it-detail.p-3
+  .d-flex.align-items-center.gap-2.flex-wrap.mb-3
+    %span.fw-semibold= internal_transfer_title(transfer)
+    = internal_transfer_status_badge(transfer)
+    - can_destroy = transfer.persisted? && can?(:destroy, transfer)
+    - if edit_url || can_destroy
+      .ms-auto.d-flex.align-items-center.gap-2
+        - if edit_url
+          = link_to "Bearbeiten", edit_url, class: "btn btn-sm btn-outline-primary",
+            data: {turbo_frame: local_assigns.fetch(:edit_turbo_frame, "_top")}
+        -# Dissolves the transfer like "Umbuchung auflösen" in the form; the
+        -# answer leaves the frame for the list (redirect_top).
+        - if can_destroy
+          = button_to internal_transfer_path(transfer), method: :delete,
+            class: "btn btn-sm btn-outline-danger", form_class: "d-inline m-0",
+            title: "Umbuchung auflösen", "aria-label": "Umbuchung auflösen",
+            data: {turbo_confirm: "Umbuchung auflösen? Die Buchungen bleiben erhalten, nur die Verknüpfung wird gelöst."} do
+            = icon(:"trash-alt")
+
+  .it-flow
+    = render "fin/internal_transfers/side", label: "Von", legs: transfer.from_legs
+    .it-flow-arrow
+      .it-num.fw-semibold= fin_money(transfer.amount)
+      .it-arrow-line{"aria-hidden": "true"}
+        %span
+        = icon(:"chevron-right")
+      .small.text-muted= internal_transfer_gap_label(transfer)
+    = render "fin/internal_transfers/side", label: "Nach", legs: transfer.to_legs
+
+  -# The legs as an expandable table: a row opens the bank or Moss
+  -# transaction's fields, the double button leads to its own page. The id
+  -# carries the transfer's, so the list's open rows keep their tables apart.
+  %h2.it-h Buchungen der Umbuchung
+  = wsjrdp_expandable_table do |t|
+    - t.rows transfer_legs_rows(transfer), id: "itl#{transfer.id}"
+    - t.columns internal_transfer_legs_table_columns
+    - t.gaps max: "2rem", grow_max: "30rem"
+    - t.row_key { |leg| leg.key.tr(":", "-") }
+    - t.detail_page(column: true) { |leg| internal_transfer_leg_path(leg) }
+    - t.detail { |leg| leg.moss? ? render("fin/moss_transactions/detail", transaction: leg.record) : render("fin/internal_transfers/camt_leg_detail", tx: leg.record) }
+    - t.footer(&internal_transfer_legs_footer(transfer))
+
+  %h2.it-h Verknüpfung
+  %dl.it-meta
+    %dt Entstanden
+    %dd= internal_transfer_source_label(transfer.link_meta)
+    - if transfer.link_meta["rule"].present?
+      %dt Erkannt durch
+      %dd= internal_transfer_rule_label(transfer.link_meta["rule"])
+    %dt Verknüpft
+    %dd
+      = fin_date_time(transfer.created_at)
+      - if (name = transfer.link_meta.dig("by", "name")).present?
+        = "· #{name}"
+    - Array(transfer.link_meta["edits"]).last(3).each do |edit|
+      %dt Geändert
+      %dd
+        = edit["at"].present? ? fin_date_time(Time.zone.parse(edit["at"])) : "–"
+        - if (name = edit.dig("by", "name")).present?
+          = "· #{name}"
+        %span.text-muted= "(+#{Array(edit["added"]).size} / −#{Array(edit["removed"]).size} Buchungen)"
+    %dt Kommentar
+    %dd= transfer.comment.presence || content_tag(:span, "–", class: "text-muted")

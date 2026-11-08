@@ -37,6 +37,17 @@ module Wsjrdp2027::VariousAbility
       end
     end
 
+    # WsjrdpInternalTransfer: an Umbuchung only links statement rows the
+    # write tier works on anyway, so the write tier may do with it everything
+    # the manage tier may -- destroying one included, which keeps the rows and
+    # only loses the link. The read tiers see it.
+    on(WsjrdpInternalTransfer) do
+      permission(:finance_read).may(:show).if_finance_read
+      permission(:finance_audit).may(:show, :log).if_finance_audit
+      permission(:finance).may(*Wsjrdp2027::FinanceAccess::INTERNAL_TRANSFER_ACTIONS).if_finance_write
+      permission(:finance_manage).may(*Wsjrdp2027::FinanceAccess::INTERNAL_TRANSFER_ACTIONS).if_finance_manage
+    end
+
     # AccountingEntry: No read access if only :finance_read is held
     on(AccountingEntry) do
       permission(:finance_audit).may(:show, :log).if_finance_audit

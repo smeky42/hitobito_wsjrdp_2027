@@ -6,18 +6,17 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 -# Übersicht of Konten & Wallets: the monthly movements of the open accounts as
--# a chart, then every account (also closed and hidden ones) in display order
--# (WsjrdpFinAccount.display_order) with the balance the /fin card shows
--# (Fin::OverviewHelper#fin_accounts_with_balance). Closed accounts are muted.
+-# a chart, then every account (also closed and hidden ones) as an expandable
+-# table, in display order (WsjrdpFinAccount.display_order) until the user
+-# sorts. A row opens the account's detail (#show answers the row's frame), with
+-# "Bearbeiten" in place. Closed accounts are muted.
 - rows = fin_accounts_with_balance(@wsjrdp_fin_accounts)
+-# The stream action redirect_top, which a save from a row's detail answers with.
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
 
 :css
   .fin-acc-tile { min-width: 13rem; font-variant-numeric: tabular-nums; }
-  .fin-accounts-table .fin-money { font-variant-numeric: tabular-nums; }
-  /* Bold figures are wider than regular ones and would not line up with the
-     rows above: the total keeps the regular weight (same advance widths) and
-     looks bold through a thin stroke instead. */
-  .fin-accounts-table tfoot .fin-money { font-weight: 400; -webkit-text-stroke: .8px currentColor; }
 
 #main
   -# No heading of its own: the sheet already titles the page "Konten & Wallets".
@@ -75,33 +74,13 @@
         });
       })();
 
-  .table-responsive
-    %table.table.table-hover.fin-accounts-table
-      %thead
-        %tr
-          %th Konto
-          %th Institut
-          %th Kontoart
-          %th IBAN / Kennung
-          %th Sachkonto
-          %th.text-end.fin-money Saldo
-      %tbody
-        - rows.each do |acc, balance_cents|
-          %tr{class: ("text-muted" if acc.status == "closed")}
-            %td
-              = link_to fin_account_label(acc), url_for(acc)
-              - if acc.status == "closed"
-                %span.badge.text-bg-secondary.ms-1 geschlossen
-            %td= acc.servicer_short_name
-            %td= acc.account_product_label
-            %td.text-nowrap= acc.iban.presence || acc.account_identification
-            %td
-              = acc.bookkeeping_account_number
-              - ledger_name = acc.bookkeeping_account&.short_name.presence || acc.bookkeeping_account&.name
-              - if ledger_name.present?
-                %span.text-muted.fw-light= ledger_name
-            %td.text-end.text-nowrap.fin-money= fin_aligned_cents_de(balance_cents)
-      %tfoot
-        %tr.fw-semibold
-          %td{colspan: 5} Summe
-          %td.text-end.text-nowrap.fin-money= fin_aligned_cents_de(rows.sum { |_acc, balance_cents| balance_cents })
+  = wsjrdp_expandable_table do |t|
+    - t.rows accounts, id: "acc"
+    - t.columns fin_accounts_table_columns, menu: true
+    -# Room to spare: the text columns grow, then the gaps (Fin::FinAccountsColumns).
+    - t.gaps max: "4rem", grow_max: "10rem"
+    - t.row_key { |acc| acc.id }
+    - t.row_class { |acc| "text-muted" if acc.status == "closed" }
+    - t.detail_page(column: true) { |acc| wsjrdp_fin_account_path(acc) }
+    - t.detail_src { |acc| wsjrdp_fin_account_path(acc) }
+    - t.footer { |col| fin_accounts_table_footer(col, accounts.page) }

@@ -1,0 +1,53 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The results of a transaction picker (shared/wsjrdp/_transaction_picker),
+-#  in its frame. A row's checkbox has no name: the picker's script copies a
+-#  picked row into its tray, whose hidden fields the host form submits.
+= turbo_frame_tag "tp-results-#{picker_id}" do
+  - legs = search.legs
+  .tp-count.small.text-muted
+    - if search.invalid_amount?
+      %span.text-danger Betrag nicht verstanden -- z. B. 677, 677,48 oder 600-700.
+    - else
+      = "#{search.total_count} #{(search.total_count == 1) ? "Treffer" : "Treffer"}"
+      - if search.total_count > legs.size
+        = "· die #{legs.size} nächsten gezeigt -- Filter enger setzen"
+      - else
+        · nächstes Datum zuerst
+  - if legs.empty?
+    .small.text-muted.py-2 Keine passende Buchung.
+  - else
+    .tp-results
+      .tp-item.tp-head{"aria-hidden": "true"}
+        %span
+        %span Datum
+        %span Konto
+        %span.text-end Betrag
+        %span Gegenpartei · Text
+        %span
+      - legs.each do |leg|
+        - taken = leg.record.internal_transfer_id.present?
+        - label = "#{fin_date(leg.date)} · #{leg.account&.short_name} · #{fin_money(leg.amount)}"
+        %label.tp-item{class: ("tp-taken" if taken)}
+          %input.form-check-input.tp-check{type: "checkbox", disabled: taken,
+            data: {tp_pick: leg.key, amount: leg.amount.to_s, label: label}, "aria-label": label}
+          %span.tp-date.tp-num= fin_date(leg.date)
+          %span.tp-account= leg.account&.short_name.presence || leg.account.to_s
+          %span.tp-amount.tp-num.text-end{class: leg.from? ? "text-danger" : "text-success"}= fin_money(leg.amount)
+          %span.tp-text{title: [leg.party, leg.text].compact_blank.join(" · ")}
+            - if taken
+              gehört zu
+              = link_to "Umbuchung #{leg.record.internal_transfer_id}",
+                internal_transfer_path(leg.record.internal_transfer_id), target: "_top"
+            - else
+              = [leg.party, leg.text].compact_blank.join(" · ")
+          %span.tp-link
+            = link_to icon(:"external-link-alt"),
+              (leg.moss? ? moss_transaction_path(leg.record) : wsjrdp_camt_transaction_path(leg.record)),
+              target: "_blank", rel: "noopener", class: "text-muted", title: "Buchung in neuem Tab öffnen",
+              "aria-label": "Buchung öffnen"

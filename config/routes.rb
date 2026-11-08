@@ -278,7 +278,19 @@ Rails.application.routes.draw do
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"
       end
-      resources :wsjrdp_fin_accounts, path: "acc", only: [:index, :show, :update] do
+      # Umbuchungen (transfers between own accounts), a tab of Konten & Wallets.
+      # Declared before the accounts so "acc/internal_transfers" is not read as an id.
+      # The shared transaction picker's results (shared/wsjrdp/_transaction_picker).
+      get :transaction_picker, path: "transaction_picker", to: "transaction_picker#index"
+      resources :internal_transfers, path: "acc/internal_transfers" do
+        collection do
+          post :link      # links the chosen suggestions
+          post :dismiss   # marks suggestions as no transfer
+          post :link_unique # the import scripts' API (service token)
+          post :apply     # PRG target of the list's filter builder
+        end
+      end
+      resources :wsjrdp_fin_accounts, path: "acc", only: [:index, :show, :edit, :update] do
         member do
           # PRG target of the CNF filter builder on the Moss wallet's statement
           # (Fin::WsjrdpFinAccountsController#apply) -- a member route because
