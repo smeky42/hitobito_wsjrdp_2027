@@ -18,7 +18,7 @@ module Sheet
       self.always_render_parent = true
 
       def title
-        "Konto-Transaktion #{entry.id}"
+        "Kontobewegung #{entry.id}"
       end
     end
   end

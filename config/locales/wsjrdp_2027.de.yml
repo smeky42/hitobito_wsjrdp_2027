@@ -547,7 +547,7 @@ de:
         pre_notified_amount_cents: Vorab angekündigt
         source: Quelle
         return_reason: Rückgabegrund
-        camt_transaction_id: Bank-Transaktion
+        camt_transaction_id: Kontobewegung
         direct_debit_pre_notification_id: Pre-Notification
         payment_order: SEPA-Auftrag
         datev_booking_id: DATEV-Buchung

@@ -487,8 +487,10 @@ describe "Zahlungsverkehr", type: :request do
       expect(response).to redirect_to(payment_return_path(transfer))
       expect(transfer.reload).to have_attributes(return_status: "paid", comment: "Neu angewiesen", description: "Retoure")
 
+      # A status there is none of fails the validation and says so.
       patch payment_return_path(transfer), params: {wsjrdp_camt_transaction: {return_status: "bogus"}, stay: "1"}
-      expect(response).to redirect_to(edit_payment_return_path(transfer))
+      expect(response).to have_http_status(422)
+      expect(html).to have_css(".alert", text: "Fehler: Retoure-Status ist kein gültiger Wert")
       expect(transfer.reload.return_status).to eq("paid")
     end
 

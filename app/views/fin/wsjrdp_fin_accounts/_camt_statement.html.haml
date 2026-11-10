@@ -108,16 +108,16 @@
                   - entry = accounting_entries[0]
                   = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"", "#{url_for(tx)}/link_accounting_entry/#{entry.id}",
                                   :plus, method: :post, remote: false,
-                                  data: { confirm: "Transaktion #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
+                                  data: { confirm: "Kontobewegung #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
             - if may_edit_tx && tx.respond_to?(:subject_candidates) && (subject_candidates = tx.subject_candidates).present?
               - subject_candidates.select { |candidate| may_link_subject?(WsjrdpCamtTransaction, candidate) }.each do |subject|
                 %div
                   = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(tx, subject),
                                   :plus, method: :post, remote: false,
-                                  data: { confirm: "Transaktion #{tx.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
+                                  data: { confirm: "Kontobewegung #{tx.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
                   = action_button("Keine Verknüpfung mit #{subject.link_name}", disallow_link_subject_path(tx, subject),
                                   :trash, method: :post, remote: false,
-                                  data: { confirm: "Verknüpfung von Transaktion #{tx.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })
+                                  data: { confirm: "Verknüpfung von Kontobewegung #{tx.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })
           %td.info-col
             %a{href: url_for(tx), target: "_blank"}
               %span.fa.fa-info-circle(aria-label="info" role="img")

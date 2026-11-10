@@ -501,7 +501,7 @@ pane. One markup for every finance detail page:
 
 ```haml
 - if back.present?
-  = link_to back, class: "btn btn-sm btn-link px-0 mb-2" do
+  = link_to back, class: "btn btn-sm btn-link px-0 mb-2", data: {turbo_frame: "_top"} do
     = icon(:"arrow-left")
     = back_label
 %h1.mb-3.d-flex.align-items-baseline.flex-wrap.gap-2
@@ -517,7 +517,9 @@ normal weight and optional; `toolbar:` is a captured block at the right end and
 renders nothing when it is absent.
 
 `back:` (with its `back_label:`) is optional as well: `back: nil` renders no
-link at all. A host whose page is reached from the very place the link would
+link at all. The link leaves the detail's turbo frame (`_top`), like every link
+inside a detail has to: the page wraps the detail in a frame, and a plain link
+would navigate that frame and end in "Content missing". A host whose page is reached from the very place the link would
 lead to passes it — the group's booking page hangs under the Buchhaltung tab,
 which stands active above it, so a "Zurück zur Buchhaltung" would only repeat
 the tab. The `/fin` details keep their "Zurück zur Liste", where the list is a
@@ -596,8 +598,17 @@ details are built on this kit — the booking on both of its hosts,
 `/fin/bookkeeping/bookings/:id` and the group's own route; the Beitragsbuchung
 as the list on its reading page `/fin/ae/:id` (the form is its edit page
 `/fin/ae/:id/edit`) and as the compact rows in the reconciliation table's
-row. The other finance details render through their own
-partials:
+row. So is the bank transaction (Kontobewegung): `/fin/tx/:id` reads and
+`/fin/tx/:id/edit` changes it, both through
+`fin/wsjrdp_camt_transactions/_detail`, which shares the formatters of the
+return's detail (`Fin::PaymentDetailsHelper`) and adds its own in
+`Fin::CamtTransactionsHelper` — among them the person search as an
+`input: :helper`. Its reading page answers a table row's frame as well (the
+embedded mode with the inline edit; the level is read off the shared
+`expandable_table_level` param, the controller having no table of its own),
+both pages take a `return_url` (`Fin::ReturnPath`), and a save that fails its
+validation says why in an alert (`Fin::FinController#validation_alert`). The
+other finance details render through their own partials:
 
 - **Sachkonten** through `fin/shared/_item_detail`, and the **Buchungsstapel**
   page directly, both over `shared/wsjrdp/_detail_fields` (flat

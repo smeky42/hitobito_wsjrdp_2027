@@ -21,8 +21,10 @@
 module Fin::DebitPages
   extend ActiveSupport::Concern
 
+  include Fin::ReturnPath
+
   included do
-    helper_method :return_path, :debit_page_place
+    helper_method :debit_page_place
   end
 
   private
@@ -50,24 +52,5 @@ module Fin::DebitPages
       @ctx = Fin::AttrFormatContext.regular
       render :edit, status: :unprocessable_entity
     end
-  end
-
-  # The `return_url` param as a path with its query, if it names one of this
-  # application; nil for anything else (another host, a protocol-relative
-  # "//host", garbage), so no link leads off the site.
-  def return_path
-    return @return_path if defined?(@return_path)
-
-    url = params[:return_url].to_s
-    @return_path = (local_path(url) if url.start_with?("/") && !url.start_with?("//"))
-  end
-
-  def local_path(url)
-    uri = URI.parse(url)
-    return nil if uri.scheme || uri.host
-
-    uri.query ? "#{uri.path}?#{uri.query}" : uri.path
-  rescue URI::Error
-    nil
   end
 end

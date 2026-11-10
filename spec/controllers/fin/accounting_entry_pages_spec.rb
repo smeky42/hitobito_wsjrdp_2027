@@ -170,7 +170,7 @@ describe Fin::AccountingEntriesController, type: :controller do
       entry.update!(camt_transaction: tx)
       get :show, params: {id: entry.id}
 
-      row = doc.css(".fin-detail-list .row").find { |r| r.at_css("dt").text == "Bank-Transaktion" }
+      row = doc.css(".fin-detail-list .row").find { |r| r.at_css("dt").text == "Kontobewegung" }
       expect(row.css("a").pluck("href")).to eq([wsjrdp_camt_transaction_path(tx)] * 2)
       expect(row.at_css("a[target=_blank]")).to be_present
       expect(row.text.squish).to include("05.11.2026").and include("Retoure Lastschrift")

@@ -4,81 +4,15 @@
 -#  Affero General Public License version 3 or later.
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
-
-#main.row
-  = standard_form(camt_transaction, {url: camt_transaction_path, method: :put, data: {turbo: false}}) do |f|
-    = hidden_field_tag("return_url", return_url)
-    = f.error_messages
-    = form_buttons_if_editable(f, cancel_url: cancel_url)
-
-    .mt-3
-    = field_set_tag do
-      %div.border-top.py-2
-      -# = input_or_render_attrs(f, :camt_type)
-      = input_or_render_attrs(f, :fin_account, display_link: true)
-      -# = input_or_render_attrs(f, :account_servicer_reference, :credit_debit_indication)
-      = input_or_render_attrs(f, :amount_eur, :base_currency)
-      = input_or_render_attrs(f, :value_date, :booking_date)
-      = input_or_render_attrs(f, :description, :comment)
-      -# %div.border-top.py-2
-      -# = input_or_render_attrs(f, :message_identification, :message_creation_date_time)
-      -# %div.border-top.py-2
-      -# = input_or_render_attrs(f, :report_identification, :report_creation_date_time)
-      -# = input_or_render_attrs(f, :report_electronic_sequence_number, :report_legal_sequence_number, :report_page_number)
-      -# %div.border-top.py-2
-      -# = input_or_render_attrs(f, :status)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :subject, show_previous_as_help_inline: true)
-      - accounting_entries = f.object.accounting_entries
-      = form_like_labeled(if accounting_entries.size == 1 then "Buchung" else "Buchungen" end) do
-        -# Both halves are links only for whoever may see the entry's person --
-        -# see Fin::LinkedEntryHelper for the rule.
-        - accounting_entries.each do |ae|
-          %div
-            %span= fin_entry_link(ae)
-            %span.muted= " • "
-            %span.fw-light.muted Person:
-            %span= fin_subject_link(ae.subject)
-      %div.border-top.py-2
-      -# = input_or_render_attrs(f, :transaction_details_index)
-      -# -#= input_or_render_attrs(f, :references)
-      = input_or_render_attrs(f, :endtoend_id)
-      = input_or_render_attrs(f, :mandate_id)
-      - if f.object.return_reason.present?
-        = input_or_render_attrs(f, :return_reason)
-        -# The select does not go through input_or_render_attrs, so it needs the
-        -# permitted_attrs gate by hand
-        - if permitted_attrs.include?(:return_status)
-          = f.labeled_collection_select(:return_status, Settings.return_debit_status, :first, :last, {})
-        - else
-          = input_or_render_attrs(f, :return_status)
-      - if f.object.bank_transaction_code.present? || f.object.bank_transaction_code_dk.present?
-        %div.border-top.py-2
-        -# The codes with their meaning (Fin::BankTransactionCodes); a return of
-        -# any kind links its page in the Zahlungsverkehr area.
-        - %i[bank_transaction_code bank_transaction_code_dk].each do |attr|
-          - value = (attr == :bank_transaction_code) ? payment_iso_code(f.object.bank_transaction_code) : payment_dk_code(f.object.bank_transaction_code_dk)
-          - if value
-            = form_like_labeled(captionize(attr, WsjrdpCamtTransaction), value)
-        - if f.object.return_kind.present?
-          = form_like_labeled(captionize(:return_kind, WsjrdpCamtTransaction),
-            safe_join([t("fin.payments.return_kinds.#{f.object.return_kind}"), " ",
-              link_to(t("fin.payments.return_label", id: f.object.id), payment_return_path(f.object), class: "small")]))
-      -# The return that brought this transaction back (Fin::ReturnOriginals);
-      -# nothing without one.
-      - came_back = f.object.reversed_by
-      - if came_back&.return_kind.present?
-        %div.border-top.py-2
-        = form_like_labeled(t("fin.payments.came_back"),
-          link_to([t("fin.payments.return_label", id: came_back.id), t("fin.payments.return_kinds.#{came_back.return_kind}"),
-            fin_date(came_back.booking_date || came_back.value_date)].join(" · "), payment_return_path(came_back)))
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :status, :additional_entry_info)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address)
-      %div.border-top.py-2
-      = input_or_render_attrs(f, :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
-      -# %div.border-top.py-2
-      -# = input_or_render_attrs(f, :created_at, :updated_at)
-
-    = form_buttons_if_editable(f, cancel_url: cancel_url)
+-#
+-#  The reading page of a bank transaction: its detail (_detail), with
+-#  "Bearbeiten" for whoever may change one (edit). Also the detail a table
+-#  lazy-loads into a row (@ctx embedded): there it carries the kit's inline
+-#  edit, whose save comes back to the row.
+- tx = camt_transaction
+- may_update = can?(:update, tx)
+= wsjrdp_detail_frame(Fin::WsjrdpCamtTransactionsController::FRAME_PREFIX, tx.id) do
+  = render "detail", tx: tx, ctx: @ctx, return_path: return_path,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && may_update ? edit_wsjrdp_camt_transaction_path(tx, return_url: return_path) : nil),
+    form_url: (!@ctx.regular? && may_update ? wsjrdp_camt_transaction_path(tx) : nil)

@@ -14,8 +14,9 @@
 -#  (a booking on a group's own route) passes nil and gets no link.
 -#
 -#  Locals: back, back_label, label, title, toolbar
+-# The header stands inside the detail's turbo frame; the way back leaves it.
 - if back.present?
-  = link_to back, class: "btn btn-sm btn-link px-0 mb-2" do
+  = link_to back, class: "btn btn-sm btn-link px-0 mb-2", data: {turbo_frame: "_top"} do
     = icon(:"arrow-left")
     = back_label
 %h1.mb-3.d-flex.align-items-baseline.flex-wrap.gap-2
