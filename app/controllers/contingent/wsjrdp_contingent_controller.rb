@@ -19,6 +19,7 @@ class Contingent::WsjrdpContingentController < ApplicationController
     "status",
     "payment_role",
     "wsj_role",
+    "contract_status",
     "additional_info"
   ].freeze
 

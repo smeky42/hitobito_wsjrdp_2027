@@ -633,6 +633,11 @@ module Wsjrdp2027::Person
         has_tag?("eHoC")
       end
 
+      # Paid staff of the contingent, marked by the tag "Hauptamt".
+      def paid_staff?
+        has_tag?("Hauptamt")
+      end
+
       def upload_complete?
         # Checks if the upload is complete
         #

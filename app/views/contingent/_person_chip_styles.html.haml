@@ -1,0 +1,87 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The person chips of the contingent pages (WsjrdpContingentHelper#person_chip)
+-#  and their mini tags: HA (Hauptamt), HoC/eHoC, JPT, EXT. One place for all
+-#  pages that show chips.
+:css
+  .p-chip {
+    display: inline-block;
+    vertical-align: baseline;
+    padding: 1px 4px;
+    margin: 1px 3px;
+    border-radius: 6px;
+    background-color: #e8ebf0aa;
+    white-space: nowrap;
+  }
+  /* Already counted further up: no fill, a grey name, paler mini tags. */
+  .p-chip-counted {
+    background-color: transparent;
+  }
+  /* A guest is never counted in the team: no fill either. */
+  .p-chip-guest {
+    background-color: transparent;
+  }
+  .p-chip-counted > a {
+    color: #6c757d;
+  }
+  .p-chip-counted > span {
+    opacity: 0.55;
+  }
+  /* A contract not in force: a dot before the name -- yellow for none, a
+     yellow ring for a new one pending, red for ended. */
+  .p-chip-contract-none::before, .p-chip-contract-pending::before, .p-chip-contract-ended::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 4px;
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+  .p-chip-contract-none::before {
+    background-color: #e0a800;
+  }
+  .p-chip-contract-pending::before {
+    box-shadow: inset 0 0 0 1.5px #e0a800;
+  }
+  .p-chip-contract-ended::before {
+    background-color: #dc3545;
+  }
+  /* The same dot, muted: external staff (EXT). */
+  .p-chip-contract-muted.p-chip-contract-none::before, .p-chip-contract-muted.p-chip-contract-ended::before {
+    background-color: #adb5bd;
+  }
+  .p-chip-contract-muted.p-chip-contract-pending::before {
+    box-shadow: inset 0 0 0 1.5px #adb5bd;
+  }
+  .tag-ha, .tag-hoc, .tag-ehoc, .tag-jpt, .tag-ext {
+    font-weight: 300 !important;
+    position: relative;
+    bottom: 0.25em;
+    font-size: 75%;
+    padding: 0px 2px;
+    border-radius: 2px;
+  }
+  .tag-ha {
+    color: #0f6e56;
+    background-color: #d9f2ea;
+  }
+  .tag-hoc, .tag-ehoc {
+    color: #a16a18;
+    background-color: #fef5d5;
+  }
+  .tag-jpt {
+    color: #398bf1;
+    background-color: #a2ceff;
+  }
+  /* An outline, not a fill: external staff are marked, but quietly. */
+  .tag-ext {
+    color: #5c636a;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px #adb5bd;
+  }
