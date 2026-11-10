@@ -5,65 +5,80 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+= render "contingent/person_chip_styles"
+
 :css
-  .td-like {
-    font-weight: var(--bs-body-font-weight);
-    background-color: var(--bs-body-bg) !important;
-    --bs-table-accent-bg: transparent !important;
-  }
-  .p-chip {
-    display: inline-block;
-    vertical-align: baseline;
-    padding: 1px 4px;
-    margin: 1px 3px;
-    border-radius: 6px;
-    background-color: #e8ebf0aa;
-    white-space: nowrap;
-    /*overflow: hidden;*/
-  }
-  .tag-hoc, .tag-ehoc {
-    font-weight: 300 !important;
-    position: relative;
-    bottom: 0.25em;
-    font-size: 75%;
-    padding: 0px 2px;
-    border-radius: 2px;
-    color: #a16a18;
-    background-color: #fef5d5;
-  }
-  .tag-jpt {
-    font-weight: 300 !important;
-    position: relative;
-    bottom: 0.25em;
-    font-size: 75%;
-    padding: 0px 2px;
-    border-radius: 2px;
-    color: #398bf1;
-    background-color: #a2ceff;
-  }
   .team-people-list + .team-people-list {
     margin-left: 10px;
+  }
+  /* External staff (EXT) in the contract table: the whole row muted. */
+  #cmt-without-contract tr.cmt-ext-row > td, #cmt-without-contract tr.cmt-ext-row a {
+    color: #6c757d;
+  }
+  #cmt-without-contract tr.cmt-ext-row .p-chip > span {
+    opacity: 0.55;
+  }
+  /* The legend reuses the chips' dot classes, so it always matches them. */
+  #cmt-contract-legend .cmt-legend-item {
+    white-space: nowrap;
+    margin-right: 0.9rem;
   }
 
 #main.row
   %div
+    #cmt-contract-legend.small.text-muted.mb-2
+      %span.me-2 Vertrag-Status:
+      - WsjrdpContingentHelper::CONTRACT_CHIP_CLASSES.each do |status, css|
+        %span.cmt-legend-item{class: css}= Settings.contract_status[status]
+      %span.cmt-legend-item
+        (bei EXT grau:
+        - WsjrdpContingentHelper::CONTRACT_CHIP_CLASSES.each do |status, css|
+          %span{class: [css, "p-chip-contract-muted"], title: Settings.contract_status[status]}
+        )
+    %h2 Teams
     %table.table.table-striped.table-hover
       %thead
         %tr
           %th Team
           %th Personen
-          %th.right Anzahl
+          %th.right.text-nowrap{title: "Leads und Mitglieder des Teams, ohne Gäste"} im Team
+          %th.right{title: "Personen, die in keinem Team weiter oben schon gezählt sind"} neu
       %tbody
         - cmt_teams.each do |team_hash|
-          = render 'group_row', label: team_hash[:label], count: team_hash[:count], people_with_labels: team_hash[:people_with_labels]
-      %tbody
+          = render 'group_row', label: team_hash[:label], size: team_hash[:size], count: team_hash[:count],
+            counted_in: team_hash.fetch(:counted_in, {}), people_with_labels: team_hash[:people_with_labels]
+
+    %h2.mt-4 Nach Rolle auf dem Jamboree
+    %table.table.table-striped.table-hover
+      %thead
         %tr
-          %th.td-like{colspan: 3, style: "padding-top: 15px;"}
-            %strong
-              Nach Rolle auf dem Jamboree
+          %th Rolle
+          %th Personen
+          %th.right Anzahl
       %tbody
-        = render 'group_row', label: "JPT", people_with_labels: [[nil, @wsj_role_jpt_people]]
+        -# The same order as everywhere on the page (ROLE_RANKS): CMT, JPT, other, EXT.
         = render 'group_row', label: "CMT", people_with_labels: [[nil, @wsj_role_cmt_people]]
+        = render 'group_row', label: "JPT", people_with_labels: [[nil, @wsj_role_jpt_people]]
         - if @wsj_role_other_people.size > 0
           = render 'group_row', label: "andere Rolle", people_with_labels: [[nil, @wsj_role_other_people]]
-        = render 'group_row', label: "Gesamt", people_with_labels: [], count: @wsj_role_jpt_people.size + @wsj_role_cmt_people.size + @wsj_role_other_people.size
+        = render 'group_row', label: "EXT", people_with_labels: [[nil, @wsj_role_ext_people]]
+        = render 'group_row', label: "Gesamt", people_with_labels: [], count: @full_cmt_people.size
+
+    %h2.mt-4 Ohne Vertrag in Kraft
+    - if @people_without_contract.empty?
+      %p.text-muted Alle Verträge sind in Kraft.
+    - else
+      %table.table.table-striped.table-hover#cmt-without-contract
+        %thead
+          %tr
+            %th Person
+            %th Vertrag
+            %th Anmeldestatus
+            %th Rolle
+        %tbody
+          - @people_without_contract.each do |person|
+            %tr{class: ("cmt-ext-row" if person.wsj_role == "EXT")}
+              %td= person_chip(person)
+              %td= Settings.contract_status[person.contract_status]
+              %td= Settings.status[person.status]
+              %td= person.effective_wsj_role

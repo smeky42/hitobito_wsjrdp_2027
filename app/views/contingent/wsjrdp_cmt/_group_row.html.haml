@@ -5,17 +5,27 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+-#  One row of the CMT / JPT table: a label, the people as chips and the count.
+-#
+-#  Locals: label, people_with_labels ([[label, people, {guest: true}?], ...])
+-#          count: the number shown last; the number of people by default
+-#          size: given (even nil), the row is a team row with two numbers --
+-#            the team's size ("im Team") before the count ("neu")
+-#          counted_in: person id => team already counted in (quiet chips)
+- team_row = local_assigns.key?(:size)
 %tr
   %td
     = label
   %td
     - count_people = 0
-    - people_with_labels.each do |label, people|
+    - people_with_labels.each do |label, people, options|
       - count_people += people.size
       - if people.size > 0
         %span.team-people-list
           %span.fw-light.muted
             = label
-          = people_chips(people)
+          = people_chips(people, counted_in: local_assigns.fetch(:counted_in, {}), guest: options&.dig(:guest))
   - count_people = local_assigns[:count] if local_assigns[:count].present?
+  - if team_row
+    %td.right.text-muted= local_assigns[:size]
   %td.right= count_people
