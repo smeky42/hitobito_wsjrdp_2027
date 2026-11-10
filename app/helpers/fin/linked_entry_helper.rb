@@ -30,18 +30,20 @@
 # anything on people.
 module Fin::LinkedEntryHelper
   # A transaction's or an entry's person: a link where the viewer may open the
-  # person page, the plain (escaped) name otherwise.
+  # person page, the plain (escaped) name otherwise. Both links here leave a
+  # turbo frame they stand in (`_top`) -- a detail sits inside one, on its own
+  # page and in a table row alike.
   def fin_subject_link(subject)
     return "".html_safe if subject.blank?
 
-    link_to_if(assoc_link?(subject), subject.short_full_name_with_nickname, subject)
+    link_to_if(assoc_link?(subject), subject.short_full_name_with_nickname, subject, data: {turbo_frame: "_top"})
   end
 
   # The Beitragsbuchung itself: its full label ("[8398] <Beschreibung>
   # (<Betrag>)") as a link for whoever may open it, the bare "#8398" as text for
   # everyone else.
   def fin_entry_link(entry)
-    return link_to(entry.link_name, entry) if fin_entry_details_visible?(entry)
+    return link_to(entry.link_name, entry, data: {turbo_frame: "_top"}) if fin_entry_details_visible?(entry)
 
     "##{entry.id}"
   end

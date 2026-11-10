@@ -108,7 +108,10 @@ class Fin::PaymentReturnsController < Fin::FinController
       sort: Fin::ReturnOriginalColumns::COLUMNS.sort_expressions, tiebreaker: ->(c) { -c.id })
   end
 
+  # The edit page again, with what was typed; a save that failed its
+  # validation says why.
   def render_edit
+    flash.now[:alert] ||= validation_alert(@return) if @return.errors.any?
     @ctx = Fin::AttrFormatContext.regular
     render :edit, status: :unprocessable_entity
   end

@@ -275,7 +275,7 @@ Rails.application.routes.draw do
         post "link_subject_and_create_accounting_entry/:subject_id/:subject_type",
           to: "moss_bookings#link_subject_and_create_accounting_entry"
       end
-      resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :update] do
+      resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :edit, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"
       end
       # Umbuchungen (transfers between own accounts), a tab of Konten & Wallets.

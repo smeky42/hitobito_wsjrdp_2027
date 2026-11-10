@@ -47,6 +47,11 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   belongs_to :internal_transfer, optional: true, class_name: "WsjrdpInternalTransfer",
     inverse_of: :camt_transactions
 
+  # What a page lets change by hand is checked when it changes -- never on an
+  # untouched row, so an import or a link action is not held up by old data.
+  validate :validate_return_status, if: :return_debit_status_changed?
+  validate :validate_subject, if: -> { subject_id_changed? || subject_type_changed? }
+
   # Neither deleted nor replaced by a later statement's copy.
   scope :current, -> { where(deleted_at: nil, replaced_by_id: nil) }
   scope :without_internal_transfer, -> { where(internal_transfer_id: nil) }
@@ -106,6 +111,21 @@ class WsjrdpCamtTransaction < ActiveRecord::Base
   # may not edit the field.
   def return_status_display
     Settings.return_debit_status[return_status]
+  end
+
+  # One of the statuses there are (Fin::ReturnEditing), or none.
+  def validate_return_status
+    return if return_debit_status.blank? || Fin::ReturnEditing.status?(return_debit_status)
+
+    errors.add(:return_status, :inclusion)
+  end
+
+  # A person, and one that exists (only people are linked, see SubjectLinking).
+  def validate_subject
+    return if subject_id.blank? && subject_type.blank?
+    return if subject_type == "Person" && Person.exists?(subject_id)
+
+    errors.add(:subject, "wurde nicht gefunden")
   end
 
   def description_for_subject_candidates

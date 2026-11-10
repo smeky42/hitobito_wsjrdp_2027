@@ -1,0 +1,45 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of a bank transaction (Kontobewegung), built on the finance
+-#  detail kit (doc/fin/detail_partials.md): the reading page (show), the edit
+-#  page (edit) and a table row's detail are this one list of fields. The values
+-#  come from Fin::PaymentDetailsHelper -- the formatters a bank transaction
+-#  shares with the return's detail -- and Fin::CamtTransactionsHelper, the
+-#  labels from de.activerecord.attributes.wsjrdp_camt_transaction.
+-#
+-#  Locals: tx (WsjrdpCamtTransaction)
+-#          ctx (Fin::AttrFormatContext; default: the page's)
+-#          editing:    the kit's edit mode -- false the reading page (default),
+-#                      true the edit page, nil a table row (inline edit)
+-#          form_url:   the PATCH target; its presence makes comment, person
+-#                      and return status editable
+-#          edit_url, cancel_url: as the detail kit takes them
+-#          return_path: the page the reader came from (`return_url`); the
+-#                      header then leads back there
+- ctx = local_assigns[:ctx] || Fin::AttrFormatContext.regular
+- return_path = local_assigns[:return_path]
+- edit = fin_camt_transaction_edit_options(local_assigns[:form_url].present?)
+= fin_detail(tx, ctx, editing: local_assigns.fetch(:editing, false), form_url: local_assigns[:form_url],
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
+  - d.header label: t("fin.payments.camt_link", id: tx.id),
+      back: return_path, back_label: t("global.button.back")
+  - d.attrs :fin_account, :amount_eur, :base_currency, :value_date, :booking_date, :description, :comment,
+      **edit.slice(:comment)
+  - d.attrs :subject, :accounting_entries, **edit.slice(:subject)
+  -# A return's status belongs to a return: nothing without a return reason.
+  - d.attrs :endtoend_id, :mandate_id, :return_reason, :return_status,
+      return_status: {hide: tx.return_reason.blank?}.merge(edit.fetch(:return_status, {}))
+  -# The codes with their meaning (Fin::BankTransactionCodes); a return of any
+  -# kind links its page in the Zahlungsverkehr area. A block of the codes: none
+  -# without one.
+  - d.attrs :bank_transaction_code, :bank_transaction_code_dk, :return_kind_link,
+      return_kind_link: {hide: tx.bank_transaction_code.blank? && tx.bank_transaction_code_dk.blank?}
+  - d.attrs :reversed_by
+  - d.attrs :status, :additional_entry_info
+  - d.attrs :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address
+  - d.attrs :dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address

@@ -7,34 +7,54 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+# The page of one CAMT bank transaction.
+#
+# Another page may send the reader here with `return_url`
+# (Fin::ReturnPath): the reading page then leads back there, the edit
+# page keeps it, and a save returns to it.
+#
+# The reading page is also what an expandable table lazy-loads into a
+# row (a turbo frame): it then answers as that frame, with the detail
+# in its embedded mode, and a save comes back to the row.
 class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   include WsjrdpFormHelper
   include SubjectLinking
+  include Fin::ReturnPath
+
+  # The prefix of the frame a direct visit gets (wsjrdp_detail_frame); a table
+  # that embeds the detail asks under its own.
+  FRAME_PREFIX = "tx"
 
   before_action :map_id_to_wsjrdp_camt_transaction_id
   before_action :authorize_action
 
   helper_method :camt_transaction
   helper_method :permitted_attrs
-  helper_method :cancel_url, :return_url
   helper_method :camt_transaction_return_url
   helper_method :camt_transaction_path
   helper_method :matching_accounting_entries
 
   def show
     @wsjrdp_camt_transaction ||= camt_transaction
+    @ctx = detail_format_context
     render :show
+  end
+
+  def edit
+    @wsjrdp_camt_transaction ||= camt_transaction
+    authorize!(:update, camt_transaction)
+    @ctx = Fin::AttrFormatContext.regular
   end
 
   def update
     @wsjrdp_camt_transaction ||= camt_transaction
     authorize!(:update, camt_transaction)
     camt_transaction.attributes = permitted_params
-    if camt_transaction.save
-      flash[:notice] = "Transaktion #{camt_transaction.id} erfolgreich aktualisiert."
-      redirect_to return_url
+    if save_transaction
+      redirect_to after_save_path, notice: "Kontobewegung #{camt_transaction.id} erfolgreich aktualisiert."
     else
-      render :show, status: :bad_request
+      flash.now[:alert] = validation_alert(camt_transaction)
+      render_after_failed_save
     end
   end
 
@@ -112,12 +132,48 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
     url_for(entry.nil? ? camt_transaction : entry)
   end
 
-  def return_url
-    return_url_or_fallback url_for(camt_transaction)
+  # The record's own page, or a table row's detail (a turbo frame) at the
+  # nesting level the table put into the frame's URL -- the shared
+  # `expandable_table_level` param, read here directly because this controller
+  # has no table of its own to resolve it (doc/fin/detail_partials.md §1).
+  def detail_format_context
+    return Fin::AttrFormatContext.regular unless turbo_frame_request?
+
+    Fin::AttrFormatContext.embedded(Wsjrdp::TableContext.new(level: params[:expandable_table_level], lazy: true))
   end
 
-  def cancel_url
-    return_url
+  # Saves unless a person was typed but not chosen from the suggestions: the
+  # search field then carries a name and no id, and saving would silently link
+  # nobody.
+  def save_transaction
+    return camt_transaction.save unless subject_typed_but_not_chosen?
+
+    camt_transaction.valid?
+    camt_transaction.errors.add(:subject, "muss aus der Vorschlagsliste gewählt werden")
+    false
+  end
+
+  def subject_typed_but_not_chosen?
+    model_params[:subject].present? && model_params[:subject_id].blank?
+  end
+
+  def after_save_path
+    return wsjrdp_camt_transaction_path(camt_transaction) if turbo_frame_request?
+    return edit_wsjrdp_camt_transaction_path(camt_transaction, return_url: return_path) if params[:stay].present?
+
+    return_path || wsjrdp_camt_transaction_path(camt_transaction)
+  end
+
+  # A row's inline edit shows its pane again (its form opens by itself on a
+  # record with errors), a page the edit page.
+  def render_after_failed_save
+    if turbo_frame_request?
+      @ctx = detail_format_context
+      render :show, status: :unprocessable_entity
+    else
+      @ctx = Fin::AttrFormatContext.regular
+      render :edit, status: :unprocessable_entity
+    end
   end
 
   def camt_transaction_return_url(entry = nil)
@@ -131,7 +187,12 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
     }
   end
 
+  # The person as the search field sends it: the name (`subject`) and the id
+  # of the chosen one. An emptied field unlinks; a request that does not carry
+  # the field at all leaves the person alone.
   def _transform_tx_params(params)
+    return params unless params.key?(:subject) || params.key?(:subject_id)
+
     if params[:subject].blank? || params[:subject_id].blank?
       params[:subject_id] = nil
       params[:subject_type] = nil
@@ -148,11 +209,12 @@ class Fin::WsjrdpCamtTransactionsController < Fin::FinController
   def permitted_attrs
     return [] unless can?(:update, camt_transaction)
 
+    # Comment and return status are the return's fields (Fin::ReturnEditing,
+    # shared with the return's own page); the person is this page's.
     [
-      :comment,
+      *Fin::ReturnEditing::FIELDS.keys,
       :subject, :subject_id, :subject_type,
-      :accounting_entry, :accounting_entry_id,
-      :return_status
+      :accounting_entry, :accounting_entry_id
     ]
   end
 

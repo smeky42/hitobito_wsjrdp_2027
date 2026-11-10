@@ -300,8 +300,9 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
   # The detail pages built from standard_form + input_or_render_attrs. They all
   # share ONE mechanism: #permitted_attrs is empty without the write tier, which
   # makes input_or_render_attrs render read-only values and
-  # form_buttons_if_editable drop the Speichern button. Two of them stand for
-  # the set (/fin/acc/:id and /fin/tx/:id); the Moss booking, the Ratenplan and
+  # form_buttons_if_editable drop the Speichern button. /fin/acc/:id stands for
+  # the set; /fin/tx/:id is split on the finance detail kit by now and has its
+  # form on an edit page only the write tier reaches; the Moss booking, the Ratenplan and
   # the Beitragsbuchung go through exactly the same two helpers.
   describe "the editable finance detail pages" do
     let!(:bank) do
@@ -417,30 +418,38 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
     describe ::Fin::WsjrdpCamtTransactionsController, type: :controller do
       render_views
 
-      it "offers the transaction form to the write tier" do
+      # The page is split (the finance detail kit): the reading page carries no
+      # form for anybody, the write tier reaches the form through "Bearbeiten".
+      it "offers the edit page with its form to the write tier" do
         sign_in(accountant)
         get :show, params: {id: camt.id}
+
+        expect(response).to be_successful
+        expect(response.body).to include(edit_wsjrdp_camt_transaction_path(camt))
+        expect(save_buttons).to be_empty
+
+        get :edit, params: {id: camt.id}
 
         expect(response).to be_successful
         expect(save_buttons).not_to be_empty
         expect(response.body).to include("wsjrdp_camt_transaction[comment]")
       end
 
-      it "renders it read-only for the read tier -- no inputs, no Speichern" do
+      it "renders it read-only for the read tier -- no Bearbeiten, no edit page" do
         sign_in(auditor)
         get :show, params: {id: camt.id}
 
         expect(response).to be_successful
         expect(response.body).to include("Beispielbuchung")
+        expect(response.body).not_to include(edit_wsjrdp_camt_transaction_path(camt))
         expect(save_buttons).to be_empty
-        expect(response.body).not_to include("wsjrdp_camt_transaction[comment]")
+
+        expect { get :edit, params: {id: camt.id} }.to raise_error(CanCan::AccessDenied)
       end
 
-      # The Retoure-Status select does not go through input_or_render_attrs, so
-      # it needs its own gate -- it used to render for everyone.
-      it "shows the Retoure-Status as a select only for the write tier" do
+      it "shows the Retoure-Status as a select only on the write tier's edit page" do
         sign_in(accountant)
-        get :show, params: {id: camt.id}
+        get :edit, params: {id: camt.id}
         expect(selects).to include("wsjrdp_camt_transaction[return_status]")
 
         sign_in(auditor)

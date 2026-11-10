@@ -252,7 +252,7 @@ module Fin::PaymentDetailsHelper
     return {} unless editable
 
     Fin::ReturnEditing::FIELDS.to_h do |attr, input|
-      options = (input == :wide_select) ? Fin::ReturnEditing.statuses.map { |value, label| [label, value] } : nil
+      options = (input == :wide_select) ? Fin::ReturnEditing.status_options : nil
       [attr, {editable: true, input: input, options: options}.compact]
     end
   end
@@ -265,7 +265,29 @@ module Fin::PaymentDetailsHelper
     content_tag(:span, payment_cents(ret.amount_cents), class: ("text-danger" if ret.amount_cents.to_i.negative?))
   end
 
-  def fin_format_wsjrdp_camt_transaction_return_reason(ret) = payment_return_reasons(ret.return_reason, long: true)
+  # The reason codes as the CAMT bank transaction carries them, each
+  # with explanation.
+  def fin_format_wsjrdp_camt_transaction_return_reason(ret)
+    return nil if ret.return_reason.blank?
+
+    safe_join(ret.return_reason.split.map do |code|
+      label = Fin::ReturnReasons.label(code)
+      safe_join([content_tag(:span, code, class: "font-monospace"),
+        (content_tag(:span, label, class: "text-muted fw-light") if label)].compact, " ")
+    end, tag.br)
+  end
+
+  # The comment: escaped, line breaks kept, URLs and mail addresses linked --
+  # and, for a viewer who holds :log on the bank transaction, the FIN-/HELP-
+  # ticket keys as well, as the Beitragsbuchung's comment does
+  # (Fin::AccountingEntriesHelper#fin_format_accounting_entry_comment).
+  def fin_format_wsjrdp_camt_transaction_comment(ret)
+    text = ret.comment
+    return nil if text.blank?
+    return auto_link_escaped_multiline(text) if can?(:log, ret)
+
+    auto_link(html_escape_multiline(text), sanitize: false, html: {target: "_blank"}).html_safe
+  end
 
   def fin_format_wsjrdp_camt_transaction_return_status(ret)
     badge = Fin::PaymentsHelper::RETURN_STATUS_BADGES[ret.return_status]

@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of a bank transaction: the same detail (_detail) in the kit's
+-#  :edit mode, with inputs for the comment, the person and -- on a return --
+-#  the return status. A save goes back to the page the reader came from
+-#  (`return_url`), else to the reading page; "Abbrechen" to the reading page.
+- tx = camt_transaction
+= wsjrdp_detail_frame(Fin::WsjrdpCamtTransactionsController::FRAME_PREFIX, tx.id) do
+  = render "detail", tx: tx, ctx: @ctx, editing: true, return_path: return_path,
+    form_url: wsjrdp_camt_transaction_path(tx, return_url: return_path),
+    cancel_url: wsjrdp_camt_transaction_path(tx, return_url: return_path)
