@@ -475,6 +475,7 @@ Rails.application.routes.draw do
 
     namespace "contingent" do
       get :contingent, path: "", to: "wsjrdp_contingent#index"
+      post :apply, to: "wsjrdp_contingent#apply"
       post :show_people_links, to: "wsjrdp_contingent#show_people_links"
       post :hide_people_links, to: "wsjrdp_contingent#hide_people_links"
       get :cmt, to: "wsjrdp_cmt#index"

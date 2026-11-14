@@ -17,6 +17,12 @@ module Wsjrdp2027::Person
   # delegate to; the name stays here for everyone who asks the person for it.
   DEREGISTRATION_KINDS = Wsjrdp2027::DeregistrationRecord::KINDS
 
+  # The jamboree role (wsj_role) a contingent role (wsjrdp_role) goes with:
+  # the same name, except BMT, who are IST on the jamboree. A person whose
+  # jamboree role is another one (#role_difference) is not wrong -- a CMT
+  # member can serve as JPT -- but it is worth seeing.
+  WSJRDP_ROLE_TO_NATURAL_WSJ_ROLE = {"BMT" => "IST"}.freeze
+
   # The contingent roles, short, by the end of the payment role's type
   # (#short_payment_role). The rules of a document kind name these
   # (WsjrdpDocumentKind#role_rules).
@@ -115,6 +121,9 @@ module Wsjrdp2027::Person
   # confirmed, but nothing is collected meanwhile. Apart from status, which
   # follows the documents and may step back.
   CONTRACT_STATUSES = %w[none confirmed replacement_pending ended].freeze
+  # A contract in force: confirmed, or waiting for its replacement (the old
+  # one holds until then).
+  CONTRACT_IN_FORCE = %w[confirmed replacement_pending].freeze
 
   # The wsjrdp_role values asked to order a uniform (uniform_order_available?).
   UNIFORM_ORDER_WSJRDP_ROLES = %w[CMT UL IST BMT].freeze
@@ -497,6 +506,16 @@ module Wsjrdp2027::Person
         else
           "EXT"
         end
+      end
+
+      # "CMT→JPT" when the jamboree role differs from the one the contingent
+      # role goes with (WSJRDP_ROLE_TO_NATURAL_WSJ_ROLE), nil otherwise.
+      def role_difference
+        contingent = wsjrdp_role
+        jamboree = effective_wsj_role
+        return nil if jamboree == "???" || jamboree == WSJRDP_ROLE_TO_NATURAL_WSJ_ROLE.fetch(contingent, contingent)
+
+        "#{contingent}→#{jamboree}"
       end
 
       def wsjrdp_role
@@ -1175,7 +1194,7 @@ module Wsjrdp2027::Person
           self.contract_ended_at = nil
           self.contract_confirmed_by = nil unless contract_confirmed_by_type_changed? || contract_confirmed_by_id_changed?
         when "deregistered"
-          return unless %w[confirmed replacement_pending].include?(contract_status)
+          return unless CONTRACT_IN_FORCE.include?(contract_status)
 
           self.contract_status = "ended"
           self.contract_ended_at = Time.current

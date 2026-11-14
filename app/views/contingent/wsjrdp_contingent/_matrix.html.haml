@@ -1,0 +1,210 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The contingent roles (wsjrdp_role) against the contract, in the rows of
+-#  ContingentOverview::MATRIX_ROWS and the columns of MATRIX_COLUMNS: CMT and
+-#  IST split by JPT; rows taking others together (not in
+-#  "Alle im Kontingent"), which light up the rows they add up while the
+-#  pointer is on them.
+-#  "in Abmeldung" is not in the sum. Every number -- all alike, plain --
+-#  lists its people.
+-#  Under the pointer a sum marks what it adds up -- in its row, in the head,
+-#  and with a combined row also in the rows it takes together.
+-#
+- columns = Wsjrdp2027::ContingentOverview::MATRIX_COLUMNS
+- rows = overview.matrix_rows
+-# The metro lines in the right margin (ContingentOverview#matrix_lines), one
+-# colour each.
+- lines = overview.matrix_lines(rows)
+- line_colors = %w[#6ea8fe #479f76 #e685b5 #868e96 #fd9843]
+-# Lines that share no row share a lane: one margin column per lane.
+- lanes = (0..(lines.map { |line| line[:lane] }.max || -1)).to_a
+- lane_mark = ->(lane, index) { lines.each_with_index.filter_map { |line, number| [line, number, line[:marks][index]] if line[:lane] == lane && line[:marks][index] }.first }
+- stop_title = { "in" => "zählt zu „%s“", "out" => "zählt nicht zu „%s“", "result" => "„%s“" }
+- single_group_labels = Wsjrdp2027::ContingentOverview::MATRIX_GROUPS.select { |label, keys| label && keys.one? }.to_h { |label, keys| [keys.first, label] }
+-# What a sum adds up, for the hover marks: the subtotal its columns, the
+-# row's sum the columns MATRIX_COLUMNS marks in_sum.
+- row_sum_keys = columns.select { |_key, column| column[:in_sum] }.keys
+- sum_data = ->(key) { (column = columns.fetch(key, nil)) && column[:subtotal] ? {co_col: key, co_adds: column[:subtotal].join(" ")} : {co_col: key} }
+-# The sums of the columns, for the stripes under the head: each sum a colour,
+-# its addends a thin stripe, the sum itself a thick one. "sum" is the row's
+-# sum at the end.
+- sums = columns.select { |_key, column| column[:subtotal] }.map { |key, column| [key, column[:subtotal]] } + [["sum", row_sum_keys]]
+- sum_colors = %w[#a98eda #f0b13c #20c997 #fd9843]
+- sum_color = sums.each_with_index.to_h { |(key, _adds), number| [key, sum_colors[number % sum_colors.size]] }
+- stripe_kind = ->(key, sum_key, adds) { if sum_key == key then "co-stripe-sum" elsif adds.include?(key) then "co-stripe-add" else "co-stripe-none" end }
+- stripe_title = {"co-stripe-sum" => "Summe", "co-stripe-add" => "zählt zur Summe", "co-stripe-none" => nil}
+-# Only the stripes a column has, so they all sit at the bottom of the head.
+- stripes = ->(key) { safe_join(sums.filter_map { |sum_key, adds| kind = stripe_kind.call(key, sum_key, adds); content_tag(:span, "", class: ["co-stripe", kind], style: "--co-stripe: #{sum_color[sum_key]}", title: stripe_title[kind]) unless kind == "co-stripe-none" }) }
+-# A column's heading: two lines that join on a wide table, and -- where the
+-# column has one -- a short form for a very narrow table ("in Abm.").
+- head_text = ->(column, heading) { heading ? safe_join([heading.first, " ", tag.br(class: "co-wrap"), heading.last]) : (column[:short] || column[:label]) }
+- head_html = ->(column, heading) { column[:narrow] ? safe_join([content_tag(:span, head_text.call(column, heading), class: "co-head-full"), content_tag(:span, column[:narrow], class: "co-head-narrow")]) : head_text.call(column, heading) }
+- column_css = ->(column) { [("co-subtotal" if column[:subtotal])].compact }
+-# Every number alike: plain, in the text colour, a link to its people.
+- figure = ->(n, tree) { link_to(n, people_filter_href(tree), class: "co-figure") }
+-# The cells showing a tile's number (ContingentOverview#matrix_tile_marks):
+-# a green ring, the tile named in the tooltip.
+- tile_marks = overview.matrix_tile_marks(rows)
+
+:css
+  #co-matrix td.co-num, #co-matrix th.co-num { font-variant-numeric: tabular-nums; }
+  /* All figure columns one width; a heading of two words breaks only while
+     the table is too narrow to give it one line (a container query). */
+  .co-matrix-wrap { container-type: inline-size; overflow-x: auto; }
+  #co-matrix td.co-num, #co-matrix th.co-num { width: 11%; }
+  #co-matrix thead th { white-space: nowrap; }
+  @container (min-width: 57rem) { #co-matrix .co-wrap { display: none; } }
+  /* A heading with a soft hyphen ("abge-meldet") may break there -- only
+     where the table is really narrow. */
+  @container (max-width: 36rem) { #co-matrix th.co-hyphen { white-space: normal; hyphens: manual; } }
+  #co-matrix .co-head-narrow { display: none; }
+  @container (max-width: 36rem) {
+    #co-matrix .co-head-full { display: none; }
+    #co-matrix .co-head-narrow { display: inline; }
+  }
+  /* The numbers: all alike -- plain, the text colour, underlined only under
+     the pointer. */
+  #co-matrix a.co-figure { color: inherit; text-decoration: none; }
+  #co-matrix a.co-figure:hover { text-decoration: underline; }
+  #co-matrix td.co-tile-mark a.co-figure { box-shadow: inset 0 0 0 1.5px #3B6D11; border-radius: 4px; padding: 0 4px; }
+  /* Under the pointer on a tile: its number in the matrix, in the tile's green. */
+  #co-matrix td.co-tile-lit { background-color: #e7f1ec !important; }
+  #co-matrix td.co-tile-lit a.co-figure { box-shadow: inset 0 0 0 2px #146c43; }
+  #co-jamboree-tiles .co-tile[data-co-tile] { cursor: default; }
+  #co-matrix tr.co-highlight > td { background-color: #fff4d6 !important; }
+  /* One line in the head only: under a heading over several columns. */
+  #co-matrix thead tr:first-child th { border-bottom: 0; vertical-align: bottom; }
+  #co-matrix thead tr:first-child th.co-group { border-bottom: 1px solid #adb5bd; }
+  #co-matrix thead tr:nth-child(2) th { vertical-align: bottom; border-bottom: 0; }
+  /* The stripes under the head: one lane per sum, thin under an addend,
+     thick under the sum; the sum's heading in its colour. */
+  #co-matrix thead tr.co-stripes th { padding-top: 0; padding-bottom: 3px; border-bottom: 1px solid #e8ebf0; vertical-align: bottom; }
+  #co-matrix .co-stripe { display: block; height: 4px; margin-top: 2px; border-radius: 2px; }
+  #co-matrix .co-stripe-add { background: var(--co-stripe); }
+  #co-matrix .co-stripe-sum { background: var(--co-stripe); height: 8px; }
+  #co-matrix .co-sum-head { color: color-mix(in srgb, var(--co-stripe) 55%, #212529); }
+  /* Under the pointer on a sum: what it adds up, in its row and in the head;
+     where a row lit up by a combined row meets such a column, a mixed tone. */
+  #co-matrix .co-add, #co-matrix th.co-add { background-color: #e7f0fb !important; }
+  #co-matrix tr.co-highlight > td.co-add { background-color: #eceed2 !important; }
+  /* The metro lines: a line per combined row from its first part down to it;
+     a filled stop counts, a pale ring is passed and does not count, an open
+     ring is the result. */
+  #co-matrix .co-line { position: relative; width: 14px; min-width: 14px; padding: 0 !important; border-bottom: 0 !important; background: transparent !important; }
+  #co-matrix .co-line::before { content: ""; position: absolute; left: 6px; width: 2px; background: var(--co-line); }
+  #co-matrix .co-line.co-top::before { top: 50%; bottom: 0; }
+  #co-matrix .co-line.co-mid::before { top: 0; bottom: 0; }
+  #co-matrix .co-line.co-bot::before { top: 0; bottom: 50%; }
+  #co-matrix .co-line:not(.co-top):not(.co-mid):not(.co-bot)::before { display: none; }
+  #co-matrix .co-stop { position: absolute; left: 2px; top: 50%; margin-top: -5px; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; }
+  #co-matrix .co-stop-in { background: var(--co-line); }
+  #co-matrix .co-stop-out { background: #fff; border: 2px solid var(--co-line); opacity: 0.4; }
+  #co-matrix .co-stop-result { background: #fff; border: 2px solid var(--co-line); }
+
+%h3.mt-3 Kontingents-Rolle und Vertrag
+%p.small.text-muted.mb-1#co-matrix-legend
+  Unter dem Kopf: dünner Strich = zählt zur Summe, dicker Strich gleicher Farbe = die Summe.
+  Rechts: ● zählt zur Zusammenfassung, ○ blass = zählt nicht, ○ = die Zusammenfassung.
+.co-matrix-wrap
+  %table.table.table-hover.co-numbers#co-matrix
+    %thead
+      %tr
+        %th
+        - Wsjrdp2027::ContingentOverview::MATRIX_GROUPS.each do |label, keys|
+          - if keys.one?
+            -# A heading over one column only stands in that column's own cell
+            -# below, as its first line ("ohne / Vertrag").
+            %th
+          - else
+            %th.text-center.co-group{colspan: keys.size}= label
+        %th
+        - lanes.each do
+          %th.co-line
+      %tr
+        %th
+          %span.co-head-full Jamboree-Rolle
+          %span.co-head-narrow J-Rolle
+        - columns.each do |key, column|
+          - heading = single_group_labels[key] ? [single_group_labels[key], column[:label]] : column[:header]
+          %th.co-num{class: [*column_css.call(column), ("co-sum-head" if sum_color[key]), ("co-hyphen" if column[:short])], style: ("--co-stripe: #{sum_color[key]}" if sum_color[key]), title: column[:title], data: {co_col: key}}= head_html.call(column, heading)
+        %th.co-num.co-sum-head{data: {co_col: "sum"}, style: "--co-stripe: #{sum_color["sum"]}"} Summe
+        - lanes.each do
+          %th.co-line
+      -# The stripes: per sum a lane, thin under its addends, thick under itself.
+      %tr.co-stripes
+        %th
+        - columns.each_key do |key|
+          %th.co-num= stripes.call(key)
+        %th.co-num= stripes.call("sum")
+        - lanes.each do
+          %th.co-line
+    %tbody
+      - rows.each_with_index do |row, index|
+        -# "Alle im Kontingent" is a combined row too, with its metro line and its marks.
+        %tr{class: [("co-combined" if row[:combined]), ("co-total" if row[:total])], data: {co_row: row[:label], co_sums: (row[:combined].to_json if row[:combined])}}
+          - row_filter = row.slice(:wsj, :wsj_not, :roles, :roles_not)
+          %td
+            - if row[:warning]
+              %span.text-warning{title: "Jamboree-Rolle, die keine Zeile kennt – zählt in keinem „Alle“"}= icon(:"exclamation-triangle")
+            = row[:label]
+          - row[:counts].each do |key, n|
+            - column = columns.fetch(key)
+            - tree = Wsjrdp2027::ContingentPeopleFilterSchema.cell_tree(key, **row_filter)
+            - tile = tile_marks[row[:label]] if key == "inforce"
+            %td.co-num{class: [*column_css.call(column), ("co-tile-mark" if tile)], data: sum_data.call(key).merge(co_tile_mark: tile), title: ("wie Kachel „#{tile}“" if tile)}= figure.call(n, tree)
+          - sum_tree = Wsjrdp2027::ContingentPeopleFilterSchema.cell_tree(row_sum_keys, **row_filter)
+          %td.co-num.co-row-sum{data: {co_col: "sum", co_adds: row_sum_keys.join(" ")}}= figure.call(row[:sum], sum_tree)
+          - lanes.each do |lane|
+            - line, number, mark = lane_mark.call(lane, index)
+            %td.co-line{class: (mark && "co-#{mark[:segment]}"), style: ("--co-line: #{line_colors[number % line_colors.size]}" if line)}
+              - if mark
+                %span.co-stop{class: "co-stop-#{mark[:stop]}", title: format(stop_title.fetch(mark[:stop]), line[:label])}
+
+:javascript
+  (function () {
+    var table = document.getElementById("co-matrix");
+    if (!table) return;
+    var light = function (row, on) {
+      JSON.parse(row.dataset.coSums || "[]").forEach(function (label) {
+        table.querySelectorAll("tr[data-co-row]").forEach(function (other) {
+          if (other.dataset.coRow === label) other.classList.toggle("co-highlight", on);
+        });
+      });
+    };
+    table.querySelectorAll("tr[data-co-sums]").forEach(function (row) {
+      row.addEventListener("mouseenter", function () { light(row, true); });
+      row.addEventListener("mouseleave", function () { light(row, false); });
+    });
+    // A sum cell: its addends in the row, their headers, and -- in a row that
+    // takes others together -- the addends in those rows.
+    var parts = function (row) {
+      var labels = JSON.parse(row.dataset.coSums || "[]");
+      return Array.prototype.filter.call(table.querySelectorAll("tr[data-co-row]"), function (other) {
+        return labels.indexOf(other.dataset.coRow) >= 0;
+      });
+    };
+    table.querySelectorAll("[data-co-adds]").forEach(function (cell) {
+      var keys = cell.dataset.coAdds.split(" ").concat([cell.dataset.coCol]);
+      var marks = function () {
+        var row = cell.parentElement, found = [];
+        [row].concat(parts(row)).forEach(function (tr) {
+          keys.forEach(function (key) { found = found.concat(Array.from(tr.querySelectorAll("[data-co-col='" + key + "']"))); });
+        });
+        keys.forEach(function (key) { found = found.concat(Array.from(table.tHead.querySelectorAll("[data-co-col='" + key + "']"))); });
+        return found;
+      };
+      cell.addEventListener("mouseenter", function () { marks().forEach(function (el) { el.classList.add("co-add"); }); });
+      cell.addEventListener("mouseleave", function () { marks().forEach(function (el) { el.classList.remove("co-add"); }); });
+    });
+    // A tile of people over the matrix: its number in the matrix lights up.
+    document.querySelectorAll("#co-jamboree-tiles [data-co-tile]").forEach(function (tile) {
+      var cells = function () { return table.querySelectorAll("td[data-co-tile-mark='" + tile.dataset.coTile + "']"); };
+      tile.addEventListener("mouseenter", function () { cells().forEach(function (td) { td.classList.add("co-tile-lit"); }); });
+      tile.addEventListener("mouseleave", function () { cells().forEach(function (td) { td.classList.remove("co-tile-lit"); }); });
+    });
+  })();

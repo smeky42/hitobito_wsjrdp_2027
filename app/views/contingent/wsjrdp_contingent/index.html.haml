@@ -4,29 +4,56 @@
 -#  Affero General Public License version 3 or later.
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Kontingent > Übersicht: the comparison with the jamboree registration and
+-#  the matrix of contingent roles against the contract, then the list of
+-#  people (a filter: a pill or a cell of the matrix), and the people whose
+-#  jamboree role differs.
+-#  The figures: Wsjrdp2027::ContingentOverview.
 
 = render "contingent/person_chip_styles"
 
 :css
-  .td-like {
-    font-weight: var(--bs-body-font-weight);
-    background-color: var(--bs-body-bg) !important;
-    --bs-table-accent-bg: transparent !important;
+  .co-section-label { font-size: .75rem; color: #6c757d; letter-spacing: .02em; margin: .25rem 0 .35rem; }
+  .co-tiles-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  /* Phones: two tiles a row, a little tighter. */
+  @media (max-width: 575.98px) {
+    .co-tiles-3 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    /* The six jamboree tiles flow as one grid, three rows of two. */
+    #co-jamboree-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-bottom: .75rem; }
+    #co-jamboree-tiles .co-tiles { display: contents; }
+    .co-tile { padding: .35rem .5rem; }
+    .co-tile .co-n { font-size: 1.2rem; }
   }
-  .team-people-list + .team-people-list {
-    margin-left: 10px;
+  /* The matrix, wider than its place, scrolls sideways; its first column stays. */
+  .co-matrix-wrap > table th:first-child, .co-matrix-wrap > table td:first-child {
+    position: sticky; left: 0; z-index: 1; background-color: var(--bs-body-bg, #fff); }
+  @media (max-width: 575.98px) {
+    #co-matrix { font-size: .8rem; }
+    #co-matrix td:first-child { min-width: 6.5rem; }
   }
+  .co-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; margin-bottom: .75rem; }
+  .co-tile { border-radius: .5rem; padding: .4rem .6rem; background: #f8f9fa; }
+  .co-tile .co-n { font-size: 1.4rem; font-weight: 500; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .co-tile .co-t { font-size: .8rem; line-height: 1.25; }
+  .co-tile .co-more { font-size: 1rem; font-weight: 400; color: #6c757d; margin-left: .2rem; }
+  .co-tile .co-sub { font-size: .75rem; color: #6c757d; }
+  .co-main { background: #e7f1ec; } .co-main .co-n { color: #146c43; }
+  .co-numbers { font-variant-numeric: tabular-nums; }
+  .co-numbers td.co-num, .co-numbers th.co-num { text-align: right; white-space: nowrap; }
+  /* Spans in the cells of the people list: their own colour beats the row's. */
+  .co-reason-inconsistent { color: #b02a37; }
+  /* A person in the list: only the name is cut where the cell is too narrow,
+     role, id and mini tags stay whole. */
+  .co-person { display: flex; align-items: baseline; gap: .3em; min-width: 0; }
+  .co-person > * { flex-shrink: 0; }
+  .co-person > .co-person-name { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .co-reason-cancel, .co-reason-review, .co-reason-pending { color: #8a5a00; }
 
 #main.row
   %div
+    = render "jamboree"
+    = render "matrix"
 
-    %div.btn-toolbar
-      %div.btn-group
-        - if show_people_links?
-          = action_button "Ohne Personen-Links", contingent_hide_people_links_path, nil, method: :post
-        - else
-          = action_button "Mit Personen-Links", contingent_show_people_links_path, nil, method: :post
-
-    %h2 CMT und IST
-
-    = render 'people_table'
+    = render "list"
+    = render "role_differences"

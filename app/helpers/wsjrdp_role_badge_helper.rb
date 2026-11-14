@@ -13,7 +13,7 @@
 module WsjrdpRoleBadgeHelper
   # A contingent role that is another role on the Jamboree: a BMT member is an
   # IST there. The pair shows such a person under the contingent's role alone.
-  JAMBOREE_ROLE_OF = {"BMT" => "IST"}.freeze
+  JAMBOREE_ROLE_OF = Wsjrdp2027::Person::WSJRDP_ROLE_TO_NATURAL_WSJ_ROLE
 
   def wsjrdp_role_badge(role, class: nil, title: nil)
     return "".html_safe if role.blank?

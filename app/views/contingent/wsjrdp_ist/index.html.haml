@@ -20,6 +20,13 @@
 #main.row
   %div
 
+    %div.btn-toolbar
+      %div.btn-group
+        - if show_people_links?
+          = action_button "Ohne Personen-Links", contingent_hide_people_links_path, nil, method: :post
+        - else
+          = action_button "Mit Personen-Links", contingent_show_people_links_path, nil, method: :post
+
     %h2 BMT
 
     %h3 IST zu BMT umziehen

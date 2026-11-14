@@ -1,0 +1,65 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  For the comparison with the jamboree's own registration: the people who go
+-#  to the jamboree through the contingent, by their jamboree role, and how far
+-#  their contract is; then the units and their patrols -- as tiles only, the
+-#  matrix below has the figures in detail. The tiles repeat the
+-#  "Vertrag in Kraft" figures the jamboree compares against, in two rows:
+-#  CMT, IST and both; units, patrols and UL + YP. A tile of people counts the
+-#  ones with a contract in force and adds the ones without one as "+n"; the
+-#  units tile names the units not yet divided into patrols, the patrols tile
+-#  the patrols to fill and how many are not given out yet.
+- rows = overview.jamboree_rows
+- units = overview.unit_figures
+- warn = ->(text, title) { safe_join([content_tag(:span, icon(:"exclamation-triangle"), class: "text-warning me-1", title: title), text]) }
+- cancel_line = ->(n) { "#{n} in Abmeldung" if n.positive? }
+-# A tile of people (one jamboree row or several): the ones with a contract
+-# in force -- not those whose deregistration is noted, contract or not --,
+-# then, muted, "+n" for the ones still without one (none yet or a new one
+-# pending), each with a warning line, and whose deregistration is noted.
+- people_tile = lambda do |label, *keys|
+  - none = keys.sum { |key| rows[key][:counts]["none"] }
+  - pending = keys.sum { |key| rows[key][:pending] }
+  - confirmed = overview.tile_in_force(*keys)
+  - missing = [("#{none} ohne Vertrag" if none.positive?), ("#{pending} neu ausstehend" if pending.positive?)].compact
+  - contract = missing.any? ? missing.map { |text| warn.call(text, "noch nicht alle mit Vertrag") } : ["alle mit Vertrag in Kraft"]
+  - cancel = cancel_line.call(keys.sum { |key| rows[key][:counts]["cancel"] })
+  - [label, confirmed, none + pending, [*contract, cancel], nil]
+- u = units[:units]
+- division = [("#{u[:undivided]} ohne Patrol-Einteilung" if u[:undivided].positive?),
+    ("#{u[:partly]} unvollständig" if u[:partly].positive?)].compact
+- units_tile = ["Units", u[:inforce], 0, division.map { |text| warn.call(text, "Patrol-Einteilung fehlt") }, nil]
+-# The patrols to fill: every unit's (Group::PatrolsController::PATROLS), and
+-# a warning while some are not given out yet.
+- to_fill = u[:total] * Group::PatrolsController::PATROLS.size
+- unassigned = to_fill - units[:patrols][:total]
+- patrols_tile = ["Patrols", to_fill, 0,
+    [(warn.call("#{unassigned} noch nicht eingeteilt", "Patrol-Einteilung fehlt") if unassigned.positive?)], nil]
+-# The places for UL and YP: every patrol full (Group::PatrolsController::MAX_PATROL_SIZE).
+- ul_yp_tile = people_tile.call("UL + YP", "UL + YP")
+- ul_yp_tile[4] = to_fill * Group::PatrolsController::MAX_PATROL_SIZE
+- tile_rows = [[people_tile.call("CMT", "CMT"), people_tile.call("IST", "IST"), people_tile.call("CMT + IST", "CMT", "IST")],
+  [units_tile, patrols_tile, ul_yp_tile]]
+
+%h2 Abgleich mit der Jamboree-Anmeldung
+#co-jamboree-tiles
+  - tile_rows.each do |tiles|
+    .co-tiles.co-tiles-3
+      - tiles.each do |label, n, more, lines, places|
+        -# A tile of people names itself; under the pointer it lights up its
+        -# number in the matrix (ContingentOverview::PEOPLE_TILES).
+        .co-tile.co-main{data: {co_tile: (label if Wsjrdp2027::ContingentOverview::PEOPLE_TILES.key?(label))}}
+          .co-n
+            = n
+            - if places
+              %span.co-more{title: "Plätze: #{u[:total]} Units mit je #{Group::PatrolsController::PATROLS.size} Patrols à #{Group::PatrolsController::MAX_PATROL_SIZE}"}= "/ #{places}"
+            - if more.positive?
+              %span.co-more= "+#{more}"
+          .co-t.fw-bold= label
+          - lines.compact.each do |line|
+            %span.co-sub.d-block= line

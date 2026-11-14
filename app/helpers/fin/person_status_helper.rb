@@ -36,14 +36,15 @@ module Fin::PersonStatusHelper
 
   # With `contract: true` (the contract's column hidden) the contract follows
   # the status, small and muted, where the two do not go together
-  # (#fin_status_and_contract_match?); the tooltip names both.
-  def fin_person_status(person, contract: false)
+  # (#fin_status_and_contract_match?); the tooltip names both. contract_words:
+  # the contract's words, CONTRACT_WORDS unless a list words some differently.
+  def fin_person_status(person, contract: false, contract_words: CONTRACT_WORDS)
     status = person.status.to_s
     word = tag.span(STATUS_WORDS.fetch(status, status), class: STATUS_CLASSES[status])
     lines = fin_person_status_lines(person)
     return wsjrdp_tip(word, lines: lines) unless contract
 
-    other = fin_person_contract_word(person) unless fin_status_and_contract_match?(person)
+    other = fin_person_contract_word(person, contract_words) unless fin_status_and_contract_match?(person)
     wsjrdp_tip(fin_person_word_pair(word, other), lines: lines + fin_person_contract_lines(person))
   end
 
@@ -72,9 +73,9 @@ module Fin::PersonStatusHelper
 
   # With `status: true` (the status' column hidden) the status follows the
   # contract, small and muted, where the two do not go together; the tooltip
-  # names both.
-  def fin_person_contract(person, status: false)
-    word = tag.span(fin_person_contract_word(person), class: CONTRACT_CLASSES[person.contract_status.to_s])
+  # names both. words: as contract_words of #fin_person_status.
+  def fin_person_contract(person, status: false, words: CONTRACT_WORDS)
+    word = tag.span(fin_person_contract_word(person, words), class: CONTRACT_CLASSES[person.contract_status.to_s])
     lines = fin_person_contract_lines(person)
     return wsjrdp_tip(word, lines: lines) unless status
 
@@ -84,7 +85,7 @@ module Fin::PersonStatusHelper
 
   private
 
-  def fin_person_contract_word(person) = CONTRACT_WORDS.fetch(person.contract_status.to_s, person.contract_status.to_s)
+  def fin_person_contract_word(person, words = CONTRACT_WORDS) = words.fetch(person.contract_status.to_s, person.contract_status.to_s)
 
   def fin_person_status_lines(person)
     status = person.status.to_s

@@ -154,7 +154,7 @@ module Wsjrdp2027
     def group_chips(group)
       chips = []
       chips << "bisher" if group.id == person.primary_group_id
-      chips << "Warteliste" if group.name.to_s.match?(/warteliste/i)
+      chips << "Warteliste" if group.waiting_list?
       chips
     end
 
