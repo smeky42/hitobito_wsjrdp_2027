@@ -35,7 +35,8 @@ module HitobitoWsjrdp2027
       # Own permissions, extending the core's Role::Permissions (the
       # core keeps that constant mutable precisely to allow this). Our
       # finance access adds :finance_read, :finance_audit and
-      # :finance_manage to the core's :finance.
+      # :finance_manage to the core's :finance; the contingent pages
+      # have :contingent_read and :contingent_write.
       #
       # This MUST run before the ability concerns further down: AbilityDsl's
       # recorder rejects any permission missing from Role::Permissions
@@ -43,14 +44,15 @@ module HitobitoWsjrdp2027
       # `include`. It belongs in to_prepare rather than an initializer because
       # Role is autoloaded (and is reloaded in development, which resets the
       # constant) -- hence also the idempotence guard.
-      %i[finance_read finance_audit finance_manage].each do |permission|
+      %i[finance_read finance_audit finance_manage contingent_read contingent_write].each do |permission|
         Role::Permissions << permission unless Role::Permissions.include?(permission)
       end
+      Role::PermissionImplications[:contingent_write] ||= :contingent_read
       # Marks the tier as write-granting. The core only defines this constant
       # and does not read it (yet); the entry keeps the semantics right should
       # it start to.
-      unless Role::WRITING_PERMISSIONS.include?(:finance_manage)
-        Role::WRITING_PERMISSIONS << :finance_manage
+      %i[finance_manage contingent_write].each do |permission|
+        Role::WRITING_PERMISSIONS << permission unless Role::WRITING_PERMISSIONS.include?(permission)
       end
       # AbilityDsl::UserContext only builds its group/layer lookup for the
       # permissions listed here (init_permission_groups / init_permission_layers),

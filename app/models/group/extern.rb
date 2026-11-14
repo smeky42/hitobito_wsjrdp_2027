@@ -24,11 +24,11 @@ class Group::Extern < ::Group
     self.admin_only_assignment = true
   end
 
-  # An external accountant: everything the auditor sees, plus the write
-  # tier for the bookkeeping work itself. Like the auditor it holds no
-  # layer_* permission.
+  # An external accountant: everything the auditor sees, plus the
+  # write tier for the bookkeeping work itself, and :contingent_read.
+  # Like the auditor it holds no layer_* permission.
   class FinanceAccountant < ::Role
-    self.permissions = %i[finance_read finance_audit finance]
+    self.permissions = %i[finance_read finance_audit finance contingent_read]
     self.admin_only_assignment = true
   end
 

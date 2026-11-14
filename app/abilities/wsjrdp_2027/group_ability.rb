@@ -43,6 +43,9 @@ module Wsjrdp2027::GroupAbility
       permission(:layer_and_below_full).may(:index_service_tokens).none
       permission(:admin).may(:index_service_tokens).if_layer_group
 
+      # Show the contingent pages.
+      permission(:contingent_read).may(:show_wsjrdp_contingent).all
+
       # The group's finance tab and its pages. :show_finance opens
       # them, :update_finance is the gate for anything that edits
       # there beyond the regular finance tiers.

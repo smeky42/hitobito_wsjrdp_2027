@@ -990,6 +990,8 @@ de:
               finance_read: Lesen der Finanzdaten des Kontingents (Buchhaltung, Beiträge, Abstimmung) ohne Änderungsmöglichkeit.
               finance_audit: Zusätzlich Lesen der personenbezogenen Finanzdaten (Beitragsbuchungen, Personen mit besonderer Finanz-Situation) – weiterhin ohne Änderungsmöglichkeit und ohne Zugriff auf die Personen selbst.
               finance_manage: Administrieren der Finanzdaten des Kontingents, inklusive Löschen und administrativer Werkzeuge.
+              contingent_read: Ansehen der Kontingents-Seiten.
+              contingent_write: Bearbeiten auf den Kontingents-Seiten; schließt das Ansehen ein.
 
     buttons:
       show_contract: Anmeldung einsehen
