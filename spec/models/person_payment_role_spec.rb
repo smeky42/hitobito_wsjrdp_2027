@@ -36,6 +36,8 @@ describe Person, "payment role" do
         [Group::Ist::Leader, ist] => "Group::Ist::Member",
         [Group::Root::Member, root] => "Group::Root::Member",
         [Group::Root::Leader, root] => "Group::Root::Member",
+        [Group::Root::HeadOfContingent, root] => "Group::Root::Member",
+        [Group::Root::ExtendedHeadOfContingent, root] => "Group::Root::Member",
         [Group::Extern::Member, extern] => "Group::Extern::Member",
         [Group::Extern::FinanceAccountant, extern] => "Group::Extern::Member",
         [Group::Extern::FinanceAuditor, extern] => "Group::Extern::Member"
@@ -64,7 +66,8 @@ describe Person, "payment role" do
 
     it "gives the leaders of the IST and of the CMT the members' wsj role" do
       expect(Person::WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP.keys).to match_array(Person::WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP.keys)
-      expect(Person::WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP.values_at("Group::Ist::Leader", "Group::Root::Leader")).to eq(%w[IST CMT])
+      expect(Person::WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP.values_at("Group::Ist::Leader", "Group::Root::Leader",
+        "Group::Root::HeadOfContingent")).to eq(%w[IST CMT CMT])
     end
   end
 
