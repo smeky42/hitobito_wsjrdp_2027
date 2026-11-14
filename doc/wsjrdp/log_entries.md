@@ -55,6 +55,17 @@ Categories of `wsjrdp_note` with a label (`version.wsjrdp_note_categories`):
 |---|---|
 | `debit_return` | Rücklastschrift |
 | `pre_notification` | Vorabankündigung Lastschrift |
+| `primary_role_change` | Hauptgruppe/Rolle gewechselt |
+
+`primary_role_change` is written by the dialog Hauptgruppe/Rolle wechseln
+(`Wsjrdp2027::PrimaryRoleChange#save!`): the message sums the change up as
+the dialog's last step does, one entry for all of it; the data holds the
+values as `[old, new]` (`primary_group_id`, `role_type`, `payment_role`,
+`regular_full_fee_eur` as numbers, `status`, `unit_code`, `wsj_role`) plus
+`contract_replaced`, `role_created` and the roles: the new primary role
+(`new_role`, created or held already), those that end or stay (`ended_roles`,
+`kept_roles`), as `{id, type, group_id}` each. A role that began the same
+day is deleted when it ends, so its id alone may point to nothing.
 
 Any other category is written and shown as it is. The message is shown on one
 line (white space squeezed), escaped -- plain text, no HTML.

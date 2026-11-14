@@ -55,7 +55,63 @@ describe Wsjrdp2027::PrimaryRoleChange do
       expect(ul.notes.last.text).to eq("Am #{Time.zone.today.strftime("%d.%m.%Y")} von #{groups(:unit_a).display_name} " \
         "nach #{ist_group.display_name} verschoben. Rolle von #{Group::Unit::Leader.model_name.human} zu " \
         "#{Group::Ist::Member.model_name.human} gewechselt. Neuer Vertrag nötig: drucken, unterschreiben und hochladen. Bis zur Bestätigung gilt der bisherige Vertrag")
-      expect(ul.versions.reorder(:id).last.changeset.keys).to include("contract_status", "status", "primary_group_id")
+      expect(ul.versions.where(event: "update").reorder(:id).last.changeset.keys)
+        .to include("contract_status", "status", "primary_group_id")
+    end
+
+    it "logs the whole change as one note" do
+      subject_change.save!
+
+      entry = PaperTrail::Version.where(event: "wsjrdp_note", main_id: ul.id, main_type: "Person").reorder(:id).last
+      expect(entry.wsjrdp_data).to include("category" => "primary_role_change",
+        "primary_group_id" => [groups(:unit_a).id, ist_group.id], "role_type" => [["Group::Unit::Leader"], "Group::Ist::Member"],
+        "status" => %w[confirmed registered], "contract_replaced" => true, "regular_full_fee_eur" => [2400, 2600],
+        "ended_roles" => [{"id" => roles(:ul_a_1).id, "type" => "Group::Unit::Leader", "group_id" => groups(:unit_a).id}])
+      # The message is for reading and may change; the data is checked.
+      expect(entry.wsjrdp_data["message"]).to be_present
+      new_role = ul.reload.roles.find { |r| r.type == "Group::Ist::Member" }
+      expect(entry.wsjrdp_data["new_role"]).to eq("id" => new_role.id, "type" => "Group::Ist::Member", "group_id" => ist_group.id)
+      expect(entry.whodunnit).to eq(admin.id.to_s)
+    end
+  end
+
+  describe "a stored payment role the roles no longer say" do
+    let(:extern) { Group::Extern.create!(name: "Externe", parent: groups(:root)) }
+    let(:person) { Fabricate(:person, status: "printed") }
+
+    before do
+      Fabricate(Group::Extern::FinanceAccountant.name.to_sym, person: person, group: extern)
+      person.update_columns(primary_group_id: extern.id, payment_role: "RegularPayer::Group::Root::Member")
+    end
+
+    it "takes the stored one as the old payment role, so a role there with another fee changes it" do
+      change = build_change(person, group_id: extern.id, role_type: "Group::Extern::FinanceAccountant")
+
+      expect(change.old_payment_role_type).to eq("Group::Root::Member")
+      expect(change.payment_role_changes?).to be(true)
+      expect([change.old_payment_short, change.new_payment_short]).to eq(%w[CMT EXT])
+      expect(change.payment_role_set?).to be(true)
+      texts = change.notices.map(&:text)
+      expect(texts).to include("Hauptgruppe und Rolle bleiben gleich, die Beitragsrolle wechselt (CMT → EXT).",
+        "Neuer Vertrag nötig: drucken, unterschreiben und hochladen.")
+    end
+  end
+
+  describe "the WSJ role in effect" do
+    it "follows the payment role while unset, so a move from UL to IST changes it" do
+      ul.update_columns(wsj_role: nil)
+      change = build_change(group_id: ist_group.id, role_type: "Group::Ist::Member")
+
+      expect(change.wsj_role_changes?).to be(false)
+      expect([change.old_effective_wsj_role, change.new_effective_wsj_role]).to eq(%w[UL IST])
+      expect(change.effective_wsj_role_changes?).to be(true)
+    end
+
+    it "stays when set and kept" do
+      ul.update_columns(wsj_role: "JPT")
+      change = build_change(group_id: unit_b.id, role_type: "Group::Unit::Leader", wsj_role: "JPT")
+
+      expect(change.effective_wsj_role_changes?).to be(false)
     end
   end
 
@@ -214,6 +270,48 @@ describe Wsjrdp2027::PrimaryRoleChange do
       c.save!
 
       expect(ul.reload.unit_code).to eq("B1")
+    end
+
+    it "clears the unit code on a move into a unit group without one (a waiting list), and logs it" do
+      ul.update_columns(unit_code: "#90EE90")
+      waitlist = groups(:empty_unit)
+      waitlist.update!(name: "UL Warteliste", unit_code: nil)
+      c = build_change(group_id: waitlist.id, role_type: "Group::Unit::Leader")
+      expect(c).to have_attributes(new_unit_code: nil, unit_code_changes?: true)
+
+      c.save!
+
+      expect(ul.reload.unit_code).to be_nil
+      entry = PaperTrail::Version.where(event: "wsjrdp_note", main_id: ul.id, main_type: "Person").reorder(:id).last
+      expect(entry.wsjrdp_data["unit_code"]).to eq(["#90EE90", nil])
+    end
+
+    it "logs the roles that end, stay, or are new" do
+      Fabricate(Group::Unit::Member.name.to_sym, person: ul, group: groups(:unit_a))
+      member = ul.reload.roles.find { |r| r.type == "Group::Unit::Member" }
+
+      kept = build_change(group_id: ist_group.id, role_type: "Group::Ist::Member", end_roles_chosen: true,
+        keep_role_ids: [member.id.to_s])
+      ids = ->(key, change) { change.log_data[key].pluck("id") }
+      expect(kept.log_data["role_created"]).to be(true)
+      expect([ids.call("kept_roles", kept), ids.call("ended_roles", kept)]).to eq([[member.id], [roles(:ul_a_1).id]])
+
+      existing = build_change(group_id: groups(:unit_a).id, role_type: "Group::Unit::Member", end_roles_chosen: true,
+        keep_role_ids: [])
+      expect(existing.log_data["role_created"]).to be(false)
+      expect([ids.call("kept_roles", existing), ids.call("ended_roles", existing)]).to eq([[], [roles(:ul_a_1).id]])
+
+      beside = build_change(group_id: ist_group.id, role_type: "Group::Ist::Member", end_roles_chosen: true,
+        keep_role_ids: [member.id.to_s, roles(:ul_a_1).id.to_s])
+      expect(beside.log_data).to include("role_created" => true, "ended_roles" => [])
+      expect(ids.call("kept_roles", beside)).to contain_exactly(member.id, roles(:ul_a_1).id)
+    end
+
+    it "keeps the unit code without a move, and logs it" do
+      ul.update_columns(unit_code: "#90EE90")
+      c = build_change(group_id: groups(:unit_a).id, role_type: "Group::Unit::Member")
+      expect(c).to have_attributes(new_unit_code: "#90EE90", unit_code_changes?: false)
+      expect(c.log_data["unit_code"]).to eq(["#90EE90", "#90EE90"])
     end
 
     it "sets the payment role when the contract stays, so that the fee follows" do

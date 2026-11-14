@@ -55,14 +55,35 @@ describe Person::PrimaryRoleController do
       get :show, params: params.merge(primary_role_change: choice, review: "1")
       doc = Nokogiri::HTML(response.body)
       expect(doc.at_css("#primary-role-dialog.wsjrdp-reviewing")).to be_present
-      expect(doc.at_css("#wsjrdp-review").text.squish).to include("Prüfen und wechseln", "Beitragsrolle UL → IST")
-      expect(doc.at_css(".modal-footer button[data-wsjrdp-back]").text).to eq("Zurück")
-      expect(doc.at_css(".modal-footer input[type=submit]")["value"]).to eq("Jetzt wechseln")
+      expect(doc.at_css("#wsjrdp-review").text.squish).to include("Noch nicht gespeichert – bitte prüfen")
+      summary = doc.css("#wsjrdp-review .wsjrdp-review-table tr.wsjrdp-changed").to_h { |tr| tr.css("td").map { |td| td.text.squish } }
+      expect(summary).to include("Beitragsrolle" => "UL → IST", "Regulärer Beitrag" => "2.400 € → 2.600 €",
+        "Vertrag" => "in Kraft → wird ersetzt")
+      expect(summary["Status"]).to start_with("bestätigt → registriert")
+      expect(summary["WSJ-Rolle"]).to eq("nicht gesetzt (→ UL) → nicht gesetzt (→ IST)")
+      expect(summary.keys.first(2)).to eq(%w[Hauptgruppe Rolle])
+      compare = doc.css(".wsjrdp-compare td").map { |td| td.text.squish }
+      expect(compare).to include("nicht gesetzt folgt der Rolle → UL", "nicht gesetzt folgt der Rolle → IST")
+      expect(doc.at_css("#wsjrdp-review button[data-wsjrdp-back]").text).to eq("Zurück")
+      expect(doc.at_css("#wsjrdp-review input[type=submit]")["value"]).to eq("Jetzt wechseln")
+      expect(doc.at_css(".modal-footer")).to be_nil
 
       get :show, params: params.merge(primary_role_change: choice.merge(contract: "keep"), review: "1")
       doc = Nokogiri::HTML(response.body)
-      expect(doc.at_css("#wsjrdp-review .alert-danger").text.squish).to include("Der Vertrag bleibt")
-      expect(doc.at_css(".modal-footer input[type=submit]")["value"]).to eq("Trotzdem wechseln")
+      expect(doc.at_css("#wsjrdp-review .wsjrdp-notice-danger").text.squish).to include("Der Vertrag bleibt")
+      expect(doc.at_css("#wsjrdp-review input[type=submit]")["value"]).to eq("Trotzdem wechseln")
+    end
+
+    it "shows group and role in the last step also when they stay, marked unverändert, without the notice" do
+      ul.update_columns(wsj_role: "JPT")
+      choice = {group_id: groups(:unit_a).id, role_type: "Group::Unit::Leader", wsj_role: ""}
+      get :show, params: params.merge(primary_role_change: choice, review: "1")
+
+      rows = Nokogiri::HTML(response.body).css("#wsjrdp-review .wsjrdp-review-table tr")
+      stays = rows.first(2).map { |tr| [tr["class"].to_s, tr.css("td").map { |td| td.text.squish }] }
+      expect(stays).to eq([["", ["Hauptgruppe", "#{groups(:unit_a).id} #{groups(:unit_a).display_name} unverändert"]],
+        ["", ["Rolle", "#{Group::Unit::Leader.model_name.human} #{groups(:unit_a).id} #{groups(:unit_a).display_name} unverändert"]]])
+      expect(Nokogiri::HTML(response.body).at_css("#wsjrdp-review").text).not_to include("bleiben gleich")
     end
 
     it "is a page of its own under the status tab, also without a group in the URL" do

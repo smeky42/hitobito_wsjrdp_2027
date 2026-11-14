@@ -2481,6 +2481,7 @@ de:
     wsjrdp_note_categories:
       debit_return: Rücklastschrift
       pre_notification: Vorabankündigung Lastschrift
+      primary_role_change: Hauptgruppe/Rolle gewechselt
     wsjrdp_detail: '%{label}: %{value}'
     wsjrdp_generic: 'Eintrag <i>%{event}</i>'
     finance_group_ids:
