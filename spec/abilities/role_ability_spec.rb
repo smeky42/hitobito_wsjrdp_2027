@@ -2,7 +2,9 @@ require "spec_helper"
 
 # Assignment of "admin-only" roles (every role marked via
 # Role.admin_only_assignment: Group::Root::Admin, ::Finance, ::FinanceReader,
-# ::FinanceManager and Group::Extern::FinanceAuditor): only CMT admins may
+# ::ContingentReader, ::FinanceManager, ::HeadOfContingent,
+# ::ExtendedHeadOfContingent and Group::Extern::FinanceAuditor and
+# ::FinanceAccountant): only CMT admins may
 # create or update them, and only admins may take them away from ANOTHER
 # person (removing one's own role is not restricted by the wagon rule;
 # removing one's own permission-GIVING role stays blocked by the core rule

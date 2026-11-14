@@ -35,11 +35,14 @@ labels live in
 
 | Role | Label (de) | Permissions | Assignment |
 |---|---|---|---|
-| `Group::Root::Admin` | Admin | `layer_and_below_full`, `admin`, `impersonation`, `finance_read`, `finance_audit`, `finance` | admins only |
-| `Group::Root::Leader` | Leader | `layer_and_below_full` | — |
+| `Group::Root::Admin` | Admin | `layer_and_below_full`, `admin`, `impersonation`, `finance_read`, `finance_audit`, `finance`, `contingent_read` | admins only |
+| `Group::Root::Leader` | Leader | `layer_and_below_full`, `contingent_read` | — |
+| `Group::Root::HeadOfContingent` | Head of Contingent | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance`, `contingent_read` (Leader, Finance, Contingent Reader and Member together, read from those roles) | admins only |
+| `Group::Root::ExtendedHeadOfContingent` | Extended Head of Contingent | `finance_read`, `contingent_read` (Finance Reader, Contingent Reader and Member together, read from those roles) | admins only |
 | `Group::Root::FinanceReader` | Finance Read | `finance_read` | admins only |
-| `Group::Root::Finance` | Finance | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance` | admins only |
-| `Group::Root::FinanceManager` | Finance Admin | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance`, `finance_manage` | admins only |
+| `Group::Root::ContingentReader` | Contingent Reader | `contingent_read` | admins only |
+| `Group::Root::Finance` | Finance | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance`, `contingent_read` | admins only |
+| `Group::Root::FinanceManager` | Finance Admin | `layer_and_below_full`, `finance_read`, `finance_audit`, `finance`, `finance_manage`, `contingent_read` | admins only |
 | `Group::Root::Member` | CMT | — | — |
 
 Each finance role sits on one [finance tier](#finance-tiers).
@@ -70,7 +73,7 @@ and nothing else, in particular no access to the contingent's people.
 |---|---|---|---|
 | `Group::Extern::Member` | Extern | — | — |
 | `Group::Extern::FinanceAuditor` | Kassenprüfer\*in | `finance_read`, `finance_audit` | admins only |
-| `Group::Extern::FinanceAccountant` | Buchhalter\*in | `finance_read`, `finance_audit`, `finance` | admins only |
+| `Group::Extern::FinanceAccountant` | Buchhalter\*in | `finance_read`, `finance_audit`, `finance`, `contingent_read` | admins only |
 
 `FinanceAuditor` is the audit tier for external auditors, `FinanceAccountant`
 the write tier for external accountants. Neither holds a `layer_*`
@@ -273,9 +276,9 @@ covers it.
 | Tier | Permissions | Constraint | Actions | Roles |
 |---|---|---|---|---|
 | none | — (the pseudo permission `finance_none`) | — | nothing in the section | everybody without a finance permission |
-| read | `finance_read` | `if_finance_read` | `show`, except on `AccountingEntry` | `Root::FinanceReader` |
+| read | `finance_read` | `if_finance_read` | `show`, except on `AccountingEntry` | `Root::FinanceReader`, `Root::ExtendedHeadOfContingent` |
 | audit | `finance_read`, `finance_audit` | `if_finance_audit` | read's, plus `log` and `show` on `AccountingEntry` | `Extern::FinanceAuditor` |
-| write | `finance_read`, `finance_audit`, `finance` | `if_finance_write` | audit's, plus `create`, `update` | `Root::Finance`, `Root::Admin`, `Extern::FinanceAccountant` |
+| write | `finance_read`, `finance_audit`, `finance` | `if_finance_write` | audit's, plus `create`, `update` | `Root::Finance`, `Root::HeadOfContingent`, `Root::Admin`, `Extern::FinanceAccountant` |
 | manage | `finance_read`, `finance_audit`, `finance`, `finance_manage` | `if_finance_manage` | write's, plus `admin_finance`, `manage` | `Root::FinanceManager`, once picked for the session |
 
 `finance` is the core's own permission, reused as the write tier. The
@@ -601,7 +604,9 @@ permission(:contingent_read).may(:show_wsjrdp_contingent).all
 - The permission counts wherever the role sits (a role in a nested group
   such as CMT Warteliste too). The rule allows the action on every group;
   the pages ask for it on the root group only.
-- Holders: `Group::Root::Admin`, `Group::Root::Leader`, `Group::Root::Finance`,
+- Holders: `Group::Root::Admin`, `Group::Root::Leader`,
+  `Group::Root::HeadOfContingent`, `Group::Root::ExtendedHeadOfContingent`,
+  `Group::Root::ContingentReader`, `Group::Root::Finance`,
   `Group::Root::FinanceManager` and `Group::Extern::FinanceAccountant`. A role
   gets access by listing the permission in its `self.permissions`.
 

@@ -30,8 +30,14 @@ de:
         one: Finance
       group/root/finance_reader:
         one: Finance Reader
+      group/root/contingent_reader:
+        one: Contingent Reader
       group/root/finance_manager:
         one: Finance Manager
+      group/root/head_of_contingent:
+        one: HoC
+      group/root/extended_head_of_contingent:
+        one: eHoC
 
       group/ist/leader:
         one: IST Manager

@@ -217,7 +217,8 @@ describe Wsjrdp2027::PrimaryRoleChange do
     it "offers only groups and role types with a fee" do
       expect(described_class.target_groups).to include(groups(:unit_a), ist_group, groups(:root))
       types = build_change(group_id: groups(:root).id).target_role_types.map(&:sti_name)
-      expect(types).to contain_exactly("Group::Root::Leader", "Group::Root::Member")
+      expect(types).to contain_exactly("Group::Root::Leader", "Group::Root::Member", "Group::Root::HeadOfContingent",
+        "Group::Root::ExtendedHeadOfContingent")
     end
 
     it "refuses a role type the group does not have with a fee" do
