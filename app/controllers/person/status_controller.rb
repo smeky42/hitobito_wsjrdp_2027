@@ -110,7 +110,7 @@ class Person::StatusController < ApplicationController
       when "replacement_pending" then :confirm_replacement
       end
     when "deregistered"
-      :end if %w[confirmed replacement_pending].include?(person.contract_status)
+      :end if ::Person::CONTRACT_IN_FORCE.include?(person.contract_status)
     end
   end
 

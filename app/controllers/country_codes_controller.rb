@@ -20,8 +20,8 @@ class CountryCodesController < ApplicationController
   ROLES = %w[CMT UL YP IST BMT EXT].freeze
   # The answers of "Visum benötigt" (visa_needed) that need a visa.
   VISA_NEEDED = %w[yes_have_one yes_need_support].freeze
-  # A contract in force (Wsjrdp2027::Person::CONTRACT_STATUSES).
-  CONTRACT_IN_FORCE = %w[confirmed replacement_pending].freeze
+  # A contract in force.
+  CONTRACT_IN_FORCE = Wsjrdp2027::Person::CONTRACT_IN_FORCE
 
   # One table of the entries, narrowed by params: people (all, or with a
   # contract in force), nationalities (the first of each person, or all) and

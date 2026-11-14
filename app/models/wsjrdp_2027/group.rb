@@ -16,6 +16,16 @@ module Wsjrdp2027::Group
     :additional_info
   ].freeze
 
+  # A waiting list ("UL Warteliste", "YP Warteliste", "IST Warteliste", ...)
+  # is told apart by its NAME -- there is no flag for it.
+  WAITING_LIST_NAME = /warteliste/i
+
+  class_methods do
+    def waiting_list_name?(name) = WAITING_LIST_NAME.match?(name.to_s)
+  end
+
+  def waiting_list? = self.class.waiting_list_name?(name)
+
   included do
     # Define additional used attributes
     # self.used_attributes += [:website, :bank_account, :description]
@@ -48,10 +58,8 @@ module Wsjrdp2027::Group
     end
 
     # The groups the Verwaltung area lets a finance configuration be made for:
-    # every unit and every IST group except the waiting lists. A waiting list
-    # is told apart by its NAME ("UL Warteliste", "YP Warteliste", "IST
-    # Warteliste") -- there is no flag for it -- while the registration groups
-    # stay in.
+    # every unit and every IST group except the waiting lists
+    # (WAITING_LIST_NAME, here as SQL) -- the registration groups stay in.
     scope :finance_configurable, -> {
       where(type: [::Group::Unit.sti_name, ::Group::Ist.sti_name], deleted_at: nil)
         .where.not(arel_table[:name].matches("%Warteliste%"))

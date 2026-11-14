@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The people list: an expandable table without a detail, filtered by the
+-#  Schnellauswahl (Wsjrdp2027::ContingentPeopleFilterSchema::PRESETS) or the
+-#  filter pane -- and by a matrix cell, which sets the same filter.
+-#  While nothing is chosen: the people not settled yet (the matrix columns
+-#  "offen", "in Abmeldung" and "ohne Vertrag").
+= render "fin/person_status_styles"
+%h3.mt-3#co-list Personen
+= wsjrdp_expandable_table do |t|
+  - t.rows people_rows, id: "co"
+  - t.columns contingent_people_table_columns, menu: true
+  - t.gaps max: "2rem"
+  - t.row_key { |entry| entry.id }
+  - t.filter apply_url: contingent_apply_path
+  - t.paging
+  - t.summary "#{people_rows.total_count} #{(people_rows.total_count == 1) ? "Person" : "Personen"}"

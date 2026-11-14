@@ -59,7 +59,7 @@
   .p-chip-contract-muted.p-chip-contract-pending::before {
     box-shadow: inset 0 0 0 1.5px #adb5bd;
   }
-  .tag-ha, .tag-hoc, .tag-ehoc, .tag-jpt, .tag-ext {
+  .tag-ha, .tag-hoc, .tag-ehoc, .tag-jpt, .tag-ext, .tag-role-diff {
     font-weight: 300 !important;
     position: relative;
     bottom: 0.25em;
@@ -84,4 +84,11 @@
     color: #5c636a;
     background-color: transparent;
     box-shadow: inset 0 0 0 1px #adb5bd;
+  }
+  /* Contingent role and jamboree role differ ("CMT→JPT"): an outline too,
+     in violet -- worth seeing, not wrong. */
+  .tag-role-diff {
+    color: #6f42c1;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px #c5b3ef;
   }

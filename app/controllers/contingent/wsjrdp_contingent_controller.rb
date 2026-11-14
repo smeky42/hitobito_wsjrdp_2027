@@ -7,56 +7,46 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+# Kontingent > Übersicht: the comparison with the jamboree registration, the
+# contingent roles against the contract, the people list (an expandable
+# table with the Schnellauswahl), and the people whose jamboree role differs.
+# The figures come from Wsjrdp2027::ContingentOverview; matrix cells, the
+# list's default and the Schnellauswahl are filter trees of
+# Wsjrdp2027::ContingentPeopleFilterSchema, so a number and its list agree.
 class Contingent::WsjrdpContingentController < ApplicationController
-  include ContractHelper
+  include Wsjrdp::TableStateful
   include WsjrdpContingentHelper
 
-  PERSON_COLUMNS = [
-    "id",
-    "primary_group_id",
-    "nickname",
-    "first_name",
-    "status",
-    "payment_role",
-    "wsj_role",
-    "contract_status",
-    "additional_info"
-  ].freeze
+  PEOPLE_POLICY = wsjrdp_expandable_table_policy prefix: "co",
+    columns: Wsjrdp2027::ContingentPeopleColumns::COLUMNS.codec,
+    cols: {default: Wsjrdp2027::ContingentPeopleColumns::COLUMNS.default_keys},
+    sort: {hidden: Wsjrdp2027::ContingentPeopleColumns::DEFAULT_ORDER},
+    per_page: {default: 50},
+    filter: {policy: :url, schema: Wsjrdp2027::ContingentPeopleFilterSchema,
+             default: Wsjrdp2027::ContingentPeopleFilterSchema::DEFAULT,
+             presets: Wsjrdp2027::ContingentPeopleFilterSchema::PRESETS}
 
   before_action :authorize_action
 
-  helper_method :show_people_links?
+  helper_method :overview, :people_rows, :people_table_state, :people_filter_href
 
+  # The people links of the IST page (wsjrdp_ist), switched by a cookie.
   def show_people_links
     cookies[:contingent_show_people_links] = true
-    Rails.logger.debug { "cookies[:contingent_show_people_links]: #{cookies[:contingent_show_people_links].inspect}" }
-    redirect_to contingent_contingent_path
+    redirect_to contingent_ist_path
   end
 
   def hide_people_links
     cookies[:contingent_show_people_links] = false
-    Rails.logger.debug { "cookies[:contingent_show_people_links]: #{cookies[:contingent_show_people_links].inspect}" }
-    redirect_to contingent_contingent_path
+    redirect_to contingent_ist_path
   end
 
   def index
-    Rails.logger.debug { "cookies[:contingent_show_people_links]: #{cookies[:contingent_show_people_links].inspect}" }
-    includes = [:primary_group]
-    includes << :tags if show_people_links?
-    # 1 - CMT
-    # 4 - IST Reg
-    # 45 - BMT
-    # 49 - IST Süd
-    # 50 - IST Süd West
-    # 51 - IST West
-    # 52 - IST Nord Ost
-    query = Person.select(PERSON_COLUMNS).where(primary_group_id: [1, 4, 45, 49, 50, 51, 52]).includes(includes)
-    @cmt_ist_people = make_grouped(
-      query,
-      [->(p) { p.effective_wsj_role }, nil],
-      [->(p) { p.primary_group.group_code_or_short_name_or_name || "???" }, nil],
-      [->(p) { p.status || "???" }, nil]
-    )
+  end
+
+  # Apply target of the filter builder (PRG, Wsjrdp::TableStateful).
+  def apply
+    wsjrdp_apply_table_filter(people_table_state, redirect_to: contingent_contingent_path)
   end
 
   private
@@ -65,31 +55,21 @@ class Contingent::WsjrdpContingentController < ApplicationController
     authorize!(:log, Group.root)
   end
 
-  def show_people_links?
-    ActiveModel::Type::Boolean.new.cast(cookies[:contingent_show_people_links])
+  def overview = @overview ||= Wsjrdp2027::ContingentOverview.new
+
+  def people_table_state = wsjrdp_expandable_table_state(PEOPLE_POLICY)
+
+  def people_rows
+    @people_rows ||= Wsjrdp::ExpandableTableRows.new(people_table_state,
+      people_table_state.filter.scope(overview.entries),
+      sort: Wsjrdp2027::ContingentPeopleColumns.sort_lambdas, tiebreaker: ->(entry) { entry.id })
   end
 
-  def make_grouped(people, *groupings)
-    if groupings.size == 1
-      group_by_proc, _ = groupings.first
-      people.group_by(&group_by_proc).sort_by(&:first).map do |key, grouped_people|
-        grouped_people.sort_by! { |p| p.nickname_or_short_first_name }
-        [
-          key,
-          {people: grouped_people, size: grouped_people.size, num_rows: 1, groups: []}
-        ]
-      end
-    else
-      first_grouping, *groupings = groupings
-      group_by_op, _ = first_grouping
-      people.group_by(&group_by_op).sort_by(&:first).map do |key, grouped_people|
-        subgroups = make_grouped(grouped_people, *groupings)
-        num_rows = subgroups.map { |_, h| h[:num_rows] }.sum
-        [
-          key,
-          {people: grouped_people, size: grouped_people.size, num_rows: num_rows, groups: subgroups}
-        ]
-      end
-    end
+  # The page with the people list filtered by a tree (a matrix cell), at the
+  # list.
+  def people_filter_href(tree)
+    contingent_contingent_path(people_table_state.param_name(:filter) => people_filter_wire(tree), :anchor => "co-list")
   end
+
+  def people_filter_wire(tree) = people_table_state.filter.encode_tree(tree).to_s
 end
