@@ -230,7 +230,13 @@ module Wsjrdp2027
 
     # -- What follows ---------------------------------------------------------
 
-    def old_payment_role_type = person.default_role_type_for_payment_role
+    # The payment role type the fee follows today: the stored payment role
+    # (without its payer kind), else what the roles in the primary group say.
+    # The stored one wins: once printed it no longer follows the roles, and
+    # it may differ from them (a role that carries a fee only now).
+    def old_payment_role_type
+      person.payment_role.to_s.sub(/\A(?:Early|Regular)Payer::/, "").presence || person.default_role_type_for_payment_role
+    end
 
     def new_payment_role_type = role_type && ::Person::WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP[role_type]
 
@@ -279,16 +285,17 @@ module Wsjrdp2027
 
     def wsj_role_changes? = new_wsj_role != person.wsj_role
 
-    # The unit code of the new group for a YP or UL, as move_to_group.py in
-    # wsjrdp_scripts sets it; nil when the group carries none (the person's
-    # code stays).
+    # The unit code after the change. A move takes the new group's for
+    # a YP or UL and clears it where the group carries none or the
+    # role is no YP or UL; without a move it stays.
     def new_unit_code
+      return person.unit_code.presence unless primary_group_changes?
       return unless %w[Group::Unit::Member Group::Unit::Leader].include?(new_payment_role_type)
 
       group&.unit_code.presence
     end
 
-    def unit_code_changes? = new_unit_code.present? && new_unit_code != person.unit_code
+    def unit_code_changes? = new_unit_code != person.unit_code.presence
 
     # payment_role follows the roles by itself only while status is registered
     # (Person#payment_role_fluid?); otherwise it is set here, so that the fee
@@ -313,6 +320,15 @@ module Wsjrdp2027
     # Always chosen in the dialog; blank (nil) follows the role.
     def new_wsj_role = chosen_wsj_role.presence
 
+    # The WSJ role in effect: the one set, else the one the (old / new)
+    # payment role goes with. It may change while the stored value stays
+    # unset -- a move from UL to IST.
+    def old_effective_wsj_role = person.wsj_role.presence || old_payment_short
+
+    def new_effective_wsj_role = new_wsj_role || suggested_wsj_role || new_payment_short
+
+    def effective_wsj_role_changes? = wsj_role_changes? || old_effective_wsj_role != new_effective_wsj_role
+
     # What the dialog points out, each where it belongs (by topic) and all
     # together in the last step. Level :danger (the contract stays though it
     # no longer fits; saving stays possible), :warning (worth a look) or
@@ -321,17 +337,28 @@ module Wsjrdp2027
 
     NOTICE_LEVELS = %i[danger warning info].freeze
 
+    # Group and role stay; the fee may change all the same (a stored payment
+    # role the role no longer says).
+    def unchanged_text
+      return "Hauptgruppe und Rolle bleiben gleich. An Gruppen und Rollen ändert sich nichts." unless payment_role_changes?
+
+      "Hauptgruppe und Rolle bleiben gleich, die Beitragsrolle wechselt (#{old_payment_short} → #{new_payment_short})."
+    end
+
+    # Only a contract in force holds until its replacement is confirmed.
+    def contract_holds_text = contract_replaced? ? " Bis zur Bestätigung gilt der bisherige Vertrag." : ""
+
     def notices # rubocop:disable Metrics/AbcSize
       list = status_notices
-      list << Notice.new(:info, :roles, "Hauptgruppe und Rolle bleiben gleich. An Gruppen und Rollen ändert sich nichts.") if unchanged?
+      list << Notice.new(:info, :roles, unchanged_text) if unchanged?
       if contract_kept_unfit?
         list << Notice.new(:danger, :contract, "Der Vertrag bleibt, passt aber nicht mehr: Er gilt für #{old_payment_short}, " \
           "die neue Beitragsrolle ist #{new_payment_short}.")
       elsif (contract_replaced? || status_to_registered?) && !payment_role_changes?
         list << Notice.new(:warning, :contract, "Neuer Vertrag, obwohl die Beitragsrolle gleich bleibt: drucken, " \
-          "unterschreiben und hochladen. Bis zur Bestätigung gilt der bisherige Vertrag.")
+          "unterschreiben und hochladen.#{contract_holds_text}")
       elsif contract_replaced? || status_to_registered?
-        list << Notice.new(:info, :contract, "Neuer Vertrag nötig: drucken, unterschreiben und hochladen. Bis zur Bestätigung gilt der bisherige Vertrag.")
+        list << Notice.new(:info, :contract, "Neuer Vertrag nötig: drucken, unterschreiben und hochladen.#{contract_holds_text}")
       end
       if wsj_role_unfit?
         list << Notice.new(:warning, :wsj_role, "Die WSJ-Rolle #{new_wsj_role} passt nicht zur neuen Beitragsrolle " \
@@ -372,8 +399,9 @@ module Wsjrdp2027
     def save!
       validate!
       decision = {contract_replaced: contract_replaced?, status_to_registered: status_to_registered?,
-                  wsj_role: new_wsj_role, unit_code: (new_unit_code if unit_code_changes?),
+                  wsj_role: new_wsj_role, unit_code: new_unit_code, set_unit_code: unit_code_changes?,
                   payment_role: (new_payment_role if payment_role_set?), note: (note_text unless unchanged?)}
+      log = [log_message, log_data]
       ::Person.transaction do
         new_role = existing_target_role || role_class.create!(person: person, group: group, start_on: Time.zone.today)
         roles_to_end = end_roles
@@ -384,6 +412,11 @@ module Wsjrdp2027
         # A note only for a change of the primary role; the rest is in the
         # history of the person.
         ::Note.create!(subject: person, author: by, text: decision[:note]) if decision[:note]
+        # The whole change as one entry of the person's log.
+        # The new primary role (created now, or held already) has its id only here.
+        data = log.last.merge("new_role" => log_roles([new_role]).first)
+        Wsjrdp::LogEntry.note!(person, category: LOG_CATEGORY, message: log.first, data: data,
+          **({whodunnit: by.id.to_s} if by).to_h)
         new_role
       end
     end
@@ -419,6 +452,111 @@ module Wsjrdp2027
 
     def note_date = Time.zone.today.strftime("%d.%m.%Y")
 
+    # -- The log entry ----------------------------------------------------------
+
+    # The category of the log entry (Wsjrdp::LogEntry.note!) a save writes:
+    # the change as one, as the last step of the dialog sums it up.
+    LOG_CATEGORY = "primary_role_change"
+
+    # One line, the parts as the summary of the last step: Hauptgruppe and
+    # Rolle always ("unverändert" when they stay), then what else changes,
+    # each "old → new".
+    def log_message
+      group_text = ->(g) { g ? "#{g.id} #{g.display_name}" : "keine" }
+      role_name = role_class.model_name.human
+      parts = [primary_group_changes? ? "Hauptgruppe #{group_text.call(primary_group)} → #{group_text.call(group)}" : "Hauptgruppe #{group_text.call(group)} unverändert",
+        log_role_text(role_name)]
+      parts << "Bleibt: #{log_role_list(kept_fee_roles)}" if kept_fee_roles.any?
+      parts << log_unit_code if person.unit_code.present? || new_unit_code.present?
+      parts << "Beitragsrolle #{old_payment_short || "keine"} → #{new_payment_short}" if payment_role_changes?
+      parts << "Regulärer Beitrag #{log_eur(old_regular_full_fee_eur)} → #{log_eur(new_regular_full_fee_eur)}" if regular_fee_changes?
+      parts << "Vertrag in Kraft → wird ersetzt" if contract_replaced?
+      parts << "Status #{log_status(person.status)} → #{log_status("registered")}" if status_to_registered?
+      parts << "Endet: #{log_role_list(end_roles)}" if end_roles.any? && !new_role_created?
+      parts << "WSJ-Rolle #{log_wsj(person.wsj_role, old_payment_short)} → #{log_wsj(new_wsj_role, suggested_wsj_role || new_payment_short)}" if effective_wsj_role_changes?
+      parts.join(" · ")
+    end
+
+    # The same as values, [old, new] each, for queries
+    # (wsjrdp_data @> '{"category": "primary_role_change"}').
+    def log_data
+      {"primary_group_id" => [person.primary_group_id, group.id],
+       "role_type" => [primary_fee_roles.map(&:type), role_type],
+       "role_created" => new_role_created?,
+       "kept_roles" => log_roles(kept_fee_roles),
+       "payment_role" => [person.payment_role, payment_role_set? ? new_payment_role : person.payment_role],
+       "regular_full_fee_eur" => [old_regular_full_fee_eur, regular_fee_changes? ? new_regular_full_fee_eur : old_regular_full_fee_eur]
+         .map { |eur| log_number(eur) },
+       "status" => [person.status, status_to_registered? ? "registered" : person.status],
+       "unit_code" => [person.unit_code.presence, new_unit_code],
+       "contract_replaced" => contract_replaced?,
+       "wsj_role" => [person.wsj_role, new_wsj_role],
+       "ended_roles" => log_roles(end_roles)}
+    end
+
+    def log_unit_code
+      return "Unit-Code #{person.unit_code} unverändert" unless unit_code_changes?
+
+      "Unit-Code #{person.unit_code.presence || "keiner"} → #{new_unit_code || "keiner"}"
+    end
+
+    # A role as the data keeps it: id, type and group -- a role that began
+    # today is deleted when it ends, so its id alone may point to nothing.
+    def log_roles(roles) = roles.map { |r| {"id" => r.id, "type" => r.type, "group_id" => r.group_id} }
+
+    # A number as JSON has it (a BigDecimal would be a string): whole euros as
+    # an Integer.
+    def log_number(value)
+      return if value.nil?
+
+      amount = value.to_d
+      amount.frac.zero? ? amount.to_i : amount.to_f
+    end
+
+    def regular_fee_changes? = payment_role_changes? && old_regular_full_fee_eur != new_regular_full_fee_eur
+
+    # A new role is created (none of that type in the target group yet).
+    def new_role_created? = existing_target_role.nil?
+
+    # The roles with a fee in the primary group that neither end nor become
+    # the primary role: they stay as they are.
+    def kept_fee_roles = primary_fee_roles - end_roles - [existing_target_role]
+
+    # The role: the ended roles it replaces → the new one; a new one beside
+    # the old ones "neu"; one the person holds already "unverändert" in the
+    # primary group, "vorhanden" in the new one.
+    def log_role_text(role_name)
+      role = log_role_in(role_name, group)
+      if new_role_created?
+        end_roles.any? ? "Rolle #{log_role_list(end_roles)} → #{role} neu" : "Rolle #{role} neu"
+      else
+        "Rolle #{role} #{primary_group_changes? ? "vorhanden" : "unverändert"}"
+      end
+    end
+
+    # A role with its group: "Youth Participant (10 B1)" -- the same role in
+    # another group reads as such.
+    def log_role_in(name, group) = "#{name} (#{group.id} #{group.display_name})"
+
+    def log_role_list(roles) = roles.map { |r| log_role_in(r.class.model_name.human, r.group) }.join(", ")
+
+    # Euros as the dialog shows them: whole ones without cents ("2.400 €").
+    def log_eur(eur)
+      amount = (eur || 0).to_d
+      text = amount.frac.zero? ? amount.to_i.to_s : format("%.2f", amount)
+      "#{ActiveSupport::NumberHelper.number_to_delimited(text, delimiter: ".", separator: ",")} €"
+    end
+
+    def log_status(status) = Fin::PersonStatusHelper::STATUS_WORDS.fetch(status.to_s, status.to_s)
+
+    # The WSJ role as the summary of the last step names it: the label
+    # without its remark in brackets, or unset with the role it follows.
+    def log_wsj(value, derived)
+      return ["nicht gesetzt", ("(→ #{derived})" if derived)].compact.join(" ") if value.blank?
+
+      (Settings.wsj_role[value.to_sym] || value).to_s.sub(/\s*\(.*\)\z/, "")
+    end
+
     def role_label(role_class, group) = "#{role_class.model_name.human} (#{group.display_name})"
 
     def self.fee_role_type?(type) = ::Person::WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP.key?(type.to_s)
@@ -448,11 +586,11 @@ module Wsjrdp2027
       role.destroy!(always_soft_destroy: !(role.start_on && role.start_on >= Date.current))
     end
 
-    def update_person!(contract_replaced:, status_to_registered:, wsj_role:, unit_code:, payment_role:) # rubocop:disable Metrics/ParameterLists
+    def update_person!(contract_replaced:, status_to_registered:, wsj_role:, unit_code:, set_unit_code:, payment_role:) # rubocop:disable Metrics/ParameterLists
       person.reload
       person.primary_group_id = group.id
       person.wsj_role = wsj_role
-      person.unit_code = unit_code if unit_code
+      person.unit_code = unit_code if set_unit_code
       person.payment_role = payment_role if payment_role
       person.contract_status = "replacement_pending" if contract_replaced
       person.status = "registered" if status_to_registered

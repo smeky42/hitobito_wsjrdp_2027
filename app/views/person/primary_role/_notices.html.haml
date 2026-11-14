@@ -6,10 +6,18 @@
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 -# Notices of the dialog (Wsjrdp2027::PrimaryRoleChange#notices), one box per
--# level: red, yellow, grey. Nothing without notices.
+-# level: red, yellow, grey. With rows: true (the last step's yellow box) one
+-# white row per notice instead, a bar on the left in the colour of its level.
+-# Nothing without notices.
 - styles = {danger: %w[alert-danger fa-exclamation-circle], warning: %w[alert-warning fa-exclamation-triangle],
             info: %w[alert-secondary fa-info-circle]}
-- if notices.any?
+- if notices.any? && local_assigns[:rows]
+  .wsjrdp-notice-rows{class: local_assigns[:css]}
+    - notices.each do |notice|
+      .wsjrdp-notice{class: "wsjrdp-notice-#{notice.level}"}
+        %i.fas{class: styles[notice.level].last}
+        %span= notice.text
+- elsif notices.any?
   .d-grid.gap-2{class: local_assigns[:css]}
     - notices.group_by(&:level).each do |level, list|
       .alert.py-2.mb-0{class: styles[level].first}
