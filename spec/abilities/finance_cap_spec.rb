@@ -28,7 +28,8 @@ describe "finance cap" do
     untouched = Ability.new(manager.reload)
 
     expect(untouched.user_context.all_permissions)
-      .to match_array(%i[layer_and_below_full layer_and_below_read finance_read finance_audit finance finance_manage])
+      .to match_array(%i[layer_and_below_full layer_and_below_read finance_read finance_audit finance finance_manage
+        contingent_read])
     expect(untouched).to be_able_to(:admin_finance, DatevBooking)
     expect(untouched.identifier).to eq("user-#{manager.id}")
     expect(untouched.user_context.finance_tier_in_force).to be_nil
@@ -69,7 +70,7 @@ describe "finance cap" do
     capped = ability(manager, :finance)
 
     expect(capped.user_context.all_permissions)
-      .to match_array(%i[layer_and_below_full layer_and_below_read finance_read finance_audit finance])
+      .to match_array(%i[layer_and_below_full layer_and_below_read finance_read finance_audit finance contingent_read])
     expect(capped).to be_able_to(:update, DatevBooking)
     expect(capped).not_to be_able_to(:admin_finance, DatevBooking)
     # the layer permission is untouched: still :log on people below the root

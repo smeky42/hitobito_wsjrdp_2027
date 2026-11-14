@@ -69,7 +69,7 @@ class Contingent::WsjrdpCmtController < ApplicationController
   private
 
   def authorize_action
-    authorize!(:log, Group.root)
+    authorize!(:show_wsjrdp_contingent, Group.root)
   end
 
   # The root group's people, plus whoever holds an active role in it

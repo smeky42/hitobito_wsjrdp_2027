@@ -52,7 +52,7 @@ class Contingent::WsjrdpContingentController < ApplicationController
   private
 
   def authorize_action
-    authorize!(:log, Group.root)
+    authorize!(:show_wsjrdp_contingent, Group.root)
   end
 
   def overview = @overview ||= Wsjrdp2027::ContingentOverview.new

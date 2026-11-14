@@ -16,7 +16,8 @@ describe Contingent::WsjrdpContingentController, type: :controller do
   render_views
 
   let(:schema) { Wsjrdp2027::ContingentPeopleFilterSchema }
-  let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+  # The contingent pages need :contingent_read (Group::Root::Leader has it).
+  let(:leader) { people(:cmt_leader) }
   let(:waitlist) { groups(:empty_unit) }
   let(:cancelled) { people(:yp_a_2) }
 
@@ -24,7 +25,7 @@ describe Contingent::WsjrdpContingentController, type: :controller do
     waitlist.update_columns(name: "YP Warteliste", is_wsjrdp: false)
     cancelled.update_columns(status: "deregistration_noted", contract_status: "confirmed",
       primary_group_id: waitlist.id, nickname: "Cleo")
-    sign_in(admin)
+    sign_in(leader)
   end
 
   def page = Nokogiri::HTML(response.body)
@@ -152,6 +153,12 @@ describe Contingent::WsjrdpContingentController, type: :controller do
     row = page.css("#co-role-differences tbody tr").find { |tr| tr.css("td").first(2).map { |td| td.text.strip } == %w[YP JPT] }
     expect(row).to be_present
     expect(row.at_css(".tag-role-diff").text).to eq("YP→JPT")
+  end
+
+  it "stays closed without :contingent_read" do
+    sign_in(Fabricate(Group::Root::Member.name.to_sym, group: groups(:root)).person)
+
+    expect { get :index }.to raise_error(CanCan::AccessDenied)
   end
 
   it "redirects the filter builder to the overview with the filter" do

@@ -582,6 +582,29 @@ not pick up edited ability classes. Restart the rails container before
 verifying manually (e.g. via impersonation).
 
 
+## The contingent pages: `:contingent_read` and `:contingent_write`
+
+The pages under Kontingent (overview `/contingent`, `/contingent/cmt`,
+`/contingent/ist`) and their main menu item are gated by the action
+`:show_wsjrdp_contingent` on `Group.root`
+([`wsjrdp_2027/group_ability.rb`](../app/abilities/wsjrdp_2027/group_ability.rb)):
+
+```ruby
+permission(:contingent_read).may(:show_wsjrdp_contingent).all
+```
+
+- `:contingent_read` and `:contingent_write` are the wagon's own role
+  permissions, registered in
+  [`lib/hitobito_wsjrdp_2027/wagon.rb`](../lib/hitobito_wsjrdp_2027/wagon.rb)
+  like the finance tiers; `:contingent_write` implies `:contingent_read`
+  (`Role::PermissionImplications`). No action uses `:contingent_write` yet.
+- The permission counts wherever the role sits (a role in a nested group
+  such as CMT Warteliste too). The rule allows the action on every group;
+  the pages ask for it on the root group only.
+- Holders: `Group::Root::Admin`, `Group::Root::Leader`, `Group::Root::Finance`,
+  `Group::Root::FinanceManager` and `Group::Extern::FinanceAccountant`. A role
+  gets access by listing the permission in its `self.permissions`.
+
 ## The `:log` convention in `hitobito_wsjrdp_2027`
 
 In core, `:log` is the **change-log** action (PaperTrail): the log tab
@@ -602,9 +625,6 @@ subject"**. Examples:
   [`app/views/person/tags/_tag.html.haml`](../app/views/person/tags/_tag.html.haml),
   [`app/controllers/person/upload_controller.rb`](../app/controllers/person/upload_controller.rb),
   [`app/controllers/person/fee_controller.rb`](../app/controllers/person/fee_controller.rb)
-- navigation: the Contingent main menu item only shows for `can?(:log,
-  Group.root)`
-  ([`app/helpers/wsjrdp_2027/navigation_helper.rb`](../app/helpers/wsjrdp_2027/navigation_helper.rb))
 - finance models: `:log` starts at the audit tier in
   [`various_ability.rb`](../app/abilities/wsjrdp_2027/various_ability.rb);
   the read tier does not get it (see [Finance tiers](#finance-tiers))

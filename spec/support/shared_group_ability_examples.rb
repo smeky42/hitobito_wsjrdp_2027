@@ -13,6 +13,8 @@ GROUP_ACTIONS = [
   :show_finance,
   # update_finance: edit on the group's finance pages
   :update_finance,
+  # show_wsjrdp_contingent: see the contingent pages (checked on the root group)
+  :show_wsjrdp_contingent,
 
   # index_people: list all people in the group
   :index_people,

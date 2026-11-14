@@ -6,7 +6,9 @@ require "spec_helper"
 # ability store would only restate the implementation.
 
 # What :layer_and_below_full (plus the implied :layer_and_below_read) grants on
-# the LAYER GROUP the role sits in. The finance actions are added per context.
+# the LAYER GROUP the role sits in. The finance actions are added per context,
+# so is :show_wsjrdp_contingent, which every holder of :contingent_read may on
+# any group (the contingent pages ask for it on the root group).
 # :index_service_tokens is not among them: only an admin lists the API keys, of
 # the root group only (spec/abilities/wsjrdp_2027/service_token_ability_spec.rb).
 LAYER_AND_BELOW_FULL_ON_OWN_LAYER = [
@@ -157,19 +159,20 @@ describe GroupAbility do
 
     context "without an entry in finance_group_ids" do
       context "on contingent" do
-        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_ON_OWN_LAYER} do
+        it_behaves_like "only allow group actions",
+          {allowed: LAYER_AND_BELOW_FULL_ON_OWN_LAYER + [:show_wsjrdp_contingent]} do
           let(:group) { groups(:root) }
         end
       end
 
       context "on a unit" do
-        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_BELOW} do
+        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_wsjrdp_contingent]} do
           let(:group) { groups(:unit_a) }
         end
       end
 
       context "on an IST group" do
-        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_BELOW} do
+        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_wsjrdp_contingent]} do
           let(:group) { groups(:ist_a) }
         end
       end
@@ -180,13 +183,13 @@ describe GroupAbility do
 
       context "on that unit" do
         it_behaves_like "only allow group actions",
-          {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_finance]} do
+          {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_finance, :show_wsjrdp_contingent]} do
           let(:group) { groups(:unit_a) }
         end
       end
 
       context "on another unit" do
-        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_BELOW} do
+        it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_wsjrdp_contingent]} do
           let(:group) { groups(:unit_b) }
         end
       end
@@ -196,7 +199,7 @@ describe GroupAbility do
       before { cmt_leader.update!(finance_group_ids: {groups(:unit_a).id.to_s => "show,update"}) }
 
       it_behaves_like "only allow group actions",
-        {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_finance, :update_finance]} do
+        {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_finance, :update_finance, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_a) }
       end
     end
@@ -207,7 +210,7 @@ describe GroupAbility do
       before { cmt_leader.update!(finance_group_ids: {groups(:unit_a).id.to_s => "update"}) }
 
       it_behaves_like "only allow group actions",
-        {allowed: LAYER_AND_BELOW_FULL_BELOW + [:update_finance]} do
+        {allowed: LAYER_AND_BELOW_FULL_BELOW + [:update_finance, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_a) }
       end
     end
@@ -218,7 +221,7 @@ describe GroupAbility do
       end
 
       it_behaves_like "only allow group actions",
-        {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_finance, :update_finance]} do
+        {allowed: LAYER_AND_BELOW_FULL_BELOW + [:show_finance, :update_finance, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_a) }
       end
     end
@@ -233,13 +236,13 @@ describe GroupAbility do
     subject { Ability.new(nested_leader.reload) }
 
     context "on the nested root group" do
-      it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_ON_OWN_LAYER} do
+      it_behaves_like "only allow group actions", {allowed: LAYER_AND_BELOW_FULL_ON_OWN_LAYER + [:show_wsjrdp_contingent]} do
         let(:group) { nested_root }
       end
     end
 
     context "on a unit" do
-      it_behaves_like "only allow group actions", {allowed: [:read]} do
+      it_behaves_like "only allow group actions", {allowed: [:read, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_a) }
       end
     end
@@ -380,14 +383,14 @@ describe GroupAbility do
 
       context "on a unit" do
         it_behaves_like "only allow group actions",
-          {allowed: [:read, :show_finance, :update_finance]} do
+          {allowed: [:read, :show_finance, :update_finance, :show_wsjrdp_contingent]} do
           let(:group) { groups(:unit_a) }
         end
       end
 
       context "on contingent" do
         it_behaves_like "only allow group actions",
-          {allowed: [:read, :show_finance, :update_finance]} do
+          {allowed: [:read, :show_finance, :update_finance, :show_wsjrdp_contingent]} do
           let(:group) { groups(:root) }
         end
       end
@@ -403,7 +406,7 @@ describe GroupAbility do
 
       it_behaves_like "only allow group actions",
         {allowed: LAYER_AND_BELOW_FULL_BELOW +
-          [:create_invoices_from_list, :show_finance, :update_finance]} do
+          [:create_invoices_from_list, :show_finance, :update_finance, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_b) }
       end
     end
@@ -415,7 +418,7 @@ describe GroupAbility do
 
       it_behaves_like "only allow group actions",
         {allowed: LAYER_AND_BELOW_FULL_BELOW +
-          [:create_invoices_from_list, :show_finance, :update_finance]} do
+          [:create_invoices_from_list, :show_finance, :update_finance, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_b) }
       end
     end
@@ -427,7 +430,7 @@ describe GroupAbility do
 
       subject { Ability.new(accountant.reload, max_finance_permission: :finance_audit) }
 
-      it_behaves_like "only allow group actions", {allowed: [:read, :show_finance]} do
+      it_behaves_like "only allow group actions", {allowed: [:read, :show_finance, :show_wsjrdp_contingent]} do
         let(:group) { groups(:unit_a) }
       end
     end

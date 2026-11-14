@@ -48,7 +48,7 @@ module Wsjrdp2027::NavigationHelper
     label: :contingent,
     url: :contingent_contingent_path,
     icon_name: "campground",
-    if: ->(_) { can?(:log, Group.root) },
+    if: ->(_) { can?(:show_wsjrdp_contingent, Group.root) },
     active_for: %w[contingent],
     inactive_for: %w[people]
   }
