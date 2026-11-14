@@ -27,7 +27,7 @@ describe Person, "payment role" do
   end
 
   describe "#build_payment_role" do
-    it "maps every role type with a fee, leaders of the IST and of the CMT paying as members" do
+    it "maps every role type with a fee, leaders of the IST and of the CMT and external finance staff paying as members" do
       table = {
         [Group::Unit::Member, unit] => "Group::Unit::Member",
         [Group::Unit::Leader, unit] => "Group::Unit::Leader",
@@ -36,7 +36,9 @@ describe Person, "payment role" do
         [Group::Ist::Leader, ist] => "Group::Ist::Member",
         [Group::Root::Member, root] => "Group::Root::Member",
         [Group::Root::Leader, root] => "Group::Root::Member",
-        [Group::Extern::Member, extern] => "Group::Extern::Member"
+        [Group::Extern::Member, extern] => "Group::Extern::Member",
+        [Group::Extern::FinanceAccountant, extern] => "Group::Extern::Member",
+        [Group::Extern::FinanceAuditor, extern] => "Group::Extern::Member"
       }
       expect(table.keys.map { |type, _| type.name }).to match_array(Person::WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP.keys)
 

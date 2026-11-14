@@ -95,8 +95,11 @@ module Wsjrdp2027::Person
     # :zero_padded_id - can not be included as it is a generated column
   ].freeze
 
+  # The role types with a fee and the respective payment role type.
   WSJRDP_ROLE_TYPE_TO_PAYMENT_ROLE_TYPE_MAP = {
     "Group::Extern::Member" => "Group::Extern::Member",
+    "Group::Extern::FinanceAccountant" => "Group::Extern::Member",
+    "Group::Extern::FinanceAuditor" => "Group::Extern::Member",
     "Group::Ist::Leader" => "Group::Ist::Member",
     "Group::Ist::Member" => "Group::Ist::Member",
     "Group::Root::Leader" => "Group::Root::Member",
@@ -130,6 +133,8 @@ module Wsjrdp2027::Person
 
   WSJRDP_ROLE_TYPE_TO_WSJ_ROLE_MAP = {
     "Group::Extern::Member" => "EXT",
+    "Group::Extern::FinanceAccountant" => "EXT",
+    "Group::Extern::FinanceAuditor" => "EXT",
     "Group::Ist::Leader" => "IST",
     "Group::Ist::Member" => "IST",
     "Group::Root::Leader" => "CMT",
