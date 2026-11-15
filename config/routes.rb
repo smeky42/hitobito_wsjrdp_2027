@@ -235,6 +235,9 @@ Rails.application.routes.draw do
         end
       end
       resource :debit_return, controller: "person/debit_return", only: [:edit, :update]
+      # The person's family links on a page of their own (the same rows as in
+      # the person form), for the privileged view and the unit leaders.
+      resource :family_members, controller: "person/family_members", only: [:edit, :update]
       # The fee reduction section of the person finance page: plan, activate or discard
       # a total fee reduction.
       resource :fee_reduction, controller: "person/fee_reduction", only: [:edit, :update] do

@@ -8,6 +8,8 @@
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
 module Wsjrdp2027::PeopleController
+  include Wsjrdp2027::Concerns::FamilyMembersParams
+
   WSJRDP_ALWAYS_PERMITTED_ATTRS = [
     :rdp_association,
     :rdp_association_region,
@@ -58,6 +60,7 @@ module Wsjrdp2027::PeopleController
 
   def permitted_attrs
     attrs = super.dup
+    attrs = can?(:update_family, entry) ? with_family_member_labels(attrs) : without_family_members_attributes(attrs)
     attrs += WSJRDP_ALWAYS_PERMITTED_ATTRS
     attrs += [:uniform_order] if entry.uniform_order_available?
     attrs += WSJRDP_REGISTERED_PERMITTED_ATTRS if entry.status == "registered" || can?(:update_finance, entry)
@@ -87,6 +90,37 @@ module Wsjrdp2027::PeopleController
   end
 
   private
+
+  # Links to people the viewer may not see stay as they are
+  # (Wsjrdp2027::Concerns::FamilyMembersParams).
+  def permitted_params
+    attributes = super
+    return attributes unless attributes.key?(:family_members_attributes)
+
+    attributes.merge(family_members_attributes:
+      without_protected_family_members(entry, attributes[:family_members_attributes]))
+  end
+
+  # The core permits family_members_attributes to everyone who edits a person,
+  # even their own profile -- and linking writes the family_key into the other
+  # person too, unchecked. Only who may edit the family (:update_family) links.
+  def without_family_members_attributes(attrs)
+    attrs.filter_map do |attr|
+      next attr unless attr.is_a?(Hash)
+
+      attr.except(:family_members_attributes).presence
+    end
+  end
+
+  # Whoever may edit the family also gives the links their own names
+  # (Wsjrdp2027::FamilyMember: label, inverse_label).
+  def with_family_member_labels(attrs)
+    attrs.map do |attr|
+      next attr unless attr.is_a?(Hash) && attr.key?(:family_members_attributes)
+
+      attr.merge(family_members_attributes: attr[:family_members_attributes] + [:label, :inverse_label])
+    end
+  end
 
   # Without a group in the URL (/people/:id) the person's default group
   # (Person#default_group), as the person's other pages

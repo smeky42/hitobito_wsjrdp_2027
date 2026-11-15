@@ -1,0 +1,41 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One family link in the person form, after the core's partial of the same
+-#  name, plus the relation's own name (Wsjrdp2027::FamilyMember): a new link
+-#  takes the other person, the kind, its own name and the inverse's own name;
+-#  an existing one shows the other person (role, name, linked as in the
+-#  family list) with its kind, own name and the inverse's name editable -- a
+-#  changed kind or inverse name goes to the inverse link too
+-#  (Wsjrdp2027::FamilyMember). Both names are
+-#  optional -- empty, the kind's label applies.
+- if f.object.new_record?
+  %div.d-flex.flex-wrap.w-100.align-items-center
+    %div.col-11.col-md-5.me-3.mb-1.mt-1
+      = f.person_field(:other)
+    %div.col-11.col-md-4.d-flex.flex-row.me-3.mb-1
+      = f.collection_select(:kind, FamilyMember.kind_labels, :first, :second, {}, class: 'form-select form-select-sm h-100')
+    %div.col-11.col-md-5.me-3.mb-1
+      = f.input_field(:label, placeholder: 'eigene Bezeichnung', title: 'Was die Person für diese ist, z. B. Tante (optional)')
+    %div.col-11.col-md-4.me-3.mb-1
+      = f.input_field(:inverse_label, placeholder: 'umgekehrt', title: 'Was diese Person für die andere ist, z. B. Nichte (optional)')
+- else
+  -# A link to a person the viewer may not see stays as it is: all fields
+  -# disabled (and dropped by the controllers if sent anyway).
+  - locked = !wsjrdp_family_link_editable?(f.object)
+  %div.d-flex.flex-wrap.w-100.align-items-center{title: (locked ? 'Keine Berechtigung, diese Person zu sehen' : nil)}
+    %div.col-11.col-md-5.me-3.mb-1
+      = wsjrdp_person_list_entry(f.object.other) if f.object.other
+    %div.col-11.col-md-4.d-flex.flex-row.me-3.mb-1
+      = f.collection_select(:kind, FamilyMember.kind_labels, :first, :second, {},
+        class: 'form-select form-select-sm h-100', disabled: locked)
+    %div.col-11.col-md-5.me-3.mb-1
+      = f.input_field(:label, placeholder: 'eigene Bezeichnung', disabled: locked,
+        title: 'Was die Person für diese ist, z. B. Tante (optional)')
+    %div.col-11.col-md-4.me-3.mb-1
+      = f.input_field(:inverse_label, placeholder: 'umgekehrt', disabled: locked,
+        title: 'Was diese Person für die andere ist, z. B. Nichte (optional)')

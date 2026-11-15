@@ -10,6 +10,95 @@
 module Wsjrdp2027::PeopleHelper
   include ContractHelper
 
+  # One person in the person lists of a person's page -- the household
+  # (Wsjrdp2027::HouseholdAsideMemberComponent) and the other family members:
+  # the contingent role, muted, the short name with the nickname
+  # (short_full_name_with_nickname) in bold -- linked where the viewer
+  # may see that person -- and, for family, how they are related (muted,
+  # light). The role a little smaller; a little room between the parts.
+  def wsjrdp_person_list_entry(person, relation: nil)
+    # Bootstrap 5.2 of the core has no column-gap utility; margins space the
+    # parts instead.
+    parts = [
+      content_tag(:span, person.wsjrdp_role, class: "small text-muted me-2"),
+      content_tag(:strong, link_to_if(can?(:show, person), person.short_full_name_with_nickname, person,
+        data: {turbo_frame: "_top"})),
+      (content_tag(:span, relation, class: "text-muted fw-light ms-2") if relation)
+    ]
+    content_tag(:span, safe_join(parts.compact))
+  end
+
+  # The household as chips under the contact data, as the core does
+  # (PeopleHelper#render_household), each with the contingent role before the
+  # name (short_full_name_with_nickname): muted and a little smaller.
+  def wsjrdp_render_household(person)
+    safe_join(person.household_people.map do |member|
+      content_tag(:li, class: "chip") do
+        name = link_to_if(can?(:show, member), member.short_full_name_with_nickname, member)
+        safe_join([content_tag(:span, member.wsjrdp_role, class: "small text-muted me-1"), name])
+      end
+    end, "\n")
+  end
+
+  # The other family members as chips under the household chips, laid out the
+  # same way, with how they are related behind the name (muted, light).
+  def wsjrdp_render_family_chips(person)
+    safe_join(wsjrdp_sorted_family_links(person).map do |link|
+      other = link.other
+      content_tag(:li, class: "chip") do
+        safe_join([content_tag(:span, other.wsjrdp_role, class: "small text-muted me-1"),
+          link_to_if(can?(:show, other), other.short_full_name_with_nickname, other),
+          content_tag(:span, link.relation_label, class: "text-muted fw-light ms-1")])
+      end
+    end, "\n")
+  end
+
+  # Whether the viewer may change or remove a family link in the form: a new
+  # one, or one to a person the viewer may see. The controllers drop the
+  # others from the params (Wsjrdp2027::Concerns::FamilyMembersParams).
+  def wsjrdp_family_link_editable?(link)
+    link.nil? || link.new_record? || link.other.nil? || can?(:show, link.other)
+  end
+
+  # The question before a saved family link is removed in the form: who is
+  # what for whom, both ways where the inverse link exists -- both go when
+  # the form is saved. Nil for a row not saved yet (nothing to confirm).
+  def wsjrdp_family_remove_question(link)
+    return nil unless link&.persisted? && link.other && link.person
+
+    person = link.person.short_full_name_with_nickname
+    other = link.other.short_full_name_with_nickname
+    lines = ["Familienbeziehung entfernen?", "", "#{other} ist #{link.relation_label} von #{person}."]
+    inverse = link.inverse_link
+    lines << "#{person} ist #{inverse.relation_label} von #{other}." if inverse
+    lines << ""
+    lines << (inverse ? "Beide Richtungen werden beim Speichern gelöscht." : "Sie wird beim Speichern gelöscht.")
+    lines.join("\n")
+  end
+
+  # Parents first, then partners, siblings, children, other relatives.
+  WSJRDP_FAMILY_ORDER = %w[parent spouse partner sibling child relative].freeze
+
+  # The other members of a person's family as rows of a table, the way the
+  # core lists the household. The core's render_family would list the
+  # FamilyMember links themselves instead of the other person (and is used
+  # nowhere).
+  def wsjrdp_render_family(person)
+    safe_join(wsjrdp_sorted_family_links(person).map { |link| wsjrdp_family_row(link) }, "\n")
+  end
+
+  def wsjrdp_sorted_family_links(person)
+    person.family_members.select(&:other).sort_by do |link|
+      [WSJRDP_FAMILY_ORDER.index(link.kind.to_s) || WSJRDP_FAMILY_ORDER.size, link.other.short_full_name_with_nickname]
+    end
+  end
+
+  def wsjrdp_family_row(link)
+    content_tag(:tr) do
+      content_tag(:td) { wsjrdp_person_list_entry(link.other, relation: link.relation_label) }
+    end
+  end
+
   def person_accounting_path_with_group(group, *args)
     person_accounting_path(args[0], args[-1])
   end

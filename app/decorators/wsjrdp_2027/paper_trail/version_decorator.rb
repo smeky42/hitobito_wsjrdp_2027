@@ -29,8 +29,10 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # Who made the change, as plain text.
   def author_name = h.strip_tags(author.to_s).presence
 
-  # A debit's change in a person's log names the debit by its id.
+  # A debit's change in a person's log names the debit by its id; a family
+  # link's names the other person as the person page does.
   def association_change
+    return family_member_change if item_class <= ::FamilyMember
     return super unless item_class <= ::WsjrdpDirectDebitPreNotification
 
     text = I18n.t("version.association_change.wsjrdp_direct_debit_pre_notification.#{model.event}",
@@ -40,6 +42,27 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   end
 
   private
+
+  # The other person as on the person page (Wsjrdp2027::PeopleHelper
+  # #wsjrdp_person_list_entry, without the bold): the contingent role, muted
+  # and smaller, the name linked where the viewer may see that person, the
+  # relation behind it. A link whose person is gone keeps the core's label.
+  def family_member_change
+    link = reifyed_item
+    other = link.respond_to?(:other) ? link.other : nil
+    label = other ? family_member_label(link, other) : label_with_fallback(link)
+    text = I18n.t("version.association_change.family_member.#{model.event}",
+      label: label, changeset: (model.event == "update") ? changeset_list : nil)
+    h.sanitize(text, tags: %w[i a span], attributes: %w[href class])
+  end
+
+  def family_member_label(link, other)
+    safe_join([
+      content_tag(:span, other.wsjrdp_role, class: "small text-muted me-1"),
+      h.link_to_if(can?(:show, other), other.short_full_name_with_nickname, h.person_path(other)),
+      " (#{link.relation_label})"
+    ])
+  end
 
   def debit_link
     debit = model.item

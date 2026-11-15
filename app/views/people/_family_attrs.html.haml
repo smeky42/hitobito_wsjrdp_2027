@@ -1,0 +1,30 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The other members of the person's family (FamilyMember), in the aside
+-#  below the household and built like it (HouseholdAsideComponent): a section
+-#  whenever there are any, for everyone who sees the person's details, the
+-#  person included. A name links the other person only where the viewer may
+-#  see them (Wsjrdp2027::PeopleHelper#wsjrdp_family_row). Whoever may edit the
+-#  family (:update_family: the privileged view, the unit leaders) sees the
+-#  section always, with the button to the family page
+-#  (Person::FamilyMembersController).
+-#
+-#  Locals: person
+- editable = can?(:update_family, person)
+- if FeatureGate.enabled?("people.family_members") && (person.family_members.any? || editable)
+  %section
+    %h2
+      Andere Familienmitglieder
+      - if editable
+        %span.float-end
+          .btn-group
+            = action_button(person.family_members.any? ? "Bearbeiten" : "Hinzufügen",
+              edit_person_family_members_path(person), person.family_members.any? ? :edit : :plus)
+    - if person.family_members.any?
+      %table.table.table-basic
+        = wsjrdp_render_family(person)

@@ -41,8 +41,8 @@
 = field_set_tag do
   = f.labeled_inline_fields_for :social_accounts, 'contactable/social_account_fields'
 
--# - if entry.is_a?(Person) && PeopleRelation.none? && FeatureGate.enabled?('people.family_members')
--#   = field_set_tag do
--#     = f.labeled_inline_fields_for :family_members, 'person/family/fields'
+-# Family members, as in the core -- for whoever may edit them (:update_family).
+- if entry.is_a?(Person)
+  = render 'people/family_members_fields', f: f
 
 = render_extensions :additional_fields, locals: { f: f }
