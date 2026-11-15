@@ -217,6 +217,11 @@ de:
         key: API-Key
       group:
         is_wsjrdp: WSJRDP Gruppe
+        initial_unit_size: Unit-Größe bei Einteilung
+        expected_unit_size: Unit-Größe (Soll)
+        expected_ul_number: Anzahl Unit Leader (Soll)
+        expected_patrol_number: Anzahl Patrols (Soll)
+        unit_formed_date: Unit eingeteilt am
         cost_center_numbers: Kostenstellen
         support_cmt_mail_addresses: E-Mail Adressen Support-CMT
         support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
@@ -2509,6 +2514,7 @@ de:
       overview: "Übersicht"
       cmt: "CMT / JPT"
       ist: "IST"
+      units: "Units"
 
   version:
     association_change:

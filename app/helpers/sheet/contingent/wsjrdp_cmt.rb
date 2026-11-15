@@ -13,6 +13,8 @@ module Sheet
     tab "contingent.tabs.cmt", :contingent_cmt_path
     tab "contingent.tabs.ist", :contingent_ist_path,
       if: ->(view, *) { view.contingent_people_visible? }
+    tab "contingent.tabs.units", :contingent_units_path,
+      if: ->(view, *) { view.contingent_people_visible? }
 
     def title
       "German Contingent - CMT / JPT"

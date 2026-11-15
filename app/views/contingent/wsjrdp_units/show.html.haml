@@ -1,0 +1,46 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The people of one unit: in the frame of the unit's row on Kontingent >
+-#  Units, or as a page of its own. A table of its own (prefix "up"), with the
+-#  columns and the filter of the overview's people list and a Schnellauswahl
+-#  by role and contract (Wsjrdp2027::ContingentUnits::PEOPLE_PRESETS) and the
+-#  column "in Abmeldung"; while nobody has chosen a sort, what needs looking
+-#  at first (ContingentUnits.people_natural_key). Its links and the filter's
+-#  apply stay in the frame.
+= wsjrdp_detail_frame(Contingent::WsjrdpUnitsController::DETAIL_FRAME_PREFIX, unit.id) do
+  - unless turbo_frame_request?
+    = render "contingent/person_chip_styles"
+    = render "fin/person_status_styles"
+  :css
+    /* "in Abmeldung" and Patrol: in the middle of their columns, as their headers. */
+    .contingent-unit-people td.upcol-cancel, .contingent-unit-people td.upcol-patrol { text-align: center; }
+    /* The Schnellauswahl's segments wrap instead of widening the page -- in
+       a row's detail and on the page of its own alike. */
+    .contingent-unit-people .flt-segment { flex-wrap: wrap; }
+    .contingent-unit-people .flt-segment > .btn { flex-grow: 0; }
+    /* A phone: less room around the table and at the left of the role, so
+       more of the scrolling columns shows beside role and person. */
+    @media (max-width: 575.98px) {
+      .contingent-unit-people { padding-left: .5rem !important; padding-right: .5rem !important; }
+      .contingent-unit-people .bookings-table > * > tr > .upcol-role { padding-left: .375rem; }
+      .contingent-unit-people .flt-segment > .btn { padding-left: .35rem; padding-right: .35rem; }
+    }
+  .px-3.py-2.contingent-unit-people
+    -# A small heading -- in the row's detail and on the page of its own alike.
+    %h3.h6.fw-semibold.mb-2= "Personen in #{unit.name}"
+    = wsjrdp_expandable_table do |t|
+      - t.rows unit_people_rows, id: "up"
+      - t.columns contingent_unit_people_table_columns, menu: true
+      -# Room to spare: the person widens first (to its target, then by its
+      -# grow), then the gaps between the columns.
+      - t.gaps max: "4rem", grow_max: "3rem"
+      - t.row_key { |entry| entry.id }
+      - t.filter apply_url: contingent_apply_unit_path(unit.id,
+          expandable_table_level: unit_people_table_state.level)
+      - t.paging
+      - t.summary unit_people_summary

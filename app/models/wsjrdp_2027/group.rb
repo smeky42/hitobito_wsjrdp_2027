@@ -16,6 +16,19 @@ module Wsjrdp2027::Group
     :additional_info
   ].freeze
 
+  # The size of a unit as planned at the Unit-Einteilung, the size it is to
+  # have, the number of its unit leaders and of its patrols, where a unit has
+  # not stored its own (additional_info "initial_unit_size" /
+  # "expected_unit_size" / "expected_ul_number" / "expected_patrol_number").
+  DEFAULT_INITIAL_UNIT_SIZE = 40
+  DEFAULT_EXPECTED_UNIT_SIZE = 40
+  DEFAULT_EXPECTED_UL_NUMBER = 4
+  DEFAULT_EXPECTED_PATROL_NUMBER = 4
+  # The day of the Unit-Einteilung, where a unit has not stored its own
+  # (additional_info "unit_formed_date"): who joined a unit on it or before
+  # was there from the start, only who came later moved up (nachgerückt).
+  DEFAULT_UNIT_FORMED_DATE = Date.new(2026, 1, 7)
+
   # A waiting list ("UL Warteliste", "YP Warteliste", "IST Warteliste", ...)
   # is told apart by its NAME -- there is no flag for it.
   WAITING_LIST_NAME = /warteliste/i
@@ -38,6 +51,52 @@ module Wsjrdp2027::Group
 
     jsonb_accessor :additional_info, :unit_code, strip: true
     attribute :unit_code, :string
+
+    # additional_info["initial_unit_size"] / ["expected_unit_size"] /
+    # ["expected_ul_number"] / ["expected_patrol_number"]: a unit's size at
+    # the Unit-Einteilung, the size it is to have, how many unit leaders and
+    # how many patrols it is to have, where they differ from the rule
+    # (DEFAULT_INITIAL_UNIT_SIZE, DEFAULT_EXPECTED_UNIT_SIZE,
+    # DEFAULT_EXPECTED_UL_NUMBER, DEFAULT_EXPECTED_PATROL_NUMBER); blank
+    # removes the key, and the rule applies again (#effective_initial_unit_size,
+    # #effective_expected_unit_size, #effective_expected_ul_number,
+    # #effective_expected_patrol_number).
+    jsonb_accessor :additional_info, :initial_unit_size
+    attribute :initial_unit_size, :integer
+    jsonb_accessor :additional_info, :expected_unit_size
+    attribute :expected_unit_size, :integer
+    jsonb_accessor :additional_info, :expected_ul_number
+    attribute :expected_ul_number, :integer
+    jsonb_accessor :additional_info, :expected_patrol_number
+    attribute :expected_patrol_number, :integer
+    validates :initial_unit_size, :expected_unit_size, :expected_ul_number, :expected_patrol_number,
+      numericality: {only_integer: true, greater_than_or_equal_to: 0}, allow_nil: true
+
+    # The store keeps what a form sends, a String; a whole number goes in as
+    # an Integer, anything else stays as given -- so the validation above
+    # refuses it instead of the value getting lost.
+    %i[initial_unit_size expected_unit_size expected_ul_number expected_patrol_number].each do |attr|
+      define_method(:"#{attr}=") do |value|
+        text = value.to_s.strip
+        super(text.match?(/\A-?\d+\z/) ? text.to_i : text)
+      end
+    end
+
+    def effective_initial_unit_size = initial_unit_size || DEFAULT_INITIAL_UNIT_SIZE
+
+    def effective_expected_unit_size = expected_unit_size || DEFAULT_EXPECTED_UNIT_SIZE
+
+    def effective_expected_ul_number = expected_ul_number || DEFAULT_EXPECTED_UL_NUMBER
+
+    def effective_expected_patrol_number = expected_patrol_number || DEFAULT_EXPECTED_PATROL_NUMBER
+
+    # additional_info["unit_formed_date"]: the day the unit was formed, as an
+    # ISO date; blank removes it, and DEFAULT_UNIT_FORMED_DATE applies again.
+    jsonb_accessor :additional_info, :unit_formed_date, cast: :date
+
+    def unit_formed_date = ActiveModel::Type::Date.new.cast(super)
+
+    def effective_unit_formed_date = unit_formed_date || DEFAULT_UNIT_FORMED_DATE
 
     jsonb_accessor :additional_info, :support_cmt_mail_addresses
     attribute :support_cmt_mail_addresses, :string, array: true

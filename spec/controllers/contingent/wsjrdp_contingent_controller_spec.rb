@@ -50,7 +50,9 @@ describe Contingent::WsjrdpContingentController, type: :controller do
       .to eq([["CMT", "IST", "CMT + IST"], ["Units", "Patrols", "UL + YP"]])
     expect(page.css("a.co-tile")).to be_empty
     first = rows.first
-    expect(cell(first, "person")).to start_with("YP #{cancelled.id} ").and include("Cleo")
+    # The role in its own column, so not before the id.
+    expect(cell(first, "person")).to start_with("#{cancelled.id} ").and include("Cleo")
+    expect(cell(first, "role")).to eq("YP")
     expect(first.at_css("td[data-colkey='contract'] .fin-status-confirmed").text).to eq("in Kraft")
     expect(first.at_css("td[data-colkey='status'] .fin-status-noted").text).to eq("Abmeldung")
     expect(cell(first, "status")).to include("Abmeldung Vermerkt") # the full label, in the tooltip

@@ -8,4 +8,15 @@
 - if can?(:log, entry)
   = field_set_tag do
     = f.labeled_input_fields(:is_wsjrdp, :unit_code)
+    - if entry.is_a?(Group::Unit)
+      = f.labeled_input_field(:initial_unit_size,
+        help_inline: "leer: #{Group::DEFAULT_INITIAL_UNIT_SIZE} (Regel)")
+      = f.labeled_input_field(:expected_unit_size,
+        help_inline: "leer: #{Group::DEFAULT_EXPECTED_UNIT_SIZE} (Regel)")
+      = f.labeled_input_field(:expected_ul_number,
+        help_inline: "leer: #{Group::DEFAULT_EXPECTED_UL_NUMBER} (Regel)")
+      = f.labeled_input_field(:expected_patrol_number,
+        help_inline: "leer: #{Group::DEFAULT_EXPECTED_PATROL_NUMBER} (Regel)")
+      = f.labeled_date_field(:unit_formed_date,
+        help_inline: "leer: #{I18n.l(Group::DEFAULT_UNIT_FORMED_DATE)} (Regel); wer später kam, ist nachgerückt")
     = f.labeled_mail_addresses_field(:support_cmt_mail_addresses_string)

@@ -483,6 +483,9 @@ Rails.application.routes.draw do
       post :hide_people_links, to: "wsjrdp_contingent#hide_people_links"
       get :cmt, to: "wsjrdp_cmt#index"
       get :ist, to: "wsjrdp_ist#index"
+      get :units, to: "wsjrdp_units#index"
+      get "units/:id", to: "wsjrdp_units#show", as: :unit
+      post "units/:id/apply", to: "wsjrdp_units#apply", as: :apply_unit
     end
   end
 end

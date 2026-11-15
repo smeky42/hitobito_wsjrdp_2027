@@ -5,11 +5,23 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The person chips of the contingent pages (WsjrdpContingentHelper#person_chip)
+-#  The people of the contingent pages: the person label of the lists
+-#  (WsjrdpContingentHelper#contingent_person_label), the person chips
+-#  (WsjrdpContingentHelper#person_chip)
 -#  and their mini tags: HA (Hauptamt), HoC/eHoC, JPT, EXT. One place for all
 -#  pages that show chips. The name (.p-chip-name) is a link, or plain text
 -#  where the viewer may not open the person's page.
 :css
+  /* The icons of a unit's movements (WsjrdpContingentHelper::MOVEMENT_ICONS),
+     in the unit list and in a unit's people list alike: small and muted, one
+     colour for all -- the shape says the kind. */
+  .co-move-icon { width: .95rem; text-align: center; font-size: .8em; color: #6c757d; }
+  /* A person as the lists show one (WsjrdpContingentHelper#contingent_person_label):
+     only the name is cut where the cell is too narrow, role, id and mini
+     tags stay whole. */
+  .co-person { display: flex; align-items: baseline; gap: .3em; min-width: 0; }
+  .co-person > * { flex-shrink: 0; }
+  .co-person > .co-person-name { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .p-chip {
     display: inline-block;
     vertical-align: baseline;

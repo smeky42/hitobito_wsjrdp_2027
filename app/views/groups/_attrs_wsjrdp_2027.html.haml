@@ -8,6 +8,9 @@
 = render_attrs(entry, :is_wsjrdp)
 - if entry.unit_code.present?
   = render_attrs(entry, :unit_code)
+- if entry.is_a?(Group::Unit)
+  = render_attrs(entry, :initial_unit_size, :expected_unit_size, :expected_ul_number, :expected_patrol_number,
+    :unit_formed_date)
 - if can?(:log, entry)
   = render_attrs_list do
     = labeled_attr_with_help(entry, :support_cmt_mail_addresses) do

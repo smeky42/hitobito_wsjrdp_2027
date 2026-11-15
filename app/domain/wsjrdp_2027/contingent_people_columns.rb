@@ -32,7 +32,7 @@ module Wsjrdp2027
         truncate: true, sort: ->(e) { e.group_name.to_s.downcase }, default: true
       c.column key: "role", abbr: "ro", label: "Rolle", width: "6rem",
         sort: ->(e) { (e.role_difference || e.wsjrdp_role).to_s }, default: true
-      c.column key: "patrol", abbr: "pt", label: "Patrol", width: "5rem",
+      c.column key: "patrol", abbr: "pt", label: "Patrol", width: "6.5rem",
         sort: ->(e) { [e.patrol ? 0 : 1, e.group_name.to_s.downcase, e.patrol.to_s] }
     end
 

@@ -14,6 +14,11 @@ module Wsjrdp2027::GroupsController
       attrs += [
         :is_wsjrdp,
         :unit_code,
+        :initial_unit_size,
+        :expected_unit_size,
+        :expected_ul_number,
+        :expected_patrol_number,
+        :unit_formed_date,
         :support_cmt_mail_addresses,
         :support_cmt_mail_addresses_string
       ]
