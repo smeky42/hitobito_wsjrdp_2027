@@ -47,7 +47,7 @@ module Wsjrdp2027
     # (Group::PatrolsController::PATROLS), by unit name.
     PATROL_OPTIONS = Wsjrdp::Filtering::Options.values(-> {
       units = ::Group.where(type: "Group::Unit", is_wsjrdp: true).order(:name).pluck(:id, :name)
-      [["none", "keine Patrol"]] + units.flat_map do |id, name|
+      [["none", "nicht gesetzt"]] + units.flat_map do |id, name|
         ::Group::PatrolsController::PATROLS.map { |letter| ["#{id}-#{letter}", "#{name} · Patrol #{letter}"] }
       end
     })

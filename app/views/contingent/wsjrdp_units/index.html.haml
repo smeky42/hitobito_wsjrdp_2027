@@ -1,0 +1,82 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Kontingent > Units: one row per unit (a WSJRDP group with people whose
+-#  contract is in force), with those people -- confirmed and open -- and the
+-#  movements since the unit was formed with their balance
+-#  (Wsjrdp2027::ContingentUnits::Movement): as columns verlassen, getauscht
+-#  and nachgerückt, or by day in one column (the default, fitting a phone
+-#  better) -- the view switch of the toolbar. A movement is one line, an icon (the legend above the table) and
+-#  its day; its words are in the line's tooltip. Above it the Schnellauswahl
+-#  alone, no filter pane. A row opens the unit's people (#show, lazy into the
+-#  row's frame); the unit's name links to its group page.
+= render "contingent/person_chip_styles"
+= render "fin/person_status_styles"
+
+:css
+  /* A movement: icon and day in one width each, so the lines align. Where the
+     column is too narrow, a line wraps between its parts -- never inside
+     one, and never into the next column. */
+  .co-move-line { line-height: 1.6; }
+  .co-move { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: .3rem; }
+  .co-move > * { white-space: nowrap; }
+  .co-move-day { display: inline-block; width: 3.9rem; color: #6c757d; font-size: .9em;
+    font-variant-numeric: tabular-nums; text-align: right; }
+  .co-move-legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin-top: .15rem; }
+  .co-move-legend-item { white-space: nowrap; }
+  /* The helpdesk ticket, small and muted after the person -- still a link,
+     underlined so it reads as one. */
+  .co-unit-ticket { font-size: .9em; color: #6c757d; }
+  .co-unit-ticket a { color: #6c757d; text-decoration: underline dotted; text-underline-offset: 2px; }
+  .co-unit-ticket a:hover { color: var(--bs-link-hover-color, #0a58ca); text-decoration-style: solid; }
+  /* The balance: the sum, those in Abmeldung below it. */
+  .co-balance { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* The sum of all units is long: it may wrap rather than widen the table. */
+  .exp-footer-row .co-balance { white-space: normal; }
+  .co-balance-minus { color: #b02a37; }
+  .co-balance-plus { color: #146c43; }
+  .co-balance-bad { color: #b02a37; font-weight: 600; }
+  .co-balance-pending { display: block; font-size: .85em; color: #e8590c; }
+  /* The header "Patrol nicht gesetzt" wraps where its column is narrow
+     (it widens to one line where there is room). */
+  .contingent-units th.uncol-without_patrol,
+  .contingent-units th.uncol-without_patrol .exp-sort { white-space: normal !important; }
+  /* Patrol nicht gesetzt: nobody in a patrol yet, or only some. */
+  .co-patrol-unset { color: #b02a37; font-weight: 600; }
+  .co-patrol-partly { color: #e8590c; font-weight: 600; }
+  /* The budget: the sum, with those in Abmeldung small and grey below it. */
+  .co-budget { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .co-budget-pending { display: block; white-space: nowrap; font-size: .85em; color: #6c757d;
+    font-variant-numeric: tabular-nums; }
+  /* The unit's column is narrow: less room at its left, "Σ" with less at
+     both sides. */
+  .contingent-units .bookings-table > * > tr > .uncol-name { padding-left: .375rem; }
+  .contingent-units .exp-footer-row td.uncol-name { padding-left: .375rem; padding-right: .25rem; }
+  /* The segments of the Schnellauswahl wrap rather than push the page wider
+     -- beside the side navigation a tablet is narrow too; a phone gives
+     them less padding. */
+  .contingent-units .flt-segment { flex-wrap: wrap; }
+  .contingent-units .flt-segment > .btn { flex-grow: 0; }
+  @media (max-width: 575.98px) {
+    .contingent-units .flt-segment > .btn { padding-left: .35rem; padding-right: .35rem; }
+  }
+
+#main.row
+  %div.contingent-units
+    = wsjrdp_expandable_table do |t|
+      - t.rows unit_rows, id: "un"
+      - t.columns contingent_units_table_columns(unit_rows.state.view), menu: true
+      -# Room to spare: the movement lines widen to their targets, then the
+      -# gaps between the four blocks grow (Wsjrdp2027::ContingentUnitsColumns)
+      -# -- far, so a unit's people opened in a row have room too.
+      - t.gaps max: "12rem", except: Wsjrdp2027::ContingentUnitsColumns::GAPLESS
+      - t.row_key { |unit| unit.id }
+      - t.detail_src { |unit| contingent_unit_path(unit.id) }
+      - t.filter panel: false
+      - t.view label: "Bewegungen", options: [["history", "Verlauf"], ["columns", "Spalten"]]
+      - t.footer { |col| contingent_units_table_footer(col, unit_rows.page) }
+      - t.summary safe_join([unit_rows_summary, contingent_movement_legend])

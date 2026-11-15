@@ -1,0 +1,23 @@
+# frozen_string_literal: true
+
+#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+#
+#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+#  Affero General Public License version 3 or later. See the COPYING
+#  file at the top-level directory or at
+#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+module Sheet
+  class Contingent::WsjrdpUnit < Base
+    tab "contingent.tabs.overview", :contingent_contingent_path
+    tab "contingent.tabs.cmt", :contingent_cmt_path
+    tab "contingent.tabs.ist", :contingent_ist_path,
+      if: ->(view, *) { view.contingent_people_visible? }
+    tab "contingent.tabs.units", :contingent_units_path,
+      if: ->(view, *) { view.contingent_people_visible? }
+
+    def title
+      "German Contingent - Units"
+    end
+  end
+end

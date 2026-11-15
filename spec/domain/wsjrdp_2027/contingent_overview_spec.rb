@@ -76,7 +76,7 @@ describe Wsjrdp2027::ContingentOverview do
 
     it "offers no patrol and every patrol of every WSJRDP unit" do
       pairs = schema::PATROL_OPTIONS.pairs.to_h
-      expect(pairs["none"]).to eq("keine Patrol")
+      expect(pairs["none"]).to eq("nicht gesetzt")
       expect(pairs["#{unit.id}-D"]).to eq("Unit A · Patrol D")
     end
   end

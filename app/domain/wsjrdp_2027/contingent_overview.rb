@@ -107,7 +107,8 @@ module Wsjrdp2027
 
     # One person as the overview sees them -- a row of the people list, too.
     Entry = Struct.new(:id, :name, :status, :contract_status, :contract_confirmed_at, :contract_ended_at, :state,
-      :reason, :wsjrdp, :waitlist, :wsjrdp_role, :wsj_role, :role_difference, :group_name, :patrol, :contract_column,
+      :reason, :wsjrdp, :waitlist, :wsjrdp_role, :wsj_role, :role_difference, :group_id, :group_name, :patrol,
+      :contract_column, :deregistration_issue, :deregistration_requested_date, :late_confirmation_issue,
       keyword_init: true) do
       # The NEEDS key of the state, "none" when nothing needs doing.
       def need = NEEDS.key?(state) ? state : "none"
@@ -185,9 +186,12 @@ module Wsjrdp2027
             reason: (state == "inconsistent") ? self.class.inconsistency(person.status, person.contract_status) : STATES[state],
             wsjrdp: wsjrdp, waitlist: !wsjrdp && ::Group.waiting_list_name?(group_name),
             wsjrdp_role: person.wsjrdp_role, wsj_role: person.effective_wsj_role,
-            role_difference: person.role_difference, group_name: group_name,
+            role_difference: person.role_difference, group_id: person.primary_group_id, group_name: group_name,
             patrol: self.class.patrol_value(person.primary_group_id, unit, person.wsjrdp_role, person.patrol),
-            contract_column: self.class.contract_column(state, wsjrdp)
+            contract_column: self.class.contract_column(state, wsjrdp),
+            deregistration_issue: person.deregistration_issue.presence,
+            deregistration_requested_date: person.deregistration_requested_date,
+            late_confirmation_issue: person.late_confirmation_issue.presence
           )
         end
       end
