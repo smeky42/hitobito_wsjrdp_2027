@@ -39,6 +39,14 @@ module Wsjrdp2027::PersonAbility
         .may(:log, :history, :security, :update_email, :update_settings, :create, :index_tags,
           :manage_tags, :primary_group).nobody
       permission(:group_full).may(:show_full).in_same_group
+      # Family links (FamilyMember): whoever has the privileged view of the
+      # person -- the core's :log rules, with the same permissions and
+      # conditions (keep them in step) -- and the unit leaders of the
+      # person's unit (:group_full in the same group).
+      permission(:group_and_below_full).may(:update_family).non_restricted_in_same_group_or_below
+      permission(:layer_full).may(:update_family).non_restricted_in_same_layer
+      permission(:layer_and_below_full).may(:update_family).non_restricted_in_same_layer_or_visible_below
+      permission(:group_full).may(:update_family).in_same_group
       # permission(:group_full)
       #   .may(:update, :primary_group)
       #   .non_restricted_in_same_group

@@ -76,6 +76,8 @@ module HitobitoWsjrdp2027
       ActsAsTaggableOn::Tagging.include Wsjrdp2027::ActsAsTaggableOn::Tagging
       ServiceToken.prepend Wsjrdp2027::ServiceToken
       Authenticatable::Tokens.prepend Wsjrdp2027::Authenticatable::Tokens
+      FamilyMember.prepend Wsjrdp2027::FamilyMember
+      HouseholdAsideMemberComponent.prepend Wsjrdp2027::HouseholdAsideMemberComponent
 
       # Concerns
       Contactable.prepend Wsjrdp2027::Concerns::Contactable

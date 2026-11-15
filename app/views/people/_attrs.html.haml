@@ -5,6 +5,17 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+-# The contact data (address, mails, phones): 10px between their paragraphs,
+-# the last one included, so the household that follows sits as far below the
+-# phones as the mails below the address (its caption a block of its own, so
+-# its smaller line does not sink it).
+:css
+  .contactable address p { margin-bottom: 10px; }
+  .contactable .wsjrdp-household-attrs { margin-top: 0; }
+  .contactable .wsjrdp-household-attrs + .wsjrdp-household-attrs,
+  .contactable .social + .wsjrdp-household-attrs { margin-top: 10px; }
+  .contactable .wsjrdp-household-attrs .wsjrdp-household-edit { font-size: .85em; }
+
 = render 'person/jamboree_data/missing_confirmations', person: entry, link_path: jamboree_data_page_path(@group, entry)
 #main.row
   %article.col-lg
@@ -27,8 +38,6 @@
 
         - FeatureGate.if(:self_registration_reason) do
           = render_present_attrs(entry, :self_registration_reason_text)
-
-        -# = render 'people_relations'
 
       - if entry.additional_information?
         %h2= Person.human_attribute_name(:additional_information)
@@ -60,6 +69,7 @@
       = render 'qualifications', show_buttons: true
 
       = render(HouseholdAsideComponent.new(person: entry, group: @group))
+      = render 'family_attrs', person: entry
 
       = render_extensions :show_right
 

@@ -94,9 +94,17 @@ module Wsjrdp2027::StandardFormBuilder
     end
   end
 
-  def labeled_inline_fields_for(
+  # show_label: false leaves out the label column, for a page that heads the
+  # rows itself (person/family_members/edit).
+  # remove_icon: the icon of the remove link (default :times).
+  # remove_confirm: a proc giving, for a row's record, the question to confirm
+  #   before the row is removed (data-wsjrdp-confirm, see
+  #   people/_family_members_fields); nil asks nothing.
+  # add_title: the text of the add link (default "Eintrag hinzufügen").
+  def labeled_inline_fields_for( # rubocop:disable Metrics/ParameterLists
     assoc, partial = nil, record = nil, required = false,
-    show_element_if: nil, allow_destroy_if: nil,
+    show_element_if: nil, allow_destroy_if: nil, show_label: true,
+    remove_icon: :times, remove_confirm: nil, add_title: nil,
     &block
   ) # rubocop:disable Metrics/MethodLength
     html_options = {class: "labeled controls mb-3 mt-1 d-flex " \
@@ -105,17 +113,19 @@ module Wsjrdp2027::StandardFormBuilder
     label_classes = "control-label col-form-label col-md-3 col-xl-2 pb-1 text-md-end"
     label_classes += " required" if required
     content_tag(:div, class: css_classes.select { |_css, show| show }.keys.join(" ")) do
-      label(assoc, class: label_classes) + content_tag(:div, class: "labeled col-md") do
-        nested_fields_for(assoc, partial, record) do |fields|
+      (show_label ? label(assoc, class: label_classes) : "".html_safe) + content_tag(:div, class: "labeled col-md") do
+        nested_fields_for(assoc, partial, record, add_title && {link_to_add_title: add_title}) do |fields|
           if show_element_if.nil? || show_element_if.call(fields&.object)
             content = block ? capture(fields, &block) : render(partial, f: fields)
             content = content_tag(:div, content, class: "col-md-10")
             content << content_tag(
               :div,
               if allow_destroy_if.nil? || allow_destroy_if.call(fields&.object)
-                fields.link_to_remove(icon(:times))
+                question = remove_confirm&.call(fields&.object)
+                fields.link_to_remove(icon(remove_icon), data: {wsjrdp_confirm: question}.compact)
               else
-                content_tag(:span, icon(:times), style: "opacity: 0.1; margin: 5px;")
+                content_tag(:span, icon(remove_icon), style: "opacity: 0.1; margin: 5px;",
+                  class: "remove_nested_fields_disabled", title: "Nicht entfernbar")
               end,
               class: "col-md-2"
             )

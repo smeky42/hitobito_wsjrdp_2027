@@ -26,6 +26,8 @@ PERSON_ACTIONS = [
   :admin_finance,
   :destroy_finance,
 
+  :update_family,
+
   :history,
   :log,
 

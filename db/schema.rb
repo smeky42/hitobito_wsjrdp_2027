@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_07_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_14_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -590,6 +590,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_07_000100) do
     t.string "kind", null: false
     t.bigint "other_id", null: false
     t.string "family_key", null: false
+    t.string "label", comment: "Own name of the relation (what other is for person); empty: the kind's label"
+    t.jsonb "additional_info", default: {}, null: false
     t.index ["family_key"], name: "index_family_members_on_family_key"
     t.index ["other_id"], name: "index_family_members_on_other_id"
     t.index ["person_id", "other_id"], name: "index_family_members_on_person_id_and_other_id", unique: true

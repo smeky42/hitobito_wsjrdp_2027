@@ -147,6 +147,43 @@ de:
           unknown_column: ist keine Upload-Spalte der Personen.
 
     attributes:
+      # The core's duplicate list (PersonDuplicateTableBuilder) looks up the
+      # person's label with the duplicate's as an eagerly evaluated default, so
+      # every column needs both keys or development raises.
+      person_duplicate:
+        company_name: Firmenname
+        town: Ort
+      # What the other person is for this one (Wsjrdp2027::FamilyMember);
+      # sibling comes from the core.
+      family_member:
+        label: Eigene Bezeichnung
+        additional_info: Zusatzdaten
+        kinds:
+          parent: Elternteil
+          child: Kind
+          spouse: Ehepartner*in
+          partner: Partner*in
+          relative: Angehörige*r
+        # The kind for another person of that gender (FamilyMember#relation_label).
+        gendered_kinds:
+          sibling:
+            w: Schwester
+            m: Bruder
+          parent:
+            w: Mutter
+            m: Vater
+          child:
+            w: Tochter
+            m: Sohn
+          spouse:
+            w: Ehefrau
+            m: Ehemann
+          partner:
+            w: Partnerin
+            m: Partner
+          relative:
+            w: Angehörige
+            m: Angehöriger
       wsjrdp_document:
         filename: Dateiname
       wsjrdp_document_kind:
@@ -2475,6 +2512,12 @@ de:
 
   version:
     association_change:
+      # A family link, named by the other person -- role, linked name and
+      # relation (Wsjrdp2027::PaperTrail::VersionDecorator#family_member_change).
+      family_member:
+        create: "Familienmitglied verknüpft: %{label}."
+        update: "Familien-Verknüpfung mit %{label} geändert: %{changeset}"
+        destroy: "Familien-Verknüpfung entfernt: %{label}."
       # A debit is named by its id (Wsjrdp2027::PaperTrail::VersionDecorator).
       wsjrdp_direct_debit_pre_notification:
         create: "%{model} wurde hinzugefügt."

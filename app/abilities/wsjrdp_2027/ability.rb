@@ -25,6 +25,7 @@ module Wsjrdp2027::Ability
     tier = Wsjrdp2027::FinanceCap.resolve(user, max_finance_permission)
     Wsjrdp2027::FinanceCap.with(tier) { super(user) }
     define_document_abilities if user && !user.root?
+    forbid_person_merges
   end
 
   # The core keys caches on this; an ability at another tier must not share
@@ -35,6 +36,16 @@ module Wsjrdp2027::Ability
   end
 
   private
+
+  # Nobody merges people -- root neither, whose `can :manage, :all` a rule of
+  # the AbilityDsl could not take back. The core's merge (People::Merger)
+  # deletes the source person and carries over neither the wagon's records
+  # (bookings, payment notices, contracts) nor, in this core version, notes,
+  # tags or siblings. Duplicates are told apart instead; ignoring one in the
+  # core's list stays allowed.
+  def forbid_person_merges
+    cannot(:merge, PersonDuplicate)
+  end
 
   # A document's own lists say who may read (:show), write (:create,
   # :update) and hide (:destroy) it (Wsjrdp2027::DocumentAccess); the

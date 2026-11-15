@@ -1,0 +1,40 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The family links of a person form (one row each: person/family/_fields),
+-#  shared by the person's form (contactable/_fields) and its own page
+-#  (person/family_members/edit). Shown only to whoever may edit them
+-#  (:update_family -- the privileged view and the unit leaders).
+-#
+-#  Removing a saved link asks first, naming the relation both ways
+-#  (Wsjrdp2027::PeopleHelper#wsjrdp_family_remove_question): the remove link
+-#  carries the question in data-wsjrdp-confirm, and a listener in the capture
+-#  phase asks before nested_form's own click handler hides the row.
+-#
+-#  Locals: f (the person's form builder)
+-#          show_label: the "Familienmitglieder" label column, as in the person
+-#            form (default); false where the page heads the rows itself
+-#          remove_icon: the remove link's icon (default :times)
+- if FeatureGate.enabled?('people.family_members') && can?(:update_family, f.object)
+  = field_set_tag do
+    = f.labeled_inline_fields_for :family_members, 'person/family/fields',
+      show_label: local_assigns.fetch(:show_label, true),
+      remove_icon: local_assigns.fetch(:remove_icon, :times),
+      remove_confirm: ->(link) { wsjrdp_family_remove_question(link) },
+      allow_destroy_if: ->(link) { wsjrdp_family_link_editable?(link) },
+      add_title: 'Familienmitglied hinzufügen'
+  :javascript
+    if (!window.wsjrdpConfirmRemoveNested) {
+      window.wsjrdpConfirmRemoveNested = true;
+      document.addEventListener('click', function(event) {
+        var link = event.target.closest('a.remove_nested_fields[data-wsjrdp-confirm]');
+        if (link && !window.confirm(link.dataset.wsjrdpConfirm)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+    }

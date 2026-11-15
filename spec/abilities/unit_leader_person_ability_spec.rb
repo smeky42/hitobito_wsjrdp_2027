@@ -9,14 +9,14 @@ describe PersonAbility do
     context "in the same unit" do
       context "on youth participant" do
         it_behaves_like "only allow person actions", {allowed: [:show, :show_details, :show_full,
-          :update, :send_password_instructions]} do
+          :update, :send_password_instructions, :update_family]} do
           let(:other) { people(:yp_a_1) }
         end
       end
 
       context "on other unit leader" do
         it_behaves_like "only allow person actions", {allowed: [:show, :show_details, :show_full,
-          :update, :send_password_instructions]} do
+          :update, :send_password_instructions, :update_family]} do
           let(:other) { people(:ul_a_2) }
         end
       end
