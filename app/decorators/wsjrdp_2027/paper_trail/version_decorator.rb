@@ -33,6 +33,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # link's names the other person as the person page does.
   def association_change
     return family_member_change if item_class <= ::FamilyMember
+    return deregistration_change if item_class <= ::WsjrdpDeregistration
     return super unless item_class <= ::WsjrdpDirectDebitPreNotification
 
     text = I18n.t("version.association_change.wsjrdp_direct_debit_pre_notification.#{model.event}",
@@ -62,6 +63,24 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
       h.link_to_if(can?(:show, other), other.short_full_name_with_nickname, h.person_path(other)),
       " (#{link.relation_label})"
     ])
+  end
+
+  # A change of a deregistration row (WsjrdpDeregistration), named by its
+  # number, one line per changed value in the words of the Abmeldung page:
+  # the columns by the person's accessor names, the keys of form_snapshot and
+  # of the receipt as Wsjrdp2027::DeregistrationWording says them.
+  def deregistration_change
+    number = (reifyed_item.try(:number) || model.item&.try(:number)).to_s
+    lines = deregistration_change_lines
+    text = I18n.t("version.association_change.wsjrdp_deregistration.#{model.event}", number: number)
+    h.safe_join([text, *lines], h.tag.br)
+  end
+
+  # The lines of Wsjrdp2027::DeregistrationWording.row_change_lines, plain
+  # text escaped for the log.
+  def deregistration_change_lines
+    Wsjrdp2027::DeregistrationWording.row_change_lines(model.changeset, eur: ->(value) { h.format_eur_de(value) })
+      .map { |line| ERB::Util.html_escape(line) }
   end
 
   def debit_link
@@ -163,7 +182,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # tokens (doc/roles.md -> "Finance on a group's page"),
   # additional_info["deregistration_record"] on a person the kind of a
   # deregistration and what its documents carry
-  # (Wsjrdp2027::DeregistrationRecord), and
+  # (an older entry, from before the deregistration had its table), and
   # additional_info["cost_center_numbers"] on a group an Array of cost-center
   # numbers. Each is rendered per element instead. The person's active
   # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
@@ -177,7 +196,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     when "wsjrdp_raw_installments_eur" then raw_installments_eur_change(attr, from, to)
     when "wsjrdp_installments_payment_method" then payment_method_change(attr, from, to)
     when "finance_group_ids" then finance_group_ids_change(from, to)
-    when Wsjrdp2027::DeregistrationRecord::KEY then deregistration_record_change(from, to)
+    when LEGACY_DEREGISTRATION_RECORD_KEY then deregistration_record_change(from, to)
     when "cost_center_numbers" then cost_center_numbers_change(from, to)
     else
       i18n_enum_attr?(attr) ? i18n_enum_change(attr, from, to) : super
@@ -287,16 +306,22 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
       "keine Raten"
   end
 
-  # One line per changed value of the record, in the order the record lists
-  # them and in the words the Abmeldung page's flash uses -- the record itself
-  # says them, so the two cannot drift apart. A value the record does not know
-  # has no line.
+  # Until migration 20261115000100 a person's deregistration lived in one key
+  # of additional_info; the log's older entries still carry its changes. Its
+  # sub-keys are the values Wsjrdp2027::DeregistrationWording words (KEYS) --
+  # and form_mailings, which was logged on its own and has no line here.
+  LEGACY_DEREGISTRATION_RECORD_KEY = "deregistration_record"
+
+  # One line per changed value of an older entry's sub-object, in the order
+  # the edit form asked for them and in the words the Abmeldung page's flash
+  # uses. A value it does not word has no line.
   def deregistration_record_change(from, to)
+    wording = Wsjrdp2027::DeregistrationWording
     before = deregistration_record_hash(from)
     after = deregistration_record_hash(to)
-    lines = Wsjrdp2027::DeregistrationRecord::LOGGED_ATTRS
-      .reject { |key| Wsjrdp2027::DeregistrationRecord.same?(key, before[key], after[key]) }
-      .map { |key| Wsjrdp2027::DeregistrationRecord.describe_change(key, before[key], after[key]) }
+    lines = wording::KEYS
+      .reject { |key| wording.same?(key, before[key], after[key]) }
+      .map { |key| wording.describe_change(key, before[key], after[key]) }
 
     h.safe_join(lines, h.tag.br)
   end

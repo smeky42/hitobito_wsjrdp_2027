@@ -101,6 +101,12 @@ module DocumentManagement::DocumentsHelper
     safe_join(lines).presence
   end
 
+  # One key on its own, monospace as the keys are shown everywhere; nil for
+  # none. The detail shows the key and its number in rows of their own.
+  def document_key_part(key)
+    key.presence && content_tag(:span, key, class: "font-monospace")
+  end
+
   # The key with its number, as the file name writes it.
   def document_key_label(document)
     content_tag(:span, document_part(document.key, document.key_number), class: "font-monospace")
@@ -202,13 +208,22 @@ module DocumentManagement::DocumentsHelper
     t("document_management.origins.#{origin}", default: origin.to_s)
   end
 
-  # How the preview shows a document: :missing without a file, :image or
-  # :frame for what the file route sends inline, :none for anything else.
+  # How the preview shows a document: :missing without a file, :text for a
+  # mail shown as raw text (?raw=1), :image or :frame for what the file route
+  # sends inline, :none for anything else.
   def document_preview_kind(document)
     return :missing if document.file_missing? || document.relative_storage_file_path.blank?
+    return :text if Wsjrdp::DocumentsController::RAW_TEXT_TYPES.include?(document.content_type)
     return :none unless Wsjrdp::DocumentsController::INLINE_TYPES.include?(document.content_type)
 
     document.content_type.start_with?("image/") ? :image : :frame
+  end
+
+  # Where a document opens to be looked at: a mail as raw text, anything else
+  # as it is.
+  def document_view_path(document)
+    kind = document_preview_kind(document)
+    (kind == :text) ? wsjrdp_document_path(document, raw: 1) : wsjrdp_document_path(document)
   end
 
   # The two versions the comparison starts with, the ones the request names

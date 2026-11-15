@@ -23,6 +23,11 @@ describe Person::DeregistrationController do
 
   let(:admin) { people(:admin) }
   let(:yp) { people(:yp_a_1) }
+  # An upload root of its own: "PDF erzeugen" keeps the form as a document.
+  let(:upload_root) { Pathname(Dir.mktmpdir("wsjrdp-deregistration")) }
+
+  before { allow(Wsjrdp2027::DocumentStore).to receive(:root).and_return(upload_root) }
+  after { FileUtils.rm_rf(upload_root) }
 
   def sub_nav_of(doc, href)
     doc.css("ul.nav-sub").find do |ul|
@@ -356,6 +361,106 @@ describe Person::DeregistrationController do
     describe "the Abmelde-Formular section" do
       before { yp.update!(deregistration_effective_date: Date.new(2026, 10, 31)) }
 
+      # The row the page is on, and what happens once its form went out.
+      describe "the deregistration row" do
+        def body = Nokogiri::HTML(response.body)
+
+        def sent!
+          yp.update!(deregistration_issue: "HELP-1", deregistration_form_created_date: Date.new(2026, 9, 27))
+          yp.reload.deregistration.update!(form_sent_at: Time.zone.local(2026, 9, 28, 10), status: "form_sent")
+        end
+
+        it "names its number and step" do
+          yp.update!(deregistration_issue: "HELP-1")
+
+          get :show, params: {person_id: yp.id}
+
+          expect(body.css("#dereg-row").text.squish).to eq("Abmeldung Nr. 1 · Erfasst")
+          expect(body.css("#dereg-fixed")).to be_empty
+          # The section's before made the row, this save changed it; newest first.
+          expect(body.css("#dereg-history .dereg-history-line").map { |li| li.text.squish })
+            .to match([a_string_ending_with("Nr. 1 · Angaben geändert"), a_string_ending_with("Nr. 1 · Erfasst")])
+          expect(body.css("#dereg-history .dereg-history-details").first.text.squish)
+            .to eq("Ticket Abmeldung: – → HELP-1")
+        end
+
+        # The mail and the step it moves the row on to are one line, and a
+        # change of the kept form says which document.
+        it "tells a sent form once, and names a kept form's document" do
+          yp.update!(deregistration_issue: "HELP-1")
+          post :create_form, params: {person_id: yp.id}
+          row = yp.reload.deregistration
+          WsjrdpDeregistrationEvent.create!(deregistration: row, event: "notify", action: "form_sent",
+            occurred_at: Time.current, additional_info: {"email_to" => ["a@example.org"]})
+          row.update!(form_sent_at: Time.current, status: "form_sent")
+
+          get :show, params: {person_id: yp.id}
+
+          lines = body.css("#dereg-history .dereg-history-line").map { |li| li.text.squish }
+          expect(lines.grep(/verschickt/)).to match([a_string_including("Formular per E-Mail verschickt an a@example.org")])
+          expect(body.css("#dereg-history .dereg-history-details li").map(&:text))
+            .to include("Gespeichertes Abmelde-Formular: – → Dokument #{row.sent_form_document_id}")
+        end
+
+        # Only the step written with the mail goes into the mail's line.
+        it "keeps a step to form_sent reached without a mail right before it" do
+          yp.update!(deregistration_issue: "HELP-1")
+          post :create_form, params: {person_id: yp.id}
+          row = yp.reload.deregistration
+          WsjrdpDeregistrationEvent.create!(deregistration: row, event: "notify", action: "form_sent",
+            occurred_at: Time.current, additional_info: {"email_to" => ["a@example.org"]})
+          row.update!(comment: "von Hand")
+          row.update!(form_sent_at: Time.current, status: "form_sent")
+
+          get :show, params: {person_id: yp.id}
+
+          lines = body.css("#dereg-history .dereg-history-line").map { |li| li.text.squish }
+          expect(lines.grep(/Formular verschickt\b/)).to be_present
+        end
+
+        it "locks a sent form, offers a new version and no discard" do
+          sent!
+
+          get :show, params: {person_id: yp.id}
+
+          expect(body.css("#dereg-fixed").text).to include("festgeschrieben")
+          new_version = body.css("form[action='#{new_version_person_deregistration_path(yp)}']").first
+          expect(new_version["data-dereg-confirm"]).to start_with("Eine neue Fassung dieser Abmeldung anlegen?")
+          expect(body.css("a[href='#{edit_person_deregistration_path(yp)}']")).to be_empty
+          expect(body.css("form[action='#{discard_form_person_deregistration_path(yp)}']")).to be_empty
+        end
+
+        it "refuses to discard a sent form" do
+          sent!
+
+          post :discard_form, params: {person_id: yp.id}
+
+          expect(flash[:alert]).to include("festgeschrieben")
+          expect(yp.reload.deregistration_form_created_date).to eq(Date.new(2026, 9, 27))
+        end
+
+        it "makes the next version, the old one superseded" do
+          sent!
+
+          post :new_version, params: {person_id: yp.id}
+
+          expect(flash[:notice]).to eq("Neue Fassung Nr. 2 angelegt.")
+          expect(yp.reload.deregistration).to have_attributes(number: 2, status: "recorded", issue: "HELP-1",
+            form_snapshot: {})
+          get :show, params: {person_id: yp.id}
+          expect(body.css("#dereg-row").text.squish).to eq("Abmeldung Nr. 2 · Erfasst ersetzt Nr. 1")
+        end
+
+        it "makes no new version of a row that is still open for changes" do
+          yp.update!(deregistration_issue: "HELP-1")
+
+          post :new_version, params: {person_id: yp.id}
+
+          expect(flash[:alert]).to be_present
+          expect(WsjrdpDeregistration.where(person_id: yp.id).count).to eq(1)
+        end
+      end
+
       # Without an agreed compensation the page warns before the form is made,
       # and the button asks again.
       describe "without a compensation" do
@@ -390,6 +495,29 @@ describe Person::DeregistrationController do
         end
       end
 
+      # The line above the form's preview names the days that are written down,
+      # and only those.
+      describe "the facts line" do
+        def facts = document_row(Nokogiri::HTML(response.body), "form").css(".muted.small").first.text.squish
+
+        it "names the stored days, the request date after the kind" do
+          yp.update!(deregistration_requested_date: Date.new(2026, 11, 12))
+
+          get :show, params: {person_id: yp.id}
+
+          expect(facts).to include("Rücktritt erklärt am 12.11.2026 · Abmeldung zum 31.10.2026")
+        end
+
+        it "leaves out a day that is not stored" do
+          yp.update!(deregistration_requested_date: Date.new(2026, 11, 12), deregistration_effective_date: nil)
+
+          get :show, params: {person_id: yp.id}
+
+          expect(facts).to include("Rücktritt erklärt am 12.11.2026")
+          expect(facts).not_to include("Abmeldung zum")
+        end
+      end
+
       # Who the script sends the form to in Bcc, and the mails it sent.
       describe "the mail" do
         before do
@@ -399,11 +527,23 @@ describe Person::DeregistrationController do
 
         def mailing_block = Nokogiri::HTML(response.body).css("#deregistration_form_mailing").first
 
-        it "shows the Bcc with the unit it comes from" do
+        it "lists To, Cc and Bcc as mailto links in the field list, the unit muted behind the Bcc" do
+          yp.update_columns(additional_contact_email_a: "parent@example.org", additional_contact_single: true)
+
           get :show, params: {person_id: yp.id}
 
-          expect(mailing_block.text).to include("BCC bei E-Mail-Versand des Abmelde-Formulars")
-          expect(mailing_block.css("#deregistration_form_bcc").text.strip).to eq("um@example.org · aus Unit A3")
+          expect(mailing_block.css("dl.dl-horizontal")).to be_present
+          expect(mailing_block.css("dt").map { |dt| dt.text.strip })
+            .to eq(["E-Mail von (From)", "E-Mail an (To)", "E-Mail Kopie (Cc)", "E-Mail Blindkopie (Bcc)"])
+          expect(mailing_block.css("#deregistration_form_from a").pluck("href"))
+            .to eq(["mailto:unit-management@worldscoutjamboree.de"])
+          expect(mailing_block.css("#deregistration_form_reply_to")).to be_empty
+          expect(mailing_block.css("#deregistration_form_to a").pluck("href")).to eq(["mailto:#{yp.email}"])
+          expect(mailing_block.css("#deregistration_form_cc a").map(&:text)).to eq(["parent@example.org"])
+          expect(mailing_block.css("#deregistration_form_bcc a").pluck("href")).to eq(["mailto:um@example.org"])
+          source = mailing_block.css("#deregistration_form_bcc_source").first
+          expect(source.text.strip).to eq("aus Unit A3")
+          expect(source["class"]).to include("muted")
         end
 
         it "says so where no address is entered" do
@@ -411,22 +551,25 @@ describe Person::DeregistrationController do
 
           get :show, params: {person_id: yp.id}
 
-          expect(mailing_block.css("#deregistration_form_bcc").text.strip)
-            .to eq("keine Adressen hinterlegt · aus Unit A3")
+          expect(mailing_block.css("#deregistration_form_bcc").text.strip).to eq("keine Adressen hinterlegt")
+          expect(mailing_block.css("#deregistration_form_bcc_source").text.strip).to eq("aus Unit A3")
         end
 
         it "lists the mails, marking one that carried a discarded form" do
           mail = {"email_sent_at" => "2026-11-15T14:03:12+01:00", "email_to" => ["yp@example.org"],
                   "email_cc" => ["parent@example.org"], "email_bcc" => %w[a@x b@x c@x]}
-          yp.update!(deregistration_form_created_date: Date.new(2026, 11, 20),
-            deregistration_form_mailings: [mail.merge("form_created_date" => "2026-11-15"),
-              mail.merge("form_created_date" => "2026-11-20", "email_bcc" => %w[a@x])])
+          yp.update!(deregistration_form_created_date: Date.new(2026, 11, 20))
+          [mail.merge("form_created_date" => "2026-11-15"),
+            mail.merge("form_created_date" => "2026-11-20", "email_bcc" => %w[a@x])].each do |info|
+            WsjrdpDeregistrationEvent.create!(deregistration: yp.reload.deregistration, event: "notify",
+              action: "form_sent", occurred_at: Time.zone.iso8601(info["email_sent_at"]), additional_info: info)
+          end
 
           get :show, params: {person_id: yp.id}
 
           expect(mailing_block.css(".deregistration-form-mailing").map { |line| line.text.strip }).to eq([
-            "Verschickt am 15.11.2026 an yp@example.org, parent@example.org (Bcc: 3 Adressen) – zu einem verworfenen Formular",
-            "Verschickt am 15.11.2026 an yp@example.org, parent@example.org (Bcc: 1 Adresse)"
+            "Verschickt am 15.11.2026 – zu einem verworfenen Formular",
+            "Verschickt am 15.11.2026"
           ])
         end
       end
@@ -468,6 +611,100 @@ describe Person::DeregistrationController do
           travel_to(Time.zone.local(2026, 10, 5, 12)) { get :form, params: {person_id: yp.id} }
           expect(response.body).to start_with("%PDF")
           expect(yp.reload.deregistration_form_created_date).to eq(Date.new(2026, 9, 27))
+        end
+
+        it "keeps the PDF and its picture as documents with PDF erzeugen, and answers them" do
+          post :create_form, params: {person_id: yp.id}
+
+          document = yp.reload.deregistration.sent_form_document
+          expect(document).to have_attributes(key: "deregistration", secondary_key: "form", origin: "ui",
+            author: admin, content_type: "application/pdf")
+          expect(document.derivatives.pluck(:derivation_key)).to eq(["thumbnail"])
+
+          get :form, params: {person_id: yp.id}
+          expect(response.body.b).to eq(File.binread(Wsjrdp2027::DocumentStore.path_for(document)))
+          get :form, params: {person_id: yp.id}, format: :png
+          expect(response.body.b).to eq(File.binread(Wsjrdp2027::DocumentStore.path_for(document.derivatives.sole)))
+        end
+
+        # The form prints live data: a payment booked since makes the kept
+        # PDF stale, and the page draws the form from the data instead. A
+        # save keeps nothing; the next prepare_form keeps a new version.
+        it "answers the form drawn from the data once the kept PDF is stale, and keeps nothing on a save" do
+          post :create_form, params: {person_id: yp.id}
+          kept = yp.reload.deregistration.sent_form_document
+          stored = File.binread(Wsjrdp2027::DocumentStore.path_for(kept))
+
+          expect { patch :update, params: {person_id: yp.id, person: {deregistration_issue: "HELP-77"}} }
+            .not_to change(WsjrdpDocument, :count)
+          get :form, params: {person_id: yp.id}
+          expect(response.body.b).to eq(stored)
+
+          expect(Wsjrdp2027::DeregistrationFormDocument.new(yp.reload, author: nil).fresh).to eq(kept)
+
+          booked_entry(amount_cents: 100_00)
+          expect(Wsjrdp2027::DeregistrationFormDocument.new(yp.reload, author: nil).fresh).to be_nil
+          get :form, params: {person_id: yp.id}
+          expect(response.body.b).to start_with("%PDF")
+          expect(response.body.b).not_to eq(stored)
+        end
+
+        it "asks to try again while the documents are busy" do
+          allow(Wsjrdp::LockedChange).to receive(:run).and_raise(Wsjrdp::LockedChange::Busy, "busy")
+
+          post :create_form, params: {person_id: yp.id}
+
+          expect(response).to redirect_to(person_deregistration_path(yp))
+          expect(flash[:alert]).to include("noch einmal")
+        end
+
+        describe "the documents around the form" do
+          def documents = Nokogiri::HTML(response.body).css("#deregistration_form_documents .deregistration-form-document")
+
+          def eml!(number)
+            row = yp.reload.deregistration
+            Wsjrdp2027::DocumentStore.store!(StringIO.new("Message-ID: <#{number}@x>\r\n\r\nHallo\r\n"),
+              {subject: yp, key: "deregistration", key_number: row.number, key_ref: row,
+               secondary_key: "form_mail", secondary_key_number: number, filename: "Abmeldung #{number}.eml",
+               author: admin}, upload: false)
+          end
+
+          it "lists the kept PDF and the mails, each linked to its page, a mail with its EML to download" do
+            post :create_form, params: {person_id: yp.id}
+            mail = eml!(1)
+
+            get :show, params: {person_id: yp.id}
+
+            expect(documents.map { |line| line.css(".deregistration-form-document-kind").text[/\A[^·]+/].strip })
+              .to eq(["Abmelde-Formular", "E-Mail 1"])
+            expect(documents.last.css("a").pluck("href")).to eq([document_management_document_path(mail),
+              mail_file_person_deregistration_path(yp, document_id: mail.id)])
+          end
+
+          it "lists nothing before the form is kept" do
+            get :show, params: {person_id: yp.id}
+
+            expect(documents).to be_empty
+          end
+
+          it "downloads a mail as the EML under its file name" do
+            mail = eml!(1)
+
+            get :mail_file, params: {person_id: yp.id, document_id: mail.id}
+
+            expect(response).to have_http_status(:ok)
+            expect(response.headers["Content-Disposition"]).to start_with("attachment")
+            expect(response.headers["Content-Disposition"]).to include('filename="Abmeldung 1.eml"')
+            expect(response.body).to include("Message-ID: <1@x>")
+          end
+
+          it "downloads no other document" do
+            post :create_form, params: {person_id: yp.id}
+
+            get :mail_file, params: {person_id: yp.id, document_id: yp.reload.deregistration.sent_form_document_id}
+
+            expect(response).to have_http_status(:not_found)
+          end
         end
 
         it "shows the made form with Formular verwerfen last in the row" do
@@ -1125,6 +1362,17 @@ describe Person::DeregistrationController do
         expect(actions[2]["href"]).to eq(person_deregistration_path(yp))
       end
 
+      # The row stands above the fields and stays in sight while the form scrolls.
+      it "puts the buttons above the fields, sticky" do
+        get :edit, params: {person_id: yp.id}
+
+        form = Nokogiri::HTML(response.body).css("form[action='#{person_deregistration_path(yp)}']").first
+        bar = form.css(".dereg-form-actions").first
+        expect(bar["class"]).to include("dereg-form-actions-sticky")
+        expect(form.css(".dereg-form-actions, fieldset").first).to eq(bar)
+        expect(response.body).to include(".dereg-form-actions-sticky { position: sticky;")
+      end
+
       # Status and Finanzstatus have pages of their own; this form leaves both
       # alone, whatever a request sends.
       it "offers no field for the status or the finance status and ignores both" do
@@ -1313,15 +1561,14 @@ describe Person::DeregistrationController do
         expect(yp.reload.additional_info).not_to have_key("deregistration_record")
       end
 
-      # A default that an older save stored reads like its absence, so shedding
-      # it is no change either.
-      it "says nothing changed when a stored default is shed" do
-        yp.update!(additional_info: yp.additional_info.merge("deregistration_record" => {"kind" => "withdrawal"}))
+      # The default kind sent again on a row that holds it is no change.
+      it "says nothing changed when the kind is sent as it stands" do
+        yp.update!(deregistration_issue: "HELP-1")
 
         put :update, params: {person_id: yp.id, person: {deregistration_kind: "withdrawal"}}
 
         expect(flash[:notice]).to eq("Angaben zur Abmeldung wurden nicht verändert")
-        expect(yp.reload.additional_info).not_to have_key("deregistration_record")
+        expect(yp.reload.deregistration.kind).to eq("withdrawal")
       end
 
       it "stores an explicit off for both flags and names them in the flash" do
@@ -1330,9 +1577,9 @@ describe Person::DeregistrationController do
                                        deregistration_form_show_contractual_compensation: "0",
                                        deregistration_refund_receipt_show_default_explanation: "0"}}
 
-        record = yp.reload.additional_info["deregistration_record"]
-        expect(record["form_show_contractual_compensation"]).to be(false)
-        expect(record["refund_receipt_show_default_explanation"]).to be(false)
+        row = yp.reload.deregistration
+        expect(row.show_contractual_compensation).to be(false)
+        expect(row.receipt["show_default_explanation"]).to be(false)
         expect(yp.deregistration_refund_receipt_text).to eq("Hallo Team")
         expect(flash[:notice]).to include(
           "Entschädigung nach T&R im Abmelde-Formular: anzeigen → ausblenden",
@@ -1375,8 +1622,8 @@ describe Person::DeregistrationController do
 
         put :update, params: {person_id: yp.id, person: {deregistration_issue: "Ticket 1"}}
 
-        expect(yp.reload.additional_info["deregistration_record"])
-          .to eq("refund_receipt_show_default_explanation" => false)
+        expect(yp.reload.deregistration.receipt).to eq("show_default_explanation" => false)
+        expect(yp.deregistration.issue).to eq("Ticket 1")
       end
 
       # The flash partial renders an array as one line each, so the notice names
@@ -1457,20 +1704,36 @@ describe Person::DeregistrationController do
         streams.find { |s| s["action"] == action && s["target"] == target }
       end
 
-      it "answers the head, the read-only list and the flash" do
+      # Whether the form may be made follows what was saved: a day entered
+      # takes the greyed-out button away at once.
+      it "checks again whether the form may be made" do
+        get :show, params: {person_id: yp.id}
+        expect(Nokogiri::HTML(response.body).css("#deregistration_form_hint").text).to include("Weder")
+
+        put :update, params: {person_id: yp.id, person: {deregistration_effective_date: "2026-12-31"}},
+          format: :turbo_stream
+
+        form_body = stream("update", "dereg-form-body")
+        expect(form_body.css("#deregistration_form_hint")).to be_empty
+        expect(form_body.css("form[action='#{create_form_person_deregistration_path(yp)}']")).to be_present
+      end
+
+      it "answers the head, the read-only list with the history, both documents and the flash" do
         put :update, params: {person_id: yp.id, person: {deregistration_issue: "Ticket 1"}},
           format: :turbo_stream
 
         expect(response).to be_successful
         expect(response.media_type).to eq("text/vnd.turbo-stream.html")
         expect(stream_actions).to eq([["replace", "dereg-summary"],
-          ["update", "deregistration_capture"], ["update", "flash"]])
+          ["update", "deregistration_capture"], ["update", "dereg-form-body"],
+          ["update", "dereg-receipt-body"], ["update", "flash"]])
         expect(yp.reload.deregistration_issue).to eq("Ticket 1")
 
         capture = stream("update", "deregistration_capture")
         expect(capture.css("dl")).to be_present
         expect(capture.css("form")).to be_empty
         expect(capture.text).to include("Ticket 1")
+        expect(capture.css("#dereg-history")).to be_present
         expect(stream("update", "flash").text).to include("Ticket Abmeldung: – → Ticket 1")
       end
 
@@ -1482,7 +1745,8 @@ describe Person::DeregistrationController do
           format: :turbo_stream
 
         expect(stream_actions).to eq([["replace", "dereg-summary"],
-          ["update", "deregistration_capture"], ["update", "flash"]])
+          ["update", "deregistration_capture"], ["update", "dereg-form-body"],
+          ["update", "dereg-receipt-body"], ["update", "flash"]])
         capture = stream("update", "deregistration_capture")
         expect(capture.css("form")).to be_present
         expect(capture.css("input[name='person[deregistration_issue]']").first["value"])

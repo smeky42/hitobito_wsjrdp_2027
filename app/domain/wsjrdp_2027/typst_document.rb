@@ -37,9 +37,14 @@ module Wsjrdp2027
     # What a file name must not carry, on any of the systems these PDFs travel
     # through -- everything else, umlauts included, stays as it is written.
     FILE_NAME_FORBIDDEN = /[\/\\:*?"<>|\x00-\x1F]/
-    # Enough resolution for a legible picture of a page next to the document it
-    # belongs to.
-    THUMBNAIL_PPI = 48
+    # The width of a page's picture next to the document it belongs to: the
+    # page shows it 96 CSS pixels wide (.dereg-doc-thumb), and 288 pixels stay
+    # sharp up to a device pixel ratio of 3, the finest screens there are.
+    # Typst renders by resolution, so the resolution is what gives an A4 page
+    # (210 mm, 595.2756 pt) exactly that width: about 34.83 ppi, 288 x 407.
+    THUMBNAIL_WIDTH_PX = 288
+    A4_WIDTH_PT = 595.2756
+    THUMBNAIL_PPI = THUMBNAIL_WIDTH_PX * 72.0 / A4_WIDTH_PT
     # The first bytes of a PNG, as binary: the compiled page is binary too, and
     # comparing it with a UTF-8 string would raise.
     PNG_SIGNATURE = "\x89PNG".b.freeze

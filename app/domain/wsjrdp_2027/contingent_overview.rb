@@ -175,7 +175,8 @@ module Wsjrdp2027
       @entries ||= begin
         groups = ::Group.unscoped.pluck(:id, :is_wsjrdp, :name, :type)
           .to_h { |id, wsjrdp, name, type| [id, [wsjrdp, name, wsjrdp && type == "Group::Unit"]] }
-        ::Person.select(COLUMNS).where.not(primary_group_id: nil).map do |person|
+        # The deregistration rows come along: the list reads their ticket and day.
+        ::Person.select(COLUMNS).where.not(primary_group_id: nil).preload(:wsjrdp_deregistrations).map do |person|
           wsjrdp, group_name, unit = groups.fetch(person.primary_group_id, [false, nil, false])
           state = self.class.state(person.status, person.contract_status)
           Entry.new(

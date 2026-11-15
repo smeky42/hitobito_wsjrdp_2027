@@ -46,7 +46,7 @@ describe Wsjrdp2027::DeregistrationSnapshot do
   it "keeps the account in the refund keys and the rest in the person keys" do
     described_class.for(person.reload).capture!
     person.save!
-    record = person.reload.additional_info["deregistration_record"]
+    record = person.reload.deregistration.form_snapshot
 
     expect(record["refund_account_holder"]).to eq("Kim Muster")
     expect(record["refund_iban"]).to eq("DE02120300000000202051")

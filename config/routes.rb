@@ -227,9 +227,17 @@ Rails.application.routes.draw do
         member do
           get :form
           post :create_form
+          # create_deregistration_form.py: status noted, form made, the deregistration back (API key).
+          post :prepare_form
           post :discard_form
+          # The next version of a deregistration whose form went out.
+          post :new_version
           # A script reports the mail it sent the form with (API key only).
           post :form_sent
+          # bestätigung_abmeldung.py reports the confirmation it sent (API key only).
+          post :confirmation_sent
+          # A kept mail of the deregistration as an EML (?document_id=).
+          get :mail_file
           get :refund_receipt
           post :create_receipt
           post :discard_receipt

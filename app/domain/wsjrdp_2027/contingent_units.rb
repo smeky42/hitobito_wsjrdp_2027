@@ -375,7 +375,7 @@ module Wsjrdp2027
       reduced = ::Person.where(id: ids)
         .where("people.wsjrdp_total_fee_reduction > 0 OR people.wsjrdp_extra_total_fee_reduction > 0").pluck(:id)
       leaving = counted.values.flatten.select { |e| self.class.leaving?(e) }.map(&:id)
-      people = ::Person.where(id: (reduced + leaving).uniq).index_by(&:id)
+      people = ::Person.where(id: (reduced + leaving).uniq).preload(:wsjrdp_deregistrations).index_by(&:id)
       counted.each do |unit, entries|
         entries.each do |entry|
           person = people[entry.id] or next

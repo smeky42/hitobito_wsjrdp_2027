@@ -57,6 +57,7 @@ Categories of `wsjrdp_note` with a label (`version.wsjrdp_note_categories`):
 | `pre_notification` | Vorabankündigung Lastschrift |
 | `primary_role_change` | Hauptgruppe/Rolle gewechselt |
 | `deregistration_form` | Abmelde-Formular verschickt |
+| `deregistration_confirmation` | Bestätigung der Abmeldung verschickt |
 
 `deregistration_form` is written when a script reports the mail it sent the
 Abmelde-Formular with (`Wsjrdp2027::DeregistrationFormSent`, see
@@ -65,6 +66,10 @@ Abmelde-Formular with (`Wsjrdp2027::DeregistrationFormSent`, see
 `deregistration_issue`, `form_created_date`, the `note_id` of the person
 note written with it and the `deregistration` JSON the mail was built from;
 `whodunnit` is the API key.
+`deregistration_confirmation` is the same for the confirmation
+`bestätigung_abmeldung.py` sent (`Wsjrdp2027::DeregistrationConfirmationSent`),
+without a person note. Both are also events of the deregistration row
+(`wsjrdp_deregistration_events`, `doc/wsjrdp/deregistration.md`).
 
 `primary_role_change` is written by the dialog Hauptgruppe/Rolle wechseln
 (`Wsjrdp2027::PrimaryRoleChange#save!`): the message sums the change up as

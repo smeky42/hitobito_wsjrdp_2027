@@ -27,6 +27,9 @@
 # Who may do what is the document's own lists (Wsjrdp2027::DocumentAccess).
 class Wsjrdp::DocumentsController < ApplicationController
   INLINE_TYPES = %w[application/pdf image/png image/jpeg image/gif image/webp text/plain].freeze
+  # Types that are text underneath and are shown as such on request (?raw=1):
+  # a mail as it went out, header and body.
+  RAW_TEXT_TYPES = %w[message/rfc822].freeze
   SLOT_PARAMS = %i[key key_number secondary_key secondary_key_number].freeze
   RIGHTS_PARAMS = %i[readable_by writable_by deletable_by].freeze
 
@@ -42,8 +45,13 @@ class Wsjrdp::DocumentsController < ApplicationController
 
     response.headers["Cache-Control"] = "private, no-store"
     response.headers["Content-Security-Policy"] = "sandbox"
-    send_file path, filename: File.basename(path), type: document.content_type,
-      disposition: disposition(document)
+    # The name the document carries, not the one of its place in the store.
+    filename = document.filename.presence || File.basename(path)
+    if raw_text?(document)
+      send_file path, filename: filename, type: "text/plain; charset=utf-8", disposition: "inline"
+    else
+      send_file path, filename: filename, type: document.content_type, disposition: disposition(document)
+    end
   end
 
   def create
@@ -132,6 +140,11 @@ class Wsjrdp::DocumentsController < ApplicationController
     File.file?(path) ? path : nil
   rescue ArgumentError
     nil
+  end
+
+  # A text-like document asked for as text (?raw=1, not for download).
+  def raw_text?(document)
+    params[:raw].present? && params[:download].blank? && RAW_TEXT_TYPES.include?(document.content_type)
   end
 
   def disposition(document)

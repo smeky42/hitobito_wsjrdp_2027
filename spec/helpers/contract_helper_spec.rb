@@ -107,11 +107,11 @@ describe ContractHelper do
         end
       end
 
-      it "survives the round trip through the jsonb column as a date" do
+      it "survives the round trip through the deregistration row as a date" do
         person.deregistration_requested_date = "2026-05-31"
 
         expect(person.deregistration_requested_date).to eq(Date.new(2026, 5, 31))
-        expect(person.additional_info["deregistration_requested_date"]).to eq("2026-05-31")
+        expect(person.deregistration.requested_date).to eq(Date.new(2026, 5, 31))
       end
 
       # What the two pages put under the amount.

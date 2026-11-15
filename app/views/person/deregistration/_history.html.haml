@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# What happened to the person's deregistrations, newest first: every row's
+-# steps, its changes and the mails its form went out with
+-# (WsjrdpDeregistrationEvent); below a line, muted, the values it changed.
+- entries = deregistration_history_entries(@person)
+- if entries.any?
+  .p-2#dereg-history
+    .fw-semibold.mb-1= t("people.deregistration.history")
+    %ul.list-unstyled.small.mb-0
+      - entries.each do |entry|
+        %li.mb-1
+          .dereg-history-line= entry[:line]
+          - if entry[:details].any?
+            %ul.list-unstyled.muted.ms-3.mb-0.dereg-history-details
+              - entry[:details].each do |detail|
+                %li= detail
