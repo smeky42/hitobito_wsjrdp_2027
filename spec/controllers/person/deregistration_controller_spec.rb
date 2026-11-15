@@ -356,6 +356,81 @@ describe Person::DeregistrationController do
     describe "the Abmelde-Formular section" do
       before { yp.update!(deregistration_effective_date: Date.new(2026, 10, 31)) }
 
+      # Without an agreed compensation the page warns before the form is made,
+      # and the button asks again.
+      describe "without a compensation" do
+        def body = Nokogiri::HTML(response.body)
+
+        def create_form_tag = body.css("form[action='#{create_form_person_deregistration_path(yp)}']").first
+
+        it "warns and has PDF erzeugen ask first" do
+          get :show, params: {person_id: yp.id}
+
+          expect(body.css("#deregistration_form_no_compensation").text)
+            .to start_with("Es ist noch keine Entschädigung eingetragen.")
+          expect(create_form_tag["data-dereg-confirm"])
+            .to eq("Es ist keine Entschädigung eingetragen. Abmelde-Formular trotzdem erzeugen?")
+        end
+
+        it "says nothing once a compensation is entered" do
+          yp.update!(deregistration_actual_compensation_cents: 80000)
+
+          get :show, params: {person_id: yp.id}
+
+          expect(body.css("#deregistration_form_no_compensation")).to be_empty
+          expect(create_form_tag["data-dereg-confirm"]).to be_nil
+        end
+
+        it "says nothing once the form is made" do
+          yp.update!(deregistration_form_created_date: Date.new(2026, 9, 27))
+
+          get :show, params: {person_id: yp.id}
+
+          expect(body.css("#deregistration_form_no_compensation")).to be_empty
+        end
+      end
+
+      # Who the script sends the form to in Bcc, and the mails it sent.
+      describe "the mail" do
+        before do
+          groups(:unit_a).update_columns(name: "A3",
+            additional_info: {"unit_code" => "#8A9A5B", "support_cmt_mail_addresses" => %w[um@example.org]})
+        end
+
+        def mailing_block = Nokogiri::HTML(response.body).css("#deregistration_form_mailing").first
+
+        it "shows the Bcc with the unit it comes from" do
+          get :show, params: {person_id: yp.id}
+
+          expect(mailing_block.text).to include("BCC bei E-Mail-Versand des Abmelde-Formulars")
+          expect(mailing_block.css("#deregistration_form_bcc").text.strip).to eq("um@example.org · aus Unit A3")
+        end
+
+        it "says so where no address is entered" do
+          groups(:unit_a).update_columns(additional_info: {"unit_code" => "#8A9A5B"})
+
+          get :show, params: {person_id: yp.id}
+
+          expect(mailing_block.css("#deregistration_form_bcc").text.strip)
+            .to eq("keine Adressen hinterlegt · aus Unit A3")
+        end
+
+        it "lists the mails, marking one that carried a discarded form" do
+          mail = {"email_sent_at" => "2026-11-15T14:03:12+01:00", "email_to" => ["yp@example.org"],
+                  "email_cc" => ["parent@example.org"], "email_bcc" => %w[a@x b@x c@x]}
+          yp.update!(deregistration_form_created_date: Date.new(2026, 11, 20),
+            deregistration_form_mailings: [mail.merge("form_created_date" => "2026-11-15"),
+              mail.merge("form_created_date" => "2026-11-20", "email_bcc" => %w[a@x])])
+
+          get :show, params: {person_id: yp.id}
+
+          expect(mailing_block.css(".deregistration-form-mailing").map { |line| line.text.strip }).to eq([
+            "Verschickt am 15.11.2026 an yp@example.org, parent@example.org (Bcc: 3 Adressen) – zu einem verworfenen Formular",
+            "Verschickt am 15.11.2026 an yp@example.org, parent@example.org (Bcc: 1 Adresse)"
+          ])
+        end
+      end
+
       # The form is made on request: until then the section shows an empty
       # picture and "PDF erzeugen"; the button stores the form's day, which
       # every later PDF reuses, and "Formular verwerfen" throws it away.
