@@ -14,10 +14,15 @@ require "spec_helper"
 describe WsjrdpContingentHelper do
   let(:person) { people(:yp_a_1) }
 
-  before { person.update_columns(contract_status: "confirmed", wsj_role: "YP") }
+  let(:viewer) { people(:cmt_leader) }
+
+  before do
+    person.update_columns(contract_status: "confirmed", wsj_role: "YP")
+    allow(helper).to receive(:current_user) { viewer }
+  end
 
   def mini_tags(person)
-    Nokogiri::HTML.fragment(helper.person_chip(person)).css(".p-chip > span").map(&:text)
+    Nokogiri::HTML.fragment(helper.person_chip(person)).css(".p-chip > span:not(.p-chip-name)").map(&:text)
   end
 
   it "shows the role difference in place of the JPT tag" do
@@ -37,6 +42,20 @@ describe WsjrdpContingentHelper do
     expect(label.at_css("span.text-muted").text).to eq("YP #{person.id}")
     expect(label.at_css("a").text).to eq(person.short_full_name_with_nickname)
     expect(label.at_css(".tag-role-diff").text).to eq("YP→JPT")
+  end
+
+  context "for a viewer who may not open the person's page" do
+    let(:viewer) { Fabricate(Group::Root::ExtendedHeadOfContingent.name.to_sym, group: groups(:root)).person }
+
+    it "shows the names as text, not as links" do
+      chip = Nokogiri::HTML.fragment(helper.person_chip(person))
+      label = Nokogiri::HTML.fragment(helper.contingent_person_label(person, role: "YP"))
+
+      expect(chip.css("a")).to be_empty
+      expect(chip.at_css("span.p-chip-name").text).to eq(person.nickname_or_short_first_name)
+      expect(label.css("a")).to be_empty
+      expect(label.at_css("span.co-person-name").text).to eq(person.short_full_name_with_nickname)
+    end
   end
 
   it "words the contract as the finance lists, a pending one new and none as a muted dash" do

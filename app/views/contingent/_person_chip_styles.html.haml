@@ -7,7 +7,8 @@
 -#
 -#  The person chips of the contingent pages (WsjrdpContingentHelper#person_chip)
 -#  and their mini tags: HA (Hauptamt), HoC/eHoC, JPT, EXT. One place for all
--#  pages that show chips.
+-#  pages that show chips. The name (.p-chip-name) is a link, or plain text
+-#  where the viewer may not open the person's page.
 :css
   .p-chip {
     display: inline-block;
@@ -26,10 +27,10 @@
   .p-chip-guest {
     background-color: transparent;
   }
-  .p-chip-counted > a {
+  .p-chip-counted > .p-chip-name {
     color: #6c757d;
   }
-  .p-chip-counted > span {
+  .p-chip-counted > span:not(.p-chip-name) {
     opacity: 0.55;
   }
   /* A contract not in force: a dot before the name -- yellow for none, a

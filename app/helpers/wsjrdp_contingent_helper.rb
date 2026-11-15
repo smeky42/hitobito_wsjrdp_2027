@@ -15,12 +15,18 @@ module WsjrdpContingentHelper
     "ended" => "p-chip-contract-ended"
   }.freeze
 
+  # The people themselves -- the people list and the role differences on the
+  # Übersicht, the matrix's links into that list, the IST tab -- only for
+  # whoever may see the contingent's people in full, across all its groups;
+  # not e.g. an eHoC, who sees the figures only.
+  def contingent_people_visible? = can?(:index_deep_full_people, Group.root)
+
   # A person's name as a chip, with mini tags behind it
   #
   # counted_in: the team a person was already counted in.
   # guest: a guest of the team
   def person_chip(person, counted_in: nil, guest: false)
-    content_parts = [link_to(person.nickname_or_short_first_name, person_path(person.id)), *person_mini_tags(person)]
+    content_parts = [contingent_person_link(person.nickname_or_short_first_name, person, class: "p-chip-name"), *person_mini_tags(person)]
     contract_class = CONTRACT_CHIP_CLASSES[person.contract_status]
     contract_muted = ("p-chip-contract-muted" if contract_class && person.wsj_role == "EXT")
     css = ["p-chip", ("p-chip-counted" if counted_in), ("p-chip-guest" if guest), contract_class, contract_muted]
@@ -30,6 +36,23 @@ module WsjrdpContingentHelper
       ("Vertrag: #{Settings.contract_status[person.contract_status]}" if contract_class)
     ]
     content_tag(:span, safe_join(content_parts, " "), class: css, title: titles.compact.join(" · ").presence)
+  end
+
+  # A person's name as a link to the person's page -- or as plain text where
+  # the viewer may not open that page (e.g. an eHoC, who sees the contingent
+  # pages but not the people).
+  def contingent_person_link(text, person, **options)
+    return link_to(text, person_path(person.id), **options) if contingent_person_visible?(person)
+
+    content_tag(:span, text, **options.except(:data))
+  end
+
+  def contingent_person_visible?(person) = contingent_visible_person_ids.include?(person.id)
+
+  # The people the viewer may see, in one query for the whole page: the rule
+  # of the core's person search (PersonReadables), the same as :show.
+  def contingent_visible_person_ids
+    @contingent_visible_person_ids ||= Person.accessible_by(PersonReadables.new(current_user)).pluck(:id).to_set
   end
 
   # The mini tags behind a person's name: HA (Hauptamt) first, then HoC or
@@ -59,7 +82,7 @@ module WsjrdpContingentHelper
   def contingent_person_label(person, role:)
     full_name = person.short_full_name_with_nickname
     prefix = content_tag(:span, "#{role} #{person.id}", class: "text-muted fw-light")
-    name = link_to(full_name, person_path(person.id), class: "co-person-name", title: full_name,
+    name = contingent_person_link(full_name, person, class: "co-person-name", title: full_name,
       data: {turbo_frame: "_top"})
     content_tag(:span, safe_join([prefix, name, *person_mini_tags(person)], " "), class: "co-person")
   end

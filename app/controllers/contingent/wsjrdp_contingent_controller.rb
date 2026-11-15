@@ -10,6 +10,7 @@
 # Kontingent > Übersicht: the comparison with the jamboree registration, the
 # contingent roles against the contract, the people list (an expandable
 # table with the Schnellauswahl), and the people whose jamboree role differs.
+# The people parts only where the viewer may see the people (WsjrdpContingentHelper#contingent_people_visible?).
 # The figures come from Wsjrdp2027::ContingentOverview; matrix cells, the
 # list's default and the Schnellauswahl are filter trees of
 # Wsjrdp2027::ContingentPeopleFilterSchema, so a number and its list agree.
