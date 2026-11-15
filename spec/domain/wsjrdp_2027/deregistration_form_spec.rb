@@ -455,13 +455,15 @@ describe Wsjrdp2027::DeregistrationForm do
     end
   end
 
-  # The picture the Abmeldung page previews the document with.
+  # The picture the Abmeldung page previews the document with: 288 pixels
+  # wide, sharp at 96 CSS pixels up to a device pixel ratio of 3.
   describe "#to_png" do
-    it "draws the first page" do
+    it "draws the first page 288 pixels wide" do
       png = form.to_png
 
       expect(png).to start_with(Wsjrdp2027::TypstDocument::PNG_SIGNATURE)
       expect(png.bytesize).to be > 1_000
+      expect(png[16, 8].unpack("NN")).to eq([288, 407])
     end
   end
 end

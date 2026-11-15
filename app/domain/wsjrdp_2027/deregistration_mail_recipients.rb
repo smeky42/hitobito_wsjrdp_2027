@@ -19,6 +19,7 @@ module Wsjrdp2027
   #   participant or anybody under 18 the guardians' e-mails (only the first
   #   where one guardian signs alone) -- minus what To has, sorted.
   # - From: the helpdesk of the person's role (HELPDESK_EMAILS).
+  # - Reply-To: none (#reply_to), so replies reach that helpdesk.
   # - Bcc of a youth participant or unit leader: the Support-CMT addresses
   #   (groups.additional_info["support_cmt_mail_addresses"]) of the person's
   #   unit. A unit is a group with a unit_code -- the registration groups and
@@ -81,6 +82,10 @@ module Wsjrdp2027
       clean(addresses)
     end
 
+    # Where a reply goes, apart from From: none by today's rule, so a reply
+    # reaches the helpdesk the mail comes from. The scripts take it as it is.
+    def reply_to = []
+
     def to
       addresses = [person.email]
       addresses << person.wsjrdp_email if WSJRDP_EMAIL_ROLES.include?(role)
@@ -112,6 +117,7 @@ module Wsjrdp2027
         "to" => to,
         "cc" => cc,
         "bcc" => bcc,
+        "reply_to" => reply_to,
         "unit" => group && {"group_id" => group.id, "name" => group_name(group), "source" => unit_source}
       }
     end

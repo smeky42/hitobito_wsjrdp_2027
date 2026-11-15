@@ -9,22 +9,19 @@
 
 require "spec_helper"
 
-# The person's deregistration_* accessors, which delegate to
-# Wsjrdp2027::DeregistrationRecord: the kind of deregistration and what the two
-# documents of the Abmeldung page carry, in one sub-object of additional_info.
-# An absent value is the default, so the whole sub-object is gone where nothing
-# differs from one.
+# The person's deregistration_* accessors, which work on the person's current
+# deregistration row (WsjrdpDeregistration): its columns, form_snapshot and
+# additional_info["refund_receipt"]. A person never deregistered has no row,
+# and a value that is the default builds none.
 describe "Person deregistration record" do
   let(:person) { people(:yp_a_1) }
-  let(:key) { Wsjrdp2027::DeregistrationRecord::KEY }
 
-  def stored = person.reload.additional_info[key]
+  def row = person.reload.deregistration
 
   describe "with nothing stored" do
-    it "carries no sub-object at all" do
-      expect(person.additional_info).not_to have_key(key)
-      expect(person.deregistration_record)
-        .to be_a(Wsjrdp2027::DeregistrationRecord)
+    it "has no row at all" do
+      expect(person.deregistration).to be_nil
+      expect(WsjrdpDeregistration.where(person_id: person.id)).to be_empty
     end
 
     it "reads the kind as a withdrawal" do
@@ -34,28 +31,44 @@ describe "Person deregistration record" do
     end
 
     it "reads both flags as shown and the text as nothing" do
-      expect(person.deregistration_form_show_contractual_compensation).to be_nil
+      expect(person.deregistration_form_show_contractual_compensation).to be(true)
       expect(person).to be_deregistration_form_show_contractual_compensation
       expect(person.deregistration_refund_receipt_show_default_explanation).to be_nil
       expect(person).to be_deregistration_refund_receipt_show_default_explanation
       expect(person.deregistration_refund_receipt_text).to be_nil
     end
+
+    it "builds no row for the defaults a form sends" do
+      person.update!(deregistration_kind: "withdrawal", deregistration_form_show_contractual_compensation: nil,
+        deregistration_issue: "", deregistration_refund_receipt_text: "  ")
+
+      expect(row).to be_nil
+    end
+  end
+
+  describe "the first value" do
+    it "makes row 1, recorded, and writes the create event" do
+      person.update!(deregistration_issue: "HELP-1")
+
+      expect(row).to have_attributes(number: 1, status: "recorded", issue: "HELP-1")
+      expect(row.events.map(&:event)).to eq(["create"])
+    end
   end
 
   describe "#deregistration_reply_due_date" do
-    it "keeps the day in the sub-object" do
+    it "keeps the day in its column" do
       person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1))
 
-      expect(stored).to eq("reply_due_date" => "2026-10-01")
+      expect(row.reply_due_date).to eq(Date.new(2026, 10, 1))
       expect(person.reload.deregistration_reply_due_date).to eq(Date.new(2026, 10, 1))
     end
 
-    it "drops the key when the day is cleared" do
+    it "clears the column again" do
       person.update!(deregistration_reply_due_date: Date.new(2026, 10, 1))
 
       person.update!(deregistration_reply_due_date: "")
 
-      expect(person.reload.additional_info).not_to have_key(key)
+      expect(row.reply_due_date).to be_nil
     end
   end
 
@@ -72,88 +85,59 @@ describe "Person deregistration record" do
       expect(person.deregistration_open_cents).to eq(0)
     end
 
-    it "keeps a compensation that was entered" do
-      person.update!(deregistration_kind: "cancellation", deregistration_actual_compensation_cents: 5_000)
+    it "keeps a compensation that was entered, in euros on the row" do
+      person.update!(deregistration_kind: "cancellation", deregistration_actual_compensation_cents: 5_050)
 
-      expect(person.reload.deregistration_contractual_compensation_cents).to eq(0)
-      expect(person.deregistration_open_cents).to eq([5_000 - person.amount_paid_cents, 0].max)
+      expect(row.actual_compensation).to eq(BigDecimal("50.5"))
+      expect(person.reload.deregistration_actual_compensation_cents).to eq(5_050)
+      expect(person.deregistration_contractual_compensation_cents).to eq(0)
+      expect(person.deregistration_open_cents).to eq([5_050 - person.amount_paid_cents, 0].max)
     end
   end
 
   describe "#deregistration_kind" do
-    # The withdrawal is what an absent value stands for, so writing it stores
-    # nothing -- the form sends it on every save.
-    it "stores nothing for an explicit withdrawal" do
-      person.update!(deregistration_kind: "withdrawal")
-
-      expect(person.reload.additional_info).not_to have_key(key)
-      expect(person.deregistration_kind).to be_nil
-      expect(person.deregistration_kind_or_default).to eq("withdrawal")
-      expect(person).not_to be_deregistration_termination
-    end
-
     it "reads a termination as one" do
       person.update!(deregistration_kind: "termination")
 
-      expect(stored).to eq("kind" => "termination")
+      expect(row.kind).to eq("termination")
       expect(person.deregistration_kind).to eq("termination")
       expect(person).to be_deregistration_termination
     end
 
-    it "rejects a value outside the two kinds" do
+    it "rejects a value outside the kinds" do
       person.deregistration_kind = "foo"
 
       expect(person).not_to be_valid
       expect(person.errors[:deregistration_kind]).to be_present
     end
 
-    it "drops the sub-object when the value is blanked" do
+    it "goes back to the withdrawal when the value is blanked" do
       person.update!(deregistration_kind: "termination")
 
       person.update!(deregistration_kind: "")
 
-      expect(person.reload.additional_info).not_to have_key(key)
+      expect(row.kind).to eq("withdrawal")
       expect(person.deregistration_kind_or_default).to eq("withdrawal")
     end
   end
 
   describe "the two document flags" do
-    %i[
-      deregistration_form_show_contractual_compensation
-      deregistration_refund_receipt_show_default_explanation
-    ].each do |attr|
-      describe "##{attr}" do
-        let(:sub_key) { Wsjrdp2027::DeregistrationRecord.sub_key(attr) }
+    it "keeps an explicit off of the form's flag in its column, and on again" do
+      person.update!(deregistration_form_show_contractual_compensation: false)
+      expect(row.show_contractual_compensation).to be(false)
+      expect(person).not_to be_deregistration_form_show_contractual_compensation
 
-        it "keeps an explicit off" do
-          person.update!(attr => false)
+      person.update!(deregistration_form_show_contractual_compensation: nil)
+      expect(row.show_contractual_compensation).to be(true)
+    end
 
-          expect(stored).to eq(sub_key => false)
-          expect(person.send(attr)).to be(false)
-          expect(person.send(:"#{attr}?")).to be(false)
-        end
+    it "keeps an explicit off of the receipt's flag with the receipt" do
+      person.update!(deregistration_refund_receipt_show_default_explanation: false)
+      expect(row.receipt).to eq("show_default_explanation" => false)
+      expect(person.reload).not_to be_deregistration_refund_receipt_show_default_explanation
 
-        # On is what an absent value stands for, so writing it stores nothing.
-        it "stores nothing for an explicit on" do
-          person.update!(attr => false)
-
-          person.update!(attr => true)
-
-          expect(person.reload.additional_info).not_to have_key(key)
-          expect(person.send(:"#{attr}?")).to be(true)
-        end
-
-        # A null would read the same as nothing stored but leave the store
-        # saying something it does not mean.
-        it "drops the value on nil instead of writing a null" do
-          person.update!(attr => false)
-
-          person.update!(attr => nil)
-
-          expect(person.reload.additional_info).not_to have_key(key)
-          expect(person.send(:"#{attr}?")).to be(true)
-        end
-      end
+      person.update!(deregistration_refund_receipt_show_default_explanation: nil)
+      expect(row.additional_info).to eq({})
     end
   end
 
@@ -168,7 +152,7 @@ describe "Person deregistration record" do
     it "strips what surrounds the text" do
       person.update!(deregistration_refund_receipt_text: "  Hallo Team\n\n")
 
-      expect(stored).to eq("refund_receipt_text" => "Hallo Team")
+      expect(row.receipt).to eq("text" => "Hallo Team")
     end
 
     it "drops the value for whitespace alone" do
@@ -176,55 +160,47 @@ describe "Person deregistration record" do
 
       person.update!(deregistration_refund_receipt_text: "   \n ")
 
-      expect(person.reload.additional_info).not_to have_key(key)
-      expect(person.deregistration_refund_receipt_text).to be_nil
+      expect(row.receipt).to eq({})
+      expect(person.reload.deregistration_refund_receipt_text).to be_nil
     end
   end
 
-  # Every value sits in the one sub-object, and each writer leaves the others
-  # where they are.
   describe "the stored shape" do
-    it "gathers every value under the one key" do
-      person.update!(deregistration_kind: "termination",
-        deregistration_form_show_contractual_compensation: false,
-        deregistration_refund_receipt_text: "Hallo Team",
-        deregistration_refund_receipt_show_default_explanation: false)
+    it "puts the columns, the made form's data and the receipt each in their place" do
+      person.update!(deregistration_issue: "Ticket 1", deregistration_effective_date: Date.new(2026, 10, 31),
+        deregistration_kind: "termination", deregistration_form_created_date: Date.new(2026, 10, 2),
+        deregistration_refund_iban: "DE02120300000000202051", deregistration_refund_receipt_text: "Hallo Team")
 
-      expect(stored).to eq(
-        "kind" => "termination",
-        "form_show_contractual_compensation" => false,
-        "refund_receipt_text" => "Hallo Team",
-        "refund_receipt_show_default_explanation" => false
+      expect(row).to have_attributes(issue: "Ticket 1", effective_date: Date.new(2026, 10, 31), kind: "termination")
+      expect(row.form_snapshot).to eq("created_date" => "2026-10-02", "refund_iban" => "DE02120300000000202051")
+      expect(row.receipt).to eq("text" => "Hallo Team")
+      expect(person.reload.additional_info.keys.grep(/deregistration/)).to be_empty
+    end
+  end
+
+  describe "a form that went out" do
+    before do
+      person.update!(deregistration_issue: "HELP-1")
+      person.deregistration.update!(form_sent_at: Time.current, status: "form_sent")
+    end
+
+    it "keeps what the form says" do
+      person.reload.deregistration_issue = "HELP-2"
+
+      expect(person.save).to be(false)
+      expect(row.issue).to eq("HELP-1")
+    end
+
+    it "takes changes in a new version, the old one superseded" do
+      replacement = person.reload.deregistration.new_version!
+
+      expect(replacement).to have_attributes(number: 2, status: "recorded", issue: "HELP-1",
+        replaces_id: WsjrdpDeregistration.find_by!(person_id: person.id, number: 1).id)
+      expect(WsjrdpDeregistration.find_by!(person_id: person.id, number: 1)).to have_attributes(
+        status: "superseded", closed_at: be_present
       )
-    end
-
-    it "leaves the flat deregistration fields and the rest of the column alone" do
-      person.update!(deregistration_issue: "Ticket 1",
-        deregistration_effective_date: Date.new(2026, 10, 31),
-        deregistration_kind: "termination")
-
-      info = person.reload.additional_info
-      expect(info["deregistration_issue"]).to eq("Ticket 1")
-      expect(info["deregistration_effective_date"]).to eq("2026-10-31")
-      expect(info[key]).to eq("kind" => "termination")
-    end
-
-    it "keeps what another writer wrote" do
-      person.update!(deregistration_kind: "termination")
-
-      person.update!(deregistration_refund_receipt_text: "Hallo Team")
-
-      expect(stored).to eq("kind" => "termination", "refund_receipt_text" => "Hallo Team")
-    end
-
-    it "drops the key again once everything reads as the default" do
-      person.update!(deregistration_kind: "termination",
-        deregistration_refund_receipt_show_default_explanation: false)
-
-      person.update!(deregistration_kind: nil,
-        deregistration_refund_receipt_show_default_explanation: nil)
-
-      expect(person.reload.additional_info).not_to have_key(key)
+      person.reload.update!(deregistration_issue: "HELP-2")
+      expect(row).to have_attributes(number: 2, issue: "HELP-2")
     end
   end
 

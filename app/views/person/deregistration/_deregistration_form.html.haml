@@ -30,15 +30,35 @@
     created: @deregistration_form.created?,
     extra_actions: (button_to(discard_form_person_deregistration_path(@person), method: :post,
       class: 'btn btn-sm btn-outline-danger',
-      form: {class: 'd-inline', data: {turbo_confirm: t('people.deregistration_form.discard_confirm')}}) { t('people.deregistration_form.discard') } if @deregistration_form.created?)
-  -# Who the script create_deregistration_form.py sends the form to in Bcc,
-  -# and the mails it has sent it with.
-  .p-2#deregistration_form_mailing
-    .labeled-grid
-      %span.muted= t('people.deregistration_form_mailing.bcc_label')
-      %span#deregistration_form_bcc= deregistration_bcc_text(@recipients)
-    - deregistration_form_mailing_lines(@person).each do |line|
-      .deregistration-form-mailing= line
+      form: {class: 'd-inline', data: {turbo_confirm: t('people.deregistration_form.discard_confirm')}}) { t('people.deregistration_form.discard') } if @deregistration_form.created? && @person.deregistration_editable?)
+  -# Further facts below the document, in the page's field list: whom the
+  -# script create_deregistration_form.py sends the form to, and the mails it
+  -# has sent it with.
+  #deregistration_form_mailing
+    = render_attrs_list do
+      = labeled(t('people.deregistration_form_mailing.from_label')) do
+        %span#deregistration_form_from= deregistration_mail_addresses([@recipients.from])
+      = labeled(t('people.deregistration_form_mailing.to_label')) do
+        %span#deregistration_form_to= deregistration_mail_addresses(@recipients.to)
+      = labeled(t('people.deregistration_form_mailing.cc_label')) do
+        %span#deregistration_form_cc= deregistration_mail_addresses(@recipients.cc)
+      = labeled(t('people.deregistration_form_mailing.bcc_label')) do
+        %span#deregistration_form_bcc= deregistration_mail_addresses(@recipients.bcc, none: t('people.deregistration_form_mailing.no_addresses'))
+        - if (source = deregistration_bcc_source(@recipients))
+          %span.muted#deregistration_form_bcc_source(style="margin-left: 6px;")= source
+      - if @recipients.reply_to.any?
+        = labeled(t('people.deregistration_form_mailing.reply_to_label')) do
+          %span#deregistration_form_reply_to= deregistration_mail_addresses(@recipients.reply_to)
+      - mailings = deregistration_form_mailing_lines(@person)
+      - if mailings.any?
+        = labeled(t('people.deregistration_form_mailing.sent_label')) do
+          - mailings.each do |line|
+            .deregistration-form-mailing= line
+      -# The stored PDF and the mails as they went out (EML).
+      - documents = deregistration_form_document_lines(@person)
+      - if documents.any?
+        = labeled(t('people.deregistration_form_mailing.documents_label')) do
+          #deregistration_form_documents= safe_join(documents)
 - else
   .p-2
     - unavailable_text = deregistration_form_unavailable_text(@deregistration_form)

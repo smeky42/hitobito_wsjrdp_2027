@@ -519,42 +519,156 @@ module Wsjrdp2027::PeopleHelper
   end
 
   # What the Abmelde-Formular will say, in the one line above its preview: who
-  # signs it, the day the withdrawal takes effect, and whether it names the
-  # compensation of section 7.2 T&R -- led by the day it was made, once it is.
+  # signs it, the days that are written down -- the day the withdrawal was
+  # declared (named after the kind) and the day it takes effect, each only
+  # where it is stored -- and whether it names the compensation of section 7.2
+  # T&R; led by the day it was made, once it is.
   def deregistration_form_facts(form)
+    person = form.person
     compensation = form.show_contractual_compensation? ? "compensation_named" : "compensation_not_named"
     [
       (t("people.deregistration_form.created_on", date: l(form.created_on)) if form.created?),
       "#{t("people.deregistration_documents.signatures")}: #{form.contract_names.join(", ")}",
-      "#{Person.human_attribute_name(:deregistration_effective_date)} #{form.cancellation_date_text}",
+      deregistration_date_fact(person.deregistration_requested_date_label, person.deregistration_requested_date),
+      deregistration_date_fact(Person.human_attribute_name(:deregistration_effective_date),
+        person.deregistration_effective_date),
       t("people.deregistration_documents.#{compensation}")
     ].compact_blank.join(" · ")
   end
 
-  # The Bcc the script sends the form with (Wsjrdp2027::DeregistrationMailRecipients):
-  # the addresses, and for a unit's addresses where they come from.
-  def deregistration_bcc_text(recipients)
-    addresses = recipients.bcc
-    text = addresses.presence&.join(", ") || t("people.deregistration_form_mailing.no_addresses")
-    group = recipients.unit_group
-    return text unless group
+  # "Rücktritt erklärt am 12.11.2026"; nothing for a day not written down.
+  def deregistration_date_fact(label, date) = date && "#{label} #{l(date)}"
 
-    source = t("people.deregistration_form_mailing.unit_source.#{recipients.unit_source}",
-      name: recipients.group_name(group))
-    "#{text} · #{source}"
+  # Addresses of the form's mail (Wsjrdp2027::DeregistrationMailRecipients) as
+  # mailto links, comma-separated; for none a muted en dash, or `none`.
+  def deregistration_mail_addresses(addresses, none: "–")
+    list = Array(addresses).compact_blank
+    return content_tag(:span, none, class: "muted") if list.empty?
+
+    safe_join(list.map { |address| mail_to(address, address) }, ", ")
   end
 
-  # One line per mail the form went out with, oldest first; a mail that
-  # carried a form discarded since says so.
+  # Where the Bcc's unit addresses come from: "aus Unit K1", "aus Unit K1
+  # (letzte Unit)", "aus Hauptgruppe … (keine Unit)"; nil for a role that
+  # takes none.
+  def deregistration_bcc_source(recipients)
+    group = recipients.unit_group
+    return nil unless group
+
+    t("people.deregistration_form_mailing.unit_source.#{recipients.unit_source}",
+      name: recipients.group_name(group))
+  end
+
+  # The current deregistration's documents around the form, one line each
+  # (Wsjrdp2027::DeregistrationFormDocument.documents_of): the PDF and the
+  # mails it went out with. A document whose entry the login user may see
+  # shows its file name linked to its page; a mail is listed for everybody
+  # who sees this page, with a button that downloads the EML.
+  def deregistration_form_document_lines(person)
+    Wsjrdp2027::DeregistrationFormDocument.documents_of(person).filter_map do |document|
+      mail = document.secondary_key != Wsjrdp2027::DeregistrationFormDocument::SECONDARY_KEY
+      visible = can?(:show, document)
+      next unless visible || mail
+
+      deregistration_form_document_line(person, document, mail: mail, visible: visible)
+    end
+  end
+
+  def deregistration_form_document_line(person, document, mail:, visible:)
+    scope = "people.deregistration_form_mailing"
+    label = mail ? t("#{scope}.document_form_mail", number: document.secondary_key_number) : t("#{scope}.document_form")
+    name = if visible
+      link_to(document.filename, document_management_document_path(document),
+        title: t("#{scope}.document_details", id: document.id), data: {turbo_frame: "_top"})
+    else
+      document.filename
+    end
+    facts = content_tag(:span, "#{label} · #{l(document.created_at, format: "%d.%m.%Y %H:%M")}",
+      class: "deregistration-form-document-kind muted small")
+    download = if mail
+      link_to(mail_file_person_deregistration_path(person, document_id: document.id),
+        class: "btn btn-sm btn-outline-primary ms-2", data: {turbo: false}) do
+        safe_join([icon(:download), t("#{scope}.download_eml")], " ")
+      end
+    end
+    content_tag(:div, class: "deregistration-form-document mb-2", id: "deregistration_form_document_#{document.id}") do
+      safe_join([content_tag(:div, name), content_tag(:div, safe_join([facts, download].compact),
+        class: "d-flex flex-wrap align-items-center")])
+    end
+  end
+
+  # One line per mail the form went out with, oldest first: the day -- the
+  # recipients stand in the rows above --, and a mail that carried a form
+  # discarded since says so.
   def deregistration_form_mailing_lines(person)
     created = person.deregistration_form_created_date&.iso8601
     person.deregistration_form_mailings.map do |mailing|
       sent_at = deregistration_mailing_time(mailing)
-      addresses = (Array(mailing["email_to"]) + Array(mailing["email_cc"])).join(", ")
-      line = t("people.deregistration_form_mailing.sent", date: sent_at ? l(sent_at.to_date) : "–",
-        addresses: addresses, count: Array(mailing["email_bcc"]).size)
+      line = t("people.deregistration_form_mailing.sent", date: sent_at ? l(sent_at.to_date) : "–")
       line += t("people.deregistration_form_mailing.discarded_form") if mailing["form_created_date"] != created
       line
+    end
+  end
+
+  # The mails whose sending also moves the row on: the step it reaches with
+  # the mail is the mail's own line, so the step's event has none.
+  DEREGISTRATION_MAIL_ACTIONS = %w[form_sent confirmation_sent].freeze
+  # What a step's event changes along with it and the step already says: the
+  # data the made form fixed (or a discard cleared) and the time it went out.
+  DEREGISTRATION_STEP_IMPLIED = %w[status form_snapshot form_sent_at].freeze
+
+  # One entry per event of the person's deregistrations, newest first: the
+  # line -- when, which row, what (the step reached, the mail sent, a change)
+  # and who -- and the values it changed, one line each
+  # (Wsjrdp2027::DeregistrationWording.row_change_lines). A step reached by
+  # sending a mail is told by the mail's line alone.
+  def deregistration_history_entries(person)
+    events = person.wsjrdp_deregistrations.flat_map do |row|
+      deregistration_history_shown(row.events.sort_by(&:id)).map { |event| [row, event] }
+    end
+    events.sort_by { |_row, event| [event.occurred_at, event.id] }.reverse.map do |row, event|
+      line = t("people.deregistration.history_line", time: l(event.occurred_at, format: :short),
+        number: row.number, what: deregistration_history_what(event),
+        by: (actor = event.actor) ? t("people.deregistration.history_by", actor: actor.to_s) : "")
+      {line: line, details: deregistration_history_details(event)}
+    end
+  end
+
+  # A row's events (by id) without the step a mail moved the row on to: the
+  # status event written right after the mail's event, in the same
+  # recording (DeregistrationFormSent#recorded!). A step reached otherwise
+  # keeps its line.
+  def deregistration_history_shown(events)
+    events.each_with_index.reject do |event, index|
+      before = index.positive? ? events[index - 1] : nil
+      event.event == "update" && DEREGISTRATION_MAIL_ACTIONS.include?(event.action) &&
+        before&.event == "notify" && before.action == event.action
+    end.map(&:first)
+  end
+
+  # The values an event changed; a mail's event holds none, a step's leaves
+  # out what the step says.
+  def deregistration_history_details(event)
+    return [] if event.event == "notify"
+
+    except = (event.to_status.present? && event.event == "update") ? DEREGISTRATION_STEP_IMPLIED : []
+    Wsjrdp2027::DeregistrationWording.row_change_lines(event.field_changes, except: except,
+      eur: ->(value) { format_eur_de(value) })
+  end
+
+  def deregistration_history_what(event)
+    if event.event == "notify" && %w[form_sent confirmation_sent].include?(event.action)
+      info = event.additional_info.to_h
+      t("people.deregistration.history_#{event.action}",
+        addresses: (Array(info["email_to"]) + Array(info["email_cc"])).join(", "))
+    elsif event.to_status.present?
+      t("people.deregistration_statuses.#{event.to_status}", default: event.to_status)
+    elsif event.event == "create"
+      t("people.deregistration.history_created")
+    elsif event.field_changes.to_h.keys == ["sent_form_document_id"]
+      t("people.deregistration.history_form_stored")
+    else
+      t("people.deregistration.history_updated")
     end
   end
 

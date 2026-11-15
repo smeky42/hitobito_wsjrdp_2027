@@ -31,19 +31,35 @@ class Person::DeregistrationController < ApplicationController
   # Only a request that carries a valid API key skips the check: the check
   # runs before the sign-in, so it asks the token itself -- a bogus one leaves
   # the check in place, and the session behind it stays protected.
-  skip_forgery_protection only: [:create_form, :form_sent],
+  skip_forgery_protection only: [:create_form, :prepare_form, :form_sent, :confirmation_sent],
     if: -> { token_authentication.service_token.present? }
 
   before_action :authorize_action
 
+  # The form's documents are written as locked changes after the save they
+  # belong to (DeregistrationFormDocument, DeregistrationFormSent): while
+  # somebody else writes documents, the request is answered with a request to
+  # try again -- 503 with code busy for a script, the page's flash otherwise.
+  # What was saved before stays saved; doing it again is safe.
+  rescue_from Wsjrdp::LockedChange::Busy, ActiveRecord::Deadlocked do
+    refuse(t("wsjrdp.documents.create.busy"), code: "busy", status: :service_unavailable)
+  end
+
   helper_method :return_url
   helper_method :permitted_attrs
 
+  # The registration statuses a deregistration that is under way has
+  # (prepare_form leaves them as they are).
+  NOTED_STATUSES = %w[deregistration_noted deregistered].freeze
+
+  # The slots of the mails kept with a deregistration (#mail_file).
+  MAIL_SECONDARY_KEYS = [Wsjrdp2027::DeregistrationFormSent::FORM_MAIL_SECONDARY_KEY, "confirmation_mail"].freeze
+
   # What the flash's change lines are made of: U+2192 between the two values,
-  # an en dash where there is no value. Wsjrdp2027::DeregistrationRecord holds
+  # an en dash where there is no value. Wsjrdp2027::DeregistrationWording holds
   # the words, so the person log reads like the flash.
-  CHANGE_ARROW = Wsjrdp2027::DeregistrationRecord::CHANGE_ARROW
-  BLANK_VALUE = Wsjrdp2027::DeregistrationRecord::BLANK_VALUE
+  CHANGE_ARROW = Wsjrdp2027::DeregistrationWording::CHANGE_ARROW
+  BLANK_VALUE = Wsjrdp2027::DeregistrationWording::BLANK_VALUE
   DATE_ATTRS = %i[deregistration_effective_date deregistration_requested_date].freeze
   CENTS_ATTRS = %i[deregistration_actual_compensation_cents].freeze
   # The two flags whose absent value means "shown", which is what a checked box
@@ -70,14 +86,7 @@ class Person::DeregistrationController < ApplicationController
     @group ||= group
     return render(json: Wsjrdp2027::DeregistrationState.new(person)) if request.format.json?
 
-    @recipients = Wsjrdp2027::DeregistrationMailRecipients.new(person)
-    # The page previews what the receipt will say, so it builds the same
-    # object the PDF is made of -- and above it, what the creditor the refund
-    # is paid to looks like in Moss.
-    @refund_creditor = Wsjrdp2027::RefundCreditor.new(person)
-    @refund_receipt = Wsjrdp2027::RefundReceipt.new(person, generated_by: current_user)
-    @deregistration_form = Wsjrdp2027::DeregistrationForm.new(person)
-    @dereg_open_sections = remembered_sections
+    load_sections
     render :show
   end
 
@@ -100,31 +109,37 @@ class Person::DeregistrationController < ApplicationController
     @group ||= group
     form = Wsjrdp2027::DeregistrationForm.new(person)
     unless form.available?
-      return refuse(helpers.deregistration_form_unavailable_text(form))
+      return refuse(helpers.deregistration_form_unavailable_text(form), code: "unavailable")
     end
 
     # The form is made by #create_form and not before; until then there is no
     # document to show.
-    return refuse(t("people.deregistration_form.not_created")) unless form.created?
+    unless form.created?
+      return refuse(t("people.deregistration_form.not_created"), code: "form_not_created", status: :conflict)
+    end
+    # The kept form (DeregistrationFormDocument) and its first page: once it
+    # went out the one that was sent, before that the one "PDF erzeugen" or
+    # prepare_form.json stored while it still says what the data say. A form
+    # with no such PDF is drawn from the data, as it stands.
+    stored = request.format.png? ? sent_form_thumbnail_file : sent_form_file
+    return send_sent_form(form, stored) if stored
 
     send_document(form)
   end
 
-  # Makes the form: stores its day, which every later PDF reuses, and comes
-  # back to the page with the form's section open. Asked for as JSON (a
+  # Makes the form: stores its day, which every later PDF reuses, keeps the
+  # PDF as a document of the deregistration (DeregistrationFormDocument) and
+  # comes back to the page with the form's section open. Asked for as JSON (a
   # script), it answers the deregistration as it then stands; a form made
   # already stays as it is.
   def create_form
     form = Wsjrdp2027::DeregistrationForm.new(person)
-    if request.format.json?
-      return refuse(helpers.deregistration_form_unavailable_text(form)) unless form.available?
-
-      form.record_creation!
-      return render(json: Wsjrdp2027::DeregistrationState.new(person.reload))
-    end
+    return prepare_form(note: false) if request.format.json?
 
     if form.available?
       form.record_creation!
+      # A document write is a locked change of its own: after the save.
+      Wsjrdp2027::DeregistrationFormDocument.new(person.reload, author: current_user).store!
       session[SESSION_KEY] = SECTIONS & (remembered_sections | ["form"])
       flash[:notice] = t("people.deregistration_form.created")
     else
@@ -133,18 +148,75 @@ class Person::DeregistrationController < ApplicationController
     redirect_to person_deregistration_path(person)
   end
 
+  # What create_deregistration_form.py asks for before it sends the form, in
+  # one go: the registration status moves on to deregistration_noted (unless
+  # it is that or deregistered already) -- a save of the person like one on
+  # the Status page, so PaperTrail writes it down with the API key --, the
+  # form is made where it is not yet, and the answer is the deregistration as
+  # it then stands. JSON only (create_form.json is the same without the
+  # status).
+  #
+  # Nothing is written while the form would not be complete
+  # (Wsjrdp2027::DeregistrationFormCheck): 422 with every error and warning.
+  # Warnings never stand in the way; they come with every answer.
+  def prepare_form(note: true)
+    return head(:not_acceptable) unless request.format.json?
+
+    check = Wsjrdp2027::DeregistrationFormCheck.new(person)
+    if check.errors?
+      return api_answer(status: :unprocessable_entity, errors: check.errors, warnings: check.warnings)
+    end
+
+    ActiveRecord::Base.transaction do
+      if note && !NOTED_STATUSES.include?(person.status)
+        person.status = "deregistration_noted"
+        person.save!
+      end
+      Wsjrdp2027::DeregistrationForm.new(person).record_creation!
+    end
+    # The form as the script will attach it, kept before the answer: the one
+    # stored already ("PDF erzeugen", an earlier prepare) where there is one,
+    # else stored now. The script fetches exactly this PDF (form.pdf). A
+    # document write is a locked change of its own, so after the transaction.
+    Wsjrdp2027::DeregistrationFormDocument.new(person.reload, author: current_service_token&.acting_person || current_user,
+      service_token: current_service_token).store!
+    @person = person.reload
+    api_answer(status: :ok, warnings: Wsjrdp2027::DeregistrationFormCheck.new(@person).warnings)
+  end
+
   # Throws the made form away: its day goes, and the next PDF is made -- and
   # dated -- afresh.
   # The receipt goes with it, since it is made from the same captured data,
   # and so do the captured data and the deadline the form fixed. An entered
   # deadline stays.
+  # A form that went out stays as it was sent: it is not discarded, a new
+  # version (#new_version) takes its place.
   def discard_form
+    return refuse(t("people.deregistration.fixed"), code: "fixed", status: :conflict) unless person.deregistration_editable?
+
     person.deregistration_form_created_date = nil
     person.deregistration_effective_reply_due_date = nil
     clear_receipt
     Wsjrdp2027::DeregistrationSnapshot.for(person).clear!
-    person.save! if person.changed?
+    row = person.deregistration
+    row.status = "recorded" if row&.status == "form_created"
+    # A form kept for a mail that did not go out is forgotten with it; the
+    # next prepare keeps a new version.
+    row.sent_form_document = nil if row && row.form_sent_at.nil?
+    person.save!
     flash[:notice] = t("people.deregistration_form.discarded")
+    redirect_to person_deregistration_path(person)
+  end
+
+  # Starts the next version of a deregistration whose form went out
+  # (WsjrdpDeregistration#new_version!): what was entered is taken over, the
+  # form is made afresh, the old row stays as it was, superseded.
+  def new_version
+    row = person.deregistration
+    return refuse(t("people.deregistration.no_new_version")) if row.nil? || row.editable? || row.final?
+
+    replacement = row.new_version!
+    flash[:notice] = t("people.deregistration.new_version_created", number: replacement.number)
     redirect_to person_deregistration_path(person)
   end
 
@@ -178,7 +250,7 @@ class Person::DeregistrationController < ApplicationController
     clear_receipt
     # The person's data stays captured while the form still says it.
     Wsjrdp2027::DeregistrationSnapshot.for(person).clear! unless person.deregistration_form_created_date
-    person.save! if person.changed?
+    person.save!
     flash[:notice] = t("people.refund_receipt.discarded")
     redirect_to person_deregistration_path(person)
   end
@@ -200,29 +272,34 @@ class Person::DeregistrationController < ApplicationController
   # JSON (the request body as Wsjrdp2027::DeregistrationFormSent reads it). It
   # answers the deregistration as it then stands, with the recorded mail --
   # 201 for a new one, 200 for a Message-ID recorded already.
-  def form_sent
-    return head(:forbidden) unless current_service_token
+  def form_sent = record_mail(Wsjrdp2027::DeregistrationFormSent, "form_mailing")
 
-    payload = begin
-      JSON.parse(request.raw_post.presence || "{}")
-    rescue JSON::ParserError
-      return refuse("the request body is no JSON")
-    end
-    sent = Wsjrdp2027::DeregistrationFormSent.new(person, payload, service_token: current_service_token).save!
-    render status: (sent.duplicate? ? :ok : :created),
-      json: Wsjrdp2027::DeregistrationState.new(person.reload).as_json
-        .merge("form_mailing" => sent.mailing, "duplicate" => sent.duplicate?)
-  rescue Wsjrdp2027::DeregistrationFormSent::Invalid => e
-    refuse(e.message)
+  # bestätigung_abmeldung.py reports the confirmation it sent
+  # (Wsjrdp2027::DeregistrationConfirmationSent), answered like form_sent.
+  def confirmation_sent = record_mail(Wsjrdp2027::DeregistrationConfirmationSent, "confirmation_mailing")
+
+  # A mail of the person's deregistration as it went out, as an EML to save:
+  # whoever may see this page gets it, whatever the document's own lists say
+  # -- the page lists the mail, and the document is the deregistration's.
+  def mail_file
+    document = deregistration_mail_document(params[:document_id])
+    path = document && present_file(document)
+    return head(:not_found) unless path
+
+    response.headers["Cache-Control"] = "private, no-store"
+    send_file path, type: document.content_type.presence || "message/rfc822", disposition: "attachment",
+      filename: document.filename.presence || File.basename(path)
   end
 
   def update
     @person ||= person
     @person.attributes = permitted_params
     normalise_flags(permitted_params)
-    # What the save is about to write: #save clears it, so it is read here.
-    changes = @person.changes
-    if !@person.changed?
+    # What the save is about to write: #save clears it, so it is read here --
+    # the person's own columns and the deregistration row's values, under the
+    # person's names.
+    changes = @person.changes.merge(@person.deregistration_changes)
+    if changes.empty?
       answer_update notice: NO_CHANGE_NOTICE
     elsif @person.save
       answer_update notice: change_notice(changes)
@@ -233,15 +310,104 @@ class Person::DeregistrationController < ApplicationController
 
   private
 
-  # Why a document cannot be had: for an API key's request (or one asking for
-  # JSON) a 422 with the reason, for the page the reason in the flash and the
-  # page itself.
-  def refuse(reason)
+  # What the page's sections draw, for the page and for a save's answer,
+  # which redraws them. The page previews what the receipt will say, so it
+  # builds the same object the PDF is made of -- and above it, what the
+  # creditor the refund is paid to looks like in Moss.
+  def load_sections
+    @recipients = Wsjrdp2027::DeregistrationMailRecipients.new(@person)
+    @refund_creditor = Wsjrdp2027::RefundCreditor.new(@person)
+    @refund_receipt = Wsjrdp2027::RefundReceipt.new(@person, generated_by: current_user)
+    @deregistration_form = Wsjrdp2027::DeregistrationForm.new(@person)
+    @dereg_open_sections = remembered_sections
+  end
+
+  # One of the EMLs of the person's deregistrations (any version of them:
+  # key deregistration, a mail's secondary key); nil for anything else.
+  def deregistration_mail_document(id)
+    WsjrdpDocument.of_subject(person).visible.originals.find_by(id: id.to_i, key: "deregistration",
+      secondary_key: MAIL_SECONDARY_KEYS)
+  end
+
+  # A mail a script reports: the API key's only, the request body as JSON.
+  def record_mail(klass, key)
+    return head(:forbidden) unless current_service_token
+
+    payload = begin
+      JSON.parse(request.raw_post.presence || "{}")
+    rescue JSON::ParserError
+      return refuse("the request body is no JSON", code: "bad_json", status: :bad_request)
+    end
+    sent = klass.new(person, payload, service_token: current_service_token).save!
+    @person = person.reload
+    api_answer(:status => (sent.duplicate? ? :ok : :created), key => sent.mailing, "duplicate" => sent.duplicate?)
+  rescue Wsjrdp2027::DeregistrationFormSent::Invalid => e
+    refuse(e.message, code: e.code, status: e.status)
+  end
+
+  # Every JSON answer of the scripts' API: the deregistration as it stands
+  # (Wsjrdp2027::DeregistrationState, what deregistration.json answers) nested
+  # under "deregistration", the errors and warnings ({"code", "message"}
+  # each), and what the action adds.
+  def api_answer(status:, errors: [], warnings: [], **extra)
+    render status: status, json: {
+      "deregistration" => Wsjrdp2027::DeregistrationState.new(person).as_json,
+      "errors" => errors, "warnings" => warnings
+    }.merge(extra.transform_keys(&:to_s))
+  end
+
+  # Why something cannot be had or done: for an API key's request (or one
+  # asking for JSON) an answer with the reason as its one error -- 422 unless
+  # said otherwise --, for the page the reason in the flash and the page
+  # itself.
+  def refuse(reason, code: "refused", status: :unprocessable_entity)
     if current_service_token || request.format.json?
-      render json: {"error" => reason}, status: :unprocessable_entity
+      api_answer(status: status, errors: [{"code" => code, "message" => reason}])
     else
       flash[:alert] = reason
       redirect_to person_deregistration_path(person)
+    end
+  end
+
+  # The stored file of the kept form, where there is one to answer: the sent
+  # one once the form went out, else the kept one while it is fresh; nil
+  # otherwise (the PDF is then drawn from the data).
+  def sent_form_file = present_file(kept_form_document)
+
+  def kept_form_document
+    row = person.deregistration
+    return nil if row.nil?
+    return Wsjrdp2027::DeregistrationFormDocument.usable(row.sent_form_document, current: false) if row.form_sent_at
+
+    Wsjrdp2027::DeregistrationFormDocument.new(person, author: nil).fresh
+  end
+
+  # Its first page as a picture, the derivation stored with it.
+  def sent_form_thumbnail_file
+    document = kept_form_document
+    return nil if document.nil?
+
+    present_file(document.derivatives.current.find_by(
+      derivation_key: Wsjrdp2027::DeregistrationFormDocument::THUMBNAIL_DERIVATION_KEY
+    ))
+  end
+
+  def present_file(document)
+    return nil if document.nil? || document.file_missing?
+
+    path = Wsjrdp2027::DocumentStore.path_for(document)
+    path if File.file?(path)
+  end
+
+  # A stored file of the form: the PDF inline or, behind download, as a file
+  # to save; the picture inline and kept by nobody, like the drawn one.
+  def send_sent_form(form, path)
+    if request.format.png?
+      response.headers["Cache-Control"] = "private, no-store"
+      send_file path, type: "image/png", disposition: "inline", filename: form.file_name.sub(/\.pdf\z/, ".png")
+    else
+      send_file path, type: "application/pdf", filename: form.file_name,
+        disposition: params[:download].present? ? "attachment" : "inline"
     end
   end
 
@@ -332,6 +498,7 @@ class Person::DeregistrationController < ApplicationController
     respond_to do |format|
       format.turbo_stream do
         @person.reload
+        load_sections
         @dereg_saved = true
         @dereg_stay = stay?
         flash.now[:notice] = notice
@@ -377,13 +544,16 @@ class Person::DeregistrationController < ApplicationController
   end
 
   # In the order this form lists its fields, so the lines do not shuffle from
-  # one save to the next.
+  # one save to the next. A value that reads as it did (a stored default and
+  # an absent one) has no line.
   def change_lines(changes)
-    flat = flat_changes(changes)
     permitted_attrs.filter_map do |attr|
-      next unless flat.key?(attr.to_s)
+      next unless changes.key?(attr.to_s)
 
-      before, after = flat[attr.to_s]
+      before, after = changes[attr.to_s]
+      sub_key = Wsjrdp2027::DeregistrationWording.key(attr)
+      next if sub_key && Wsjrdp2027::DeregistrationWording.same?(sub_key, before, after)
+
       "#{change_label(attr)}: " \
         "#{format_change_value(attr, before)} #{CHANGE_ARROW} " \
         "#{format_change_value(attr, after)}"
@@ -398,52 +568,12 @@ class Person::DeregistrationController < ApplicationController
     Person.human_attribute_name(attr)
   end
 
-  # Every deregistration field is a jsonb accessor on additional_info, which
-  # Rails tracks as ONE change of that column -- so the per-field before and
-  # after have to be read out of the two hashes. A plain column would be tracked
-  # on its own and pass through.
-  #
-  # Either hash can be empty and still carry the change: clearing the last
-  # remaining field leaves {} behind, because a blank value drops its key.
-  # What decides is whether the column changed at all, not what is left in it.
-  def flat_changes(changes)
-    flat = changes.except("additional_info")
-    return flat unless changes.key?("additional_info")
-
-    before, after = changes["additional_info"]
-    before = before.to_h
-    after = after.to_h
-    (before.keys | after.keys).each do |key|
-      next if before[key] == after[key]
-
-      if key.to_s == Wsjrdp2027::DeregistrationRecord::KEY
-        flat.merge!(record_changes(before[key], after[key]))
-      else
-        flat[key] = [before[key], after[key]]
-      end
-    end
-    flat
-  end
-
-  # One key of additional_info carries the deregistration record, a hash on
-  # each side (Wsjrdp2027::DeregistrationRecord) -- so its change is read per
-  # sub-key and named the way permitted_attrs spells it. A side that is missing
-  # altogether works like an empty record.
-  def record_changes(before, after)
-    before = before.to_h.stringify_keys
-    after = after.to_h.stringify_keys
-    (before.keys | after.keys).each_with_object({}) do |key, changes|
-      next if Wsjrdp2027::DeregistrationRecord.same?(key, before[key], after[key])
-
-      changes[Wsjrdp2027::DeregistrationRecord.person_attr(key).to_s] = [before[key], after[key]]
-    end
-  end
-
-  # The values are the jsonb payload: an ISO string for a date, cents for the
-  # amount, free text for the ticket.
+  # The values as the row holds them: a date, cents for the amount, free text
+  # for the ticket, the kind and the flags as Wsjrdp2027::DeregistrationWording
+  # words them for the log.
   def format_change_value(attr, value)
-    sub_key = Wsjrdp2027::DeregistrationRecord.sub_key(attr)
-    return Wsjrdp2027::DeregistrationRecord.describe(sub_key, value) if sub_key
+    sub_key = Wsjrdp2027::DeregistrationWording.key(attr)
+    return Wsjrdp2027::DeregistrationWording.describe(sub_key, value) if sub_key
     return BLANK_VALUE if value.blank?
 
     case attr

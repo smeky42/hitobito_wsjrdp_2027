@@ -117,6 +117,9 @@ module Wsjrdp2027
       person.deregistration_effective_reply_due_date =
         person.deregistration_reply_due_date || (Date.current + REPLY_PERIOD)
       snapshot.capture!
+      # The deregistration moves on to its next step.
+      row = person.deregistration
+      row.status = "form_created" if row&.status == "recorded"
       person.save!
       true
     end
@@ -184,6 +187,13 @@ module Wsjrdp2027
     end
 
     def to_pdf = TypstDocument.compile_pdf(TEMPLATE, sys_inputs: to_sys_inputs)
+
+    # A fingerprint of everything the PDF is drawn from: the kept form
+    # (DeregistrationFormDocument) still says what the data say while it
+    # matches. Cheap -- nothing is rendered.
+    def inputs_digest
+      Digest::SHA256.hexdigest([TEMPLATE, to_sys_inputs.sort].to_json)
+    end
 
     # The first page as a picture, for the preview on the Abmeldung page.
     def to_png(ppi: TypstDocument::THUMBNAIL_PPI)

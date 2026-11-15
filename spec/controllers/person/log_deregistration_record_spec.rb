@@ -10,7 +10,8 @@
 require "spec_helper"
 
 # The person log renders a change of additional_info["deregistration_record"]
-# (Wsjrdp2027::DeregistrationRecord) per value, through
+# (an older entry, from before the deregistration had its table) per value,
+# in the words of Wsjrdp2027::DeregistrationWording, through
 # Wsjrdp2027::PaperTrail::VersionDecorator#attribute_change, in the words the
 # Abmeldung page's flash uses. The log page is used instead of a decorator spec
 # because the core's :draper_with_helpers hook reads a core fixture this wagon
@@ -19,7 +20,7 @@ describe Person::LogController do
   render_views
 
   let(:person) { people(:cmt_leader) }
-  let(:key) { Wsjrdp2027::DeregistrationRecord::KEY }
+  let(:key) { "deregistration_record" }
 
   before { sign_in(people(:admin)) }
 
@@ -39,17 +40,24 @@ describe Person::LogController do
   # Only the change lines, so the assertions do not see the surrounding layout.
   def changes_html = Nokogiri::HTML(response.body).css(".log-infos").to_html
 
-  it "renders a change written through the model" do
+  # Since the move to wsjrdp_deregistrations a change is a version of the row,
+  # shown in the person's log by the row's number.
+  it "renders a change of the deregistration row written through the model" do
     with_versioning do
-      person.update!(deregistration_kind: "termination")
+      person.update!(deregistration_issue: "HELP-1")
+      person.reload.update!(deregistration_kind: "termination", deregistration_refund_receipt_text: "Hallo Team",
+        deregistration_actual_compensation_cents: 15_050)
     end
 
     log
 
     expect(response).to be_successful
-    expect(changes_html)
-      .to include("Art: Abmeldung (durch die Person) → Kündigung (durch das Kontingent)")
-    expect(changes_html).not_to include("=>", key)
+    expect(changes_html).to include("Abmeldung Nr. 1 angelegt:", "Ticket Abmeldung: – → HELP-1")
+    expect(changes_html).to include("Abmeldung Nr. 1 geändert:",
+      "Art: Abmeldung (durch die Person) → Kündigung (durch das Kontingent)",
+      "Text im Beleg: – → Hallo Team")
+    expect(changes_html).to match(/: – → 150,50/)
+    expect(changes_html).not_to include("=>", "refund_receipt")
   end
 
   it "renders one line per changed value, in the order the form asks for them" do

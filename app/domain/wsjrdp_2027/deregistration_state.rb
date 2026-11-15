@@ -34,6 +34,11 @@ module Wsjrdp2027
     def as_json(*)
       {
         "person_id" => person.id,
+        # The deregistration row the answer is of (WsjrdpDeregistration): a
+        # report names it back (form_sent.json); nil before anything is entered.
+        "deregistration_id" => person.deregistration&.id,
+        "number" => person.deregistration&.number,
+        "deregistration_status" => person.deregistration&.status,
         "kind" => person.deregistration_kind_or_default,
         "available" => form.available?,
         "not_available_reason" => not_available_reason,
@@ -50,14 +55,22 @@ module Wsjrdp2027
           "created_date" => person.deregistration_form_created_date&.iso8601,
           "reply_due_date" => form.reply_due_date&.iso8601,
           "file_name" => form.file_name,
+          # The kept PDF (DeregistrationFormDocument): what form.pdf answers an
+          # API key, and once sent the form as it went out; nil before.
+          "document_id" => person.deregistration&.sent_form_document_id,
           # The account a refund goes to, as the form prints it: captured when
           # it was made, the person's bank data before.
           "refund_iban" => form.iban.presence,
           "refund_account_holder" => form.account_holder.presence,
           "show_contractual_compensation" => form.show_contractual_compensation?
         },
-        "mail" => recipients.as_json,
-        "form_mailings" => person.deregistration_form_mailings
+        "mail" => recipients.as_json.merge("subject" => subject("subject"),
+          "confirmation_subject" => subject("confirmation_subject")),
+        # What stands in the way of a complete form, and what is worth a second
+        # look (DeregistrationFormCheck) -- the same prepare_form.json answers.
+        "form_check" => DeregistrationFormCheck.new(person).as_json,
+        "form_mailings" => person.deregistration_form_mailings,
+        "confirmation_mailings" => confirmation_mailings
       }
     end
 
@@ -77,6 +90,23 @@ module Wsjrdp2027
         "deregistration_refund" => eur(person.deregistration_refund_cents),
         "deregistration_open" => eur(person.deregistration_open_cents)
       }
+    end
+
+    # The subject of the form's mail and of the confirmation's: the role, id
+    # and name the form names, and the ticket behind it where there is one.
+    # The scripts take them as they are.
+    def subject(key)
+      text = I18n.t("people.deregistration_form_mailing.#{key}", role_id_name: form.role_id_name)
+      [text, person.deregistration_issue.presence].compact.join(" ")
+    end
+
+    # The confirmations sent (DeregistrationConfirmationSent), oldest first.
+    def confirmation_mailings
+      row = person.deregistration
+      return [] if row.nil?
+
+      row.events.select { |e| e.event == "notify" && e.action == DeregistrationConfirmationSent::ACTION }
+        .map { |e| e.additional_info.to_h }
     end
 
     private

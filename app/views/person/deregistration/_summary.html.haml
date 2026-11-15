@@ -12,6 +12,20 @@
 -# A save in the capture section changes what the head counts up, so the head
 -# carries an id of its own and a saved form replaces it by that id.
 .dereg-summary#dereg-summary
+  -# Which deregistration row the page is on and how far it is; a fixed one
+  -# says so, with the way to its next version.
+  - if (row = @person.deregistration)
+    .d-flex.flex-wrap.align-items-center.gap-2.mb-2#dereg-row
+      %span.fw-semibold= t("people.deregistration.number_status", number: row.number, status: t("people.deregistration_statuses.#{row.status}", default: row.status))
+      - if (replaced = row.replaces)
+        %span.muted= t("people.deregistration.replaces", number: replaced.number)
+    - unless row.editable?
+      .alert.alert-info.py-2.d-flex.flex-wrap.align-items-center.gap-2#dereg-fixed
+        %span= t("people.deregistration.fixed")
+        - unless row.final?
+          = button_to t("people.deregistration.new_version"), new_version_person_deregistration_path(@person),
+            method: :post, class: "btn btn-sm btn-outline-primary",
+            form: {class: "d-inline", data: {turbo: false, dereg_confirm: t("people.deregistration.new_version_confirm")}}
   .dereg-summary-columns
     %div
       = render_attrs_list do

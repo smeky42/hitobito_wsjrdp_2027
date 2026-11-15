@@ -16,5 +16,16 @@
 class WsjrdpDeregistrationEvent < ActiveRecord::Base
   EVENTS = %w[create update notify].freeze
 
+  belongs_to :deregistration, class_name: "WsjrdpDeregistration", inverse_of: :events
+
   validates :event, inclusion: {in: EVENTS}
+
+  # Who did it, as a record: a person or an API key; nil where nobody is
+  # known or the record is gone.
+  def actor
+    return nil if actor_id.nil?
+
+    klass = {"Person" => ::Person, "ServiceToken" => ::ServiceToken}[actor_type]
+    klass&.find_by(id: actor_id)
+  end
 end

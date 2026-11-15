@@ -84,7 +84,7 @@ describe Wsjrdp2027::DeregistrationMailRecipients do
     ist = people(:ist_a_1)
     expect(recipients(ist).bcc).to eq([])
     expect(recipients(ist).as_json).to eq("from" => "ist@worldscoutjamboree.de", "to" => [ist.email],
-      "cc" => [], "bcc" => [], "unit" => nil)
+      "cc" => [], "bcc" => [], "reply_to" => [], "unit" => nil)
 
     ist.update!(deregistration_issue: "HELP-9")
     expect(recipients(ist).bcc).to eq(["ist@worldscoutjamboree.de"])

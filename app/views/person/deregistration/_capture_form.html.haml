@@ -13,7 +13,19 @@
 -# Two ways out of the form and one beside them: Speichern brings the list back,
 -# Speichern und weiter bearbeiten hands the saved values back as a form, and
 -# Abbrechen is a plain link to the page, which inside the frame is the list.
+-#
+-# The three stand above the fields and stay in sight while the form scrolls,
+-# below the session bars -- the sticky actions of the finance forms
+-# (fin/shared/_sticky_form_actions).
+:css
+  .dereg-form-actions-sticky { position: sticky; top: var(--wsjrdp-session-bars-height, 0px); z-index: 5;
+    background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    margin: 0 0 12px; padding: .5rem 0; }
 = standard_form @person, url: person_deregistration_path(@person), method: :put do |f|
+  .dereg-form-actions.dereg-form-actions-sticky
+    = f.button t("people.deregistration_capture.save"), class: "btn btn-sm btn-primary"
+    = f.button t("people.deregistration_capture.save_and_stay"), class: "btn btn-sm btn-outline-primary", name: "stay", value: "1"
+    = link_to t("people.deregistration_capture.cancel"), person_deregistration_path(@person), class: "btn btn-sm btn-link"
   = f.error_messages
   = hidden_field_tag 'return_url', return_url
   = field_set_tag do
@@ -45,7 +57,3 @@
     = f.labeled_boolean_field :deregistration_form_show_contractual_compensation, caption: t("people.deregistration_form.show_contractual_compensation"), checked: @person.deregistration_form_show_contractual_compensation?
     = f.labeled_text_area :deregistration_refund_receipt_text, rows: 3, placeholder: t("people.refund_receipt.text_placeholder")
     = f.labeled_boolean_field :deregistration_refund_receipt_show_default_explanation, caption: t("people.refund_receipt.show_explanation"), checked: @person.deregistration_refund_receipt_show_default_explanation?
-  .dereg-form-actions
-    = f.button t("people.deregistration_capture.save"), class: "btn btn-sm btn-primary"
-    = f.button t("people.deregistration_capture.save_and_stay"), class: "btn btn-sm btn-outline-primary", name: "stay", value: "1"
-    = link_to t("people.deregistration_capture.cancel"), person_deregistration_path(@person), class: "btn btn-sm btn-link"

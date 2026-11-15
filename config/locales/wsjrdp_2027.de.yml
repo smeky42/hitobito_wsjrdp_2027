@@ -88,6 +88,12 @@ de:
           buddy_self: "darf nicht deine eigene Buddy ID sein."
           buddy_no_ul: "muss zu einer Person gehören, die Unit Leader ist."
           buddy_no_yp: "muss zu einer Person gehören, die Youth Participant ist."
+        wsjrdp_deregistration:
+          attributes:
+            base:
+              deregistration_fixed: >-
+                Das Abmelde-Formular dieser Abmeldung ist verschickt, was es sagt, bleibt
+                so. Für eine Änderung bitte eine neue Fassung anlegen.
         service_token:
           attributes:
             base:
@@ -1344,6 +1350,44 @@ de:
     deregistration_record:
       stored: gespeichert
       not_stored: –
+    # The steps of a deregistration row (WsjrdpDeregistration::STATUSES).
+    deregistration_statuses:
+      recorded: Erfasst
+      form_created: Formular erzeugt
+      form_sent: Formular verschickt
+      signed_form_received: Unterschrieben zurück
+      refund_initiated: Rückzahlung veranlasst
+      refund_booked: Rückzahlung gebucht
+      confirmation_sent: Bestätigung verschickt
+      finished: Abgeschlossen
+      canceled: Abgebrochen
+      superseded: Ersetzt durch neue Fassung
+      deleted: Gelöscht
+    # The Abmeldung page on its deregistration row.
+    deregistration:
+      number_status: "Abmeldung Nr. %{number} · %{status}"
+      fixed: Das Abmelde-Formular ist verschickt, die Angaben dazu sind festgeschrieben. Für eine Änderung bitte eine neue Fassung anlegen.
+      new_version: Neue Fassung anlegen
+      new_version_confirm: Eine neue Fassung dieser Abmeldung anlegen? Die bisherige bleibt als ersetzt erhalten, das Abmelde-Formular wird neu erzeugt.
+      new_version_created: Neue Fassung Nr. %{number} angelegt.
+      no_new_version: Eine neue Fassung gibt es nur für eine Abmeldung, deren Formular verschickt ist.
+      replaces: ersetzt Nr. %{number}
+      history: Verlauf
+      history_line: "%{time} · Nr. %{number} · %{what}%{by}"
+      history_by: " · %{actor}"
+      history_created: angelegt
+      history_updated: Angaben geändert
+      history_form_stored: Abmelde-Formular gespeichert
+      history_form_sent: Formular per E-Mail verschickt an %{addresses}
+      history_confirmation_sent: Bestätigung per E-Mail verschickt an %{addresses}
+      # A change of a row's document or time, in the history and the person log
+      # (Wsjrdp2027::DeregistrationWording.row_change_lines).
+      row_changes:
+        document: Dokument %{id}
+        sent_form_document_id: "Gespeichertes Abmelde-Formular: %{from} → %{to}"
+        signed_form_document_id: "Unterschriebenes Abmelde-Formular: %{from} → %{to}"
+        form_sent_at: "Verschickt am: %{from} → %{to}"
+        signed_form_received_at: "Unterschrieben zurück am: %{from} → %{to}"
     deregistration_summary:
       reply_due_default: (14 Tage ab Erstellung des Formulars)
       reply_due_fixed: (im Formular festgelegt)
@@ -1401,6 +1445,7 @@ de:
       discard: Formular verwerfen
       created: Abmelde-Formular erzeugt.
       not_created: Das Abmelde-Formular ist noch nicht erzeugt.
+      document_missing: 'Das gespeicherte Abmelde-Formular (Dokument %{id}) gibt es nicht. Bitte das Formular neu vorbereiten (prepare_form) und erneut verschicken.'
       discard_confirm: Das erstellte Abmelde-Formular verwerfen? Der Beleg für Rückzahlung in Moss wird mit verworfen, ebenso die gespeicherten Konto-, Rollen- und Team-Daten und die im Formular festgelegte Frist. Eine eingetragene „Rückmeldung bis“ bleibt. Beide Dokumente werden danach neu erstellt und neu datiert.
       discarded: Abmelde-Formular und Beleg verworfen, beide werden neu erstellt.
       created_on: Erstellt am %{date}
@@ -1412,19 +1457,42 @@ de:
         termination: Die Art ist Kündigung (durch das Kontingent), das Abmelde-Formular erklärt aber den Rücktritt durch die Person.
         cancellation: Die Art ist Storno der Registrierung, das Abmelde-Formular erklärt aber den Rücktritt von einem Vertrag.
         no_date: Weder „Rücktritt erklärt am“ noch „Abmeldung zum“ ist eingetragen – eins von beiden muss gesetzt sein.
+    # Was einem vollständigen Abmelde-Formular fehlt (Fehler) und was einen
+    # zweiten Blick wert ist (Warnungen) -- Wsjrdp2027::DeregistrationFormCheck.
+    deregistration_check:
+      unavailable_termination: Die Art ist Kündigung (durch das Kontingent), das Abmelde-Formular erklärt aber den Rücktritt durch die Person.
+      unavailable_cancellation: Die Art ist Storno der Registrierung, das Abmelde-Formular erklärt aber den Rücktritt von einem Vertrag.
+      unavailable_no_date: Weder „Rücktritt erklärt am“ noch „Abmeldung zum“ ist eingetragen.
+      no_compensation: Es ist keine Entschädigung eingetragen; das Formular ließe Rückzahlung bzw. Forderung und Konto zum Ausfüllen frei.
+      no_birthday: Das Geburtsdatum fehlt; das Formular ließe es zum Ausfüllen frei.
+      no_refund_account: Für die Rückzahlung fehlt IBAN oder Kontoinhaber; das Formular ließe das Konto zum Ausfüllen frei.
+      no_issue: Es ist kein Helpdesk-Ticket eingetragen.
+      deadline_over: Die Frist des Formulars (%{date}) ist abgelaufen.
+      sent_before: Das Formular wurde schon am %{date} an %{addresses} verschickt.
+      no_guardian: Es ist kein*e Erziehungsberechtigte*r eingetragen, die*der mit unterschreibt.
     # Der E-Mail-Versand des Abmelde-Formulars durch das Skript
     # create_deregistration_form.py (Wsjrdp2027::DeregistrationMailRecipients,
     # Wsjrdp2027::DeregistrationFormSent).
     deregistration_form_mailing:
-      bcc_label: BCC bei E-Mail-Versand des Abmelde-Formulars
+      subject: WSJ27 Abmeldung %{role_id_name}
+      confirmation_subject: WSJ27 Bestätigung der Abmeldung %{role_id_name}
+      from_label: E-Mail von (From)
+      to_label: E-Mail an (To)
+      cc_label: E-Mail Kopie (Cc)
+      bcc_label: E-Mail Blindkopie (Bcc)
+      reply_to_label: E-Mail Antwort an (Reply-To)
+      sent_label: Versand
+      documents_label: Dokumente
+      document_form: Abmelde-Formular
+      document_form_mail: E-Mail %{number}
+      document_details: Dokument %{id} ansehen
+      download_eml: EML herunterladen
       no_addresses: keine Adressen hinterlegt
       unit_source:
         unit: aus Unit %{name}
         last_unit: aus Unit %{name} (letzte Unit)
         primary_group: aus Hauptgruppe %{name} (keine Unit)
-      sent:
-        one: "Verschickt am %{date} an %{addresses} (Bcc: %{count} Adresse)"
-        other: "Verschickt am %{date} an %{addresses} (Bcc: %{count} Adressen)"
+      sent: Verschickt am %{date}
       discarded_form: " – zu einem verworfenen Formular"
       note: Abmelde-Formular am %{date} per E-Mail verschickt
       note_with_issue: Abmelde-Formular am %{date} per E-Mail verschickt (%{issue})
@@ -1676,7 +1744,9 @@ de:
         subject: Person
         kind: Art
         key: Schlüssel
+        key_number: Nummer
         secondary_key: Unterschlüssel
+        secondary_key_number: Unternummer
         derivation_key: Ableitung
         status: Status
         superseded_at: Ersetzt am
@@ -2537,7 +2607,13 @@ de:
       units: "Units"
 
   version:
+    wsjrdp_deregistration_status: "Schritt: %{from} → %{to}"
     association_change:
+      # A deregistration row, by its number (Wsjrdp2027::PaperTrail::VersionDecorator#deregistration_change).
+      wsjrdp_deregistration:
+        create: "Abmeldung Nr. %{number} angelegt:"
+        update: "Abmeldung Nr. %{number} geändert:"
+        destroy: "Abmeldung Nr. %{number} gelöscht."
       # A family link, named by the other person -- role, linked name and
       # relation (Wsjrdp2027::PaperTrail::VersionDecorator#family_member_change).
       family_member:
@@ -2560,6 +2636,7 @@ de:
       pre_notification: Vorabankündigung Lastschrift
       primary_role_change: Hauptgruppe/Rolle gewechselt
       deregistration_form: Abmelde-Formular verschickt
+      deregistration_confirmation: Bestätigung der Abmeldung verschickt
     wsjrdp_detail: '%{label}: %{value}'
     wsjrdp_generic: 'Eintrag <i>%{event}</i>'
     finance_group_ids:

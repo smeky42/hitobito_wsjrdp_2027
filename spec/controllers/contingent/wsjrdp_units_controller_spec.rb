@@ -91,12 +91,14 @@ describe Contingent::WsjrdpUnitsController, type: :controller do
     waiting_list.update_columns(is_wsjrdp: false)
     cancelling = Fabricate(Group::Unit::Member.name.to_sym, group: waiting_list).person
     cancelling.update_columns(primary_group_id: waiting_list.id, nickname: "Wa", status: "deregistration_noted",
-      contract_status: "confirmed", additional_info: {"deregistration_issue" => "HELP-77"})
+      contract_status: "confirmed")
+    WsjrdpDeregistration.create!(person_id: cancelling.id, number: 1, issue: "HELP-77")
     Fabricate(Group::Unit::Member.name.to_sym, group: unit_a, person: cancelling,
       start_on: Date.new(2026, 1, 7), end_on: Date.new(2026, 10, 30))
     deregistered = unit_person("De", contract_status: "ended", status: "deregistered")
-    deregistered.update_columns(contract_ended_at: Time.zone.local(2026, 4, 16, 12),
-      additional_info: {"deregistration_issue" => "https://helpdesk.worldscoutjamboree.de/browse/HELP-78"})
+    deregistered.update_columns(contract_ended_at: Time.zone.local(2026, 4, 16, 12))
+    WsjrdpDeregistration.create!(person_id: deregistered.id, number: 1,
+      issue: "https://helpdesk.worldscoutjamboree.de/browse/HELP-78")
     successor = unit_person("Su", contract_status: "confirmed", status: "confirmed")
     successor.update_columns(additional_info: {"late_confirmation_issue" => "HELP-79"})
     # Nachgerückt only after the unit was formed (07.01.2026 while the unit stores none).
@@ -454,10 +456,14 @@ describe Contingent::WsjrdpUnitsController, type: :controller do
     jsf = unit_person("Js", contract_status: "confirmed", status: "confirmed")
     jsf.update_columns(wsjrdp_total_fee_reduction: 1700, wsjrdp_total_fee_reduction_hint: "JSF")
     gone = unit_person("Go", contract_status: "ended", status: "deregistered")
-    gone.update_columns(additional_info: {"deregistration_actual_compensation_cents" => 155_00})
-    Person.where(nickname: "Ca").update_all(additional_info: {"deregistration_actual_compensation_cents" => 2550_00})
+    WsjrdpDeregistration.create!(person_id: gone.id, number: 1, actual_compensation: 155)
+    Person.where(nickname: "Ca").find_each do |person|
+      WsjrdpDeregistration.create!(person_id: person.id, number: 1, actual_compensation: 2550)
+    end
     # Without it the T&R's compensation would count for Cb.
-    Person.where(nickname: "Cb").update_all(additional_info: {"deregistration_actual_compensation_cents" => 0})
+    Person.where(nickname: "Cb").find_each do |person|
+      WsjrdpDeregistration.create!(person_id: person.id, number: 1, actual_compensation: 0)
+    end
   end
 
   it "shows the people's effect on the budget: Einbehalt, open Einbehalt, fee reductions without JSF" do

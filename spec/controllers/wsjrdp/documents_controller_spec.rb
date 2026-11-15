@@ -58,6 +58,31 @@ describe Wsjrdp::DocumentsController, type: :controller do
       expect(response.headers["Content-Disposition"]).to start_with("attachment")
     end
 
+    it "names the file after the document, not after its place in the store" do
+      sign_in(person)
+
+      get :show, params: {id: store.id, download: 1}
+
+      expect(response.headers["Content-Disposition"]).to include('filename="scan.pdf"')
+    end
+
+    # A mail as it went out: an attachment as it is, raw text on request.
+    it "sends an EML as an attachment, and as plain text inline with ?raw=1" do
+      sign_in(person)
+      eml = "Message-ID: <1@example.org>\r\nSubject: Hallo\r\n\r\nText\r\n"
+      document = store(eml, key_number: 2, filename: "Abmeldung.eml", content_type: "message/rfc822")
+
+      get :show, params: {id: document.id}
+      expect(response.headers["Content-Disposition"]).to start_with("attachment")
+      expect(response.headers["Content-Disposition"]).to include('filename="Abmeldung.eml"')
+
+      get :show, params: {id: document.id, raw: 1}
+      expect(response.media_type).to eq("text/plain")
+      expect(response.headers["Content-Type"]).to include("charset=utf-8")
+      expect(response.headers["Content-Disposition"]).to start_with("inline")
+      expect(response.body).to eq(eml)
+    end
+
     it "refuses who may not read the document" do
       sign_in(people(:yp_a_2))
 

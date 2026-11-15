@@ -12,10 +12,45 @@ module Wsjrdp2027::Person
   BUDDY_ID_FORMAT = /^(?<tag>[a-zA-Z0-9_äöüÄÖÜß]+-[a-zA-Z0-9_äöüÄÖÜß]+)-(?<id>\d+)$/
 
   # Who ended the participation: the person themselves ("Abmeldung") or the
-  # contingent ("Kündigung"). An absent value means a withdrawal. The kind
-  # belongs to Wsjrdp2027::DeregistrationRecord, which the person's accessors
-  # delegate to; the name stays here for everyone who asks the person for it.
-  DEREGISTRATION_KINDS = Wsjrdp2027::DeregistrationRecord::KINDS
+  # contingent ("Kündigung"), or the registration was cancelled. The kind
+  # belongs to the person's deregistration row (WsjrdpDeregistration); the name
+  # stays here for everyone who asks the person for it.
+  DEREGISTRATION_KINDS = WsjrdpDeregistration::KINDS
+
+  # The accessors stored in a column of the row, by the person's name.
+  DEREGISTRATION_COLUMN_ATTRS = {
+    deregistration_issue: :issue,
+    deregistration_requested_date: :requested_date,
+    deregistration_effective_date: :effective_date,
+    deregistration_kind: :kind,
+    deregistration_reply_due_date: :reply_due_date,
+    deregistration_form_show_contractual_compensation: :show_contractual_compensation
+  }.freeze
+  # The accessors stored in form_snapshot, by the person's name.
+  DEREGISTRATION_SNAPSHOT_ATTRS = {
+    deregistration_form_created_date: "created_date",
+    deregistration_effective_reply_due_date: "effective_reply_due_date",
+    deregistration_refund_account_holder: "refund_account_holder",
+    deregistration_refund_iban: "refund_iban",
+    deregistration_refund_bic: "refund_bic",
+    deregistration_refund_sepa_address: "refund_sepa_address",
+    deregistration_person_role: "person_role",
+    deregistration_person_role_name: "person_role_name",
+    deregistration_person_team_unit: "person_team_unit"
+  }.freeze
+  # The accessors stored in additional_info["refund_receipt"].
+  DEREGISTRATION_RECEIPT_ATTRS = {
+    deregistration_receipt_created_date: "created_date",
+    deregistration_receipt_created_by_id: "created_by_id",
+    deregistration_receipt_snapshot: "snapshot",
+    deregistration_refund_receipt_text: "text",
+    deregistration_refund_receipt_show_default_explanation: "show_default_explanation"
+  }.freeze
+  DEREGISTRATION_DATE_ATTRS = %i[
+    deregistration_requested_date deregistration_effective_date deregistration_reply_due_date
+    deregistration_form_created_date deregistration_effective_reply_due_date
+    deregistration_receipt_created_date
+  ].freeze
 
   # The jamboree role (wsj_role) a contingent role (wsjrdp_role) goes with:
   # the same name, except BMT, who are IST on the jamboree. A person whose
@@ -263,23 +298,14 @@ module Wsjrdp2027::Person
       jsonb_accessor :additional_info, :keycloak_username, strip: true
       attribute :keycloak_username, :string
 
-      jsonb_accessor :additional_info, :deregistration_issue, strip: true
-      attribute :deregistration_issue, :string
-      jsonb_accessor :additional_info, :deregistration_requested_date
-      attribute :deregistration_requested_date, :date
-      jsonb_accessor :additional_info, :deregistration_effective_date
-      attribute :deregistration_effective_date, :date
-      jsonb_accessor :additional_info, :deregistration_actual_compensation_cents
-      attribute :deregistration_actual_compensation_cents, :integer
-      # The kind of deregistration and what the Abmeldung page's two documents
-      # carry live in ONE sub-object of additional_info
-      # (Wsjrdp2027::DeregistrationRecord), which the deregistration_*
-      # accessors further down delegate to. The store accessor is what puts the
-      # key into stored_attributes, so a change of the sub-object reaches the
-      # person log as one entry (Wsjrdp2027::PaperTrail::Events::Base, rendered
-      # per sub-key by Wsjrdp2027::PaperTrail::VersionDecorator); the reader
-      # below answers the record itself rather than the raw hash.
-      store_accessor :additional_info, Wsjrdp2027::DeregistrationRecord::KEY
+      # The person's deregistrations (WsjrdpDeregistration), one row per
+      # version; the deregistration_* accessors further down work on the
+      # current one (#deregistration) and the person's save saves it. The
+      # data lived in additional_info before (migration 20261115000100); old
+      # entries of the person log still show its changes
+      # (Wsjrdp2027::PaperTrail::VersionDecorator#deregistration_record_change).
+      has_many :wsjrdp_deregistrations, -> { order(:number) }, class_name: "WsjrdpDeregistration",
+        foreign_key: :person_id, inverse_of: :person, autosave: true, dependent: nil
       # Blank is the default, not an error: an absent kind reads as a withdrawal
       # (#deregistration_kind_or_default).
       validates :deregistration_kind, inclusion: {in: DEREGISTRATION_KINDS}, allow_blank: true
@@ -967,22 +993,78 @@ module Wsjrdp2027::Person
         moss_email.present? && wsjrdp_email.present? && moss_invited_at.present?
       end
 
-      def deregistration_effective_date
-        super&.to_date
+      # The deregistration the accessors below work on: the open row, else the
+      # latest (WsjrdpDeregistration.current_for); nil for a person never
+      # deregistered. A writer builds row 1 the first time it is given a value,
+      # and the person's save saves it (autosave).
+      def deregistration = WsjrdpDeregistration.current_for(wsjrdp_deregistrations.to_a)
+
+      # Whether the current row takes changes of what the form says
+      # (WsjrdpDeregistration#editable?); a person without a row does.
+      def deregistration_editable? = deregistration.nil? || deregistration.editable?
+
+      # What changed on the current row and is not saved yet, under the
+      # person's accessor names: {"deregistration_issue" => [before, after]}.
+      # The Abmeldung page's flash is made of it.
+      def deregistration_changes
+        row = deregistration
+        return {} if row.nil? || !row.changed?
+
+        changes = row.changes
+        result = {}
+        DEREGISTRATION_COLUMN_ATTRS.each do |attr, column|
+          result[attr.to_s] = changes[column.to_s] if changes.key?(column.to_s)
+        end
+        if changes.key?("actual_compensation")
+          result["deregistration_actual_compensation_cents"] =
+            changes["actual_compensation"].map { |eur| eur && (eur * 100).round }
+        end
+        {"form_snapshot" => DEREGISTRATION_SNAPSHOT_ATTRS, "additional_info" => DEREGISTRATION_RECEIPT_ATTRS}
+          .each do |column, attrs|
+          next unless changes.key?(column)
+
+          before, after = changes[column]
+          before = (column == "additional_info") ? before.to_h[WsjrdpDeregistration::RECEIPT_KEY].to_h : before.to_h
+          after = (column == "additional_info") ? after.to_h[WsjrdpDeregistration::RECEIPT_KEY].to_h : after.to_h
+          attrs.each do |attr, key|
+            result[attr.to_s] = [before[key], after[key]] unless before[key] == after[key]
+          end
+        end
+        result
       end
 
-      def deregistration_effective_date=(value)
-        value = value.to_date if value.respond_to?(:to_date)
-        super(value&.to_fs(:iso8601))
+      def deregistration_issue = deregistration&.issue
+
+      def deregistration_issue=(value)
+        write_deregistration(:issue, value.to_s.strip.presence)
       end
 
-      def deregistration_requested_date
-        super&.to_date
-      end
+      def deregistration_requested_date = deregistration&.requested_date
 
       def deregistration_requested_date=(value)
-        value = value.to_date if value.respond_to?(:to_date)
-        super(value&.to_fs(:iso8601))
+        write_deregistration(:requested_date, deregistration_date(value))
+      end
+
+      def deregistration_effective_date = deregistration&.effective_date
+
+      def deregistration_effective_date=(value)
+        write_deregistration(:effective_date, deregistration_date(value))
+      end
+
+      def deregistration_reply_due_date = deregistration&.reply_due_date
+
+      def deregistration_reply_due_date=(value)
+        write_deregistration(:reply_due_date, deregistration_date(value))
+      end
+
+      def deregistration_actual_compensation_cents = deregistration&.actual_compensation_cents
+
+      def deregistration_actual_compensation_cents=(value)
+        cents = value.blank? ? nil : Integer(value.to_s, 10)
+        row = deregistration_for_write(cents)
+        row.actual_compensation_cents = cents if row
+      rescue ArgumentError
+        errors.add(:deregistration_actual_compensation_cents, :not_a_number)
       end
 
       # Which day the bracket of section 7.2 T&R is read for: the day the
@@ -993,23 +1075,15 @@ module Wsjrdp2027::Person
         deregistration_requested_date || today || Time.zone.today
       end
 
-      # The kind of deregistration and what the two documents of the Abmeldung
-      # page carry, as Wsjrdp2027::DeregistrationRecord holds them. Built from
-      # additional_info on every call: the stored sub-object is the truth, and a
-      # writer below replaces it as a whole.
-      def deregistration_record
-        Wsjrdp2027::DeregistrationRecord.load(self)
-      end
+      # The kind as written, nil without a row; the default a missing one
+      # stands for in #deregistration_kind_or_default.
+      def deregistration_kind = deregistration&.kind
 
-      # The stored value, and the default a missing one stands for: the plain
-      # reader stays raw, because the form needs what is written.
-      def deregistration_kind = deregistration_record.kind
+      def deregistration_kind_or_default = deregistration&.kind_or_default || WsjrdpDeregistration::DEFAULT_KIND
 
-      def deregistration_kind_or_default = deregistration_record.kind_or_default
+      def deregistration_termination? = deregistration_kind_or_default == "termination"
 
-      def deregistration_termination? = deregistration_record.termination?
-
-      def deregistration_cancellation? = deregistration_record.cancellation?
+      def deregistration_cancellation? = deregistration_kind_or_default == "cancellation"
 
       # What deregistration_requested_date is called for the kind at hand: the
       # day the person withdrew, the contingent terminated, or the registration
@@ -1018,97 +1092,52 @@ module Wsjrdp2027::Person
         kind = deregistration_kind_or_default
         # A kind the form was refused for is shown again with its errors; it
         # reads as the default until it is corrected.
-        kind = Wsjrdp2027::DeregistrationRecord::DEFAULT_KIND unless DEREGISTRATION_KINDS.include?(kind)
+        kind = WsjrdpDeregistration::DEFAULT_KIND unless DEREGISTRATION_KINDS.include?(kind)
         I18n.t("people.deregistration_requested_date_labels.#{kind}")
       end
 
+      # Blank is the default kind.
       def deregistration_kind=(value)
-        write_deregistration_record(:kind, value)
+        write_deregistration(:kind, value.to_s.strip.presence, default: WsjrdpDeregistration::DEFAULT_KIND)
       end
 
-      def deregistration_form_show_contractual_compensation
-        deregistration_record.form_show_contractual_compensation
-      end
+      # The flag as stored: true (the default) or false.
+      def deregistration_form_show_contractual_compensation = deregistration.nil? || deregistration.show_contractual_compensation
 
-      def deregistration_form_show_contractual_compensation?
-        deregistration_record.form_show_contractual_compensation?
-      end
+      def deregistration_form_show_contractual_compensation? = deregistration_form_show_contractual_compensation
 
+      # nil (what a checked box is sent as) is the default, shown.
       def deregistration_form_show_contractual_compensation=(value)
-        write_deregistration_record(:form_show_contractual_compensation, value)
+        shown = ActiveModel::Type::Boolean.new.cast(value)
+        write_deregistration(:show_contractual_compensation, shown.nil? ? nil : shown, default: true)
       end
 
-      # The optional text the Moss receipt carries above its explanation
-      # paragraph; without it the receipt starts with the paragraph alone.
-      def deregistration_receipt_created_date = deregistration_record.receipt_created_date
-
-      def deregistration_receipt_created_date=(value)
-        write_deregistration_record(:receipt_created_date, value)
+      # What the made form captured (form_snapshot) and what the Moss receipt
+      # carries (additional_info["refund_receipt"]).
+      DEREGISTRATION_SNAPSHOT_ATTRS.each do |attr, key|
+        define_method(attr) { deregistration_hash_value(:snapshot, attr, key) }
+        define_method(:"#{attr}=") { |value| write_deregistration_hash(:snapshot, attr, key, value) }
+      end
+      DEREGISTRATION_RECEIPT_ATTRS.each do |attr, key|
+        define_method(attr) { deregistration_hash_value(:receipt, attr, key) }
+        define_method(:"#{attr}=") { |value| write_deregistration_hash(:receipt, attr, key, value) }
       end
 
-      def deregistration_receipt_created_by_id = deregistration_record.receipt_created_by_id
-
-      def deregistration_receipt_created_by_id=(value)
-        write_deregistration_record(:receipt_created_by_id, value)
-      end
-
-      # What the first made document captured: the account a refund goes to,
-      # and the role, its name and the team or unit.
-      %i[refund_account_holder refund_iban refund_bic refund_sepa_address
-        person_role person_role_name person_team_unit].each do |key|
-        define_method(:"deregistration_#{key}") { deregistration_record.public_send(key) }
-        define_method(:"deregistration_#{key}=") { |value| write_deregistration_record(key, value) }
-      end
-
-      def deregistration_receipt_snapshot = deregistration_record.receipt_snapshot
-
-      def deregistration_receipt_snapshot=(value)
-        write_deregistration_record(:receipt_snapshot, value)
-      end
-
-      def deregistration_form_created_date = deregistration_record.form_created_date
-
-      def deregistration_form_created_date=(value)
-        write_deregistration_record(:form_created_date, value)
-      end
-
-      def deregistration_effective_reply_due_date = deregistration_record.effective_reply_due_date
-
-      def deregistration_effective_reply_due_date=(value)
-        write_deregistration_record(:effective_reply_due_date, value)
-      end
-
-      # The mails the Abmelde-Formular went out with (Wsjrdp2027::DeregistrationFormSent),
-      # oldest first; [] for none.
-      def deregistration_form_mailings = Array(deregistration_record.form_mailings)
-
-      def deregistration_form_mailings=(value)
-        write_deregistration_record(:form_mailings, value)
-      end
-
-      def deregistration_reply_due_date = deregistration_record.reply_due_date
-
-      def deregistration_reply_due_date=(value)
-        write_deregistration_record(:reply_due_date, value)
-      end
-
-      def deregistration_refund_receipt_text = deregistration_record.refund_receipt_text
-
+      # What surrounds the receipt's text is none of it; whitespace alone is no
+      # text.
       def deregistration_refund_receipt_text=(value)
-        write_deregistration_record(:refund_receipt_text, value)
+        write_deregistration_hash(:receipt, :deregistration_refund_receipt_text, "text", value&.to_s&.strip.presence)
       end
 
-      def deregistration_refund_receipt_show_default_explanation
-        deregistration_record.refund_receipt_show_default_explanation
-      end
-
+      # The receipt's flag: absent is shown.
       def deregistration_refund_receipt_show_default_explanation?
-        deregistration_record.refund_receipt_show_default_explanation?
+        value = deregistration_refund_receipt_show_default_explanation
+        value.nil? || ActiveModel::Type::Boolean.new.cast(value)
       end
 
-      def deregistration_refund_receipt_show_default_explanation=(value)
-        write_deregistration_record(:refund_receipt_show_default_explanation, value)
-      end
+      # The mails the Abmelde-Formular of the current row went out with
+      # (Wsjrdp2027::DeregistrationFormSent), oldest first; [] for none.
+      def deregistration_form_mailings = deregistration&.form_mailings || []
 
       # The compensation of section 7.2 T&R. A cancelled registration never
       # became a contract, so there is nothing the T&R could ask for.
@@ -1132,12 +1161,51 @@ module Wsjrdp2027::Person
 
       private
 
-      # One attribute of the deregistration record, written back as a whole so
-      # additional_info carries the change.
-      def write_deregistration_record(attr, value)
-        record = deregistration_record
-        record.public_send(:"#{attr}=", value)
-        record.store(self)
+      # The row a writer writes to: the current one, or row 1 built for a value
+      # that is not blank -- a form that sends nothing for a person never
+      # deregistered leaves no row behind.
+      def deregistration_for_write(value)
+        row = deregistration
+        return row if row
+        return nil if value.nil? || value == ""
+
+        wsjrdp_deregistrations.build(number: 1)
+      end
+
+      # One column of the current row; nil writes the column's default where
+      # it has one. The default alone builds no row.
+      def write_deregistration(column, value, default: nil)
+        value = default if value.nil?
+        row = (value == default) ? deregistration : deregistration_for_write(value)
+        row&.public_send(:"#{column}=", value)
+      end
+
+      def deregistration_hash_value(hash, attr, key)
+        row = deregistration
+        return nil if row.nil?
+
+        value = (hash == :snapshot) ? row.snapshot_value(key) : row.receipt_value(key)
+        DEREGISTRATION_DATE_ATTRS.include?(attr) ? deregistration_date(value) : value
+      end
+
+      def write_deregistration_hash(hash, attr, key, value)
+        value = deregistration_date(value) if DEREGISTRATION_DATE_ATTRS.include?(attr)
+        value = value.iso8601 if value.is_a?(Date)
+        row = deregistration_for_write(value)
+        return if row.nil?
+
+        (hash == :snapshot) ? row.write_snapshot_value(key, value) : row.write_receipt_value(key, value)
+      end
+
+      # A date from what a form or a store hands over: a Date, an ISO string,
+      # blank for none.
+      def deregistration_date(value)
+        return nil if value.blank?
+        return value.to_date if value.respond_to?(:to_date) && !value.is_a?(String)
+
+        Date.iso8601(value.to_s)
+      rescue ArgumentError
+        Date.parse(value.to_s)
       end
 
       def validate_iban_format

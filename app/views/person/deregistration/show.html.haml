@@ -96,15 +96,21 @@
     - edit_link = link_to(edit_person_deregistration_path(@person), class: 'wsjrdp-section-action', data: {turbo_frame: 'deregistration_capture'}) do
       = icon(:edit)
       = ti(:"link.edit")
+    -# A deregistration whose form went out is not edited here any more: a new
+    -# version takes the changes (the head above offers it).
+    - edit_link = nil unless @person.deregistration_editable?
     = render layout: 'section', locals: {key: 'capture', title: t('people.deregistration_capture.title'), summary: nil, action: edit_link, frame: 'deregistration_capture'} do
-      = render 'capture'
+      = render 'capture_body'
+    -# A save in the capture section changes what the form may be and what it
+    -# says, so its body carries an id the save's answer redraws it by -- the
+    -# receipt's likewise (update.turbo_stream).
     = render layout: 'section', locals: {key: 'form', title: t('people.deregistration_form.title'), summary: nil} do
-      = render 'deregistration_form'
+      #dereg-form-body= render 'deregistration_form'
     -# The creditor's name is what is typed into Moss, so the bar carries it.
     = render layout: 'section', locals: {key: 'creditor', title: t('people.refund_creditor.title'), summary: @refund_creditor.name} do
       = render 'refund_creditor'
     = render layout: 'section', locals: {key: 'receipt', title: t('people.refund_receipt.title'), summary: nil} do
-      = render 'refund_receipt'
+      #dereg-receipt-body= render 'refund_receipt'
 
 -# Which collapsibles are open is kept per login user, so the page opens where it
 -# was left. Bootstrap announces every opening and closing once it is through,
