@@ -163,9 +163,16 @@ describe Wsjrdp2027::DeregistrationRecord do
         receipt_snapshot: {"amount_text" => "1,00 €"},
         form_show_contractual_compensation: false,
         refund_receipt_text: "Hallo Team",
-        refund_receipt_show_default_explanation: false)
+        refund_receipt_show_default_explanation: false,
+        form_mailings: [{email_message_id: "<1@x>"}])
 
       expect(record.to_h.keys).to eq(described_class::ATTRS)
+      expect(record.to_h["form_mailings"]).to eq([{"email_message_id" => "<1@x>"}])
+    end
+
+    it "stores no empty list of mails, and only hashes in it" do
+      expect(described_class.new(form_mailings: []).to_h).to eq({})
+      expect(described_class.new(form_mailings: ["x", {"a" => 1}]).to_h).to eq("form_mailings" => [{"a" => 1}])
     end
   end
 

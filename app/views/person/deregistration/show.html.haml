@@ -140,6 +140,12 @@
         credentials: "same-origin"
       }).catch(function () {});
     };
+    // A button whose form carries a question (data-dereg-confirm) asks it
+    // first; a no keeps the form from being sent.
+    document.addEventListener("submit", function (e) {
+      var question = e.target.getAttribute && e.target.getAttribute("data-dereg-confirm");
+      if (question && !window.confirm(question)) e.preventDefault();
+    }, true);
     document.addEventListener("shown.bs.collapse", remember);
     document.addEventListener("hidden.bs.collapse", remember);
     document.addEventListener("show.bs.collapse", function (e) {

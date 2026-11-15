@@ -11,7 +11,14 @@
 -# as a picture with its facts and its buttons; where the page has no document to
 -# offer, a greyed-out button with the reasons stands in its place.
 - if @deregistration_form.available?
+  -# Without an agreed compensation the form leaves both amounts to be filled
+  -# in by hand, and the script refuses to send it: said before it is made, and
+  -# asked again as it is.
+  - no_compensation = !@deregistration_form.created? && @person.deregistration_actual_compensation_cents.nil?
+  - if no_compensation
+    .alert.alert-warning.mx-2.mb-2#deregistration_form_no_compensation= t('people.deregistration_form.no_compensation_hint')
   = render 'document_preview', key: 'form_preview',
+    create_confirm: (t('people.deregistration_form.no_compensation_confirm') if no_compensation),
     file_name: @deregistration_form.file_name,
     facts: deregistration_form_facts(@deregistration_form),
     document_path: form_person_deregistration_path(@person),
@@ -24,6 +31,14 @@
     extra_actions: (button_to(discard_form_person_deregistration_path(@person), method: :post,
       class: 'btn btn-sm btn-outline-danger',
       form: {class: 'd-inline', data: {turbo_confirm: t('people.deregistration_form.discard_confirm')}}) { t('people.deregistration_form.discard') } if @deregistration_form.created?)
+  -# Who the script create_deregistration_form.py sends the form to in Bcc,
+  -# and the mails it has sent it with.
+  .p-2#deregistration_form_mailing
+    .labeled-grid
+      %span.muted= t('people.deregistration_form_mailing.bcc_label')
+      %span#deregistration_form_bcc= deregistration_bcc_text(@recipients)
+    - deregistration_form_mailing_lines(@person).each do |line|
+      .deregistration-form-mailing= line
 - else
   .p-2
     - unavailable_text = deregistration_form_unavailable_text(@deregistration_form)

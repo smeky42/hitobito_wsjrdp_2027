@@ -531,6 +531,40 @@ module Wsjrdp2027::PeopleHelper
     ].compact_blank.join(" · ")
   end
 
+  # The Bcc the script sends the form with (Wsjrdp2027::DeregistrationMailRecipients):
+  # the addresses, and for a unit's addresses where they come from.
+  def deregistration_bcc_text(recipients)
+    addresses = recipients.bcc
+    text = addresses.presence&.join(", ") || t("people.deregistration_form_mailing.no_addresses")
+    group = recipients.unit_group
+    return text unless group
+
+    source = t("people.deregistration_form_mailing.unit_source.#{recipients.unit_source}",
+      name: recipients.group_name(group))
+    "#{text} · #{source}"
+  end
+
+  # One line per mail the form went out with, oldest first; a mail that
+  # carried a form discarded since says so.
+  def deregistration_form_mailing_lines(person)
+    created = person.deregistration_form_created_date&.iso8601
+    person.deregistration_form_mailings.map do |mailing|
+      sent_at = deregistration_mailing_time(mailing)
+      addresses = (Array(mailing["email_to"]) + Array(mailing["email_cc"])).join(", ")
+      line = t("people.deregistration_form_mailing.sent", date: sent_at ? l(sent_at.to_date) : "–",
+        addresses: addresses, count: Array(mailing["email_bcc"]).size)
+      line += t("people.deregistration_form_mailing.discarded_form") if mailing["form_created_date"] != created
+      line
+    end
+  end
+
+  # When a recorded mail went out; nil for a time that does not read.
+  def deregistration_mailing_time(mailing)
+    Time.zone.iso8601(mailing["email_sent_at"].to_s)
+  rescue ArgumentError
+    nil
+  end
+
   # What the Moss receipt will say, in the one line above its preview: the amount
   # it pays back, the booking text Moss files it under, whether the explanation
   # paragraph is printed, and that a text of its own stands above it.

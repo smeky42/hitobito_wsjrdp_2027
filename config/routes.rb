@@ -228,6 +228,8 @@ Rails.application.routes.draw do
           get :form
           post :create_form
           post :discard_form
+          # A script reports the mail it sent the form with (API key only).
+          post :form_sent
           get :refund_receipt
           post :create_receipt
           post :discard_receipt

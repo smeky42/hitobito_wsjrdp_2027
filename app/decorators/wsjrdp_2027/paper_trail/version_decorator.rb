@@ -294,7 +294,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   def deregistration_record_change(from, to)
     before = deregistration_record_hash(from)
     after = deregistration_record_hash(to)
-    lines = Wsjrdp2027::DeregistrationRecord::ATTRS
+    lines = Wsjrdp2027::DeregistrationRecord::LOGGED_ATTRS
       .reject { |key| Wsjrdp2027::DeregistrationRecord.same?(key, before[key], after[key]) }
       .map { |key| Wsjrdp2027::DeregistrationRecord.describe_change(key, before[key], after[key]) }
 

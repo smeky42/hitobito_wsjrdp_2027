@@ -16,10 +16,23 @@
 # and maps :id to :person_id, which keeps the resource reachable under both
 # spellings. That callback is registered before :authorize_action, so #person
 # already finds its key when the authorization runs.
+#
+# The scripts' API (an API key in X-Token, the same :log gate): show.json
+# reads the deregistration (Wsjrdp2027::DeregistrationState), create_form.json
+# makes the form, form.pdf answers it, and form_sent.json records the mail a
+# script sent it with (Wsjrdp2027::DeregistrationFormSent). An API key's
+# requests are not asked for a CSRF token, and what they cannot be answered
+# with comes back as JSON with status 422 instead of a redirect.
 class Person::DeregistrationController < ApplicationController
   include PersonInPrimaryGroup
   include ContractHelper
   include WsjrdpFormHelper
+
+  # Only a request that carries a valid API key skips the check: the check
+  # runs before the sign-in, so it asks the token itself -- a bogus one leaves
+  # the check in place, and the session behind it stays protected.
+  skip_forgery_protection only: [:create_form, :form_sent],
+    if: -> { token_authentication.service_token.present? }
 
   before_action :authorize_action
 
@@ -55,6 +68,9 @@ class Person::DeregistrationController < ApplicationController
   def show
     @person ||= person
     @group ||= group
+    return render(json: Wsjrdp2027::DeregistrationState.new(person)) if request.format.json?
+
+    @recipients = Wsjrdp2027::DeregistrationMailRecipients.new(person)
     # The page previews what the receipt will say, so it builds the same
     # object the PDF is made of -- and above it, what the creditor the refund
     # is paid to looks like in Moss.
@@ -84,24 +100,29 @@ class Person::DeregistrationController < ApplicationController
     @group ||= group
     form = Wsjrdp2027::DeregistrationForm.new(person)
     unless form.available?
-      flash[:alert] = helpers.deregistration_form_unavailable_text(form)
-      return redirect_to person_deregistration_path(person)
+      return refuse(helpers.deregistration_form_unavailable_text(form))
     end
 
     # The form is made by #create_form and not before; until then there is no
     # document to show.
-    unless form.created?
-      flash[:alert] = t("people.deregistration_form.not_created")
-      return redirect_to person_deregistration_path(person)
-    end
+    return refuse(t("people.deregistration_form.not_created")) unless form.created?
 
     send_document(form)
   end
 
   # Makes the form: stores its day, which every later PDF reuses, and comes
-  # back to the page with the form's section open.
+  # back to the page with the form's section open. Asked for as JSON (a
+  # script), it answers the deregistration as it then stands; a form made
+  # already stays as it is.
   def create_form
     form = Wsjrdp2027::DeregistrationForm.new(person)
+    if request.format.json?
+      return refuse(helpers.deregistration_form_unavailable_text(form)) unless form.available?
+
+      form.record_creation!
+      return render(json: Wsjrdp2027::DeregistrationState.new(person.reload))
+    end
+
     if form.available?
       form.record_creation!
       session[SESSION_KEY] = SECTIONS & (remembered_sections | ["form"])
@@ -175,6 +196,26 @@ class Person::DeregistrationController < ApplicationController
     head :no_content
   end
 
+  # A script reports the mail it sent the form with: the API key's only, as
+  # JSON (the request body as Wsjrdp2027::DeregistrationFormSent reads it). It
+  # answers the deregistration as it then stands, with the recorded mail --
+  # 201 for a new one, 200 for a Message-ID recorded already.
+  def form_sent
+    return head(:forbidden) unless current_service_token
+
+    payload = begin
+      JSON.parse(request.raw_post.presence || "{}")
+    rescue JSON::ParserError
+      return refuse("the request body is no JSON")
+    end
+    sent = Wsjrdp2027::DeregistrationFormSent.new(person, payload, service_token: current_service_token).save!
+    render status: (sent.duplicate? ? :ok : :created),
+      json: Wsjrdp2027::DeregistrationState.new(person.reload).as_json
+        .merge("form_mailing" => sent.mailing, "duplicate" => sent.duplicate?)
+  rescue Wsjrdp2027::DeregistrationFormSent::Invalid => e
+    refuse(e.message)
+  end
+
   def update
     @person ||= person
     @person.attributes = permitted_params
@@ -191,6 +232,18 @@ class Person::DeregistrationController < ApplicationController
   end
 
   private
+
+  # Why a document cannot be had: for an API key's request (or one asking for
+  # JSON) a 422 with the reason, for the page the reason in the flash and the
+  # page itself.
+  def refuse(reason)
+    if current_service_token || request.format.json?
+      render json: {"error" => reason}, status: :unprocessable_entity
+    else
+      flash[:alert] = reason
+      redirect_to person_deregistration_path(person)
+    end
+  end
 
   # Forgets the made receipt: its day, its maker and its figures.
   def clear_receipt

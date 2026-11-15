@@ -113,6 +113,18 @@ describe Person::LogController do
     expect(changes_html).not_to include("something_else", "→")
   end
 
+  # The mails are logged as notes of their own (Wsjrdp2027::DeregistrationFormSent),
+  # so the list they leave in the record is no line here.
+  it "leaves the form's mails out" do
+    mailing = {"email_message_id" => "<1@x>", "email_to" => ["a@example.org"]}
+    version(key => [{"kind" => "termination"}, {"kind" => "withdrawal", "form_mailings" => [mailing]}])
+
+    log
+
+    expect(changes_html).to include("Art: Kündigung (durch das Kontingent) → Abmeldung (durch die Person)")
+    expect(changes_html).not_to include("form_mailings", "a@example.org", "Mailings")
+  end
+
   it "escapes what was typed into the text" do
     version(key => [nil, {"refund_receipt_text" => "Hallo <b>Team</b>"}])
 

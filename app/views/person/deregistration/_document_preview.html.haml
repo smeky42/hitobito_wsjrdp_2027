@@ -18,9 +18,11 @@
 -#
 -# A document that is made on request (`create_path`) shows none of that until it
 -# is made: an empty picture and one button that makes it. `extra_actions` stand
--# last in the row of a made document.
+-# last in the row of a made document; `create_confirm` is a question the
+-# making button asks first (the page's javascript reads data-dereg-confirm).
 - id = "dereg-section-#{key}"
 - create_path = local_assigns[:create_path]
+- create_confirm = local_assigns[:create_confirm]
 - made = create_path.nil? || local_assigns[:created]
 - extra_actions = local_assigns[:extra_actions]
 -# The picture costs a document, so it is asked for only once its section is
@@ -51,7 +53,7 @@
         = extra_actions
       - else
         = button_to create_path, method: :post, class: "btn btn-sm btn-primary",
-          form: {class: "d-inline", data: {turbo: false}} do
+          form: {class: "d-inline", data: {turbo: false, dereg_confirm: create_confirm}.compact} do
           = icon(:"file-pdf")
           = t("people.deregistration_documents.create")
 -# A frame that is drawn open inside an open section carries its src at once;

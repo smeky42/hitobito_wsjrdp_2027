@@ -1404,12 +1404,32 @@ de:
       discard_confirm: Das erstellte Abmelde-Formular verwerfen? Der Beleg für Rückzahlung in Moss wird mit verworfen, ebenso die gespeicherten Konto-, Rollen- und Team-Daten und die im Formular festgelegte Frist. Eine eingetragene „Rückmeldung bis“ bleibt. Beide Dokumente werden danach neu erstellt und neu datiert.
       discarded: Abmelde-Formular und Beleg verworfen, beide werden neu erstellt.
       created_on: Erstellt am %{date}
+      no_compensation_hint: Es ist noch keine Entschädigung eingetragen. Das Abmelde-Formular lässt Rückzahlung bzw. Forderung dann zum Ausfüllen von Hand frei, und das Skript verschickt es nicht.
+      no_compensation_confirm: Es ist keine Entschädigung eingetragen. Abmelde-Formular trotzdem erzeugen?
       show: anzeigen
       hide: ausblenden
       reasons:
         termination: Die Art ist Kündigung (durch das Kontingent), das Abmelde-Formular erklärt aber den Rücktritt durch die Person.
         cancellation: Die Art ist Storno der Registrierung, das Abmelde-Formular erklärt aber den Rücktritt von einem Vertrag.
         no_date: Weder „Rücktritt erklärt am“ noch „Abmeldung zum“ ist eingetragen – eins von beiden muss gesetzt sein.
+    # Der E-Mail-Versand des Abmelde-Formulars durch das Skript
+    # create_deregistration_form.py (Wsjrdp2027::DeregistrationMailRecipients,
+    # Wsjrdp2027::DeregistrationFormSent).
+    deregistration_form_mailing:
+      bcc_label: BCC bei E-Mail-Versand des Abmelde-Formulars
+      no_addresses: keine Adressen hinterlegt
+      unit_source:
+        unit: aus Unit %{name}
+        last_unit: aus Unit %{name} (letzte Unit)
+        primary_group: aus Hauptgruppe %{name} (keine Unit)
+      sent:
+        one: "Verschickt am %{date} an %{addresses} (Bcc: %{count} Adresse)"
+        other: "Verschickt am %{date} an %{addresses} (Bcc: %{count} Adressen)"
+      discarded_form: " – zu einem verworfenen Formular"
+      note: Abmelde-Formular am %{date} per E-Mail verschickt
+      note_with_issue: Abmelde-Formular am %{date} per E-Mail verschickt (%{issue})
+      log_message: an %{addresses}
+      log_message_with_issue: an %{addresses} · %{issue}
     refund_receipt:
       title: Beleg für Rückzahlung in Moss
       button: Moss-Beleg als PDF
@@ -2539,6 +2559,7 @@ de:
       debit_return: Rücklastschrift
       pre_notification: Vorabankündigung Lastschrift
       primary_role_change: Hauptgruppe/Rolle gewechselt
+      deregistration_form: Abmelde-Formular verschickt
     wsjrdp_detail: '%{label}: %{value}'
     wsjrdp_generic: 'Eintrag <i>%{event}</i>'
     finance_group_ids:

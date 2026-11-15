@@ -1,6 +1,7 @@
 // The declaration a person signs to withdraw from the contract for the World
-// Scout Jamboree 2027 -- the wagon's copy of the scripts' Abmelde-Formular
-// (registration_tools/create_deregistration_form.typ), in the same wording.
+// Scout Jamboree 2027. It began as a copy of the scripts' Abmelde-Formular
+// (registration_tools/create_deregistration_form.typ); the script now sends
+// this one, fetched through the API (doc/wsjrdp/deregistration.md).
 //
 // Every value comes from sys.inputs and defaults to empty: this file carries
 // the layout, never any data. An empty value is one the page does not know and

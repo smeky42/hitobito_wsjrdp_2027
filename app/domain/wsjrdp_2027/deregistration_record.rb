@@ -59,7 +59,13 @@ module Wsjrdp2027
       form_show_contractual_compensation
       refund_receipt_text
       refund_receipt_show_default_explanation
+      form_mailings
     ].freeze
+    # The attributes a change in the person log is read out for. The mails
+    # sent with the form are logged on their own (a wsjrdp_note of category
+    # FORM_MAILING_CATEGORY, Wsjrdp2027::DeregistrationFormSent), so the list
+    # they leave in the record stays out of the log.
+    LOGGED_ATTRS = (ATTRS - %w[form_mailings]).freeze
     # What a change of one value reads like: U+2192 between the two, an en dash
     # where there is no value. The Abmeldung page's flash and the person log
     # both say it this way.
@@ -100,6 +106,11 @@ module Wsjrdp2027
     attribute :form_show_contractual_compensation, :boolean
     attribute :refund_receipt_text, :string
     attribute :refund_receipt_show_default_explanation, :boolean
+    # The mails the Abmelde-Formular went out with, oldest first: one
+    # string-keyed hash per mail as Wsjrdp2027::DeregistrationFormSent writes
+    # it. They stay when the form is discarded -- they were sent -- and name
+    # the form_created_date of the form they carried.
+    attribute :form_mailings
 
     # Blank is the default, not an error: an absent kind reads as a withdrawal.
     validates :kind, inclusion: {in: KINDS}, allow_blank: true
@@ -201,6 +212,8 @@ module Wsjrdp2027
       hash["form_show_contractual_compensation"] = false if form_show_contractual_compensation == false
       hash["refund_receipt_text"] = refund_receipt_text if refund_receipt_text.present?
       hash["refund_receipt_show_default_explanation"] = false if refund_receipt_show_default_explanation == false
+      mailings = Array(form_mailings).select { |mailing| mailing.is_a?(Hash) }.map { |mailing| mailing.to_h.stringify_keys }
+      hash["form_mailings"] = mailings if mailings.present?
       hash
     end
 

@@ -1078,6 +1078,14 @@ module Wsjrdp2027::Person
         write_deregistration_record(:effective_reply_due_date, value)
       end
 
+      # The mails the Abmelde-Formular went out with (Wsjrdp2027::DeregistrationFormSent),
+      # oldest first; [] for none.
+      def deregistration_form_mailings = Array(deregistration_record.form_mailings)
+
+      def deregistration_form_mailings=(value)
+        write_deregistration_record(:form_mailings, value)
+      end
+
       def deregistration_reply_due_date = deregistration_record.reply_due_date
 
       def deregistration_reply_due_date=(value)
