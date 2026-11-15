@@ -59,8 +59,11 @@ class Contingent::WsjrdpIstController < ApplicationController
 
   private
 
+  # The IST page lists people: only for whoever may see them
+  # (WsjrdpContingentHelper#contingent_people_visible?).
   def authorize_action
     authorize!(:show_wsjrdp_contingent, Group.root)
+    raise CanCan::AccessDenied unless contingent_people_visible?
   end
 
   def show_people_links?

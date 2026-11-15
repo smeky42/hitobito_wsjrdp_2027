@@ -11,7 +11,8 @@ module Sheet
   class Contingent::WsjrdpIst < Base
     tab "contingent.tabs.overview", :contingent_contingent_path
     tab "contingent.tabs.cmt", :contingent_cmt_path
-    tab "contingent.tabs.ist", :contingent_ist_path
+    tab "contingent.tabs.ist", :contingent_ist_path,
+      if: ->(view, *) { view.contingent_people_visible? }
 
     def title
       "German Contingent - IST"

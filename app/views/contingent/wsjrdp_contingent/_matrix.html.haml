@@ -5,13 +5,13 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The contingent roles (wsjrdp_role) against the contract, in the rows of
+-#  The jamboree roles (wsj_role) against the contract, in the rows of
 -#  ContingentOverview::MATRIX_ROWS and the columns of MATRIX_COLUMNS: CMT and
 -#  IST split by JPT; rows taking others together (not in
 -#  "Alle im Kontingent"), which light up the rows they add up while the
 -#  pointer is on them.
 -#  "in Abmeldung" is not in the sum. Every number -- all alike, plain --
--#  lists its people.
+-#  lists its people, where the viewer may see them (contingent_people_visible?).
 -#  Under the pointer a sum marks what it adds up -- in its row, in the head,
 -#  and with a combined row also in the rows it takes together.
 -#
@@ -45,8 +45,9 @@
 - head_text = ->(column, heading) { heading ? safe_join([heading.first, " ", tag.br(class: "co-wrap"), heading.last]) : (column[:short] || column[:label]) }
 - head_html = ->(column, heading) { column[:narrow] ? safe_join([content_tag(:span, head_text.call(column, heading), class: "co-head-full"), content_tag(:span, column[:narrow], class: "co-head-narrow")]) : head_text.call(column, heading) }
 - column_css = ->(column) { [("co-subtotal" if column[:subtotal])].compact }
--# Every number alike: plain, in the text colour, a link to its people.
-- figure = ->(n, tree) { link_to(n, people_filter_href(tree), class: "co-figure") }
+-# Every number alike: plain, in the text colour, a link to its people -- or
+-# just the number where there is no people list.
+- figure = ->(n, tree) { contingent_people_visible? ? link_to(n, people_filter_href(tree), class: "co-figure") : content_tag(:span, n, class: "co-figure") }
 -# The cells showing a tile's number (ContingentOverview#matrix_tile_marks):
 -# a green ring, the tile named in the tooltip.
 - tile_marks = overview.matrix_tile_marks(rows)
@@ -71,10 +72,10 @@
      the pointer. */
   #co-matrix a.co-figure { color: inherit; text-decoration: none; }
   #co-matrix a.co-figure:hover { text-decoration: underline; }
-  #co-matrix td.co-tile-mark a.co-figure { box-shadow: inset 0 0 0 1.5px #3B6D11; border-radius: 4px; padding: 0 4px; }
+  #co-matrix td.co-tile-mark .co-figure { box-shadow: inset 0 0 0 1.5px #3B6D11; border-radius: 4px; padding: 0 4px; }
   /* Under the pointer on a tile: its number in the matrix, in the tile's green. */
   #co-matrix td.co-tile-lit { background-color: #e7f1ec !important; }
-  #co-matrix td.co-tile-lit a.co-figure { box-shadow: inset 0 0 0 2px #146c43; }
+  #co-matrix td.co-tile-lit .co-figure { box-shadow: inset 0 0 0 2px #146c43; }
   #co-jamboree-tiles .co-tile[data-co-tile] { cursor: default; }
   #co-matrix tr.co-highlight > td { background-color: #fff4d6 !important; }
   /* One line in the head only: under a heading over several columns. */
@@ -106,7 +107,7 @@
   #co-matrix .co-stop-out { background: #fff; border: 2px solid var(--co-line); opacity: 0.4; }
   #co-matrix .co-stop-result { background: #fff; border: 2px solid var(--co-line); }
 
-%h3.mt-3 Kontingents-Rolle und Vertrag
+%h3.mt-3 Jamboree-Rolle / Vertrag mit dem Kontingent
 %p.small.text-muted.mb-1#co-matrix-legend
   Unter dem Kopf: dünner Strich = zählt zur Summe, dicker Strich gleicher Farbe = die Summe.
   Rechts: ● zählt zur Zusammenfassung, ○ blass = zählt nicht, ○ = die Zusammenfassung.

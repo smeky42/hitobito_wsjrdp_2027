@@ -56,7 +56,7 @@ module Wsjrdp2027
     TEXT_OPERATORS = %i[contains not_contains eq].freeze
 
     SCHEMA = Wsjrdp::Filtering::Schema.define do |s|
-      # The column of the matrix "Kontingents-Rolle und Vertrag": "offen" and
+      # The column of the matrix "Jamboree-Rolle / Vertrag mit dem Kontingent": "offen" and
       # "ohne Vertrag" in WSJRDP groups only, "in Abmeldung" and "abgemeldet"
       # in all; nobody else has a value.
       s.attribute key: :contract_column, short_key: :vs, label: "Vertrags-Spalte",

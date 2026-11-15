@@ -4,12 +4,6 @@
 -#  Affero General Public License version 3 or later.
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
--#
--#  Kontingent > Übersicht: the comparison with the jamboree registration and
--#  the matrix of contingent roles against the contract, then the list of
--#  people (a filter: a pill or a cell of the matrix), and the people whose
--#  jamboree role differs.
--#  The figures: Wsjrdp2027::ContingentOverview.
 
 = render "contingent/person_chip_styles"
 
@@ -55,5 +49,6 @@
     = render "jamboree"
     = render "matrix"
 
-    = render "list"
-    = render "role_differences"
+    - if contingent_people_visible?
+      = render "list"
+      = render "role_differences"

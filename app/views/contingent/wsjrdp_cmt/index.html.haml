@@ -12,10 +12,11 @@
     margin-left: 10px;
   }
   /* External staff (EXT) in the contract table: the whole row muted. */
-  #cmt-without-contract tr.cmt-ext-row > td, #cmt-without-contract tr.cmt-ext-row a {
+  #cmt-without-contract tr.cmt-ext-row > td, #cmt-without-contract tr.cmt-ext-row a,
+    #cmt-without-contract tr.cmt-ext-row .p-chip-name {
     color: #6c757d;
   }
-  #cmt-without-contract tr.cmt-ext-row .p-chip > span {
+  #cmt-without-contract tr.cmt-ext-row .p-chip > span:not(.p-chip-name) {
     opacity: 0.55;
   }
   /* The legend reuses the chips' dot classes, so it always matches them. */
