@@ -27,9 +27,6 @@ class Person::JamboreeDataController < ApplicationController
     {visa_other_nationalities_codes: []},
     :diet,
     :shirt_size,
-    :uniform_size,
-    :uniform_long_sleeve,
-    :uniform_order,
     :headgear,
     :jamboree_data_confirmed
   ]
@@ -48,7 +45,6 @@ class Person::JamboreeDataController < ApplicationController
     authorize!(:edit, person)
     attrs = person.jamboree_data_adult? ? permitted_attrs : permitted_attrs - Wsjrdp2027::Person::JamboreeData::ADULT_ONLY_ATTRS
     attrs -= Wsjrdp2027::Person::JamboreeData::JOURNEY_ATTRS unless person.jamboree_data_journey_editable?
-    attrs -= [:uniform_order] unless person.uniform_order_available?
     attrs -= [:visa_information] # kept, but no longer asked
     person.attributes = params.require(:person).permit(attrs)
     person.save

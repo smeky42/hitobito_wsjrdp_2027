@@ -17,18 +17,15 @@
   = f.labeled_input_field :medical_eating_disorders, label: t('people.medical_fields.eating_disorders_long')
 = field_set_tag do
   = f.labeled_collection_select(:shirt_size, Settings.shirt_size, :to_s, :to_s, {include_blank: t('people.additional_info_fields.size_placeholder')}, class: 'span2')
-  = f.labeled_collection_select(:uniform_size, Settings.uniform_size, :to_s, :to_s, {include_blank: t('people.additional_info_fields.size_placeholder')}, class: 'span2')
-  -# Without an answer Langarm and ordering are ticked; Kurzarm and Nein
-  -# are an explicit choice.
+  -# The uniforms are ordered: size, sleeve length and order are shown only.
+  = f.labeled(:uniform_size) do
+    .pt-1= format_attr(f.object, :uniform_size)
   = f.labeled(:uniform_long_sleeve) do
-    - sleeve_options.each do |value, label|
-      = f.inline_radio_button(:uniform_long_sleeve, value, label, true, checked: value == (f.object.uniform_long_sleeve != false))
+    .pt-1= format_attr(f.object, :uniform_long_sleeve)
   - if f.object.uniform_order_available?
     = f.labeled(:uniform_order) do
-      - yes_no_options.each do |value, label|
-        = f.inline_radio_button(:uniform_order, value, label, true, checked: value == (f.object.uniform_order != false))
-      .mw-90ch.mb-2
-        = t('people.additional_info_fields.uniform_order_help')
+      .pt-1= format_attr(f.object, :uniform_order)
+  .text-muted.mw-90ch.mb-2= t('people.additional_info_fields.uniform_locked_help')
   = f.labeled_collection_select(:headgear, Settings.headgear, :first, :last, { include_blank: true }, class: 'span2')
 
 = field_set_tag do
