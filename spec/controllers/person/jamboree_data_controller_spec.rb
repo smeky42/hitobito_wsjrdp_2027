@@ -92,16 +92,27 @@ describe Person::JamboreeDataController, type: :controller do
     expect(ul.reload).to have_attributes(arrival_location: nil, nationality: "DE")
   end
 
-  it "asks only the adults to order a uniform, Langarm and Ja ticked without an answer" do
+  it "shows the uniform order only to the adults, without letting it change" do
     get :edit, params: {id: ul.id}
-    expect(page.at_css("input#person_uniform_order_true")["checked"]).to be_present
-    expect(page.at_css("input#person_uniform_long_sleeve_true")["checked"]).to be_present
+    expect(page.at_css("[name='person[uniform_order]']")).to be_nil
+    expect(page.text).to include("nicht gewählt (=Ja)")
+
+    put :update, params: {id: ul.id, person: {uniform_order: "false"}}
+    expect(ul.reload.uniform_order).to be_nil
 
     get :edit, params: {id: yp.id}
-    expect(page.at_css("[name='person[uniform_order]']")).to be_nil
+    expect(page.text).not_to include("nicht gewählt (=Ja)")
+  end
 
-    put :update, params: {id: yp.id, person: {uniform_order: "false", uniform_long_sleeve: "false"}}
-    expect(yp.reload).to have_attributes(uniform_order: nil, uniform_long_sleeve: false)
+  it "shows the ordered uniform size and sleeve length without letting them change" do
+    yp.update!(uniform_size: Settings.uniform_size.first, uniform_long_sleeve: true)
+    get :edit, params: {id: yp.id}
+    expect(page.at_css("[name='person[uniform_size]']")).to be_nil
+    expect(page.at_css("[name='person[uniform_long_sleeve]']")).to be_nil
+    expect(page.text).to include("Langarm")
+
+    put :update, params: {id: yp.id, person: {uniform_size: Settings.uniform_size.last, uniform_long_sleeve: "false"}}
+    expect(yp.reload).to have_attributes(uniform_size: Settings.uniform_size.first.to_s, uniform_long_sleeve: true)
   end
 
   it "offers defaulted Wohl/Unwohl choices and explains when to choose Unwohl" do

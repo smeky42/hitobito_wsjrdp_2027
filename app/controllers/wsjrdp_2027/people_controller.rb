@@ -35,8 +35,6 @@ module Wsjrdp2027::PeopleController
     :passport_approved,
     :languages_spoken,
     :shirt_size,
-    :uniform_size,
-    :uniform_long_sleeve,
     :headgear,
     :can_swim,
     :diet,
@@ -62,7 +60,6 @@ module Wsjrdp2027::PeopleController
     attrs = super.dup
     attrs = can?(:update_family, entry) ? with_family_member_labels(attrs) : without_family_members_attributes(attrs)
     attrs += WSJRDP_ALWAYS_PERMITTED_ATTRS
-    attrs += [:uniform_order] if entry.uniform_order_available?
     attrs += WSJRDP_REGISTERED_PERMITTED_ATTRS if entry.status == "registered" || can?(:update_finance, entry)
     attrs += [:sepa_mandate_id] if can?(:update_finance, entry)
     attrs += [:wsjrdp_email] if can?(:update_wsjrdp_email, entry)

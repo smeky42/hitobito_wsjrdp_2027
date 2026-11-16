@@ -23,9 +23,9 @@ These answers stay with us; the export leaves them out.
 
 | UI | Ruby | Note |
 |---|---|---|
-| Tracht- bzw. Klufthemdgröße | `uniform_size` | Our uniform order. |
-| Kluft Ärmellänge | `uniform_long_sleeve` | Empty means Langarm: the forms preselect it, and "nicht gewählt (=Langarm)" is shown. Count orders with `IS NOT FALSE`. |
-| Kluft bestellen | `uniform_order` | Asked only where `uniform_order_available?` (`wsjrdp_role` CMT, UL, IST or BMT). Empty means Ja, shown as "nicht gewählt (=Ja)"; count with `IS NOT FALSE`. |
+| Tracht- bzw. Klufthemdgröße | `uniform_size` | Our uniform order. Read-only since the order was placed. |
+| Kluft Ärmellänge | `uniform_long_sleeve` | Empty means Langarm: shown as "nicht gewählt (=Langarm)"; read-only since the order was placed. Count orders with `IS NOT FALSE`. |
+| Kluft bestellen | `uniform_order` | Shown only where `uniform_order_available?` (`wsjrdp_role` CMT, UL, IST or BMT). Empty means Ja, shown as "nicht gewählt (=Ja)"; count with `IS NOT FALSE`. Read-only since the order was placed. |
 | Kopfbedeckung | `headgear` | Our equipment. |
 | Angaben sind vollständig und wahrheitsgetreu | `jamboree_data_confirmed` | Our confirmation; the organizer's own consent is column B (see `gdpr_agreement` below). |
 | T-Shirt Größe (for YP) | `shirt_size` | Asked of everyone, but template column BE "T-Shirt Size WSJ" is for adults only: the export passes it on for adults alone. |
