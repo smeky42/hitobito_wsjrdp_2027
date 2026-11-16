@@ -738,6 +738,92 @@ describe Person::DeregistrationController do
           expect(yp.reload.additional_info).not_to have_key("deregistration_record")
         end
 
+        it "hides the kept PDF of a discarded form, so the page no longer lists it" do
+          post :create_form, params: {person_id: yp.id}
+          kept = yp.reload.deregistration.sent_form_document
+
+          post :discard_form, params: {person_id: yp.id}
+
+          expect(kept.reload.status).to eq(WsjrdpDocument::DELETED)
+          expect(kept.derivatives.pluck(:status)).to eq([WsjrdpDocument::DELETED])
+          expect(File.file?(Wsjrdp2027::DocumentStore.path_for(kept))).to be(true)
+          expect(yp.reload.deregistration.sent_form_document_id).to be_nil
+          get :show, params: {person_id: yp.id}
+          expect(Nokogiri::HTML(response.body).css("#deregistration_form_documents")).to be_empty
+        end
+
+        it "discards the form while the documents are busy, no longer listing its PDF" do
+          post :create_form, params: {person_id: yp.id}
+          kept = yp.reload.deregistration.sent_form_document
+          allow(Wsjrdp::LockedChange).to receive(:run).and_raise(Wsjrdp::LockedChange::Busy, "busy")
+
+          post :discard_form, params: {person_id: yp.id}
+
+          expect(flash[:notice]).to be_present
+          expect(yp.reload.deregistration_form_created_date).to be_nil
+          expect(yp.deregistration.sent_form_document_id).to be_nil
+          expect(kept.reload.status).to eq(WsjrdpDocument::CURRENT)
+          expect(Wsjrdp2027::DeregistrationFormDocument.documents_of(yp)).to be_empty
+        end
+
+        it "waits for a report of the deregistration and discards nothing while it runs" do
+          post :create_form, params: {person_id: yp.id}
+          row = yp.reload.deregistration
+          stub_const("Wsjrdp2027::DeregistrationFormSent::REPORT_LOCK_TIMEOUT", 0.seconds)
+          holding_session_lock(Wsjrdp2027::DeregistrationFormSent.report_lock_key(row)) do
+            post :discard_form, params: {person_id: yp.id}
+          end
+
+          expect(flash[:alert]).to include("noch einmal")
+          expect(yp.reload.deregistration_form_created_date).to be_present
+          expect(yp.deregistration.sent_form_document_id).to eq(row.sent_form_document_id)
+        end
+
+        it "refuses to discard a form a report marked sent since the row was read" do
+          post :create_form, params: {person_id: yp.id}
+          row = yp.reload.deregistration
+          kept = row.sent_form_document
+          # The report commits after the action has read the row.
+          allow(Wsjrdp2027::DeregistrationFormSent).to receive(:with_report_lock).and_wrap_original do |m, r, &b|
+            WsjrdpDeregistration.where(id: row.id).update_all(form_sent_at: Time.current, status: "form_sent")
+            m.call(r, &b)
+          end
+
+          post :discard_form, params: {person_id: yp.id}
+
+          expect(flash[:alert]).to be_present
+          expect(row.reload.sent_form_document_id).to eq(kept.id)
+          expect(row.status).to eq("form_sent")
+          expect(kept.reload.status).to eq(WsjrdpDocument::CURRENT)
+        end
+
+        it "answers the form so that nobody keeps it" do
+          post :create_form, params: {person_id: yp.id}
+
+          get :form, params: {person_id: yp.id}
+
+          expect(response.headers["Cache-Control"]).to include("no-store")
+        end
+
+        it "names a date that is no date on the field and saves nothing" do
+          patch :update, params: {person_id: yp.id, person: {deregistration_effective_date: "kein Datum"}}
+
+          expect(response).to have_http_status(:bad_request)
+          field = Nokogiri::HTML(response.body).at_css("input[name='person[deregistration_effective_date]']")
+          expect(field["value"]).to eq("kein Datum")
+          expect(field["class"]).to include("is-invalid")
+          expect(yp.reload.deregistration_effective_date).to eq(Date.new(2026, 10, 31))
+        end
+
+        it "names an amount in euros that is no number on the field and saves nothing" do
+          yp.update!(deregistration_actual_compensation_cents: 100_00)
+
+          patch :update, params: {person_id: yp.id, person: {deregistration_actual_compensation_eur: "12,50 €"}}
+
+          expect(response).to have_http_status(:bad_request)
+          expect(yp.reload.deregistration_actual_compensation_cents).to eq(100_00)
+        end
+
         it "keeps an entered deadline and forgets the fixed one when the form is discarded" do
           yp.update!(deregistration_form_created_date: Date.new(2026, 9, 27),
             deregistration_reply_due_date: Date.new(2026, 10, 11),

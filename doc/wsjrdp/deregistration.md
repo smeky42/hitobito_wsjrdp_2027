@@ -197,14 +197,19 @@ Everything the page edits is listed above: the four flat keys and the
 withdrawal only; a termination or a cancelled registration greys it out
 with the reason. The Moss refund receipt words all three kinds.
 
+The dates are read by `Wsjrdp::DateInput` (doc/wsjrdp/date_input.md): ISO
+or German `D.M.YYYY` / `D.M.YY`. A date or an amount the form cannot read
+saves nothing and names the error on its field; the stored value stays. A
+date field keeps what was typed, the amount field shows the stored amount.
+
 Below the form, in the page's field list, the section shows the mail the
 script sends it with -- From, To, Cc, Bcc (with the unit it comes from, muted)
 and Reply-To where there is one, the addresses as mailto links -- and under
 Versand one line "Verschickt am …" per mail in `form_mailings`; a mail that
 carried a form discarded since is marked so. Under Dokumente it lists the
 current row's documents around the form
-(`DeregistrationFormDocument.documents_of`): the kept PDF and the mails as
-they went out (`form_mail` *n*). A document whose entry the login user may
+(`DeregistrationFormDocument.documents_of`): the kept PDF the row points at
+(`sent_form_document`) and the mails as they went out (`form_mail` *n*). A document whose entry the login user may
 see (`can?(:show, document)`) is linked to its page; a mail is listed for
 everybody who sees the page, with "EML herunterladen" (`mail_file`).
 
@@ -215,6 +220,13 @@ The form prints live data too (the amount paid, names, the guardians), so
 before it went out the kept PDF is shown only while the fingerprint matches;
 a stale one gives way to the form drawn from the data, and the next
 `prepare_form` keeps a new version. A save on the page keeps nothing.
+"Formular verwerfen" lets go of the kept PDF of a form that did not go out,
+so the page no longer lists it, and hides it (deleted, the file stays; while
+the documents are busy it stays current until the next version replaces it).
+The discard takes the lock of the row's reports and reads the row anew, so it
+never discards a form a report is recording right then. The form's PDF
+and picture are answered with `Cache-Control: private, no-store`: whether the
+kept or a drawn form comes back changes with the data.
 
 While no compensation (Entschädigung) is entered and the form is not made
 yet, the section warns that the form then leaves the refund and the claim to
@@ -271,7 +283,7 @@ other JSON answer -- the POSTs, and an error of `form.pdf` -- has one shape:
 | 400 | the request body is no JSON (`bad_json`) |
 | 403 | a report without an API key |
 | 409 | the deregistration is not in the state the request needs: the form not made yet (`form_not_created`), a report for another version (`other_deregistration`), a fixed form (`fixed`) |
-| 503 | the documents are being written by somebody else (`busy`): try again |
+| 503 | the documents are being written by somebody else, or another report of the same deregistration is being recorded (`busy`): try again |
 | 422 | the form would not be complete or there is none (the codes of the check below), or a report that is wanting (`invalid_report`, `no_acting_person`) |
 
 | Request | Answer |
@@ -280,7 +292,7 @@ other JSON answer -- the POSTs, and an error of `form.pdf` -- has one shape:
 | `POST /people/:id/deregistration/create_form.json` | like `prepare_form.json`, without the status |
 | `POST /people/:id/deregistration/prepare_form.json` | what `create_deregistration_form.py` sends before the mail: the person's status moves on to `deregistration_noted` (unless it is that or `deregistered`; a save of the person, so PaperTrail writes it with the API key) and the form is made where it is not yet, and -- before the answer -- kept as a document: the PDF and its first page (`Wsjrdp2027::DeregistrationFormDocument`). A form kept already ("PDF erzeugen", an earlier prepare) is taken as it is while it still says what the data say (its fingerprint); a new version is kept only where there is none, it is stale, deleted, its file missing, or an upload replaced it in its slot. Nothing is written while the form would not be complete: 422 with every error and warning |
 | `GET /people/:id/deregistration/form.pdf` (`.png`: the first page) | the kept PDF of the made form (for `.png` its kept first page), for the page and an API key alike, so the script attaches exactly that PDF -- before the form went out only while it is fresh; drawn from the data otherwise; 422 where there is no form, 409 before it is made |
-| `POST /people/:id/deregistration/form_sent.json` | records a mail the form went out with (API key only), with `form_mailing` and `duplicate`; 409 `form_document_missing` while there is no kept form (nothing is kept here), 409 `other_form_document` where the report's `deregistration.form.document_id` is not the row's; a Message-ID recorded already is answered as a duplicate before either check; an EML a failed report left in its slot is replaced on the next report |
+| `POST /people/:id/deregistration/form_sent.json` | records a mail the form went out with (API key only), with `form_mailing` and `duplicate`; 409 `form_document_missing` while there is no kept form (nothing is kept here), 409 `other_form_document` where the report's `deregistration.form.document_id` is not the row's; a row whose form went out before forms were kept (migrated: its `create` event has action `migrated`, no document) records its further mails without the check; reports of one row are recorded one at a time (`Wsjrdp::SessionLock`, an advisory lock of the session that "Formular verwerfen" takes too; 503 `busy` after 8 s); a Message-ID recorded already is answered as a duplicate before either check; an EML a failed report left in its slot is replaced on the next report |
 | `GET /people/:id/deregistration/mail_file?document_id=` | a kept mail of the person's deregistrations (`form_mail` / `confirmation_mail`) as an EML to save, for whoever may see the page, whatever the document's own lists say; 404 for any other document |
 | `POST /people/:id/deregistration/confirmation_sent.json` | records the confirmation `bestätigung_abmeldung.py` sent (API key only, `Wsjrdp2027::DeregistrationConfirmationSent`): a log entry of category `deregistration_confirmation`, an event `confirmation_sent`, the row moves on to `confirmation_sent`; no person note (the script writes one); answered like `form_sent.json` with `confirmation_mailing` |
 

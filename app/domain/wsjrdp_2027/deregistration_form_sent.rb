@@ -69,31 +69,22 @@ module Wsjrdp2027
     # recorded.
     def save!
       validate!
-      @mailing = recorded_mailings.find { |m| m["email_message_id"] == message_id }
-      @duplicate = @mailing.present?
-      return self if @duplicate
+      # One report of a row at a time: the slot of the mail's EML follows
+      # from the mails recorded so far, so a second report waits for the
+      # first to be written down (#with_report_lock).
+      self.class.with_report_lock(row) do
+        # Read the row anew (its events too): a report this one waited for
+        # may have recorded a mail and marked the form sent meanwhile.
+        row.reload
+        @mailing = recorded_mailings.find { |m| m["email_message_id"] == message_id }
+        @duplicate = @mailing.present?
+        next if @duplicate
 
-      # A mail recorded already is answered as it was, whatever became of the
-      # form since; a new one needs the kept form.
-      validate_form_document!
-
-      # The mail itself as it went out: a locked change of its own, so before
-      # the transaction that names it.
-      eml_document = store_eml!
-      ActiveRecord::Base.transaction do
-        note = Note.create!(subject: person, author: acting_person, text: note_text) if person_note?
-        version = Wsjrdp::LogEntry.note!(person, category: category, message: log_message,
-          data: log_data.merge("note_id" => note&.id, "eml_document_id" => eml_document&.id).compact,
-          whodunnit: service_token.id.to_s, whodunnit_type: service_token.class.sti_name,
-          additional_info: {"script" => payload["script"].to_s.strip.presence}.compact)
-        @mailing = mail_data.merge("form_created_date" => form_created_date&.iso8601,
-          "log_version_id" => version.id, "note_id" => note&.id, "eml_document_id" => eml_document&.id).compact
-        WsjrdpDeregistrationEvent.create!(deregistration: row, event: "notify",
-          action: action, occurred_at: sent_at,
-          actor_type: service_token.class.sti_name, actor_id: service_token.id, additional_info: @mailing)
-        recorded!
+        # A mail recorded already is answered as it was, whatever became of
+        # the form since; a new one needs the kept form.
+        validate_form_document!
+        record!
       end
-      after_recorded!
       row.events.reset
       self
     end
@@ -142,9 +133,48 @@ module Wsjrdp2027
       I18n.t("people.deregistration_form_mailing.#{key}", addresses: addresses, issue: issue)
     end
 
+    # How long a report (or a discard of the form) waits for another one of
+    # the same row.
+    REPORT_LOCK_TIMEOUT = 8.seconds
+
+    # Runs the block under the lock of the row's reports: an advisory lock of
+    # the session (Wsjrdp::SessionLock) -- not one of a transaction, since
+    # the block writes documents, each a locked change of its own. The
+    # reports of a row and a discard of its form ("Formular verwerfen") take
+    # it, so a discard never sees the form unsent while a report records it.
+    # Raises Wsjrdp::LockedChange::Busy when somebody else holds it longer
+    # than REPORT_LOCK_TIMEOUT. Without a row there is nothing to lock.
+    def self.with_report_lock(row, &)
+      return yield if row.nil? || row.new_record?
+
+      Wsjrdp::SessionLock.hold(report_lock_key(row), timeout: REPORT_LOCK_TIMEOUT, &)
+    end
+
+    def self.report_lock_key(row) = "deregistration_report:#{row.id}"
+
     private
 
     def acting_person = service_token&.acting_person
+
+    def record!
+      # The mail itself as it went out: a locked change of its own, so before
+      # the transaction that names it.
+      eml_document = store_eml!
+      ActiveRecord::Base.transaction do
+        note = Note.create!(subject: person, author: acting_person, text: note_text) if person_note?
+        version = Wsjrdp::LogEntry.note!(person, category: category, message: log_message,
+          data: log_data.merge("note_id" => note&.id, "eml_document_id" => eml_document&.id).compact,
+          whodunnit: service_token.id.to_s, whodunnit_type: service_token.class.sti_name,
+          additional_info: {"script" => payload["script"].to_s.strip.presence}.compact)
+        @mailing = mail_data.merge("form_created_date" => form_created_date&.iso8601,
+          "log_version_id" => version.id, "note_id" => note&.id, "eml_document_id" => eml_document&.id).compact
+        WsjrdpDeregistrationEvent.create!(deregistration: row, event: "notify",
+          action: action, occurred_at: sent_at,
+          actor_type: service_token.class.sti_name, actor_id: service_token.id, additional_info: @mailing)
+        recorded!
+      end
+      after_recorded!
+    end
 
     # The mail as it went out (email_eml_base64, optional), kept as a document
     # of the row: deregistration <number>, mail_secondary_key <n> for the n-th
@@ -197,6 +227,11 @@ module Wsjrdp2027
     # here: a report without it is refused.
     def validate_form_document!
       return unless form_required?
+      # A form that went out before forms were kept (a row migrated from
+      # people.additional_info) has no document: its further mails are
+      # recorded all the same. Any other sent row without its document is
+      # refused below.
+      return if row.form_sent_at && row.sent_form_document_id.nil? && row.migrated?
 
       form = payload["deregistration"]["form"]
       reported = form["document_id"] if form.is_a?(Hash)

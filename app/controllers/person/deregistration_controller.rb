@@ -121,10 +121,8 @@ class Person::DeregistrationController < ApplicationController
     # went out the one that was sent, before that the one "PDF erzeugen" or
     # prepare_form.json stored while it still says what the data say. A form
     # with no such PDF is drawn from the data, as it stands.
-    stored = request.format.png? ? sent_form_thumbnail_file : sent_form_file
-    return send_sent_form(form, stored) if stored
-
-    send_document(form)
+    stored = request.format.png? ? sent_form_thumbnail_file(form) : sent_form_file(form)
+    send_document(form, stored)
   end
 
   # Makes the form: stores its day, which every later PDF reuses, keeps the
@@ -191,19 +189,18 @@ class Person::DeregistrationController < ApplicationController
   # deadline stays.
   # A form that went out stays as it was sent: it is not discarded, a new
   # version (#new_version) takes its place.
+  #
+  # Under the lock of the row's reports (DeregistrationFormSent.with_report_lock),
+  # with the row read anew: a report recorded since the page was loaded has
+  # fixed the form, and a report that comes now waits for the discard -- and
+  # then finds no form (form_document_missing).
   def discard_form
-    return refuse(t("people.deregistration.fixed"), code: "fixed", status: :conflict) unless person.deregistration_editable?
+    Wsjrdp2027::DeregistrationFormSent.with_report_lock(person.deregistration) do
+      row = person.deregistration&.reload
+      return refuse(t("people.deregistration.fixed"), code: "fixed", status: :conflict) unless person.deregistration_editable?
 
-    person.deregistration_form_created_date = nil
-    person.deregistration_effective_reply_due_date = nil
-    clear_receipt
-    Wsjrdp2027::DeregistrationSnapshot.for(person).clear!
-    row = person.deregistration
-    row.status = "recorded" if row&.status == "form_created"
-    # A form kept for a mail that did not go out is forgotten with it; the
-    # next prepare keeps a new version.
-    row.sent_form_document = nil if row && row.form_sent_at.nil?
-    person.save!
+      discard_form_of(row)
+    end
     flash[:notice] = t("people.deregistration_form.discarded")
     redirect_to person_deregistration_path(person)
   end
@@ -299,7 +296,7 @@ class Person::DeregistrationController < ApplicationController
     # the person's own columns and the deregistration row's values, under the
     # person's names.
     changes = @person.changes.merge(@person.deregistration_changes)
-    if changes.empty?
+    if changes.empty? && @person.deregistration_input_invalid.empty?
       answer_update notice: NO_CHANGE_NOTICE
     elsif @person.save
       answer_update notice: change_notice(changes)
@@ -320,6 +317,28 @@ class Person::DeregistrationController < ApplicationController
     @refund_receipt = Wsjrdp2027::RefundReceipt.new(@person, generated_by: current_user)
     @deregistration_form = Wsjrdp2027::DeregistrationForm.new(@person)
     @dereg_open_sections = remembered_sections
+  end
+
+  # What #discard_form forgets, the row read anew.
+  def discard_form_of(row)
+    person.deregistration_form_created_date = nil
+    person.deregistration_effective_reply_due_date = nil
+    clear_receipt
+    Wsjrdp2027::DeregistrationSnapshot.for(person).clear!
+    row.status = "recorded" if row&.status == "form_created"
+    # A form kept for a mail that did not go out is forgotten with it: the
+    # row lets go of it (so the page no longer lists it) and it is hidden
+    # with its picture; the files stay. The next prepare keeps a new version.
+    row.sent_form_document = nil if row && row.form_sent_at.nil?
+    person.save!
+    # A document write is a locked change of its own: after the save. While
+    # the documents are busy the PDF stays current, unlisted, until the next
+    # version replaces it -- no reason to fail a discard that is done.
+    begin
+      Wsjrdp2027::DeregistrationFormDocument.hide_unsent!(person, row, by: current_user)
+    rescue Wsjrdp::LockedChange::Busy, ActiveRecord::Deadlocked => e
+      Rails.logger.warn("discard_form: the kept form of person #{person.id} was not hidden: #{e.class}: #{e.message}")
+    end
   end
 
   # One of the EMLs of the person's deregistrations (any version of them:
@@ -371,20 +390,21 @@ class Person::DeregistrationController < ApplicationController
 
   # The stored file of the kept form, where there is one to answer: the sent
   # one once the form went out, else the kept one while it is fresh; nil
-  # otherwise (the PDF is then drawn from the data).
-  def sent_form_file = present_file(kept_form_document)
+  # otherwise (the PDF is then drawn from the data). `form` is the request's
+  # DeregistrationForm, whose inputs the freshness is judged by -- built once.
+  def sent_form_file(form) = present_file(kept_form_document(form))
 
-  def kept_form_document
+  def kept_form_document(form)
     row = person.deregistration
     return nil if row.nil?
     return Wsjrdp2027::DeregistrationFormDocument.usable(row.sent_form_document, current: false) if row.form_sent_at
 
-    Wsjrdp2027::DeregistrationFormDocument.new(person, author: nil).fresh
+    Wsjrdp2027::DeregistrationFormDocument.new(person, author: nil, form: form).fresh
   end
 
   # Its first page as a picture, the derivation stored with it.
-  def sent_form_thumbnail_file
-    document = kept_form_document
+  def sent_form_thumbnail_file(form)
+    document = kept_form_document(form)
     return nil if document.nil?
 
     present_file(document.derivatives.current.find_by(
@@ -399,18 +419,6 @@ class Person::DeregistrationController < ApplicationController
     path if File.file?(path)
   end
 
-  # A stored file of the form: the PDF inline or, behind download, as a file
-  # to save; the picture inline and kept by nobody, like the drawn one.
-  def send_sent_form(form, path)
-    if request.format.png?
-      response.headers["Cache-Control"] = "private, no-store"
-      send_file path, type: "image/png", disposition: "inline", filename: form.file_name.sub(/\.pdf\z/, ".png")
-    else
-      send_file path, type: "application/pdf", filename: form.file_name,
-        disposition: params[:download].present? ? "attachment" : "inline"
-    end
-  end
-
   # Forgets the made receipt: its day, its maker and its figures.
   def clear_receipt
     person.deregistration_receipt_created_date = nil
@@ -420,19 +428,18 @@ class Person::DeregistrationController < ApplicationController
 
   # One of the page's two documents, as the request asks for it: page 1 as a PNG
   # for the preview thumbnail (.png), the PDF as a file to save where download
-  # says so, and the PDF inline otherwise. Both are built from the person on the
-  # spot, so the picture is as good as the data it was drawn from and nothing may
-  # keep it.
-  def send_document(document)
-    if request.format.png?
-      response.headers["Cache-Control"] = "private, no-store"
-      send_data document.to_png, type: "image/png", disposition: "inline",
-        filename: document.file_name.sub(/\.pdf\z/, ".png")
-    else
-      send_data document.to_pdf, type: "application/pdf",
-        disposition: params[:download].present? ? "attachment" : "inline",
-        filename: document.file_name
-    end
+  # says so, and the PDF inline otherwise. `stored` is the kept file of it
+  # (the PDF or its picture); without one it is drawn from the person on the
+  # spot. Kept by nobody either way: what is answered changes with the data.
+  def send_document(document, stored = nil)
+    response.headers["Cache-Control"] = "private, no-store"
+    png = request.format.png?
+    options = {type: png ? "image/png" : "application/pdf",
+               filename: png ? document.file_name.sub(/\.pdf\z/, ".png") : document.file_name,
+               disposition: (!png && params[:download].present?) ? "attachment" : "inline"}
+    return send_file(stored, **options) if stored
+
+    send_data(png ? document.to_png : document.to_pdf, **options)
   end
 
   # Which sections stand open, as they were last left in this session: the
