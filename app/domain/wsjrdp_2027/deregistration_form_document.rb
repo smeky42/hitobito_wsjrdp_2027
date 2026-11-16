@@ -32,19 +32,24 @@ module Wsjrdp2027
     SECONDARY_KEY = "form"
     THUMBNAIL_DERIVATION_KEY = "thumbnail"
     DIGEST_KEY = "form_inputs_sha256"
-    # The slots of a row's documents around the form: the PDF and the mails
-    # it went out with (DeregistrationFormSent::FORM_MAIL_SECONDARY_KEY).
-    LISTED_SECONDARY_KEYS = [SECONDARY_KEY, "form_mail"].freeze
+    DISCARD_REASON = "deregistration form discarded"
+    # The slot of the mails the form went out with
+    # (DeregistrationFormSent::FORM_MAIL_SECONDARY_KEY), listed with the PDF.
+    MAIL_SECONDARY_KEY = "form_mail"
 
     attr_reader :person, :row
 
-    # The row's current documents around the form, the PDF first, then the
-    # mails in the order they went out; none without a row.
+    # The row's documents around the form, the PDF first, then the current
+    # mails in the order they went out; none without a row. The PDF is the
+    # one the row points at (sent_form_document) while it is not deleted -- a
+    # PDF a discarded form left in its slot is no longer the row's, even
+    # where hiding it had to wait.
     def self.documents_of(person, row = person.deregistration)
       return WsjrdpDocument.none if row.nil?
 
-      WsjrdpDocument.of_subject(person).originals.current
-        .where(key: "deregistration", key_number: row.number, secondary_key: LISTED_SECONDARY_KEYS)
+      documents = WsjrdpDocument.of_subject(person).originals.where(key: "deregistration", key_number: row.number)
+      documents.current.where(secondary_key: MAIL_SECONDARY_KEY)
+        .or(documents.visible.where(secondary_key: SECONDARY_KEY, id: row.sent_form_document_id))
         .order(Arel.sql("secondary_key = '#{SECONDARY_KEY}' DESC"), :secondary_key_number, :id)
     end
 
@@ -62,11 +67,33 @@ module Wsjrdp2027
       nil
     end
 
-    def initialize(person, author:, service_token: nil)
+    # Hides the form kept for a row whose form did not go out, when the form
+    # is discarded: the current PDF of the row's slot and its current
+    # derivations (the picture), in one locked change; the files stay. Found
+    # by the slot, since the row has let go of it already. Nothing for a row
+    # whose form went out.
+    def self.hide_unsent!(person, row, by:)
+      return if row.nil? || row.form_sent_at
+
+      document = WsjrdpDocument.current_for(person, key: "deregistration", key_number: row.number,
+        secondary_key: SECONDARY_KEY, secondary_key_number: 0)
+      return unless document
+
+      write = DocumentWrite.new(subject: person)
+      [document, *document.derivatives.current].each do |doc|
+        write.hide(doc, reason: DISCARD_REASON, by: by)
+      end
+      write.commit!
+    end
+
+    # `form`: the DeregistrationForm of the person where the caller has one
+    # already (its inputs are built once).
+    def initialize(person, author:, service_token: nil, form: nil)
       @person = person
       @row = person.deregistration
       @author = author
       @service_token = service_token
+      @form = form
     end
 
     # The kept form: once it went out the one sent; before that the kept one

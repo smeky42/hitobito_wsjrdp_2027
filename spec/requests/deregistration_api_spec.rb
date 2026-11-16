@@ -455,6 +455,60 @@ describe "Deregistration API", type: :request do
       expect(person.reload.deregistration_form_mailings.sole["eml_document_id"]).to eq(mails.last.id)
     end
 
+    # A row migrated from people.additional_info whose form went out before
+    # forms were kept has no document; its further mails are recorded.
+    it "records a further mail of a form sent before forms were kept" do
+      state = make_form
+      row = person.reload.deregistration
+      row.update_columns(sent_form_document_id: nil, form_sent_at: Time.zone.local(2026, 9, 1), status: "form_sent")
+      row.events.create!(event: "create", action: WsjrdpDeregistration::MIGRATED_ACTION, occurred_at: Time.current)
+      state["form"]["document_id"] = nil
+
+      api_post "/people/#{person.id}/deregistration/form_sent.json", sent_body(state)
+
+      expect(response).to have_http_status(201)
+    end
+
+    it "refuses a further mail of a sent form that lost its document, unless the row was migrated" do
+      state = make_form
+      row = person.reload.deregistration
+      row.update_columns(sent_form_document_id: nil, form_sent_at: Time.zone.local(2026, 9, 1), status: "form_sent")
+      state["form"]["document_id"] = nil
+
+      api_post "/people/#{person.id}/deregistration/form_sent.json", sent_body(state)
+
+      expect(response).to have_http_status(409)
+      expect(error_codes).to eq(["form_document_missing"])
+    end
+
+    it "answers 503 busy while another report of the deregistration runs" do
+      state = make_form
+      lock_key = Wsjrdp2027::DeregistrationFormSent.report_lock_key(person.reload.deregistration)
+      stub_const("Wsjrdp2027::DeregistrationFormSent::REPORT_LOCK_TIMEOUT", 0.seconds)
+
+      holding_session_lock(lock_key) do
+        api_post "/people/#{person.id}/deregistration/form_sent.json", sent_body(state)
+      end
+
+      expect(response).to have_http_status(503)
+      expect(error_codes).to eq(["busy"])
+      expect(person.reload.deregistration_form_mailings).to be_empty
+    end
+
+    it "releases the lock of the row's reports after a report it refused and after one it recorded" do
+      state = make_form
+      lock_key = Wsjrdp2027::DeregistrationFormSent.report_lock_key(person.reload.deregistration)
+
+      api_post "/people/#{person.id}/deregistration/form_sent.json",
+        sent_body(state.deep_merge("form" => {"document_id" => state["form"]["document_id"] + 1000}))
+      expect(error_codes).to eq(["other_form_document"])
+      expect(session_lock_free?(lock_key)).to be(true)
+
+      api_post "/people/#{person.id}/deregistration/form_sent.json", sent_body(state)
+      expect(response).to have_http_status(201)
+      expect(session_lock_free?(lock_key)).to be(true)
+    end
+
     it "refuses a report whose form document is not the deregistration's" do
       state = make_form
       state["form"]["document_id"] = state["form"]["document_id"] + 1000

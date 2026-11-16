@@ -192,7 +192,7 @@ module Wsjrdp2027
     # (DeregistrationFormDocument) still says what the data say while it
     # matches. Cheap -- nothing is rendered.
     def inputs_digest
-      Digest::SHA256.hexdigest([TEMPLATE, to_sys_inputs.sort].to_json)
+      @inputs_digest ||= Digest::SHA256.hexdigest([TEMPLATE, to_sys_inputs.sort].to_json)
     end
 
     # The first page as a picture, for the preview on the Abmeldung page.

@@ -22,6 +22,10 @@ How-to guides — authoritative, follow them:
   a string that may contain a raw `%`. Any new/copied such helper must be
   extensively tested and documented — read the doc before touching query-string
   building or percent-decoding.
+- [`doc/wsjrdp/date_input.md`](doc/wsjrdp/date_input.md) — the one helper for
+  typed dates, `Wsjrdp::DateInput`: ISO `YYYY-MM-DD` and German `D.M.YYYY` /
+  `D.M.YY`, nothing else (no `Date.parse` fragments). Use it for every date
+  read from a form, a parameter or a file.
 - [`doc/fin/money_conventions.md`](doc/fin/money_conventions.md) — the house standard
   for monetary amounts across the finance tables: currency axes
   (`base_*`/`transaction_*`), signed vs unsigned storage (`debit_credit`

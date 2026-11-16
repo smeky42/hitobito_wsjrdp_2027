@@ -65,6 +65,9 @@ class WsjrdpDeregistration < ActiveRecord::Base
   RECEIPT_KEYS = %w[created_date created_by_id snapshot text show_default_explanation].freeze
   # The event a sent form is written down as (Wsjrdp2027::DeregistrationFormSent).
   FORM_SENT_ACTION = "form_sent"
+  # The event the move from people.additional_info wrote for every row it
+  # created (migration MoveDeregistrationsToTable): create, action migrated.
+  MIGRATED_ACTION = "migrated"
 
   belongs_to :person, class_name: "::Person", optional: true, inverse_of: :wsjrdp_deregistrations
   belongs_to :replaces, class_name: "WsjrdpDeregistration", optional: true
@@ -138,6 +141,12 @@ class WsjrdpDeregistration < ActiveRecord::Base
     info = additional_info.to_h.except(RECEIPT_KEY)
     info[RECEIPT_KEY] = receipt if receipt.present?
     self.additional_info = info
+  end
+
+  # Whether the row was moved over from people.additional_info rather than
+  # made here: what it holds may predate the kept form documents.
+  def migrated?
+    events.any? { |event| event.event == "create" && event.action == MIGRATED_ACTION }
   end
 
   # The mails the form went out with, oldest first: what each form_sent event

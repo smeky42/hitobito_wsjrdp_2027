@@ -188,17 +188,9 @@ class Wsjrdp::TrackedJob < ::BaseJob
 
   class << self
     # Holds the lock key around the block; answers false without running it
-    # when another run holds it.
-    def with_run_lock
-      connection = ::ActiveRecord::Base.connection
-      return false unless connection.select_value("SELECT pg_try_advisory_lock(#{lock_key})")
-
-      begin
-        yield
-      ensure
-        connection.select_value("SELECT pg_advisory_unlock(#{lock_key})")
-      end
-      true
+    # when another run holds it (Wsjrdp::SessionLock).
+    def with_run_lock(&)
+      Wsjrdp::SessionLock.try(lock_key, &)
     end
 
     # Whether a process holds the lock key, i.e. a run works.

@@ -165,6 +165,61 @@ describe "Person deregistration record" do
     end
   end
 
+  # A value a writer cannot read survives valid? as the field's error and
+  # leaves the stored value alone.
+  describe "values that cannot be read" do
+    it "names a date that is no date and an amount that is no number" do
+      person.update!(deregistration_effective_date: Date.new(2026, 10, 31))
+
+      person.deregistration_effective_date = "kein Datum"
+      person.deregistration_actual_compensation_cents = "zwölf"
+
+      expect(person).not_to be_valid
+      expect(person.errors.attribute_names).to include(:deregistration_effective_date,
+        :deregistration_actual_compensation_cents)
+      expect(person.deregistration_effective_date).to eq(Date.new(2026, 10, 31))
+
+      person.deregistration_effective_date = "2026-11-30"
+      person.deregistration_actual_compensation_cents = "1200"
+      expect(person).to be_valid
+    end
+
+    # Wsjrdp::DateInput: ISO and German spellings, no fragments.
+    it "reads German dates, short years included, and refuses fragments" do
+      person.deregistration_effective_date = "1.2.27"
+      expect(person.deregistration_effective_date).to eq(Date.new(2027, 2, 1))
+
+      person.deregistration_effective_date = "3"
+      expect(person).not_to be_valid
+      expect(person.deregistration_effective_date).to eq(Date.new(2027, 2, 1))
+    end
+
+    it "keeps what was typed for the date field, until a readable value follows" do
+      person.deregistration_effective_date = "31.02.2026"
+      expect(person.timeliness_cache_attribute(:deregistration_effective_date)).to eq("31.02.2026")
+
+      person.deregistration_effective_date = "28.02.2026"
+      expect(person.timeliness_cache_attribute(:deregistration_effective_date)).to be_nil
+    end
+
+    it "names an amount in euros that is no number" do
+      person.deregistration_actual_compensation_eur = "12,50 €"
+
+      expect(person).not_to be_valid
+      expect(person.errors.attribute_names).to include(:deregistration_actual_compensation_eur)
+
+      # BigDecimal reads these, but they have no cents.
+      %w[NaN Infinity].each do |text|
+        person.deregistration_actual_compensation_eur = text
+        expect(person).not_to be_valid, text
+      end
+
+      person.deregistration_actual_compensation_eur = "12.50"
+      expect(person).to be_valid
+      expect(person.deregistration_actual_compensation_cents).to eq(1250)
+    end
+  end
+
   describe "the stored shape" do
     it "puts the columns, the made form's data and the receipt each in their place" do
       person.update!(deregistration_issue: "Ticket 1", deregistration_effective_date: Date.new(2026, 10, 31),

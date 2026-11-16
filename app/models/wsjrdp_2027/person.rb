@@ -309,6 +309,11 @@ module Wsjrdp2027::Person
       # Blank is the default, not an error: an absent kind reads as a withdrawal
       # (#deregistration_kind_or_default).
       validates :deregistration_kind, inclusion: {in: DEREGISTRATION_KINDS}, allow_blank: true
+      # A value a deregistration writer could not read (a date, an amount):
+      # the writer leaves the stored value and notes the field; validation
+      # names it, so the save fails with the field's error (errors added in
+      # a writer would be cleared by valid?).
+      validate :validate_deregistration_input
 
       jsonb_accessor :additional_info, :late_confirmation_issue, strip: true
       attribute :late_confirmation_issue, :string
@@ -324,6 +329,7 @@ module Wsjrdp2027::Person
 
       eur_attribute :total_fee_eur, cents_attr: :total_fee_cents
       eur_attribute :amount_paid_eur, cents_attr: :amount_paid_cents
+      # Its writer is replaced further down (#deregistration_actual_compensation_eur=).
       eur_attribute :deregistration_actual_compensation_eur, cents_attr: :deregistration_actual_compensation_cents
 
       jsonb_accessor :additional_info, :planned_total_fee_reduction, strip: true
@@ -905,6 +911,7 @@ module Wsjrdp2027::Person
 
       def reload(*)
         @participation_fee = nil
+        @deregistration_input_invalid = nil
         super
       end
 
@@ -1042,29 +1049,40 @@ module Wsjrdp2027::Person
       def deregistration_requested_date = deregistration&.requested_date
 
       def deregistration_requested_date=(value)
-        write_deregistration(:requested_date, deregistration_date(value))
+        write_deregistration_date(:deregistration_requested_date, :requested_date, value)
       end
 
       def deregistration_effective_date = deregistration&.effective_date
 
       def deregistration_effective_date=(value)
-        write_deregistration(:effective_date, deregistration_date(value))
+        write_deregistration_date(:deregistration_effective_date, :effective_date, value)
       end
 
       def deregistration_reply_due_date = deregistration&.reply_due_date
 
       def deregistration_reply_due_date=(value)
-        write_deregistration(:reply_due_date, deregistration_date(value))
+        write_deregistration_date(:deregistration_reply_due_date, :reply_due_date, value)
       end
 
       def deregistration_actual_compensation_cents = deregistration&.actual_compensation_cents
 
       def deregistration_actual_compensation_cents=(value)
-        cents = value.blank? ? nil : Integer(value.to_s, 10)
-        row = deregistration_for_write(cents)
-        row.actual_compensation_cents = cents if row
-      rescue ArgumentError
-        errors.add(:deregistration_actual_compensation_cents, :not_a_number)
+        read_deregistration_input(:deregistration_actual_compensation_cents, value, :not_a_number, ArgumentError,
+          parse: ->(text) { text.blank? ? nil : Integer(text.to_s, 10) }) do |cents|
+          row = deregistration_for_write(cents)
+          row.actual_compensation_cents = cents if row
+        end
+      end
+
+      # The amount in euros, as the Abmeldung form sends it (a dot, no
+      # thousands separator). Replaces eur_attribute's writer, which raises
+      # on an amount that is no number. FloatDomainError: BigDecimal reads
+      # "NaN" and "Infinity", which have no cents.
+      def deregistration_actual_compensation_eur=(value)
+        read_deregistration_input(:deregistration_actual_compensation_eur, value, :not_a_number,
+          ArgumentError, FloatDomainError, parse: method(:eur_to_cents_or_nil)) do |cents|
+          self.deregistration_actual_compensation_cents = cents
+        end
       end
 
       # Which day the bracket of section 7.2 T&R is read for: the day the
@@ -1159,6 +1177,17 @@ module Wsjrdp2027::Person
         [compensation_cents - amount_paid_cents, 0].max
       end
 
+      # The fields a writer could not read: {error:, text:} (what was typed)
+      # by field.
+      def deregistration_input_invalid = @deregistration_input_invalid ||= {}
+
+      # The date field shows what was typed where it could not be read
+      # (StandardFormBuilder#date_value asks validates_timeliness' cache), so
+      # a refused entry comes back as it was entered, not as the stored day.
+      def timeliness_cache_attribute(name)
+        deregistration_input_invalid.dig(name.to_sym, :text) || super
+      end
+
       private
 
       # The row a writer writes to: the current one, or row 1 built for a value
@@ -1185,11 +1214,11 @@ module Wsjrdp2027::Person
         return nil if row.nil?
 
         value = (hash == :snapshot) ? row.snapshot_value(key) : row.receipt_value(key)
-        DEREGISTRATION_DATE_ATTRS.include?(attr) ? deregistration_date(value) : value
+        DEREGISTRATION_DATE_ATTRS.include?(attr) ? Wsjrdp::DateInput.parse(value) : value
       end
 
       def write_deregistration_hash(hash, attr, key, value)
-        value = deregistration_date(value) if DEREGISTRATION_DATE_ATTRS.include?(attr)
+        value = Wsjrdp::DateInput.parse(value) if DEREGISTRATION_DATE_ATTRS.include?(attr)
         value = value.iso8601 if value.is_a?(Date)
         row = deregistration_for_write(value)
         return if row.nil?
@@ -1197,15 +1226,28 @@ module Wsjrdp2027::Person
         (hash == :snapshot) ? row.write_snapshot_value(key, value) : row.write_receipt_value(key, value)
       end
 
-      # A date from what a form or a store hands over: a Date, an ISO string,
-      # blank for none.
-      def deregistration_date(value)
-        return nil if value.blank?
-        return value.to_date if value.respond_to?(:to_date) && !value.is_a?(String)
+      # A date column of the row from a writer, read by Wsjrdp::DateInput
+      # (ISO, D.M.YYYY, D.M.YY, a Date; nil for blank).
+      def write_deregistration_date(attr, column, value)
+        read_deregistration_input(attr, value, :invalid, Wsjrdp::DateInput::Invalid,
+          parse: Wsjrdp::DateInput.method(:parse)) { |date| write_deregistration(column, date) }
+      end
 
-        Date.iso8601(value.to_s)
-      rescue ArgumentError
-        Date.parse(value.to_s)
+      # Reads a writer's value with `parse` and yields what it read. A value
+      # `parse` refuses (raising one of `refusals`) leaves the stored value:
+      # the field is noted with its error and what was typed, for validation
+      # (#validate_deregistration_input) and the form (#timeliness_cache_attribute).
+      def read_deregistration_input(attr, value, error, *refusals, parse:)
+        deregistration_input_invalid.delete(attr)
+        read = parse.call(value)
+      rescue *refusals
+        deregistration_input_invalid[attr] = {error: error, text: value.to_s}
+      else
+        yield read
+      end
+
+      def validate_deregistration_input
+        deregistration_input_invalid.each { |attr, invalid| errors.add(attr, invalid[:error]) }
       end
 
       def validate_iban_format
