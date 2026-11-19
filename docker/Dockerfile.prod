@@ -31,10 +31,12 @@ ARG PRE_BUILD_SCRIPT="\
      rm -rf hitobito/.git; \
      mv hitobito/* hitobito/.?* .; \
      mkdir -p vendor/wagons; \
-     for wagon_dir in hitobito_*; do if [[ -d \$wagon_dir ]]; then rm -r \$wagon_dir/.git && mv \$wagon_dir vendor/wagons/; fi; done; \
+     : > Wagonfile; \
+     for wagon_dir in hitobito_*; do if [[ -d \$wagon_dir ]]; then rm -r \$wagon_dir/.git && mv \$wagon_dir vendor/wagons/ && echo \"gem '\$wagon_dir', path: 'vendor/wagons/\$wagon_dir'\" >> Wagonfile; fi; done; \
      rm -rf hitobito; \
-     cp -v Wagonfile.production Wagonfile; \
+     cat Wagonfile; \
      bundle lock; \
+     grep -q 'hitobito_wsjrdp_2027' Gemfile.lock; \
 "
 ARG BUILD_SCRIPT="RAILS_DB_ADAPTER=nulldb bundle exec rake assets:precompile"
 
