@@ -68,6 +68,29 @@ describe Person::StatusController, type: :controller do
     expect(response.body).to include("https://helpdesk.worldscoutjamboree.de/browse/HELP-42")
   end
 
+  describe "mandate date" do
+    let(:warning) { I18n.t("people.sepa_account.mandate_date_before_print_at", date: "01.06.2025") }
+
+    it "shows it without a field and warns at the print while it lies before" do
+      person.update_columns(print_at: Date.new(2025, 9, 1), sepa_mandate_date: Date.new(2025, 6, 1))
+
+      get :show, params: {group_id: person.primary_group_id, id: person.id}
+      expect(response.body).to include("01.06.2025").and include(warning)
+
+      get :edit, params: {group_id: person.primary_group_id, id: person.id}
+      expect(response.body).to include(warning)
+      expect(response.body).not_to include("person[sepa_mandate_date]")
+    end
+
+    it "does not save a mandate date sent along" do
+      person.update_columns(sepa_mandate_date: Date.new(2025, 6, 1))
+
+      put :update, params: {group_id: person.primary_group_id, id: person.id, person: {sepa_mandate_date: ""}}
+
+      expect(person.reload.sepa_mandate_date).to eq(Date.new(2025, 6, 1))
+    end
+  end
+
   describe "total fee reduction" do
     before { person.update!(wsjrdp_total_fee_reduction: 500, wsjrdp_total_fee_reduction_hint: "Härtefall") }
 

@@ -17,7 +17,7 @@ class Person::BankAccountController < ApplicationController
 
   before_action :authorize_action
 
-  helper_method :person, :editable_debits, :locked_debits, :comment, :selected_debit_ids, :previous_mandate_date,
+  helper_method :person, :editable_debits, :locked_debits, :skipped_debits, :comment, :selected_debit_ids, :previous_mandate_date,
     :stored_account, :mandate_id_kept_for_new_iban?
 
   def edit
@@ -47,7 +47,11 @@ class Person::BankAccountController < ApplicationController
     previous_mandate_date
     stored_account
     person.attributes = account_params
-    if [mandate_id_valid?, mandate_date_valid?].all? && save_account
+    # The mandate date: only over a stored one, and kept while a direct debit
+    # is announced (SepaMandateDateHelper).
+    mandate_date_valid = helpers.sepa_mandate_date_valid?(person, params.dig(:person, :sepa_mandate_date)) &&
+      helpers.sepa_mandate_date_kept?(person)
+    if [mandate_id_valid?, mandate_date_valid].all? && save_account
       leave_form
     else
       respond_to do |format|
@@ -65,8 +69,16 @@ class Person::BankAccountController < ApplicationController
     authorize!(:update_finance, person)
   end
 
+  # The announced debits; one to be skipped (try_skip) is left as it is (the
+  # form names it, the account does not reach it).
   def announced_debits
-    @announced_debits ||= person.direct_debit_pre_notifications.where(payment_status: "pre_notified").to_a
+    @announced_debits ||= pre_notified_debits.reject(&:try_skip)
+  end
+
+  def skipped_debits = @skipped_debits ||= pre_notified_debits.select(&:try_skip)
+
+  def pre_notified_debits
+    @pre_notified_debits ||= person.direct_debit_pre_notifications.where(payment_status: "pre_notified").to_a
   end
 
   # The announced debits the viewer may change, and those they may not (the
@@ -83,30 +95,13 @@ class Person::BankAccountController < ApplicationController
       attrs[attr] = attrs[attr].to_s.gsub(/\s+/, "").upcase if attrs.key?(attr)
     end
     attrs[:sepa_mandate_id] = attrs[:sepa_mandate_id].to_s.strip.downcase if attrs.key?(:sepa_mandate_id)
-    mandate_date_param(attrs)
-  end
-
-  # The typed mandate date as a Date (Wsjrdp::DateInput). Left out when it is
-  # the date the person already answers -- stored, or the print of the
-  # registration it falls back to (the form's button for the previous date):
-  # writing it would store the fallback and log a change that is none. Blank
-  # and a text that is no date stay as typed (blank clears, the other is
-  # refused by #mandate_date_valid?).
-  def mandate_date_param(attrs)
-    date = attrs.key?(:sepa_mandate_date) && Wsjrdp::DateInput.parse_or_nil(attrs[:sepa_mandate_date])
-    return attrs unless date
-
-    if date == previous_mandate_date
-      attrs.delete(:sepa_mandate_date)
-    else
-      attrs[:sepa_mandate_date] = date
-    end
     attrs
   end
 
   def comment = params[:comment].to_s.strip
 
-  # The mandate date before this change; nil for a person never printed.
+  # The mandate date before this change; nil until the print of the
+  # registration sets it.
   def previous_mandate_date
     return @previous_mandate_date if defined?(@previous_mandate_date)
 
@@ -125,7 +120,8 @@ class Person::BankAccountController < ApplicationController
   end
 
   def signed_on
-    ActiveModel::Type::Date.new.cast(params[:signed_on].presence) || person.sepa_mandate_date || Time.zone.today
+    # The mandate date is required (SepaMandateRequirements).
+    Wsjrdp::DateInput.parse_or_nil(params[:signed_on]) || person.sepa_mandate_date
   end
 
   # Without a form submitted (edit) all editable debits are preselected.
@@ -139,16 +135,6 @@ class Person::BankAccountController < ApplicationController
   def authorize_selected_debits
     requested = Array(params[:debit_ids]).map(&:to_i)
     locked_debits.each { |debit| authorize!(:update, debit) if requested.include?(debit.id) }
-  end
-
-  # A mandate date that is no date would be dropped and fall back to the
-  # print of the registration; blank is that on purpose.
-  def mandate_date_valid?
-    raw = params.dig(:person, :sepa_mandate_date).to_s.strip
-    return true if raw.empty? || Wsjrdp::DateInput.valid?(raw)
-
-    person.errors.add(:sepa_mandate_date, t("people.sepa_account.mandate_date_invalid"))
-    false
   end
 
   def mandate_id_valid?

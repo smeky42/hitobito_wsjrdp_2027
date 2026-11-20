@@ -28,6 +28,6 @@ describe Person::PrintController, type: :controller do
     get :submit, params: {id: yp.id}
 
     expect(yp.reload).to have_attributes(status: "printed", print_at: Time.zone.today)
-    expect(yp.additional_info["sepa_mandate_date"]).to eq(Time.zone.today.iso8601)
+    expect(yp.read_attribute(:sepa_mandate_date)).to eq(Time.zone.today)
   end
 end

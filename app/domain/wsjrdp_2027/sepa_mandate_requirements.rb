@@ -10,7 +10,7 @@
 module Wsjrdp2027
   # What the SEPA mandate (Export::Pdf::Registration::Sepa) needs of a person.
   module SepaMandateRequirements
-    ATTRS = %i[first_name last_name birthday town sepa_name sepa_address sepa_iban].freeze
+    ATTRS = %i[first_name last_name birthday town sepa_name sepa_address sepa_iban sepa_mandate_date].freeze
 
     module_function
 

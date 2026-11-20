@@ -7,6 +7,8 @@
 -#
 -#  The bank account form, in place of the section's button
 -#  (Person::BankAccountController), with its scripts, wherever it stands.
+-# JS for the interactive hints of the mandate fields
+= render "person/bank_account/form_script"
 .bank-account-form.alert.alert-warning.mt-2.mb-2.py-2
   %h4.h6.mb-2= t("people.sepa_account.edit")
   = standard_form person, url: person_bank_account_path(person), method: :put do |f|
@@ -27,26 +29,30 @@
         = t("people.sepa_account.mandate_id_new_account", id: person.id)
       .form-text= t("people.sepa_account.mandate_id_help", id: person.id)
     -# Today by default, after a refused save as typed; the button takes the
-    -# previous date back. The button and the hint for a date in the past:
-    -# _form_script.
-    - mandate_text = params.key?(:person) ? params.dig(:person, :sepa_mandate_date).to_s : I18n.l(Time.zone.today)
-    - mandate_date = ActiveModel::Type::Date.new.cast(mandate_text.presence)
-    - previous = previous_mandate_date && I18n.l(previous_mandate_date)
+    -# previous date back. The button and the hints for a date in the past and
+    -# for a date cleared: _form_script. Without a stored date the field stays
+    -# empty and disabled: the print of the registration sets the first one.
     = f.labeled(:sepa_mandate_date) do
-      .d-flex.flex-wrap.align-items-center.gap-2
-        .flex-grow-0{style: "width: 10rem"}= f.date_field :sepa_mandate_date, value: mandate_text,
-          data: {sepa_mandate_date: true}
-        - if previous
+      - if previous_mandate_date
+        - mandate_text = params.key?(:person) ? params.dig(:person, :sepa_mandate_date).to_s : I18n.l(Time.zone.today)
+        - mandate_date = Wsjrdp::DateInput.parse_or_nil(mandate_text)
+        - previous = I18n.l(previous_mandate_date)
+        .d-flex.flex-wrap.align-items-center.gap-2
+          .flex-grow-0{style: "width: 10rem"}= f.date_field :sepa_mandate_date, value: mandate_text,
+            data: {sepa_mandate_date: true}
           %button.btn.btn-sm.btn-outline-secondary{type: "button", data: {sepa_mandate_date_set: previous}}
             = t("people.sepa_account.mandate_date_previous", date: previous)
-      .form-text.text-danger{hidden: !(mandate_date && mandate_date < Time.zone.today),
-        data: {sepa_mandate_date_past: true}}
-        = icon(:"exclamation-triangle")
-        = t("people.sepa_account.mandate_date_past")
-      .form-text
-        = t("people.sepa_account.mandate_date_help")
-        - if previous
+        .form-text.text-danger{hidden: !(mandate_date && mandate_date < Time.zone.today),
+          data: {sepa_mandate_date_past: true}}
+          = icon(:"exclamation-triangle")
+          = t("people.sepa_account.mandate_date_past")
+        = render "people/sepa_mandate_date_cleared_hint", person: person, value: mandate_text
+        .form-text
+          = t("people.sepa_account.mandate_date_help")
           = t("people.sepa_account.mandate_date_help_previous", date: previous)
+      - else
+        .flex-grow-0{style: "width: 10rem"}= f.date_field :sepa_mandate_date, value: "", disabled: true
+        .form-text= t("people.sepa_account.mandate_date_none")
     - if editable_debits.any?
       = f.labeled(:debit_ids, t("people.sepa_account.announced")) do
         - editable_debits.each do |debit|
@@ -65,7 +71,17 @@
           = t("people.sepa_account.announced_locked")
         %ul.small.mb-0
           - locked_debits.each do |debit|
-            %li= t("people.sepa_account.announced_locked_debit", date: l(debit.collection_date),
+            %li= t("people.sepa_account.announced_debit_line", date: l(debit.collection_date),
+                amount: format_cents_de(debit.amount_cents, zero_cents: ",00"), purpose: debit.description)
+    -# Announced debits to be skipped (try_skip): named, untouched.
+    - if skipped_debits.any?
+      = f.labeled(:skipped_debits, t("people.sepa_account.announced")) do
+        .form-text.text-warning
+          = icon(:"exclamation-triangle")
+          = t("people.sepa_account.announced_skipped")
+        %ul.small.mb-0
+          - skipped_debits.each do |debit|
+            %li= t("people.sepa_account.announced_debit_line", date: l(debit.collection_date),
                 amount: format_cents_de(debit.amount_cents, zero_cents: ",00"), purpose: debit.description)
     = f.labeled(:comment, t("people.sepa_account.comment")) do
       = text_area_tag :comment, comment, rows: 2, class: "form-control form-control-sm mw-100 mw-md-60ch"
@@ -74,5 +90,4 @@
       = f.button(t("people.sepa_account.save"), class: "btn btn-sm btn-primary")
       = link_to(t("global.button.cancel"), buttons_person_bank_account_path(person),
           class: "btn btn-sm btn-link", data: {turbo_stream: true})
-= render "person/bank_account/form_script"
 = render "people/copy_from_participant_script"
