@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# To be used next to a mandate date field to show a warning while the date field is empty and
+-# refuse the clearing of the date field as long as there are active direct debit pre-notifications.
+-#
+-# Locals: person, value (the field's text)
+- if person.sepa_mandate_date_in_database
+  - announced = announced_direct_debit_dates(person)
+  - if announced.any?
+    .form-text.text-danger{hidden: value.to_s.strip.present?, data: {sepa_mandate_date_cleared: true}}
+      = icon(:"exclamation-triangle")
+      = t("people.sepa_account.mandate_date_cleared_announced", dates: announced.join(", "))
+  - elsif person.status_in_database.present? && person.status_in_database != "registered"
+    .form-text.text-warning{hidden: value.to_s.strip.present?, data: {sepa_mandate_date_cleared: true}}
+      = icon(:"exclamation-triangle")
+      = t("people.sepa_account.mandate_date_cleared")

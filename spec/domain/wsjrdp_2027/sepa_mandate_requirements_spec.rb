@@ -16,7 +16,7 @@ describe Wsjrdp2027::SepaMandateRequirements do
   let(:complete) do
     {first_name: "Erika", last_name: "Mustermann", birthday: Date.new(2010, 5, 1), town: "Musterstadt",
      sepa_name: "Erika Mustermann", sepa_address: "Musterstraße 1", sepa_iban: "DE02120300000000202051",
-     yme_list: [:installment]}
+     sepa_mandate_date: Date.new(2025, 9, 1), yme_list: [:installment]}
   end
 
   def person(**attrs) = Struct.new(*complete.keys, keyword_init: true).new(**complete.merge(attrs))
@@ -26,7 +26,7 @@ describe Wsjrdp2027::SepaMandateRequirements do
   end
 
   it "names the blank fields and a missing plan" do
-    expect(described_class.missing(person(town: "", sepa_iban: nil, yme_list: nil)))
-      .to eq(%i[town sepa_iban payment_plan])
+    expect(described_class.missing(person(town: "", sepa_iban: nil, sepa_mandate_date: nil, yme_list: nil)))
+      .to eq(%i[town sepa_iban sepa_mandate_date payment_plan])
   end
 end

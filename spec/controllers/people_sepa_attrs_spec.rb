@@ -23,7 +23,7 @@ describe PeopleController, type: :controller do
   end
 
   it "shows the bank account under SEPA" do
-    yp.update_columns(print_at: Date.new(2025, 9, 1))
+    yp.update_columns(sepa_mandate_date: Date.new(2025, 9, 1))
     get :show, params: {group_id: yp.primary_group_id, id: yp.id}
 
     html = Capybara.string(response.body)

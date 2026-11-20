@@ -93,7 +93,8 @@ describe Person::FeeController do
       before { sign_in(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person) }
 
       it "offers the SEPA mandate once it can be made" do
-        yp.update_columns(birthday: Date.new(2010, 5, 1), town: "Musterstadt", sepa_address: "Musterstraße 1")
+        yp.update_columns(birthday: Date.new(2010, 5, 1), town: "Musterstadt", sepa_address: "Musterstraße 1",
+          sepa_mandate_date: Date.new(2025, 9, 1))
 
         get :show, params: {person_id: yp.id}
 
@@ -103,7 +104,7 @@ describe Person::FeeController do
       end
 
       it "disables the SEPA mandate and names what is missing" do
-        yp.update_columns(birthday: nil, town: nil)
+        yp.update_columns(birthday: nil, town: nil, sepa_mandate_date: nil)
 
         get :show, params: {person_id: yp.id}
 
@@ -112,6 +113,7 @@ describe Person::FeeController do
         expect(section).to have_css("a.disabled", text: I18n.t("people.sepa_account.mandate_view"))
         expect(section.find(".sepa-mandate-missing")).to have_text(Person.human_attribute_name(:birthday))
           .and have_text(Person.human_attribute_name(:town))
+          .and have_text(Person.human_attribute_name(:sepa_mandate_date))
       end
     end
   end

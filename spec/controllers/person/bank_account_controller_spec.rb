@@ -79,7 +79,7 @@ describe Person::BankAccountController, type: :controller do
     end
 
     it "proposes today as the mandate date and offers the previous one" do
-      yp.update_columns(print_at: Date.new(2025, 9, 1))
+      yp.update_columns(sepa_mandate_date: Date.new(2025, 9, 1))
       get :edit, params: {person_id: yp.id, format: :turbo_stream}
 
       html = Capybara.string(Nokogiri::HTML(response.body).at("template").inner_html)
@@ -89,13 +89,24 @@ describe Person::BankAccountController, type: :controller do
       expect(html).to have_css("[data-sepa-mandate-date-past][hidden]", visible: :all)
     end
 
-    it "offers no previous mandate date for a person never printed" do
-      yp.update_columns(print_at: nil)
+    it "offers no mandate date without a stored one, the print sets the first" do
+      yp.update_columns(print_at: Date.new(2025, 9, 1), sepa_mandate_date: nil)
       get :edit, params: {person_id: yp.id, format: :turbo_stream}
 
       html = Capybara.string(Nokogiri::HTML(response.body).at("template").inner_html)
+      expect(html).to have_field("person[sepa_mandate_date]", with: "", disabled: true)
       expect(html).to have_no_css("button[data-sepa-mandate-date-set]")
       expect(html).to have_no_text("Bisher:")
+      expect(html).to have_text(I18n.t("people.sepa_account.mandate_date_none"))
+    end
+
+    it "refuses a mandate date sent without a stored one" do
+      update(person: account.merge(sepa_mandate_date: "20.10.2026", sepa_name: "Andere"))
+
+      expect(response).to have_http_status(422)
+      expect(response.body).to include(I18n.t("people.sepa_account.mandate_date_before_print"))
+      expect(yp.reload.sepa_name).not_to eq("Andere")
+      expect(yp.sepa_mandate_date).to be_nil
     end
 
     it "saves the account, the announced debit and the comment as a note" do
@@ -125,6 +136,7 @@ describe Person::BankAccountController, type: :controller do
     end
 
     it "refuses a mandate date that is no date, keeps everything and shows what was typed" do
+      yp.update_columns(sepa_mandate_date: Date.new(2025, 9, 1))
       update(person: account.merge(sepa_mandate_date: "31.02.2026", sepa_name: "Andere"), debit_ids: [announced.id])
 
       expect(response).to have_http_status(422)
@@ -133,12 +145,13 @@ describe Person::BankAccountController, type: :controller do
       expect(announced.reload.dbtr_name).to eq("Alt")
     end
 
-    it "takes a blank mandate date as the print of the registration" do
-      yp.update_columns(print_at: Date.new(2025, 9, 1))
+    it "clears the mandate date with an empty field, without the print as fallback" do
+      yp.update_columns(status: "printed", print_at: Date.new(2025, 9, 1), sepa_mandate_date: Date.new(2026, 10, 20))
+      announced.update_columns(try_skip: true)
 
       update(person: account.merge(sepa_mandate_date: ""))
 
-      expect(yp.reload.sepa_mandate_date).to eq(Date.new(2025, 9, 1))
+      expect(yp.reload.sepa_mandate_date).to be_nil
     end
 
     it "carries a new mandate reference into the announced debit, without the manage tier" do
@@ -192,21 +205,22 @@ describe Person::BankAccountController, type: :controller do
       sign_in(finance)
     end
 
-    it "shows the current account, signed today without a mandate date, in the browser" do
-      yp.update_columns(print_at: nil)
+    it "shows the current account, signed on the mandate date, in the browser" do
+      yp.update_columns(sepa_mandate_date: Date.new(2026, 10, 20))
       get :mandate, params: {person_id: yp.id}
 
       expect(response.media_type).to eq("application/pdf")
       expect(response.headers["Content-Disposition"]).to start_with("inline")
       expect(pdf_text).to include("DE89370400440532013000").and include("Erika Mustermann")
-        .and include(Time.zone.today.strftime("%d.%m.%Y"))
+        .and include("20.10.2026")
     end
 
-    it "is signed on the mandate date" do
-      yp.update!(sepa_mandate_date: Date.new(2026, 10, 20))
+    it "refuses a person without a mandate date" do
+      yp.update_columns(print_at: Date.new(2025, 9, 1), sepa_mandate_date: nil)
+
       get :mandate, params: {person_id: yp.id}
 
-      expect(pdf_text).to include("20.10.2026")
+      expect(response).to have_http_status(422)
     end
 
     it "refuses a person the mandate cannot be made for" do
@@ -218,6 +232,7 @@ describe Person::BankAccountController, type: :controller do
     end
 
     it "takes the signing date from outside and downloads" do
+      yp.update_columns(sepa_mandate_date: Date.new(2026, 10, 20))
       get :mandate, params: {person_id: yp.id, signed_on: "01.12.2026", download: "1"}
 
       expect(response.headers["Content-Disposition"]).to start_with("attachment")
@@ -225,10 +240,9 @@ describe Person::BankAccountController, type: :controller do
     end
   end
 
-  it "keeps the mandate date, with the print of the registration as default" do
+  it "changes the stored mandate date, in the announced debit too" do
     sign_in(finance)
-    yp.update_columns(print_at: Date.new(2025, 9, 1))
-    expect(yp.reload.sepa_mandate_date).to eq(Date.new(2025, 9, 1))
+    yp.update_columns(sepa_mandate_date: Date.new(2025, 9, 1))
 
     update(person: account.merge(sepa_mandate_date: "20.10.2026"), debit_ids: [announced.id])
 
