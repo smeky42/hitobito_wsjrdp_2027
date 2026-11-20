@@ -1,9 +1,9 @@
 # Emacs development setup (core + wagon)
 
-How to work on hitobito core and the `hitobito_wsjrdp_2027` wagon from
-Emacs with full IDE features — LSP, cross-repo navigation, RuboCop
-diagnostics, and rspec from inside Emacs. Everything runs **on the
-host** (rbenv Ruby 3.2.6 + direnv); only the services (postgres,
+Some notes on how to work on Hitobito core and the `hitobito_wsjrdp_2027` wagon from
+Emacs with IDE-like features (LSP, cross-repo navigation, RuboCop
+diagnostics, rspec from inside Emacs). Everything runs **on the
+host** (rbenv Ruby 3.3 + direnv); only the services (postgres,
 webpack, mailcatcher, the running app) stay in Docker.
 
 ## Files in this directory
@@ -21,8 +21,9 @@ webpack, mailcatcher, the running app) stay in Docker.
 ./doc/emacs/setup-ruby-lsp.sh
 ```
 
-It can be run from anywhere; it re-executes itself through `direnv` to
-pick up the project environment. Steps, each skipped when already done:
+The setup script re-executes itself through `direnv` to pick up the
+project environment. It performs the following steps (steps already
+done are skipped):
 
 1. Verify the active Ruby matches hitobito's `.ruby-version`.
 2. `gem install ruby-lsp` into the project `GEM_HOME`.
@@ -35,7 +36,9 @@ pick up the project environment. Steps, each skipped when already done:
 6. Build ruby-lsp's composed bundle and index everything once
    (`ruby-lsp --doctor`) as a smoke test.
 
-Then configure Emacs (next sections) — and mind the one manual step.
+After executing the script, configure Emacs (next sections). Note that
+there is a manual step.
+
 
 ## ⚠ The one manual step: the workspace root
 
@@ -56,7 +59,7 @@ Check what is active with `M-x lsp-describe-session`.
 ## Emacs configuration
 
 `example-ruby.el` and `example-treesit.el` in this directory are
-working example configs — copy them into your Emacs config, or lift
+working example configs. Copy them into your Emacs config, or lift
 the forms into your `init.el`. They assume `use-package` and pull
 these packages from MELPA: `envrc`, `haml-mode`, `rspec-mode`,
 `inf-ruby`, `projectile-rails`, `lsp-mode` (plus `expreg` for
@@ -89,13 +92,11 @@ Eglot users: point it at the same server with
 
 and open `development/app` as the project.
 
-## Why this works on the host
+## Background: Why this works on the host
 
-- `WSJ2027Anmeldung/.envrc` (direnv) initializes rbenv, points
-  `GEM_HOME` at `development/app/hitobito_wsjrdp_2027/.bundle/ruby/3.2.0`
-  and exports `RAILS_DB_*` towards the postgres container
-  (`127.0.0.1:5432`), so gems, `rspec` and the language server all run
-  host-side against the containerized services.
+- `WSJ2027Anmeldung/.envrc` (direnv) initializes rbenv and exports
+  `GEM_HOME` and `RAILS_DB_*`, so gems, `rspec` and the language
+  server all run host-side against the containerized services.
 - ruby-lsp does not need to be in any project Gemfile: its executable
   generates a *composed bundle* under `app/.ruby-lsp/` that wraps the
   project's own bundle.

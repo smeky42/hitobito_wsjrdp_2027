@@ -97,15 +97,15 @@ See [`README.md`](README.md) for the dev-environment setup.
 ## Ruby environment on the macOS host (direnv & friends)
 
 Host-side Ruby tooling (`bundle exec rubocop`, `gem`, `ruby`) uses ONE
-project-local gem store: `vendor/bundle/ruby/3.2.0` in this wagon
-(gitignored; `3.2.0` is the RubyGems API version — correct for Ruby 3.2.6).
-Three mechanisms address it and must stay in sync:
+project-local gem store: `.bundle/ruby/3.3.0` in this wagon
+(gitignored; `3.3.0` is the RubyGems API version — the same for every
+Ruby 3.3.x). Three mechanisms address it and must stay in sync:
 
-- `.bundle/config` in this wagon (`BUNDLE_PATH: vendor/bundle` plus the
+- `.bundle/config` in this wagon (`BUNDLE_PATH: .bundle` plus the
   charlock_holmes ICU build flags): every `bundle …` uses the store,
   independent of any shell environment. **`bundle exec` is therefore always
   the safest way to run tools.**
-- `.ruby-version` (3.2.6) and `.rbenv-gemsets` (project gemset pointing at
+- `.ruby-version` (3.3.14) and `.rbenv-gemsets` (project gemset pointing at
   the store, plus `-global`) at the umbrella checkout root (three directories
   above this wagon): every rbenv **shim** call gets the right Ruby and the
   store even without direnv.
