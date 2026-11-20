@@ -17,7 +17,8 @@ describe PeopleController, type: :controller do
   let(:yp) { people(:yp_a_1) }
 
   before do
-    yp.update_columns(sepa_name: "Erika Mustermann", sepa_iban: "DE02120300000000202051", sepa_bic: "BYLADEM1001")
+    yp.update_columns(sepa_name: "Erika Mustermann", sepa_iban: "DE02120300000000202051", sepa_bic: "BYLADEM1001",
+      status: "printed")
     sign_in(people(:admin))
   end
 
