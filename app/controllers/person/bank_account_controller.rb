@@ -83,6 +83,24 @@ class Person::BankAccountController < ApplicationController
       attrs[attr] = attrs[attr].to_s.gsub(/\s+/, "").upcase if attrs.key?(attr)
     end
     attrs[:sepa_mandate_id] = attrs[:sepa_mandate_id].to_s.strip.downcase if attrs.key?(:sepa_mandate_id)
+    mandate_date_param(attrs)
+  end
+
+  # The typed mandate date as a Date (Wsjrdp::DateInput). Left out when it is
+  # the date the person already answers -- stored, or the print of the
+  # registration it falls back to (the form's button for the previous date):
+  # writing it would store the fallback and log a change that is none. Blank
+  # and a text that is no date stay as typed (blank clears, the other is
+  # refused by #mandate_date_valid?).
+  def mandate_date_param(attrs)
+    date = attrs.key?(:sepa_mandate_date) && Wsjrdp::DateInput.parse_or_nil(attrs[:sepa_mandate_date])
+    return attrs unless date
+
+    if date == previous_mandate_date
+      attrs.delete(:sepa_mandate_date)
+    else
+      attrs[:sepa_mandate_date] = date
+    end
     attrs
   end
 
@@ -127,7 +145,7 @@ class Person::BankAccountController < ApplicationController
   # print of the registration; blank is that on purpose.
   def mandate_date_valid?
     raw = params.dig(:person, :sepa_mandate_date).to_s.strip
-    return true if raw.empty? || ActiveModel::Type::Date.new.cast(raw)
+    return true if raw.empty? || Wsjrdp::DateInput.valid?(raw)
 
     person.errors.add(:sepa_mandate_date, t("people.sepa_account.mandate_date_invalid"))
     false

@@ -5,10 +5,8 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The person's bank account for the direct debit: the same fields under
--#  "SEPA" on the person's page (people/_finance, with "Einmalzahlung?" above
--#  them) and under "Kontoverbindung" on their Beitrag page
--#  (person/fee/_bank_account). Below them a mail to the finance team to ask
+-#  The person's bank account (mostly for direct debit). Used in several places.
+-#  If the status is set and not registered, then show a mail-link to the finance team to ask
 -#  for a change (WsjRdp2027::PeopleHelper#sepa_account_change_mail_to).
 -#
 -#  Locals: person
@@ -20,4 +18,5 @@
     :sepa_bic,
     :sepa_mandate_id,
     :sepa_mandate_date)
-%p.mt-2= sepa_account_change_mail_to(person)
+- if person.status.present? && person.status != "registered"
+  %p.mt-2= sepa_account_change_mail_to(person)

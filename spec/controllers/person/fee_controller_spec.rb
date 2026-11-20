@@ -69,7 +69,7 @@ describe Person::FeeController do
     before do
       ensure_payment_plan(yp)
       yp.update_columns(sepa_name: "Erika Mustermann", sepa_iban: "DE02120300000000202051",
-        sepa_bic: "BYLADEM1001")
+        sepa_bic: "BYLADEM1001", status: "printed")
     end
 
     [:yp, :auditor].each do |viewer|
