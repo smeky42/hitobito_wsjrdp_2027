@@ -10,46 +10,19 @@
 require "openssl"
 
 module Wsjrdp::Credentials
-  # The keys the credentials of this instance are sealed with
-  # (doc/wsjrdp/credentials.md).
-  #
-  # HITOBITO_CREDENTIAL_KEYS holds a comma-separated list of
-  # "<stage>:<secret>" entries, the stage of a-z and 0-9, the secret exactly
-  # 32 random bytes as 64 hex digits (`openssl rand -hex 32`):
-  #
-  #   production:<64 hex>,production:<64 hex>
-  #
-  # The 32 bytes are the AES-256 key as they are; nothing is derived from
-  # them. A key is known by its fingerprint: the SHA-256 of the secret,
-  # lower-cased, as 64 lower-case hex digits
+  # The keys this instance seals its credentials with
+  # (doc/wsjrdp/credentials.md, "Keys"). HITOBITO_CREDENTIAL_KEYS holds
+  # "<stage>:<64 hex>" entries, comma-separated; the bytes are the AES-256
+  # key as they are. The first entry of the instance's stage is active, all
+  # of its stage are accepted; a valid entry of another stage is kept by
+  # fingerprint only, for the pages. A key is known by its fingerprint: the
+  # SHA-256 of the secret, lower-cased, as 64 lower-case hex digits
   # (`printf %s "$SECRET" | tr 'A-F' 'a-f' | sha256sum`).
   #
-  # - The first entry of this instance's stage is active: new texts are
-  #   sealed with it.
-  # - Every entry of this instance's stage is accepted: a text sealed with
-  #   any of them can be opened.
-  # - An entry of another stage is ignored with a warning.
-  # - A problem -- a malformed entry, a secret given twice, a production entry
-  #   outside production, a committed, public key outside the stage test --
-  #   stops every stage but production, which logs it, ignores the entry and
-  #   starts.
-  #
-  # Without any key the instance is valid: it has no active key, the log
-  # says so once, and sealing raises Wsjrdp::Credentials::NoKeyError.
-  #
-  # No stage has a committed key except the Rails environment test, which
-  # falls back to credentials.keys_default in the wagon's
-  # config/settings/test.yml. That key and the golden-vector spec's key
-  # are made up and public; PUBLIC_FINGERPRINTS names them, and every stage
-  # but test refuses them -- without reading any file, so a missing file
-  # cannot let one through.
-  #
-  # HITOBITO_CREDENTIAL_LABEL is an optional name for this instance's key
-  # ("laptop-a"), offered as #label.
-  #
-  # Both variables are read at boot (the wagon's initializer puts them into
-  # Rails.configuration.x) and checked once in after_initialize. The plain
-  # constructor needs no Rails; .current is the instance of this process.
+  # Where the variable is not set, the local file's keys and label are the
+  # instance's; the sources are never merged (.from_sources). A problem
+  # stops every stage but production, which logs it and ignores the entry.
+  # Without any key the instance is valid; sealing raises NoKeyError.
   class Keys
     include Undumpable
 
@@ -58,21 +31,18 @@ module Wsjrdp::Credentials
     SECRET_FORMAT = /\A\h{64}\z/
     KEY_BYTES = 32
     TEST_STAGE = "test"
-    # The fingerprints (.fingerprint_of) of the committed, public keys, which
-    # only the stage test accepts: credentials.keys_default of
-    # config/settings/test.yml, and the key the golden-vector spec opens its
-    # texts with (CredentialsSpec::GOLDEN_VECTOR_KEY in
-    # spec/domain/wsjrdp/credentials/standalone.rb). A spec keeps this list
-    # in step with both. Fingerprints only: no key is in this class.
+    TEST_SETTINGS_SOURCE = "config/settings/test.yml credentials.keys_default"
+    # The committed, public keys (credentials.keys_default of
+    # config/settings/test.yml and the golden-vector spec's key), which only
+    # the stage test accepts, and never under RAILS_ENV=production (RAILS_STAGE
+    # could say test). Known by fingerprint, so that no file is needed to
+    # refuse them; a spec keeps the list in step.
     PUBLIC_FINGERPRINTS = %w[
       00ab7b0562559138d1b7732dc8f46ad620d3aeda2d1163f32f2cca7bf8615025
       7d19cec683431d80e3c1833ba713222dcfb44a7e9ddd6811b13dccb11af2e97e
     ].freeze
 
-    class ConfigurationError < Error; end
-
-    # One key: its stage, its fingerprint and its bytes. Never shows the
-    # bytes; #bytes is for Wsjrdp::Credentials::Sealer only.
+    # One key. Never shows its bytes; #bytes is for the Sealer only.
     class Key
       include Undumpable
 
@@ -85,7 +55,6 @@ module Wsjrdp::Credentials
         freeze
       end
 
-      # The AES-256 key. For the sealer only.
       attr_reader :bytes
 
       def inspect = "#<#{self.class.name} #{shown_stage} #{fingerprint}>"
@@ -98,11 +67,29 @@ module Wsjrdp::Credentials
       def shown_stage = Wsjrdp::Credentials.shown_stage(stage)
     end
 
+    # A valid entry of another stage, listed on the pages only: its
+    # fingerprint and its stage (nil where the stage may not be shown).
+    # It seals and opens nothing.
+    class OtherStageKey
+      include Undumpable
+
+      attr_reader :stage, :fingerprint
+
+      def initialize(stage, secret_hex)
+        @stage = Wsjrdp::Credentials.shown_stage(stage, placeholder: nil)
+        @fingerprint = Keys.fingerprint_of(secret_hex)
+        freeze
+      end
+
+      def inspect = "#<#{self.class.name} #{Wsjrdp::Credentials.shown_stage(stage)} #{fingerprint}>"
+      alias_method :to_s, :inspect
+
+      def as_json(*) = {"stage" => stage, "fingerprint" => fingerprint}
+    end
+
     class << self
-      # The keys of this process, read once.
       def current
-        @current ||= new(raw_value, stage: stage, label: Rails.configuration.x.credential_label)
-          .tap { |keys| keys.log_summary(Rails.logger) }
+        @current ||= from_sources.tap { |keys| keys.log_summary(Rails.logger) }
       end
 
       def reset! = @current = nil
@@ -110,13 +97,31 @@ module Wsjrdp::Credentials
       # The one definition of the stage in the wagon.
       def stage = Wsjrdp2027::ServiceTokenHmacKeys.stage
 
-      # The variable; in the Rails environment test without it the committed
-      # value; else nil.
-      def raw_value
-        value = Rails.configuration.x.credential_keys
-        return value if given?(value)
+      # The keys of the first source that gives them: the variable, else
+      # the local file (with the file's label), else in the Rails
+      # environment test the committed test key. The log says when a source
+      # behind is left unused.
+      def from_sources(variable: captured_keys,
+        label: Rails.configuration.x.credential_label, file: Overrides.current.file,
+        test_value: Rails.env.test? ? Settings.credentials&.keys_default.presence : nil, logger: Rails.logger,
+        rails_production: Rails.env.production?)
+        defaults = {stage: stage, label: label, rails_production: rails_production}
+        build = ->(raw, **options) { new(raw, **defaults, **options) }
+        if given?(variable)
+          if file.keys?
+            logger.warn("#{file.source}: its keys#{" and label" if file.label} are not used, #{ENV_NAME} is set")
+          end
+          return build.call(variable)
+        end
 
-        Rails.env.test? ? Settings.credentials&.keys_default.presence : nil
+        if file.keys?
+          logger.warn("#{LABEL_ENV_NAME}: not used, the keys come from #{file.source}") if given?(label)
+          return build.call(file.key_entries, label: file.label, source: file.keys_source,
+            label_source: file.label_source)
+        end
+        return build.call(test_value, source: TEST_SETTINGS_SOURCE) if test_value
+
+        build.call(nil)
       end
 
       # The SHA-256 of the secret, lower-cased, in 64 lower-case hex digits.
@@ -124,21 +129,26 @@ module Wsjrdp::Credentials
         OpenSSL::Digest::SHA256.hexdigest(secret_hex.to_s.strip.downcase)
       end
 
+      def captured_keys = Wsjrdp::Credentials.captured(Rails.configuration.x.credential_keys)
+
       private
 
       # As bytes: a value of invalid encoding counts as set (and is refused).
       def given?(value) = !value.nil? && !value.to_s.b.strip.empty?
     end
 
-    attr_reader :stage, :keys, :label, :problems, :warnings, :source
+    attr_reader :stage, :keys, :other_stage_keys, :label, :problems, :warnings, :source, :label_source
 
-    # raw: the text of the variable, or a list of entries (as a file's list
-    # of keys will give them). source names where it came from in the
-    # messages.
-    def initialize(raw, stage:, label: nil, source: ENV_NAME)
+    # raw: the variable's text, or the local file's list of entries.
+    # rails_production: whether this is RAILS_ENV=production, handed in so
+    # that the constructor needs no Rails.
+    def initialize(raw, stage:, label: nil, source: ENV_NAME, label_source: LABEL_ENV_NAME, rails_production: false)
       @stage = stage
+      @rails_production = rails_production
       @source = source
+      @label_source = label_source
       @keys = []
+      @other_stage_keys = []
       @problems = []
       @warnings = []
       @label = normalize_label(label)
@@ -146,21 +156,19 @@ module Wsjrdp::Credentials
       raise ConfigurationError, problem_message if problems.any? && !production?
 
       @keys.freeze
+      @other_stage_keys.freeze
       @problems.freeze
       @warnings.freeze
     end
 
     def production? = stage == PRODUCTION
 
-    # The key new texts are sealed with; nil if there is none.
     def active = keys.first
 
-    # The active key, or Wsjrdp::Credentials::NoKeyError.
     def active!
       active || raise(NoKeyError, "#{source}: no key for stage #{shown_stage}; credentials cannot be sealed here")
     end
 
-    # The accepted key with that fingerprint; nil if there is none.
     def find_by_fingerprint(fingerprint) = keys.find { |key| key.fingerprint == fingerprint }
 
     def accepted?(fingerprint) = !find_by_fingerprint(fingerprint).nil?
@@ -174,8 +182,6 @@ module Wsjrdp::Credentials
       end
     end
 
-    # Fingerprints only: the secrets never reach a log, an error page or a
-    # console.
     def inspect = "#<#{self.class.name} stage=#{shown_stage} keys=#{keys.map(&:fingerprint).join(",")}>"
     alias_method :to_s, :inspect
 
@@ -190,29 +196,24 @@ module Wsjrdp::Credentials
 
     private
 
-    # The stage of this instance as a message may show it.
     def shown_stage = Wsjrdp::Credentials.shown_stage(stage)
 
-    # The label stripped, or nil. Read as bytes re-tagged as UTF-8, as the
-    # entries are: under a C or POSIX locale Ruby tags ENV values US-ASCII,
-    # and a correct UTF-8 label would look invalid. Then the one rule for
-    # valid text (Wsjrdp::Credentials.text?): invalid encoding or a NUL
-    # character is a problem -- the label is written into every row a
-    # deposit or a re-key makes, and PostgreSQL stores no NUL.
+    # Read as bytes: under a C or POSIX locale Ruby tags ENV values
+    # US-ASCII, and a correct UTF-8 label would look invalid.
     def normalize_label(label)
       return nil if label.nil?
 
       text = label.to_s.b.force_encoding(Encoding::UTF_8)
       unless Wsjrdp::Credentials.text?(text)
-        problems << "the label (#{LABEL_ENV_NAME}) is not valid text"
+        problems << "the label (#{label_source}) is not valid text"
         return nil
       end
       text = text.strip
       text.empty? ? nil : text
     end
 
-    # The entries in order, each a String, or nil where an entry is not valid
-    # text. Split as bytes: String#split and #strip raise on invalid UTF-8.
+    # nil where an entry is not valid text. Split as bytes: String#split
+    # and #strip raise on invalid UTF-8.
     def entries(raw)
       list = raw.is_a?(Array) ? raw.map { |entry| entry.to_s.b } : raw.to_s.b.split(",")
       list.map(&:strip).reject(&:empty?).map do |entry|
@@ -233,14 +234,17 @@ module Wsjrdp::Credentials
         next problems << problem if problem
 
         seen_secrets << secret
-        next warnings << other_stage_warning(entry_stage, index) unless entry_stage == stage
+        unless entry_stage == stage
+          warnings << other_stage_warning(entry_stage, index)
+          next other_stage_keys << OtherStageKey.new(entry_stage, secret)
+        end
 
         keys << Key.new(entry_stage, secret)
       end
     end
 
-    # Names the entry's stage only when it is short: 64 hex digits are a
-    # valid stage, and may be a secret typed into the wrong place.
+    # 64 hex digits are a valid stage, and may be a secret in the wrong
+    # place: shown_stage repeats only a short one.
     def other_stage_warning(entry_stage, index)
       shown = Wsjrdp::Credentials.shown_stage(entry_stage, placeholder: nil)
       "entry #{index + 1} belongs to #{shown ? "stage #{shown}" : "another stage"}, this is #{shown_stage}"
@@ -256,7 +260,7 @@ module Wsjrdp::Credentials
         "#{name}: a secret given again"
       elsif !production? && entry_stage == PRODUCTION
         "#{name}: a production secret outside production (stage #{shown_stage})"
-      elsif stage != TEST_STAGE && PUBLIC_FINGERPRINTS.include?(Keys.fingerprint_of(secret))
+      elsif (stage != TEST_STAGE || @rails_production) && PUBLIC_FINGERPRINTS.include?(Keys.fingerprint_of(secret))
         "#{name}: the committed, public key of test"
       end
     end

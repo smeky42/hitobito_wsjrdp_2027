@@ -58,6 +58,40 @@ describe Wsjrdp::Credentials::Keys do
       expect(keys.warnings.join).to include("entry 1", "stage test")
     end
 
+    it "keeps a valid entry of another stage by fingerprint and stage, for sealing and opening nothing" do
+      keys = keys("test:#{secret_a},development:#{secret_b},staging:#{secret_c}", stage: "development")
+
+      expect(keys.other_stage_keys.map { |key| [key.stage, key.fingerprint] })
+        .to eq([["test", fingerprint(secret_a)], ["staging", fingerprint(secret_c)]])
+      expect(keys.other_stage_keys).to be_frozen
+      expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_b)])
+      expect(keys.active.fingerprint).to eq(fingerprint(secret_b))
+      expect(keys.find_by_fingerprint(fingerprint(secret_a))).to be_nil
+      expect(keys.accepted?(fingerprint(secret_c))).to be(false)
+    end
+
+    it "never shows the secret of a kept entry, nor a stage that may be one" do
+      keys = keys("test:#{secret_a},#{secret_c}:#{"d" * 64}", stage: "development")
+      output = StringIO.new
+      keys.log_summary(Logger.new(output))
+      kept = keys.other_stage_keys
+
+      expect(kept.map(&:stage)).to eq(["test", nil])
+      shown = [kept.map(&:inspect), kept.map(&:to_s), kept.to_json, keys.inspect, keys.to_json, keys.summary,
+        keys.warnings, output.string].join
+      expect(shown).not_to include(secret_a, secret_c, "d" * 64)
+      expect(kept.first.instance_variables).to contain_exactly(:@stage, :@fingerprint)
+      expect { Marshal.dump(kept.first) }.to raise_error(TypeError)
+    end
+
+    it "keeps no entry with a problem" do
+      keys = keys("production:#{secret_a},staging:#{secret_b},staging:#{secret_b},broken", stage: "production")
+
+      expect(keys.other_stage_keys.map(&:fingerprint)).to eq([fingerprint(secret_b)])
+      expect(keys("development:#{CredentialsSpec.test_settings_secrets.first}", stage: "production")
+        .other_stage_keys).to eq([])
+    end
+
     it "takes a list of entries as well as a text" do
       keys = keys(["development:#{secret_a}", " development:#{secret_b} "], stage: "development")
 
@@ -103,24 +137,24 @@ describe Wsjrdp::Credentials::Keys do
   describe "outside production" do
     it "refuses a production secret in any other stage" do
       expect { keys("production:#{secret_a}", stage: "development") }
-        .to raise_error(described_class::ConfigurationError, /production secret/)
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError, /production secret/)
       expect { keys("staging:#{secret_a},production:#{secret_b}", stage: "staging") }
-        .to raise_error(described_class::ConfigurationError, /entry 2/)
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError, /entry 2/)
     end
 
     it "refuses malformed entries" do
       ["Development:#{secret_a}", "development-x:#{secret_a}", "development:#{"a" * 63}",
         "development:#{"a" * 65}", "development:#{"a" * 128}", "development:#{"g" * 64}",
         "development", ":#{secret_a}"].each do |raw|
-        expect { keys(raw, stage: "development") }.to raise_error(described_class::ConfigurationError), raw
+        expect { keys(raw, stage: "development") }.to raise_error(Wsjrdp::Credentials::ConfigurationError), raw
       end
     end
 
     it "refuses a secret given twice, in any case and in any stage" do
       expect { keys("development:#{secret_a},development:#{secret_a.upcase}", stage: "development") }
-        .to raise_error(described_class::ConfigurationError, /given again/)
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError, /given again/)
       expect { keys("test:#{secret_a},development:#{secret_a}", stage: "development") }
-        .to raise_error(described_class::ConfigurationError, /given again/)
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError, /given again/)
     end
   end
 
@@ -138,7 +172,7 @@ describe Wsjrdp::Credentials::Keys do
 
     it "stops any other stage, showing nothing of it" do
       expect { keys("development:#{secret_a}#{invalid}", stage: "development") }
-        .to raise_error(described_class::ConfigurationError, /entry 1: not valid text/) { |error|
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError, /entry 1: not valid text/) { |error|
           expect(error.message).not_to include(secret_a)
         }
     end
@@ -150,7 +184,7 @@ describe Wsjrdp::Credentials::Keys do
         expect(keys.problems).to eq(["the label (#{described_class::LABEL_ENV_NAME}) is not valid text"])
         expect(keys.keys.size).to eq(1)
         %w[development test].each do |stage|
-          expect { keys(nil, stage: stage, label: label) }.to raise_error(described_class::ConfigurationError) { |error|
+          expect { keys(nil, stage: stage, label: label) }.to raise_error(Wsjrdp::Credentials::ConfigurationError) { |error|
             expect(error.message).not_to include("made-up")
           }
         end
@@ -180,7 +214,7 @@ describe Wsjrdp::Credentials::Keys do
       keys = keys(nil, stage: secret_a)
       expect([keys.summary, keys.inspect, keys.to_json].join).not_to include(secret_a)
       expect { keys("x:y", stage: secret_a) }
-        .to raise_error(described_class::ConfigurationError) { |error| expect(error.message).not_to include(secret_a) }
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError) { |error| expect(error.message).not_to include(secret_a) }
     end
 
     it "is shown up to 32 characters, and from 33 on is \"another stage\", for an entry and the instance alike" do
@@ -236,7 +270,7 @@ describe Wsjrdp::Credentials::Keys do
       %w[development staging].each do |stage|
         public_secrets.each do |secret|
           expect { keys("#{stage}:#{secret}", stage: stage) }
-            .to raise_error(described_class::ConfigurationError, /entry 1: the committed, public key of test/)
+            .to raise_error(Wsjrdp::Credentials::ConfigurationError, /entry 1: the committed, public key of test/)
         end
       end
     end
@@ -246,11 +280,25 @@ describe Wsjrdp::Credentials::Keys do
       expect(keys.keys.map(&:fingerprint)).to eq(public_secrets.map { |secret| fingerprint(secret) })
     end
 
+    describe "under RAILS_ENV=production" do
+      it "are refused in the stage test too, which then does not start" do
+        public_secrets.each do |secret|
+          expect { keys("test:#{secret}", stage: "test", rails_production: true) }
+            .to raise_error(Wsjrdp::Credentials::ConfigurationError, /entry 1: the committed, public key of test/)
+        end
+      end
+
+      it "leave the other keys of the stage test alone" do
+        keys = keys("test:#{secret_b}", stage: "test", rails_production: true)
+        expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_b)])
+      end
+    end
+
     it "never show in a message or the log" do
       output = StringIO.new
       keys = keys("production:#{test_secret},production:#{golden_secret}", stage: "production")
       keys.log_summary(Logger.new(output))
-      expect { keys("staging:#{test_secret}", stage: "staging") }.to raise_error(described_class::ConfigurationError) { |error|
+      expect { keys("staging:#{test_secret}", stage: "staging") }.to raise_error(Wsjrdp::Credentials::ConfigurationError) { |error|
         expect(error.message).not_to include(test_secret)
       }
 

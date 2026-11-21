@@ -18,8 +18,15 @@ describe Wsjrdp2027::ServiceTokenHmacKeys do
   let(:secret_b) { "b" * 64 }
   let(:secret_c) { "c" * 64 }
 
-  def keys(raw, stage:, public_secrets: [])
-    described_class.new(raw, stage: stage, public_secrets: public_secrets)
+  def keys(raw, stage:, **options) = described_class.new(raw, stage: stage, **options)
+
+  # The committed secrets of the two settings files, read by the spec only.
+  def committed_secrets
+    %w[development test].flat_map do |name|
+      path = HitobitoWsjrdp2027::Wagon.root.join("config", "settings", "#{name}.yml")
+      YAML.safe_load_file(path).dig("service_tokens", "hmac_keys_default").to_s.split(",")
+        .map { |entry| entry.split(":", 2).last.strip }
+    end
   end
 
   def fingerprint(secret) = Base64.strict_encode64(Digest::SHA256.digest(secret))
@@ -34,10 +41,11 @@ describe Wsjrdp2027::ServiceTokenHmacKeys do
       expect(keys.find_by_fingerprint(fingerprint(secret_b)).fingerprint).to eq(fingerprint(secret_b))
     end
 
-    it "makes the fingerprint the Base64 of the SHA-256 of the secret as written, 44 characters" do
+    it "makes the fingerprint the Base64 of the SHA-256 of the lower-cased secret, 44 characters" do
       key = keys("development:#{secret_a}", stage: "development").active
       expect(key.fingerprint).to eq(fingerprint(secret_a))
       expect(key.fingerprint.length).to eq(44)
+      expect(keys("development:#{secret_a.upcase}", stage: "development").active.fingerprint).to eq(fingerprint(secret_a))
     end
 
     it "ignores entries of another non-production stage with a warning" do
@@ -88,7 +96,7 @@ describe Wsjrdp2027::ServiceTokenHmacKeys do
   end
 
   it "shows fingerprints, never secrets, when inspected or logged" do
-    keys = keys("production:#{secret_a},development:#{secret_c},broken", stage: "production", public_secrets: [secret_b])
+    keys = keys("production:#{secret_a},development:#{secret_c},broken", stage: "production")
     logger = instance_double(Logger, error: nil, warn: nil, info: nil)
     keys.log_summary(logger)
 
@@ -116,16 +124,107 @@ describe Wsjrdp2027::ServiceTokenHmacKeys do
       expect(keys.warnings.join).to include("stage development")
     end
 
-    it "refuses the committed, public secrets" do
-      keys = keys("production:#{secret_a},production:#{secret_b}", stage: "production", public_secrets: [secret_a])
+    it "refuses the committed, public secrets, however they are written" do
+      committed = committed_secrets.first
+      keys = keys("production:#{committed},production:#{secret_b},production:#{committed_secrets.last.upcase}",
+        stage: "production")
 
       expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_b)])
-      expect(keys.problems.join).to include("public")
+      expect(keys.problems).to eq(["entry 1: the committed, public secret of development or test",
+        "entry 3: the committed, public secret of development or test"])
     end
 
-    it "reads the committed secrets of development and test" do
-      expect(described_class.public_secrets.size).to eq(2)
-      expect(described_class.public_secrets).to all(match(/\A\h{64}\z/))
+    it "knows the committed secrets of development and test by PUBLIC_FINGERPRINTS, exactly" do
+      expect(committed_secrets.size).to eq(2)
+      expect(described_class::PUBLIC_FINGERPRINTS)
+        .to match_array(committed_secrets.map { |secret| described_class.fingerprint_of(secret.downcase) })
+    end
+
+    it "reads no file for the check" do
+      raw = "staging:#{committed_secrets.first}"
+      expect(YAML).not_to receive(:safe_load_file)
+      expect(File).not_to receive(:read)
+      expect { keys(raw, stage: "staging", rails_production: true) }
+        .to raise_error(described_class::ConfigurationError, /public secret/)
+    end
+  end
+
+  describe "under RAILS_ENV=production" do
+    let(:public_secret) { committed_secrets.first }
+
+    it "refuses the committed secrets in any stage, which then does not start" do
+      %w[staging test].each do |stage|
+        expect { described_class.new("#{stage}:#{public_secret}", stage: stage, rails_production: true) }
+          .to raise_error(described_class::ConfigurationError, /committed, public secret/) { |error|
+            expect(error.message).not_to include(public_secret)
+          }
+      end
+    end
+
+    it "accepts the committed secrets in the stage test when not under RAILS_ENV=production" do
+      expect(described_class.new("test:#{public_secret}", stage: "test").keys.size).to eq(1)
+    end
+
+    it "is what .current hands in" do
+      described_class.reset!
+      allow(Rails.env).to receive(:production?).and_return(true)
+      allow(Rails.configuration.x).to receive(:rails_stage).and_return("staging")
+      allow(Rails.configuration.x).to receive(:service_token_hmac_keys).and_return("staging:#{public_secret}")
+
+      expect { described_class.current }.to raise_error(described_class::ConfigurationError, /public secret/)
+    ensure
+      described_class.reset!
+    end
+  end
+
+  describe ".current under RAILS_ENV=production with invalid bytes" do
+    let(:output) { StringIO.new }
+
+    # .current with these variables, the log in output.
+    def current_with(stage:, keys:)
+      described_class.reset!
+      allow(Rails.env).to receive(:production?).and_return(true)
+      allow(Rails.configuration.x).to receive(:rails_stage).and_return(stage)
+      allow(Rails.configuration.x).to receive(:service_token_hmac_keys).and_return(keys)
+      allow(Rails).to receive(:logger).and_return(Logger.new(output))
+      described_class.current
+    end
+
+    after { described_class.reset! }
+
+    it "starts with invalid bytes in the variable, in UTF-8 and in US-ASCII, ignoring that entry" do
+      ["production:#{secret_a},production:#{"c" * 63}\xFF",
+        "production:#{secret_a},production:#{"c" * 63}\xFF".force_encoding(Encoding::US_ASCII)].each do |raw|
+        keys = current_with(stage: nil, keys: raw)
+
+        expect(keys.stage).to eq("production")
+        expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_a)])
+        expect(keys.problems).to eq(["entry 2: not valid text"])
+      end
+      expect(output.string).not_to include("c" * 16)
+    end
+
+    it "counts a variable that is blank as bytes as not set" do
+      expect(current_with(stage: nil, keys: " \t").keys).to eq([])
+    end
+
+    it "is production, with an error, for a RAILS_STAGE of invalid bytes or that is no stage" do
+      ["stag\xFFing", (+"stag\xFFing").force_encoding(Encoding::US_ASCII), "Staging", "stag ing"].each do |stage|
+        keys = current_with(stage: stage, keys: "production:#{secret_a}")
+
+        expect(keys.stage).to eq("production"), stage.inspect
+        expect(keys.active.fingerprint).to eq(fingerprint(secret_a))
+        expect(Wsjrdp::Credentials::Keys.stage).to eq("production")
+      end
+      expect(output.string).to include("RAILS_STAGE: not a stage of a-z and 0-9; the stage is production")
+      expect(output.string).not_to include("Staging", "stag ing")
+    end
+
+    it "takes a valid RAILS_STAGE, stripped, without an error" do
+      keys = current_with(stage: " staging ", keys: "staging:#{secret_a}")
+
+      expect(keys.stage).to eq("staging")
+      expect(output.string).not_to include("RAILS_STAGE")
     end
   end
 

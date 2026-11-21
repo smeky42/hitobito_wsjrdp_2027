@@ -38,6 +38,9 @@ config/initializers/local_dev_only_impersonate_delay.rb
 lib/tasks/local_db_dump_shim.rake
 # local dev-only settings (read, e.g., by the login bypass override)
 config/dev_only_settings.local.yml
+# the local file of the credential store (keys and credentials in plain
+# text; doc/wsjrdp/credentials.md)
+config/wsjrdp_credentials.local.yml
 
 # reports
 spec/coverage

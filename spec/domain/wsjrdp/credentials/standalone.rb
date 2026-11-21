@@ -58,7 +58,8 @@ RSpec.shared_examples "credential hygiene" do
   end
 end
 
-%w[credentials credentials/keys credentials/sealer credentials/field credentials/kind
-  credentials/kinds credentials/credential credentials/lookup].each do |file|
+%w[instant_input credentials credentials/keys credentials/sealer credentials/field credentials/kind
+  credentials/kinds credentials/credential credentials/lookup credentials/override credentials/variables
+  credentials/local_file credentials/overrides].each do |file|
   require_relative "../../../../app/domain/wsjrdp/#{file}"
 end

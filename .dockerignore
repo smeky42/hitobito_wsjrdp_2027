@@ -1,0 +1,2 @@
+# Never into an image: the credential store's local file (plain-text secrets).
+config/wsjrdp_credentials.local.yml

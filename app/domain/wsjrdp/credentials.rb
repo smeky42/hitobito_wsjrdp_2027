@@ -38,6 +38,10 @@ module Wsjrdp::Credentials
   # The root of every error of the store. No message names a value.
   class Error < StandardError; end
 
+  # The keys, the variables or the local file are not understood. Stops
+  # every stage but production at boot.
+  class ConfigurationError < Error; end
+
   # Sealing was asked for, but the instance has no key.
   class NoKeyError < Error; end
 
@@ -77,8 +81,12 @@ module Wsjrdp::Credentials
   # The usable versions, newest first: what .fetch gives, then fallbacks.
   def self.candidates(kind, account_key) = lookup.candidates(kind, account_key)
 
-  # The database, for now the only source.
-  def self.lookup = Lookup.new([DatabaseSource.new])
+  # The variables, the local file (both read at boot), then the database.
+  def self.lookup = Lookup.new([*Overrides.current.sources, DatabaseSource.new])
+
+  # A value the initializer captured behind a lambda, or a plain value a
+  # spec sets.
+  def self.captured(value) = value.respond_to?(:call) ? value.call : value
 
   # Valid text: valid UTF-8 without a NUL (a String of another encoding only
   # when it is plain ASCII). Anything else would make a comparison raise,
