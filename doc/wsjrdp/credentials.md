@@ -8,9 +8,9 @@ instance's stage. The code lives in `app/domain/wsjrdp/credentials/` and
 **What exists so far:** the keys, the sealing, the kinds, the table with
 its model, three write paths (`Deposit`, `Change`, `Rekey`), the lookup
 (`Wsjrdp::Credentials.fetch` / `.candidates`), the overrides by variables
-and a local file, the read model for the pages (`Overview`) and the reader
-of typed instants ([`Wsjrdp::InstantInput`](instant_input.md)). **No
-consumer reads a credential yet**, and there is no page.
+and a local file, the read model for the pages (`Overview`), the reader
+of typed instants ([`Wsjrdp::InstantInput`](instant_input.md)) and the
+admin pages (see "The pages"). **No consumer reads a credential yet.**
 
 ## Terms
 
@@ -509,6 +509,65 @@ came from and every key by fingerprint, those of other stages included.
 Values come only through the `Credential` objects; nothing
 prints a version's name, a value or a key.
 
+## The pages
+
+Admin pages in the settings, for admins only (the right
+`:manage_credentials` on `WsjrdpCredential`). They work only in a browser
+session: a request signed in by an API, service or OAuth token gets 403.
+The controllers are `CredentialsController` (the list, the page of one
+account, the reveal) and `CredentialVersionsController` (the forms and
+actions of a version).
+
+- **The list** shows every account from every source, grouped by kind,
+  with its state here and whether an override is in use. Above it is a
+  warning when the instance has no key or the local file was skipped.
+  Below it are all keys, by fingerprint only.
+- **The page of an account** shows all its versions, the one in use
+  first. Each version shows its state, details and fields. Secret,
+  encrypted and unknown fields show dots and a short hash of the value
+  instead. Overrides are read-only. Each database version has its change
+  history: public values shown, secret fields by name only.
+- **A new version** (`Deposit`) is filled with the public values of the
+  version in use. A secret is always typed anew. The new-account form
+  asks for the kind, the account key and an optional display name, and
+  checks the key while typing. Adding a version does not end the previous
+  one: that ends when it expires or is revoked.
+- **Changing a version** (`Change`) saves only what the admin changed. A
+  form sent after someone else changed the version is refused, so that
+  nothing is set back by mistake. The secret fields are filled with their
+  current value in a password input; an emptied secret field is removed.
+  If the version's key is not the active one, the secret fields are
+  locked and empty. Revoking can be undone.
+- **Re-keying** (`Rekey`) is offered on a version whose key is known here
+  but is not the active one.
+- **Deleting** works for any version, after a confirmation.
+- **Times** are typed in UTC (the default) or in the app's time zone.
+- **A refused send** keeps what was typed, secrets included. An eye
+  button next to each secret input shows what is in it.
+- **A `url` that is not `https`** is a warning in production; saving
+  still works.
+
+The forms hand the write paths plain values
+(`Wsjrdp::Credentials::VersionForm`), never request parameters. Messages
+name fields and problems only, never values. A stored secret appears in
+the HTML of one page only: the edit form of its own version. Secret
+values are sent under `credential[secret]`, which the parameter filter
+masks. The pages are never cached.
+
+### Revealing a value
+
+The reveal button next to a hidden field asks the server for its value
+and shows it in place of the dots. It is removed again by the hide
+button, when the page is left, and before the browser keeps a copy of
+the page. The value is never in the page before the click, and nothing
+is cached.
+
+A reveal is not logged.
+
+`Wsjrdp::Credentials::Reveal.enabled?` switches the feature: while it is
+false, the pages offer no reveal button and the server refuses every
+reveal.
+
 ## Specs
 
 `spec/domain/wsjrdp/credentials/` and
@@ -524,6 +583,7 @@ wiring need the test database; run them by the rules of `AGENTS.md`
 ("Running tests"): `spec/models/wsjrdp_credential_spec.rb`,
 `spec/domain/wsjrdp/credentials_store_spec.rb`,
 `spec/domain/wsjrdp/credentials_keys_boot_spec.rb`,
-`spec/domain/wsjrdp/credentials_overrides_spec.rb`. No spec reads the local
+`spec/domain/wsjrdp/credentials_overrides_spec.rb`, and the pages
+`spec/requests/credentials_spec.rb`. No spec reads the local
 file, but the boot reads the environment: set no `HITOBITO_CREDENTIAL*`
 variable in the shell that runs the specs.

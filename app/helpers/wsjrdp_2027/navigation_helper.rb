@@ -69,9 +69,14 @@ module Wsjrdp2027::NavigationHelper
     if NavigationHelper::MAIN.find_index { |e| e[:label] == :contingent }.nil?
       NavigationHelper::MAIN.insert(-2, WSJRDP_MAIN_CONTINGENT)
     end
-    # Einstellungen also for the wagon's page Ländercodes.
+    # The credential pages belong to the settings only, even when an
+    # account name looks like another section (e.g. "finanzen" holds "fin").
+    NavigationHelper::MAIN.each do |entry|
+      entry[:inactive_for] = Array(entry[:inactive_for]) | %w[credentials] unless entry[:label] == :admin
+    end
+    # The settings also cover the country codes and credentials pages.
     admin = NavigationHelper::MAIN.find { |e| e[:label] == :admin }
-    admin[:active_for] = admin[:active_for] | %w[country_codes] if admin
+    admin[:active_for] = admin[:active_for] | %w[country_codes credentials] if admin
     # And for the Dokumentenverwaltung, apart from the kinds of document,
     # which belong to the main section Dokumente.
     if admin

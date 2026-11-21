@@ -25,6 +25,7 @@ module Wsjrdp2027::Ability
     tier = Wsjrdp2027::FinanceCap.resolve(user, max_finance_permission)
     Wsjrdp2027::FinanceCap.with(tier) { super(user) }
     define_document_abilities if user && !user.root?
+    define_credential_abilities if user && !user.root?
     forbid_person_merges
   end
 
@@ -60,5 +61,11 @@ module Wsjrdp2027::Ability
     can(:show, WsjrdpDocument) { |document| access.allowed?(:read, document) }
     can([:create, :update], WsjrdpDocument) { |document| access.allowed?(:write, document) }
     can(:destroy, WsjrdpDocument) { |document| access.allowed?(:delete, document) }
+  end
+
+  # The credential store pages are for the document admins.
+  # Root may do everything anyway.
+  def define_credential_abilities
+    can(:manage_credentials, WsjrdpCredential) if Wsjrdp2027::DocumentAccess.new(self).admin?
   end
 end

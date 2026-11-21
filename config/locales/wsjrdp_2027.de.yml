@@ -2663,6 +2663,7 @@ de:
     documents: Dokumente
     country_codes: Ländercodes
     contingent: Kontingent
+    credentials: Zugangsdaten
 
   country_codes:
     index:
@@ -2803,3 +2804,265 @@ de:
         plain: Neues Token (ungehasht)
         sha256: Neues Token (SHA-256)
         hmac: Neues Token (HMAC)
+
+  # The credential store pages (doc/wsjrdp/credentials.md).
+  credentials:
+    title: Zugangsdaten
+    # Shown for an invalid name or stage (it may be a secret typed into the
+    # wrong place).
+    invalid: (ungültig)
+    # The help for the display name in both forms. It says "Key" on
+    # purpose: the German word for key means the encryption key here.
+    name_help: optional, z. B. der Name des Keys beim Anbieter
+    kinds:
+      mail_account: E-Mail-Konto
+      moss_api: Moss API
+      api_key: API-Key
+      basic_auth: Basic Auth
+    sources:
+      variables: Umgebungsvariablen
+      file: Lokale Datei
+      database: Datenbank
+    states:
+      active: aktiv
+      not_yet_valid_html: geplant ab %{time}
+      expired: abgelaufen
+      revoked: zurückgezogen
+      other_stage: andere Umgebung
+      key_missing: anderer Schlüssel
+      kind_unknown: Art unbekannt
+      unreadable: nicht lesbar
+      kind_mismatch: passt nicht zur Art
+      refused: abgelehnt
+    attributes:
+      name: Anzeigename
+      comment: Kommentar
+      valid_from: Gültig ab
+      expires_at: Läuft ab
+      revoked_at: Zurückgezogen
+      encryption_key_fingerprint: Schlüssel
+      kind: Art
+      source: Quelle
+      account_key: Bezeichnung
+      stage: Umgebung
+      scheme: Verfahren
+      base: Version
+    # The problem messages; %{field} is the name of the field.
+    codes:
+      required: "%{field}: muss ausgefüllt werden."
+      unknown: "%{field}: kennt die Art nicht."
+      not_valid_text: "%{field}: ist kein gültiger Text."
+      not_a_string: "%{field}: ist kein Text."
+      not_an_email: "%{field}: ist keine E-Mail-Adresse."
+      not_an_integer: "%{field}: ist keine ganze Zahl."
+      not_a_boolean: "%{field}: ist weder true noch false."
+      not_a_url: "%{field}: ist keine http- oder https-URL mit Host."
+      not_https: "%{field}: ist nicht https."
+      not_an_instant: "%{field}: ist kein Zeitpunkt."
+      not_after_valid_from: "%{field}: muss nach „Gültig ab“ liegen."
+      key_not_active: >-
+        %{field}: Der Schlüssel dieser Version ist nicht mehr der aktive. Erst neu verschlüsseln,
+        dann lässt sich das geheime Feld ändern.
+      key_missing: >-
+        %{field}: Diese Instanz hat den Schlüssel dieser Version nicht. Geheime Felder lassen sich
+        hier nicht ändern; der Weg zu neuen Werten ist eine neue Version.
+      unknown_scheme: >-
+        %{field}: Die Version ist mit einem unbekannten Verfahren versiegelt. Geheime Felder lassen
+        sich hier nicht ändern.
+      not_opening: "%{field}: lässt sich nicht öffnen."
+      not_a_name: "%{field}: ist kein gültiger Name."
+      not_a_value: "%{field}: lässt sich nicht versiegeln."
+      not_field_values: "%{field}: ist beschädigt (keine Liste von Feldern)."
+      already_active: "Die Version hat schon den aktiven Schlüssel; nur falsch abgelegte Felder wurden umgelegt."
+      other_stage: Diese Version gehört zu einer anderen Umgebung und lässt sich hier nur löschen.
+      not_found: Die Version gibt es nicht mehr.
+      unknown_kind: "%{field}: Die Art steht nicht mehr in der Registry."
+      fixed: "%{field}: lässt sich nicht ändern."
+      not_a_stage: "%{field}: ist keine gültige Umgebung."
+      stale: Die Version wurde inzwischen geändert. Bitte die Version neu öffnen und die Änderung dort wiederholen.
+      other: "%{field}: %{code}"
+    notices:
+      no_key: >-
+        Diese Instanz hat keinen Schlüssel für Zugangsdaten. Neue Versionen, geheime Felder und
+        Neu verschlüsseln sind nicht möglich.
+      file_skipped: "Die lokale Datei %{source} wurde übersprungen: Sie nennt die Umgebung „%{stage}“."
+      file_skipped_other: "Die lokale Datei %{source} wurde übersprungen: Sie nennt eine andere Umgebung."
+    keys:
+      title: Schlüssel
+      purpose: >-
+        Mit diesen Schlüsseln werden die geheimen Felder der Zugangsdaten verschlüsselt; angezeigt
+        wird nur ihr Fingerabdruck, nie der Schlüssel selbst.
+      fingerprint: Fingerabdruck
+      roles:
+        active: aktiv
+        accepted: akzeptiert
+        other_stage: andere Umgebung
+      label: Bezeichnung
+      source: Quelle
+      from_file: Datei
+      file_entry: Eintrag
+      from_variable: Umgebungsvariable
+      none: Diese Umgebung hat keinen Schlüssel.
+    list:
+      current_stage: Aktuelle Umgebung
+      new: Zugangsdaten anlegen
+      empty: Noch keine Zugangsdaten.
+      account: Zugang
+      here: Diese Umgebung
+      other_stages: Andere Umgebungen
+      no_active_version: keine aktive Version
+      expires_html: läuft ab %{time}
+      overrides:
+        one: "überschreibt %{source}: 1 Version"
+        other: "überschreibt %{source}: %{count} Versionen"
+    new:
+      title: Zugangsdaten anlegen
+      kind: Art
+      # The technical name of the key, shown in the label.
+      account_key_html: "Bezeichnung (%{code})"
+      account_key_code: account_key
+      name: Anzeigename
+      account_key_help: >-
+        Kleinbuchstaben (auch ä, ß, andere Schriften) und Ziffern, verbunden durch einzelne
+        Zeichen _ @ , . + - (nicht am Anfang oder Ende, nie zwei hintereinander), höchstens
+        %{length} Zeichen, z. B. finanzen oder foo@worldscoutjamboree.de. Großbuchstaben werden
+        klein geschrieben.
+      account_key_count: "/ %{length} Zeichen"
+      variable: "Umgebungsvariablen:"
+      next: Weiter
+      problems:
+        unknown_kind: Diese Art gibt es nicht.
+        not_a_name: Die Bezeichnung ist ungültig.
+        not_valid_text: Der Anzeigename ist kein gültiger Text.
+        not_allowed: "Nicht erlaubt: %{chars}"
+        space: Leerzeichen
+        edge: Am Anfang oder am Ende steht eines der Zeichen _ @ , . + -.
+        row: Zwei der Zeichen _ @ , . + - stehen hintereinander.
+        too_long: Länger als %{length} Zeichen.
+      warnings:
+        non_ascii: "Buchstaben außerhalb von ASCII: nicht jedes System erlaubt sie in Namen von Umgebungsvariablen."
+        collision: "Dieselben Umgebungsvariablen wie der Zugang „%{key}“ dieser Art."
+        token: >-
+          Sieht aus wie ein Schlüssel oder Token. Geheimnisse gehören nicht in den Namen: er
+          erscheint in Adressen, Meldungen und Logs.
+    show:
+      new_version: Neue Version hinterlegen
+      back: Zur Liste der Zugangsdaten
+      no_versions: Keine Version.
+    version:
+      in_use: Diese Version liest die App
+      not_set: nicht gesetzt
+      value_fingerprint_html: Fingerabdruck %{fingerprint}
+      not_opening_here: hier nicht zu öffnen
+      reveal: Anzeigen
+      hide: Verbergen
+      deposited_html: hinterlegt %{time} von %{author}
+      created_html: angelegt %{time}
+      key_active: (aktiver Schlüssel)
+      variables: Umgebungsvariablen
+      read_only: hier nicht änderbar
+      refused: >-
+        Eine Variable für diesen Zugang ist fehlerhaft. Näheres steht im Log der Instanz; Werte
+        werden dort nie genannt.
+      key_problems:
+        key_not_active_html: >-
+          Der Schlüssel dieser Version (%{fingerprint}) ist nicht mehr der aktive. Geheime Felder
+          lassen sich erst nach „Neu verschlüsseln“ ändern.
+        key_missing_html: >-
+          Die Instanz hat den Schlüssel %{fingerprint} nicht. Geheime Felder lassen sich weder
+          anzeigen noch ändern noch neu verschlüsseln. Die übrigen Felder, Name, Kommentar und
+          Zeitraum bleiben änderbar.
+        unknown_scheme_html: >-
+          Die Version ist mit einem unbekannten Verfahren versiegelt. Geheime Felder lassen sich
+          hier nicht ändern.
+      edit: Bearbeiten
+      rekey: Neu verschlüsseln
+      rekey_confirm: Diese Version mit dem aktiven Schlüssel neu verschlüsseln?
+      revoke: Zurückziehen
+      revoke_confirm: Diese Version jetzt zurückziehen? Sie wird dann nicht mehr verwendet; das lässt sich aufheben.
+      unrevoke: Zurückziehen aufheben
+      unrevoke_confirm: Das Zurückziehen dieser Version aufheben?
+      destroy: Löschen
+      destroy_confirm: Diese Version endgültig löschen? Das lässt sich nicht rückgängig machen.
+    # The labels at the top of a version.
+    chips:
+      fallback: Rückfall
+      overridden: überschrieben
+      overridden_title: "%{mark} überschreibt %{source}"
+      source_object:
+        file: die lokale Datei
+        database: die Datenbank
+      source:
+        database: "Quelle: Datenbank"
+        variables: "Quelle: Umgebungsvariablen"
+        file: "Quelle: lokale Datei %{source}"
+    field_report:
+      wrong_column: "Das Feld %{field} liegt in der falschen Spalte (versiegelt oder offen, anders als die Art sagt)."
+      not_opening: Das geheime Feld %{field} lässt sich nicht öffnen.
+      unknown: Das Feld %{field} kennt die Art nicht.
+    reveal:
+      refused:
+        disabled: Anzeigen ist abgeschaltet.
+        not_found: Diese Version oder dieses Feld gibt es nicht.
+        other_stage: Eine Version einer anderen Umgebung lässt sich hier nicht anzeigen.
+        not_masked: Dieses Feld ist nicht geheim.
+        not_opening: Diese Version lässt sich hier nicht öffnen.
+        not_set: Dieses Feld ist nicht gesetzt.
+        kind_mismatch: Diese Version passt nicht zur Art.
+        other: Nicht anzeigbar.
+    trail:
+      title:
+        one: Verlauf (1)
+        other: Verlauf (%{count})
+      empty: Keine Einträge.
+      when: Wann
+      who: Wer
+      what: Was
+      events:
+        create: angelegt
+        update: geändert
+        destroy: gelöscht
+      public_fields: "Felder geändert (Werte nicht gezeigt): %{fields}"
+      public_fields_set: "Felder:"
+      public_fields_named: "Felder (Werte nicht gezeigt): %{fields}"
+      field_added_html: "%{field} hinzugefügt: „%{value}“"
+      field_removed_html: "%{field} entfernt (war „%{value}“)"
+      secret_fields_set: "geheimes Feld gesetzt: %{fields}"
+      secret_fields_changed: "geheimes Feld geändert: %{fields}"
+      secret_fields_resealed: "neu verschlüsselt: %{fields}"
+      secret_fields_removed: "geheimes Feld entfernt: %{fields}"
+
+  credential_versions:
+    new:
+      title: "Neue Version: %{account}"
+    edit:
+      title: "Version bearbeiten: %{account}"
+    form:
+      locked: gesperrt
+      secret_set_html: "Fingerabdruck %{fingerprint}"
+      secret: geheim
+      secret_placeholder: geheim · wird verschlüsselt gespeichert
+      sealed_public: >-
+        Liegt versiegelt vor und wird hier nicht gezeigt. Leer lassen: der Wert bleibt; eine Eingabe
+        ersetzt ihn.
+      default: "Vorgabe: %{value}"
+      zone: Zeitzone
+      valid_from_help: leer = sofort
+      expires_at_help: leer = läuft nicht ab
+      show_secret: Eingabe anzeigen
+      overridden: "Überschrieben durch %{mark}: eine neue Version der Datenbank wird hier nicht verwendet."
+      previous_version: >-
+        Die bisherige Version bleibt bis zu ihrem Ablauf als Rückfall bestehen. Soll sie früher
+        enden, wird ihr „Läuft ab“ bearbeitet oder sie wird zurückgezogen.
+    create:
+      created: Version gespeichert.
+    update:
+      updated: Version gespeichert.
+    revoke:
+      revoked: Version zurückgezogen.
+    unrevoke:
+      unrevoked: Zurückziehen aufgehoben.
+    rekey:
+      rekeyed: Version neu verschlüsselt.
+    destroy:
+      destroyed: Version gelöscht.

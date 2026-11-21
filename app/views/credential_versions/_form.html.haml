@@ -1,0 +1,155 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The form of a version. What cannot change is shown, not offered.
+-#  A secret field is filled in only in the edit form, and after a refused
+-#  send it keeps what was typed.
+- scope = "credential_versions.form"
+- field_errors = @field_errors || []
+- errors = @errors || []
+- keys = Wsjrdp::Credentials::Keys.current
+- secret_values = row ? (credential_row_values(row, keys) || {}) : {}
+- all_problems = errors + field_errors
+- label_classes = "col-md-3 col-xl-2 text-md-end text-muted col-form-label col-form-label-sm"
+- value_classes = "col-md-9 col-lg-8 col-xl-8"
+- shown_classes = "form-control-plaintext form-control-sm"
+= render "fin/shared/sticky_form_actions"
+
+= form_with url: url, method: method, scope: :credential, local: true, id: "credential-version-form",
+  data: {turbo: false}, html: {autocomplete: "off"} do |f|
+  .fin-account-form-actions.mb-3
+    .d-flex.gap-2
+      = submit_tag t("global.button.save"), class: "btn btn-primary", name: nil
+      = link_to t("global.button.cancel"), credential_path(kind: kind_name, account_key: account_key),
+        class: "btn btn-link"
+  - if row
+    -# A send after someone else's change is refused.
+    = hidden_field_tag "credential[lock]", params.dig(:credential, :lock) || credential_lock(row)
+  - if all_problems.any?
+    .alert.alert-danger#credential-form-errors
+      = safe_join(all_problems.map { |problem| credential_problem_message(problem) }, tag.br)
+
+  .row.mb-2{data: {credential_kind_row: true}}
+    %span{class: label_classes}= t("credentials.attributes.kind")
+    %div{class: value_classes}
+      .form-control-plaintext.form-control-sm
+        = credential_kind_label(kind_name)
+        %span.font-monospace= "(#{credential_name(kind_name)})"
+  .row.mb-2{data: {credential_stage_row: true}}
+    %span{class: label_classes}= t("credentials.attributes.stage")
+    %div{class: value_classes}
+      .font-monospace{class: shown_classes}= credential_stage(row ? row.stage : keys.stage)
+  .row.mb-2{data: {credential_account_key_row: true}}
+    %span{class: label_classes}= t("credentials.attributes.account_key")
+    %div{class: value_classes}
+      .font-monospace{class: shown_classes}= credential_account_key(account_key)
+  .row.mb-2
+    = f.label :name, t("credentials.attributes.name"), class: label_classes
+    %div{class: value_classes}
+      = f.text_field :name, value: form.name, class: "form-control form-control-sm"
+      .form-text= t("credentials.name_help")
+  .row.mb-2
+    = f.label :comment, t("credentials.attributes.comment"), class: label_classes
+    %div{class: value_classes}
+      = f.text_area :comment, value: form.comment, rows: 2, class: "form-control form-control-sm"
+
+  - Wsjrdp::Credentials::VersionForm::INSTANTS.each do |attribute|
+    - problems = credential_problems_of(errors, attribute)
+    .row.mb-2{data: {credential_form_instant: attribute}}
+      %label{for: "credential_#{attribute}", class: label_classes}= t("credentials.attributes.#{attribute}")
+      %div{class: value_classes}
+        .input-group.input-group-sm{style: "max-width: 28rem"}
+          %input.form-control.form-control-sm{type: "datetime-local", step: 1, id: "credential_#{attribute}",
+            name: "credential[#{attribute}]", value: form.instant_texts[attribute],
+            class: ("is-invalid" if problems.any?)}
+          %select.form-select.form-select-sm{name: "credential[#{attribute}_zone]", style: "max-width: 12rem",
+            "aria-label": t("#{scope}.zone")}
+            - Wsjrdp::Credentials::VersionForm::ZONES.each do |zone|
+              %option{value: zone, selected: form.instant_zones[attribute] == zone}
+                = (zone == Wsjrdp::Credentials::VersionForm::UTC) ? "UTC" : Time.zone.tzinfo.identifier
+        .form-text= t("#{scope}.#{attribute}_help")
+        - problems.each do |problem|
+          .invalid-feedback.d-block= credential_problem_message(problem)
+
+  - if kind
+    - kind.fields.each do |field|
+      - problems = credential_problems_of(field_errors, field.name)
+      .row.mb-2{data: {credential_form_field: field.name}}
+        %label{for: "credential_field_#{field.name}", class: label_classes}
+          %span.font-monospace= field.name
+          - if field.required?
+            = "*"
+        %div{class: value_classes}
+          - if field.secret?
+            -# A secret field; emptied, it is removed.
+            - lock = capture do
+              %span.input-group-text{title: t("#{scope}.secret")}
+                = icon(:lock)
+                %span.visually-hidden= t("#{scope}.secret")
+            - if key_problem
+              .input-group.input-group-sm
+                = lock
+                %input.form-control.form-control-sm.font-monospace{type: "password", id: "credential_field_#{field.name}",
+                  disabled: true, placeholder: t("#{scope}.locked")}
+              .form-text.text-danger= t("credentials.version.key_problems.#{key_problem}_html",
+                fingerprint: credential_fingerprint(row.encryption_key_fingerprint))
+            - else
+              - kept = row && secret_values.key?(field.name)
+              .input-group.input-group-sm
+                = lock
+                %input.form-control.form-control-sm.font-monospace{type: "password", id: "credential_field_#{field.name}",
+                  name: "credential[secret][#{field.name}]", autocomplete: "new-password", spellcheck: "false",
+                  value: form.secret_text(field.name).presence,
+                  placeholder: t("#{scope}.secret_placeholder"), class: ("is-invalid" if problems.any?)}
+                = render "credential_versions/show_secret_button"
+              - if kept
+                .form-text= t("#{scope}.secret_set_html",
+                  fingerprint: credential_value_fingerprint(secret_values[field.name]))
+          - elsif field.type == "enum"
+            -# The kind's values are suggestions; any text is accepted.
+            %input.form-control.form-control-sm.font-monospace{type: "text", id: "credential_field_#{field.name}",
+              name: "credential[fields][#{field.name}]", value: form.public_text(field.name), spellcheck: "false",
+              list: "credential_values_#{field.name}", class: ("is-invalid" if problems.any?)}
+            %datalist{id: "credential_values_#{field.name}"}
+              - field.values.each do |choice|
+                %option{value: choice}
+          - elsif field.type == "boolean"
+            %select.form-select.form-select-sm.d-block.font-monospace{id: "credential_field_#{field.name}", name: "credential[fields][#{field.name}]",
+              class: ("is-invalid" if problems.any?)}
+              %option{value: ""} –
+              - %w[true false].each do |choice|
+                %option{value: choice, selected: form.public_text(field.name) == choice}= choice
+          - else
+            %input.form-control.form-control-sm.font-monospace{type: "text", id: "credential_field_#{field.name}",
+              name: "credential[fields][#{field.name}]", value: form.public_text(field.name), spellcheck: "false",
+              inputmode: ("numeric" if field.type == "integer"),
+              placeholder: (t("#{scope}.default", value: field.default) unless field.default.nil?),
+              class: ("is-invalid" if problems.any?)}
+          - if !field.secret? && row&.sealed?(field.name)
+            .form-text= t("#{scope}.sealed_public")
+          - problems.each do |problem|
+            .invalid-feedback.d-block= credential_problem_message(problem)
+
+  .row.mb-2
+    %span{class: label_classes}= t("credentials.attributes.encryption_key_fingerprint")
+    %div{class: value_classes}
+      %div{class: shown_classes}
+        - fingerprint = row ? row.encryption_key_fingerprint : keys.active&.fingerprint
+        = credential_fingerprint(fingerprint)
+        - if fingerprint && keys.active&.fingerprint == fingerprint
+          = t("credentials.version.key_active")
+  .row.mb-2
+    %span{class: label_classes}= t("credentials.attributes.source")
+    %div{class: value_classes}
+      %div{class: shown_classes}= credential_source_label(Wsjrdp::Credentials::DatabaseSource::NAME)
+
+  - if row.nil?
+    - if overriding_mark
+      %p.small.text-muted#credential-form-overridden= t("#{scope}.overridden", mark: overriding_mark)
+    - elsif fallback_remains?
+      %p.small.text-muted= t("#{scope}.previous_version")
+= render "credential_versions/show_secret_js"

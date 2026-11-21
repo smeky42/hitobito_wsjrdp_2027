@@ -69,6 +69,26 @@ Rails.application.routes.draw do
 
     resources :documents, only: [:show, :create], controller: "wsjrdp/documents", as: :wsjrdp_documents
 
+    # The credential store pages, for admins (doc/wsjrdp/credentials.md,
+    # "The pages"): the accounts and their versions, a version by its id.
+    scope "credentials/versions/:id", controller: "credential_versions", constraints: {id: /\d+/} do
+      get "edit" => :edit, :as => :edit_credential_version
+      patch "/" => :update, :as => :credential_version
+      delete "/" => :destroy
+      post "revoke" => :revoke, :as => :revoke_credential_version
+      post "unrevoke" => :unrevoke, :as => :unrevoke_credential_version
+      post "rekey" => :rekey, :as => :rekey_credential_version
+    end
+    get "credentials" => "credentials#index", :as => :credentials
+    get "credentials/new" => "credentials#new", :as => :new_credential
+    scope "credentials/:kind/:account_key", constraints: {kind: %r{[^/]+}, account_key: %r{[^/]+}}, format: false do
+      get "/" => "credentials#show", :as => :credential
+      # The value of one hidden field, as JSON, never cached.
+      post "reveal" => "credentials#reveal", :as => :reveal_credential
+      get "versions/new" => "credential_versions#new", :as => :new_credential_version
+      post "versions" => "credential_versions#create", :as => :credential_versions
+    end
+
     # The status, medical and Zusatzdaten pages without a group: in the
     # person's primary group (Person::StatusController#group).
     get "people/:id/status" => "person/status#show", :as => :status_person

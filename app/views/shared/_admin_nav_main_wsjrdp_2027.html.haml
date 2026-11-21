@@ -13,3 +13,7 @@
 -# main section Dokumente.
 - if can?(:manage_documents, WsjrdpDocument)
   = nav t('document_management.title'), document_management_path, %w(document_management), %w(document_kinds)
+
+-# The credential store pages, for admins.
+- if can?(:manage_credentials, WsjrdpCredential)
+  = nav t('navigation.credentials'), credentials_path, %w(credentials)
