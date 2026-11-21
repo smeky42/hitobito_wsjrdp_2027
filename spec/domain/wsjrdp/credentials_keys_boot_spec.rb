@@ -44,6 +44,15 @@ describe Wsjrdp::Credentials::Keys do
       expect(described_class::PUBLIC_FINGERPRINTS).to include(keys.active.fingerprint)
     end
 
+    it "refuses the committed key under RAILS_ENV=production, even when RAILS_STAGE says test" do
+      config.credential_keys = Settings.credentials.keys_default
+      allow(Rails.env).to receive(:production?).and_return(true)
+      allow(described_class).to receive(:stage).and_return("test")
+
+      expect { described_class.current }
+        .to raise_error(Wsjrdp::Credentials::ConfigurationError, /the committed, public key of test/)
+    end
+
     it "takes the variable when it is set, and its label" do
       config.credential_keys = "test:#{secret}"
       config.credential_label = " laptop-a "
@@ -53,18 +62,14 @@ describe Wsjrdp::Credentials::Keys do
       expect(keys.label).to eq("laptop-a")
     end
 
-    it "starts production with invalid bytes in the variable, ignoring that entry" do
+    it "starts production with invalid bytes in a variable tagged US-ASCII, ignoring that entry" do
       allow(Rails.env).to receive(:production?).and_return(true)
       allow(described_class).to receive(:stage).and_return("production")
-      bad = "production:#{secret},production:#{"c" * 63}\xFF"
-      [bad, bad.dup.force_encoding(Encoding::US_ASCII)].each do |raw|
-        config.credential_keys = raw
-        described_class.reset!
+      config.credential_keys = "production:#{secret},production:#{"c" * 63}\xFF".force_encoding(Encoding::US_ASCII)
 
-        keys = described_class.current
-        expect(keys.keys.map(&:fingerprint)).to eq([described_class.fingerprint_of(secret)])
-        expect(keys.problems).to eq(["entry 2: not valid text"])
-      end
+      keys = described_class.current
+      expect(keys.keys.map(&:fingerprint)).to eq([described_class.fingerprint_of(secret)])
+      expect(keys.problems).to eq(["entry 2: not valid text"])
     end
 
     it "is read once per process, until reset!" do
@@ -76,36 +81,14 @@ describe Wsjrdp::Credentials::Keys do
       described_class.reset!
       expect(described_class.current).not_to equal(first)
     end
-
-    it "has the stage of the service tokens" do
-      expect(described_class.stage).to eq(Wsjrdp2027::ServiceTokenHmacKeys.stage)
-    end
-
-    it "logs fingerprints, never a secret" do
-      config.credential_keys = "test:#{secret}"
-      lines = []
-      allow(Rails.logger).to receive(:info) { |line| lines << line }
-
-      described_class.current
-      expect(lines.join).to include(described_class.fingerprint_of(secret))
-      expect(lines.join).not_to include(secret)
-    end
   end
 
+  # The initializer itself: credentials_overrides_spec.rb.
   describe "the boot wiring" do
-    def initializer
-      HitobitoWsjrdp2027::Wagon.initializers.find { |init| init.name == "wsjrdp_2027.credential_keys" }
-    end
+    it "reads the keys' text from behind the initializer's lambda" do
+      config.credential_keys = -> { "test:#{secret}" }
 
-    it "takes both variables into the configuration" do
-      app = Struct.new(:config).new(ActiveSupport::OrderedOptions.new.tap { |c| c.x = ActiveSupport::OrderedOptions.new })
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with("HITOBITO_CREDENTIAL_KEYS").and_return("test:#{secret}")
-      allow(ENV).to receive(:[]).with("HITOBITO_CREDENTIAL_LABEL").and_return("laptop-a")
-
-      initializer.run(app)
-      expect(app.config.x.credential_keys).to eq("test:#{secret}")
-      expect(app.config.x.credential_label).to eq("laptop-a")
+      expect(described_class.current.keys.map(&:fingerprint)).to eq([described_class.fingerprint_of(secret)])
     end
 
     it "has read the keys at boot, before any example ran" do

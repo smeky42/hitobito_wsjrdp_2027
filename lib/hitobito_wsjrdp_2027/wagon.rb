@@ -177,8 +177,11 @@ module HitobitoWsjrdp2027
     end
 
     # The environment Wsjrdp2027::ServiceTokenHmacKeys reads, taken at boot.
+    # The keys are kept behind a lambda, so that inspecting the configuration
+    # does not print them.
     initializer "wsjrdp_2027.service_token_hmac_keys" do |app|
-      app.config.x.service_token_hmac_keys = ENV["HITOBITO_SERVICE_TOKEN_HMAC_KEYS"]
+      hmac_keys = ENV["HITOBITO_SERVICE_TOKEN_HMAC_KEYS"].dup.freeze
+      app.config.x.service_token_hmac_keys = -> { hmac_keys }
       app.config.x.rails_stage = ENV["RAILS_STAGE"]
     end
 
@@ -188,17 +191,24 @@ module HitobitoWsjrdp2027
       Wsjrdp2027::ServiceTokenHmacKeys.current
     end
 
-    # The environment Wsjrdp::Credentials::Keys reads, taken at boot: the
-    # keys the credential store seals with, and an optional name for them.
-    initializer "wsjrdp_2027.credential_keys" do |app|
-      app.config.x.credential_keys = ENV["HITOBITO_CREDENTIAL_KEYS"]
+    # The credential store's environment, taken at boot: the keys, their
+    # label, and the override variables (every other HITOBITO_CREDENTIAL*
+    # variable). Keys and variables are kept behind lambdas, so that
+    # inspecting the configuration does not print them.
+    initializer "wsjrdp_2027.credential_environment" do |app|
+      keys = ENV["HITOBITO_CREDENTIAL_KEYS"].dup.freeze
+      variables = ENV.to_h.select { |name, _value| name.start_with?("HITOBITO_CREDENTIAL") }
+        .except("HITOBITO_CREDENTIAL_KEYS", "HITOBITO_CREDENTIAL_LABEL").freeze
+      app.config.x.credential_keys = -> { keys }
       app.config.x.credential_label = ENV["HITOBITO_CREDENTIAL_LABEL"]
+      app.config.x.credential_variables = -> { variables }
     end
 
-    # Parses HITOBITO_CREDENTIAL_KEYS once, logs the active and accepted keys
-    # (one warning without any), and stops any stage but production on a
-    # bad entry.
+    # Reads the overrides, then the keys (which may come from the local
+    # file), once; stops every stage but production on anything not
+    # understood.
     config.after_initialize do
+      Wsjrdp::Credentials::Overrides.current
       Wsjrdp::Credentials::Keys.current
     end
 

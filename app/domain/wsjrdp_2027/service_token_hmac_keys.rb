@@ -18,10 +18,10 @@ module Wsjrdp2027
   #
   # A token hash is "hmac-sha256:<hex HMAC-SHA256 of the token>"; the API key
   # stores the stage and the fingerprint of the secret next to it. A
-  # fingerprint is the Base64 of the SHA-256 of the secret as written (44
+  # fingerprint is the Base64 of the SHA-256 of the secret, lower-cased (44
   # characters), so it can be checked in a shell:
   #
-  #   printf %s "$SECRET" | openssl dgst -sha256 -binary | base64
+  #   printf %s "$SECRET" | tr 'A-F' 'a-f' | openssl dgst -sha256 -binary | base64
   #
   # It names the secret without giving it away: the secret is 32 random bytes,
   # and the fingerprint is a plain hash, not the HMAC the tokens are hashed
@@ -37,7 +37,9 @@ module Wsjrdp2027
   #
   # The stage is RAILS_STAGE (default "production") under
   # RAILS_ENV=production, else the Rails environment: "development", "test".
-  # Both variables are read at boot (the wagon's initializer puts them into
+  # A RAILS_STAGE that is no stage (not of a-z and 0-9, or not valid text)
+  # is logged as an error, and the stage is production. Both variables are
+  # read at boot (the wagon's initializer puts them into
   # Rails.configuration.x).
   #
   # Production always starts: a missing variable leaves it without active key
@@ -54,7 +56,8 @@ module Wsjrdp2027
   # Without the variable, development and test fall back to the value in the
   # wagon's config/settings/<environment>.yml. Those values are committed and
   # public on purpose: they only mark development and test tokens, which work
-  # nowhere else. Production refuses them.
+  # nowhere else. Production refuses them, and so does every stage under
+  # RAILS_ENV=production (RAILS_STAGE could say test).
   class ServiceTokenHmacKeys
     ENV_NAME = "HITOBITO_SERVICE_TOKEN_HMAC_KEYS"
     SCHEME = "hmac-sha256"
@@ -65,8 +68,15 @@ module Wsjrdp2027
     # The longest stage of an entry a warning repeats. A longer one may be a
     # secret typed into the stage slot, so the warning says "another stage".
     SHOWN_STAGE_LENGTH = 32
-    # The wagon settings that hold the committed, public secrets.
+    # The stages that fall back to a committed value in the wagon settings.
     PUBLIC_SETTINGS = %w[development test].freeze
+    # The fingerprints (.fingerprint_of, of the lower-cased secret) of the
+    # committed, public secrets of config/settings/development.yml and
+    # test.yml. A spec keeps the list in step with both files.
+    PUBLIC_FINGERPRINTS = %w[
+      WN0sZJHVfCpg0yZC9eIPJDdSQrFrZId6W6GAzVtvkv8=
+      93OaGuwMCcHbuIzts/FkPea33GyLHbwlSwqY9NPUPsg=
+    ].freeze
 
     class ConfigurationError < StandardError; end
 
@@ -93,21 +103,24 @@ module Wsjrdp2027
     class << self
       # The keys of this process, read once.
       def current
-        @current ||= new(Rails.configuration.x.service_token_hmac_keys.presence || default_value, stage: stage)
-          .tap(&:log_summary)
+        @current ||= begin
+          raw = Rails.configuration.x.service_token_hmac_keys
+          raw = raw.call if raw.respond_to?(:call) # the initializer's lambda; a spec may set a plain value
+          Rails.logger.error("RAILS_STAGE: not a stage of a-z and 0-9; the stage is #{PRODUCTION}") if stage_invalid?
+          new(given?(raw) ? raw : default_value, stage: stage, rails_production: Rails.env.production?)
+            .tap(&:log_summary)
+        end
       end
 
       def reset! = @current = nil
 
       def stage
-        if Rails.env.production?
-          Rails.configuration.x.rails_stage.presence || PRODUCTION
-        else
-          Rails.env.to_s
-        end
+        return Rails.env.to_s unless Rails.env.production?
+
+        stage_variable || PRODUCTION
       end
 
-      # Base64 of the SHA-256 of the secret as written.
+      # Base64 of the SHA-256 of the text given; callers lower-case it.
       def fingerprint_of(secret_hex) = Base64.strict_encode64(OpenSSL::Digest::SHA256.digest(secret_hex.to_s))
 
       # The committed value of development and test; nil in any other stage.
@@ -117,23 +130,32 @@ module Wsjrdp2027
         Settings.service_tokens&.hmac_keys_default.presence
       end
 
-      # The committed secrets, which production refuses.
-      def public_secrets
-        PUBLIC_SETTINGS.flat_map do |name|
-          path = HitobitoWsjrdp2027::Wagon.root.join("config", "settings", "#{name}.yml")
-          next [] unless path.exist?
+      private
 
-          value = YAML.safe_load_file(path).to_h.dig("service_tokens", "hmac_keys_default")
-          value.to_s.split(",").map { |entry| entry.split(":", 2).last.to_s.strip.downcase }
-        end
+      # Whether a variable is set, decided on its bytes: blank? would raise on
+      # invalid UTF-8, and production must start.
+      def given?(value) = !value.nil? && !value.to_s.b.strip.empty?
+
+      # RAILS_STAGE stripped when it is a stage; nil when it is not set or no
+      # stage.
+      def stage_variable
+        raw = Rails.configuration.x.rails_stage
+        return nil unless given?(raw)
+
+        text = raw.to_s.b.strip.force_encoding(Encoding::UTF_8)
+        (text.valid_encoding? && STAGE_FORMAT.match?(text)) ? text : nil
       end
+
+      def stage_invalid? = Rails.env.production? && given?(Rails.configuration.x.rails_stage) && stage_variable.nil?
     end
 
     attr_reader :stage, :keys, :problems, :warnings
 
-    def initialize(raw, stage:, public_secrets: nil)
+    # rails_production: whether this is RAILS_ENV=production, handed in so
+    # that a spec can set it.
+    def initialize(raw, stage:, rails_production: false)
       @stage = stage
-      @public_secrets = public_secrets || (production? ? self.class.public_secrets : [])
+      @refuse_public = production? || rails_production
       @keys = []
       @problems = []
       @warnings = []
@@ -222,7 +244,7 @@ module Wsjrdp2027
         "#{name}: a secret given again"
       elsif !production? && entry_stage == PRODUCTION
         "#{name}: a production secret outside production (stage #{stage})"
-      elsif production? && @public_secrets.include?(secret)
+      elsif @refuse_public && PUBLIC_FINGERPRINTS.include?(ServiceTokenHmacKeys.fingerprint_of(secret))
         "#{name}: the committed, public secret of development or test"
       end
     end

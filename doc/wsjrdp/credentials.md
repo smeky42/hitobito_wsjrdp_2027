@@ -6,9 +6,11 @@ instance's stage. The code lives in `app/domain/wsjrdp/credentials/` and
 `app/models/wsjrdp_credential.rb`.
 
 **What exists so far:** the keys, the sealing, the kinds, the table with
-its model, three write paths (`Deposit`, `Change`, `Rekey`) and the lookup
-(`Wsjrdp::Credentials.fetch` / `.candidates`). **No consumer reads a
-credential yet**, and there is no override and no page.
+its model, three write paths (`Deposit`, `Change`, `Rekey`), the lookup
+(`Wsjrdp::Credentials.fetch` / `.candidates`), the overrides by variables
+and a local file, the read model for the pages (`Overview`) and the reader
+of typed instants ([`Wsjrdp::InstantInput`](instant_input.md)). **No
+consumer reads a credential yet**, and there is no page.
 
 ## Terms
 
@@ -16,7 +18,7 @@ credential yet**, and there is no override and no page.
 |---|---|
 | kind | the blueprint of a credential: its fields, and which are secret (`config/wsjrdp_credential_kinds.yml`) |
 | account | one credential of a kind, named by its account key (`mail_account` / `finanzen`) |
-| version | one set of an account's values in one stage: a row of `wsjrdp_credentials` |
+| version | one set of an account's values in one stage: a row of `wsjrdp_credentials`, or an override |
 | key | 32 random bytes a stage seals its secret fields with; known by its fingerprint |
 | credential | what a consumer gets: the values of one version (`Wsjrdp::Credentials::Credential`) |
 
@@ -40,11 +42,11 @@ credential yet**, and there is no override and no page.
   (`Wsjrdp::Credentials.text?`); a String of another encoding counts only
   when it is plain ASCII. Every value, name and comment must be one.
 - **Nothing ever prints a value or a key.** Messages and logs name fields,
-  entries, places in the registry, codes and key fingerprints. A name is
-  repeated only when it is valid and a stage only when it is short;
-  anything else shows as `(not a name)`, `(not a stage)` or "another
-  stage", since it may be a secret typed into the wrong place (64 hex
-  digits are a valid stage).
+  entries, variables, places in the registry or a file, codes and key
+  fingerprints. A name is repeated only when it is valid and a stage only
+  when it is short; anything else shows as `(not a name)`, `(not a stage)`
+  or "another stage", since it may be a secret typed into the wrong place
+  (64 hex digits are a valid stage).
   `inspect`, `as_json` and `pp` of every object of the store follow this
   rule; Marshal and YAML refuse to dump them. Keep it that way in any new
   code.
@@ -65,13 +67,15 @@ It is a variable of its own, never shared with
 
 - Only the entries of the instance's stage count. The **first is active**:
   new values are sealed with it. **All are accepted**: a value sealed with
-  any of them opens. An entry of another stage is ignored with a warning.
+  any of them opens. An entry of another stage seals and opens nothing;
+  it is logged with a warning and kept by fingerprint and stage only, so
+  that the pages can list it.
 - A **problem** stops every stage but production
-  (`Wsjrdp::Credentials::Keys::ConfigurationError`); production logs it,
-  ignores the entry and starts. Problems are: a malformed entry, an entry
-  or label that is not valid text, a secret given twice, a `production`
-  entry outside production, and a committed public key outside the stage
-  `test`.
+  (`Wsjrdp::Credentials::ConfigurationError`); production logs it, ignores
+  the entry and starts. Problems are: a malformed entry, an entry or label
+  that is not valid text, a secret given twice, a `production` entry outside
+  production, and a committed public key outside the stage `test` or under
+  `RAILS_ENV=production` (whatever `RAILS_STAGE` says).
 - **Without any key** the instance starts, warns once, and sealing raises
   `Wsjrdp::Credentials::NoKeyError`.
 - **No stage has a committed key**, development included. Only the Rails
@@ -79,6 +83,8 @@ It is a variable of its own, never shared with
   `config/settings/test.yml`. That key and the golden-vector spec's key are
   public; the code knows them by fingerprint (`Keys::PUBLIC_FINGERPRINTS`)
   and refuses them as said above.
+- Where the variable is not set, the local file's `keys` may be used (see
+  "The local file" below).
 
 ### `HITOBITO_CREDENTIAL_LABEL`
 
@@ -148,8 +154,8 @@ kinds:
   a field not set gets its default.
 - The file is read strictly: anything it does not understand raises
   `Kinds::RegistryError` in every stage, production included. Reserved
-  field names: `name`, `created_at`, `valid_from`, `expires_at` (a version's
-  name and dates). A secret field has no default.
+  field names: `name`, `created_at`, `valid_from`, `expires_at` (they stand
+  beside the fields in a variable). A secret field has no default.
 - `kind.cast(values, stage:)` gives the values with `errors` and `warnings`
   as codes (`required`, `unknown`, `not_an_integer`, `not_valid_text`, ...).
   A `url` that is not `https` is a warning (`not_https`) in production only.
@@ -201,8 +207,9 @@ sealed value of the same name wins over it.
 - **Instants:** `valid_from=`, `expires_at=` and `revoked_at=` take a `Time`
   or `nil`, nothing else (else `not_an_instant`). A version counts **from
   `valid_from` on, up to but not including `expires_at`**, and is revoked
-  from `revoked_at` on. Do not use `write_attribute` for instants: it
-  parses a text in the app's time zone.
+  from `revoked_at` on. A typed instant is read by
+  [`Wsjrdp::InstantInput`](instant_input.md). Do not use
+  `write_attribute` for instants: it parses a text in the app's time zone.
 - **Reading a field never depends on its column** (`field_values`); a
   changed kind cannot hide a field. If a name is in both columns, the
   sealed value wins over the plain one; a plain value is not
@@ -334,9 +341,8 @@ moss.secret(:client_secret)
 Wsjrdp::Credentials.candidates(:moss_api, "default")      # the usable versions, newest first
 ```
 
-- `Wsjrdp::Credentials::Lookup` asks its sources in order; the first that
-  names an account answers for it as a whole. The only source so far is
-  the database (`DatabaseSource`).
+- The sources are asked in the order of "Overrides" below; the first that
+  names an account answers for it as a whole.
 - A usable row is in state `active`. **The newest wins** (by `created_at`);
   the others are the fallbacks. The window decides *whether* a version
   counts, never *which* one wins.
@@ -345,18 +351,179 @@ Wsjrdp::Credentials.candidates(:moss_api, "default")      # the usable versions,
   `moss_api/default: no usable version in stage test (database: 2 versions,
   none usable: expired 1, other_stage 1)`.
 
-## Specs
+## Overrides: variables and the local file
 
-`spec/domain/wsjrdp/credentials/` is standalone (no Rails, no database):
+An account can be overridden by environment variables and by a local YAML
+file. Both are read once at boot; a change needs a restart. In development
+a code reload reads the local file (and the keys) again at the next lookup;
+the variables stay as the boot took them.
+
+**Which source wins, per account as a whole:** the variables, then the
+file, then the database. If any variable names an account, the variables
+are its credential; else the file's entry; else the database. An override
+without a usable version still answers for its account: `fetch` raises,
+and the database is not asked.
+
+| | production | staging, development | Rails env test |
+|---|---|---|---|
+| Key from | variable | variable, else file | variable, else committed |
+| Overrides from | variables | variables, else file | variables |
+
+### The variables
 
 ```bash
-bundle exec rspec spec/domain/wsjrdp/credentials
+HITOBITO_CREDENTIAL__<STAGE>__<KIND>__<ACCOUNT>__<FIELD>=<value>
+HITOBITO_CREDENTIAL__<STAGE>__<KIND>__<ACCOUNT>__NAME=<the version's name>
+HITOBITO_CREDENTIAL__<STAGE>__<KIND>__<ACCOUNT>__CREATED_AT=2026-11-20T09:00Z   # also VALID_FROM, EXPIRES_AT
+
+HITOBITO_CREDENTIAL__STAGING__MOSS_API__DEFAULT__CLIENT_ID=made-up-client
+HITOBITO_CREDENTIAL__STAGING__MOSS_API__DEFAULT__CLIENT_SECRET=made-up-secret
+```
+
+- The names in upper case, separated by a double underscore. The variables
+  of an account describe **one** version.
+- `<ACCOUNT>` is the account key in upper case, each of `_ @ , . + -`
+  as `_`: `default` is `DEFAULT`,
+  `foo@worldscoutjamboree.de` is `FOO_WORLDSCOUTJAMBOREE_DE`
+  (`Variables.account_part`). Keys that come out the same (`a.b`, `a-b`,
+  `a_b`) share their variables, which then answer for whichever is asked
+  for.
+- Not every system allows letters beyond A-Z in the name of an
+  environment variable.
+- Only the instance's own stage counts. A `PRODUCTION` variable outside
+  production stops the boot; a variable of another stage is ignored with a
+  warning.
+- Values are strings, cast with the kind; an empty value is not set.
+
+### The local file: `config/wsjrdp_credentials.local.yml`
+
+Git-ignored, never written by the app; it holds keys and secrets in plain
+text, so keep it readable for yourself alone. A made-up example:
+
+```yaml
+stage: development                 # required: the stage this file is for
+keys: ["development:<64 hex>"]     # optional, as HITOBITO_CREDENTIAL_KEYS
+label: laptop-a                    # optional, as HITOBITO_CREDENTIAL_LABEL
+credentials:                       # kind -> account key -> versions
+  moss_api:
+    default:
+      versions:
+        - name: Key December 2026
+          created_at: 2026-11-20T09:00Z
+          valid_from: 2026-12-01
+          expires_at: 2027-05-19
+          vars:
+            base_url: https://moss.example.org
+            client_id: made-up-client-new
+            client_secret: made-up-secret-new
+        - name: Key June 2026
+          created_at: 2026-06-18
+          expires_at: 2026-12-15T12:00+01:00
+          vars: {base_url: https://moss.example.org, client_id: made-up-client-old, client_secret: made-up-secret-old}
+```
+
+- An account key is a YAML key, quoted where YAML needs it
+  (`"foo@worldscoutjamboree.de":`); two keys that fold to the same are a
+  problem.
+- **Production never reads it**, and neither does the Rails environment
+  `test`. In production a file lying there is not opened; the log warns.
+- **A file whose `stage` is not the instance's own is skipped** with a
+  warning, a file saying `stage: production` included: no key and no
+  credential is taken from it, and the boot goes on.
+- **Every value is text, quoted or not**; YAML's own typing does not
+  happen. `smtp_port: 0465` is 465 (cast by the kind, not octal), `yes` is
+  no boolean, `12345` as a password is the text `"12345"`. Only an empty
+  value, `null` and `~` are not set. Aliases are refused, and so is every
+  tag but the standard ones for text, a mapping and a list (`!!str`, `!`,
+  `!!map`, `!!seq`).
+- Where `HITOBITO_CREDENTIAL_KEYS` is not set, the file's `keys` and
+  `label` are the instance's (never merged with the variables; the log says
+  when one of them is not used). A `label` without `keys` is not used
+  either, with a warning.
+
+### Which version of an override is used
+
+- A version counts from `valid_from` on and up to, not including,
+  `expires_at`, and only if its values fit the kind.
+- Of those the newest wins, the others are fallbacks: by `created_at` if
+  every version states it, else by the order of the list (the first wins,
+  as for the key list). If only some state it, that is a problem: the boot
+  stops.
+- Instants are ISO 8601, read by [`Wsjrdp::InstantInput`](instant_input.md):
+  without a zone UTC, and **a bare date is 00:00 UTC** -- `expires_at:
+  2027-05-19` ends the version at the start of the 19th.
+- Nothing is sealed: a credential from an override has no row and no key.
+
+| State of an override's version | Meaning |
+|---|---|
+| `refused` | production found a problem in the account (below); it gives no credential at all |
+| `kind_mismatch` | its values do not fit the kind |
+| `expired` | `expires_at` is reached |
+| `not_yet_valid` | `valid_from` lies ahead |
+| `active` | usable here |
+
+### Strictness
+
+Every variable whose name begins with `HITOBITO_CREDENTIAL` and every key of
+the file must be understood: an unknown key, a name outside the grammar, an
+unknown kind or field, an instant that is none, an expiry not after the
+start. The message names the variable or the place in the file
+(`credentials.moss_api.default.versions[2].expires_at: not an instant: ...`),
+never a value.
+
+- **Every stage but production refuses to start**
+  (`Wsjrdp::Credentials::ConfigurationError`).
+- **Production logs the problem, starts, and fails safe:** an account with
+  a problem is refused -- it answers with no usable version, and the
+  database is not asked. A broken variable of this stage refuses the
+  account it names; when no account can be read from it, every account of
+  the variables. The log line says which.
+- Values that do not fit the kind (a required field missing) are no
+  problem at boot: the version is not usable, and `fetch` says why.
+- **What cannot be caught:** a typo in the stage (`…__PRODUKTION__…` reads
+  as another stage) or in the letters of the prefix (`HITOBITO_CREDENTAIL…`
+  is not looked at); a broken variable at an instance whose variables name
+  no account (the database answers); a misspelt account key that is still
+  a name (`…__MOSS_API__DEFAUL__EXPIRES_AT` names an account `defaul`,
+  which does not fit the kind, while `default` is used without its
+  expiry). Check the boot log after changing a variable.
+
+### A development instance with a key and a file
+
+1. `openssl rand -hex 32` makes a key.
+2. Write `config/wsjrdp_credentials.local.yml` with `stage: development`,
+   the key as `"development:<64 hex>"`, a label and the credentials you
+   need; `chmod 600` it.
+3. Restart. The log names the key by fingerprint and the accounts the file
+   overrides; anything not understood stops the boot.
+
+The key also opens what you deposit in this instance's database: keep it.
+
+### For the pages: `Wsjrdp::Credentials::Overview`
+
+`Overview.new.account(kind, account_key)` and `.accounts` describe every
+source of an account: its versions with their states, the source in use,
+the active version and its fallbacks, and what is overridden by which
+source. `#file` says what became of the local file, `#keys` where the key
+came from and every key by fingerprint, those of other stages included.
+Values come only through the `Credential` objects; nothing
+prints a version's name, a value or a key.
+
+## Specs
+
+`spec/domain/wsjrdp/credentials/` and
+`spec/domain/wsjrdp/instant_input_spec.rb` are standalone (no Rails, no
+database):
+
+```bash
+bundle exec rspec spec/domain/wsjrdp/credentials spec/domain/wsjrdp/instant_input_spec.rb
 ```
 
 The model, the write paths, the lookup with the database and the boot
 wiring need the test database; run them by the rules of `AGENTS.md`
 ("Running tests"): `spec/models/wsjrdp_credential_spec.rb`,
 `spec/domain/wsjrdp/credentials_store_spec.rb`,
-`spec/domain/wsjrdp/credentials_keys_boot_spec.rb`. The boot reads the
-environment: set no `HITOBITO_CREDENTIAL*` variable in the shell that runs
-the specs.
+`spec/domain/wsjrdp/credentials_keys_boot_spec.rb`,
+`spec/domain/wsjrdp/credentials_overrides_spec.rb`. No spec reads the local
+file, but the boot reads the environment: set no `HITOBITO_CREDENTIAL*`
+variable in the shell that runs the specs.

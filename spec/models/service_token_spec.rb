@@ -23,7 +23,7 @@ describe ServiceToken do
 
   # The keys of another configuration for the block's duration.
   def with_keys(raw, stage:)
-    keys = hmac_keys.new(raw, stage: stage, public_secrets: [])
+    keys = hmac_keys.new(raw, stage: stage)
     allow(hmac_keys).to receive(:current).and_return(keys)
     yield keys
   end

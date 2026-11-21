@@ -7,9 +7,24 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# For the specs of the credential store that boot Rails: a registry with
-# one kind changed.
+# For the specs of the credential store that boot Rails: the overrides as a
+# spec sets them (whatever variables or local file the process was started
+# with), and a registry with one kind changed.
 module CredentialsSpecHelpers
+  def no_local_file
+    Wsjrdp::Credentials::LocalFile.new(nil, stage: "test", kinds: Wsjrdp::Credentials::Kinds.current,
+      status: Wsjrdp::Credentials::LocalFile::ABSENT)
+  end
+
+  # Makes these the overrides of Wsjrdp::Credentials.lookup; with no
+  # arguments, there is none.
+  def use_overrides(variables: Wsjrdp::Credentials::Variables.new({}, stage: "test",
+    kinds: Wsjrdp::Credentials::Kinds.current), file: no_local_file)
+    overrides = Wsjrdp::Credentials::Overrides.new(variables: variables, file: file)
+    allow(Wsjrdp::Credentials::Overrides).to receive(:current).and_return(overrides)
+    overrides
+  end
+
   # The registry with the kind changed by the block, which gets its fields
   # and the kind itself.
   def changed_kinds(kind)

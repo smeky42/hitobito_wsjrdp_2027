@@ -15,7 +15,8 @@ module Wsjrdp::Credentials
   #
   # [] refuses a secret field and #secret a public one, so that a secret is
   # only read on purpose. No value and no version name ever shows in
-  # inspect, as_json or a dump.
+  # inspect, as_json or a dump. A credential from an override has no
+  # version_id and no key_fingerprint.
   class Credential
     include Undumpable
 
@@ -69,7 +70,8 @@ module Wsjrdp::Credentials
 
     def inspect
       "#<#{self.class.name} #{kind_name}/#{account_key} stage=#{Wsjrdp::Credentials.shown_stage(stage)} " \
-        "fields=#{field_names.join(",")} key=#{key_fingerprint}#{" version=#{version_id}" if version_id}>"
+        "fields=#{field_names.join(",")}#{" key=#{key_fingerprint}" if key_fingerprint}" \
+        "#{" version=#{version_id}" if version_id}>"
     end
     alias_method :to_s, :inspect
 

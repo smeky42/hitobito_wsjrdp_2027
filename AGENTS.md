@@ -26,13 +26,19 @@ How-to guides — authoritative, follow them:
   typed dates, `Wsjrdp::DateInput`: ISO `YYYY-MM-DD` and German `D.M.YYYY` /
   `D.M.YY`, nothing else (no `Date.parse` fragments). Use it for every date
   read from a form, a parameter or a file.
+- [`doc/wsjrdp/instant_input.md`](doc/wsjrdp/instant_input.md) — its sibling
+  for typed instants, `Wsjrdp::InstantInput`: ISO 8601 only, UTC unless a
+  zone is given, a bare date is 00:00 UTC. Use it for every instant read
+  from a form, a variable or a file.
 - [`doc/wsjrdp/credentials.md`](doc/wsjrdp/credentials.md) — the credential
   store under `Wsjrdp::Credentials`: the stage keys
-  (`HITOBITO_CREDENTIAL_KEYS`, no committed key outside `test`), sealing
-  each secret field by itself, the golden-vector spec that is **never**
-  repaired by making new texts, the kinds, the table `wsjrdp_credentials`
-  and its states, the write paths `Deposit`, `Change` and `Rekey`, and the
-  lookup `Wsjrdp::Credentials.fetch`.
+  (`HITOBITO_CREDENTIAL_KEYS`, no committed key outside `test`, and never
+  under `RAILS_ENV=production`), sealing each secret field by itself, the
+  golden-vector spec that is **never** repaired by making new texts, the
+  kinds, the table `wsjrdp_credentials` and its states, the write paths
+  `Deposit`, `Change` and `Rekey`, the lookup `Wsjrdp::Credentials.fetch`,
+  and the overrides (`HITOBITO_CREDENTIAL__…` variables, then the
+  git-ignored `config/wsjrdp_credentials.local.yml`, then the database).
   Rule: nothing ever prints a value or a key. Read it before touching
   anything that stores or reads a password or API key.
 - [`doc/fin/money_conventions.md`](doc/fin/money_conventions.md) — the house standard

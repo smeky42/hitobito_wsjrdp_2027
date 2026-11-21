@@ -13,7 +13,8 @@ credentials:
   # The key of the credential store in the Rails environment test when
   # HITOBITO_CREDENTIAL_KEYS is not set (Wsjrdp::Credentials::Keys).
   # Made up, committed and public: it seals only test credentials, no
-  # other stage has a committed key, and production refuses it.
+  # other stage has a committed key, every other stage refuses it, and so
+  # does RAILS_ENV=production.
   keys_default: "test:b241d094acb3dd40fe70691f85ef930e5c3314ae44302c145b72623d12a952e6"
 
 documents:

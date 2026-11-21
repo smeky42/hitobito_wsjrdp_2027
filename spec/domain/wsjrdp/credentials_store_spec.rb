@@ -21,6 +21,9 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
   let(:key_a) { "a" * 64 }
   let(:key_b) { "b" * 64 }
 
+  # Every example: no override, whatever the process was started with.
+  before { use_overrides }
+
   def keys_of(*secrets) = Wsjrdp::Credentials::Keys.new(secrets.map { |secret| "test:#{secret}" }.join(","),
     stage: "test", label: "label-#{secrets.first&.first}")
 
@@ -552,6 +555,7 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
   end
 
   describe ".fetch and .candidates" do
+    # The order of the sources is credentials_overrides_spec.rb's.
     it "gives back a version deposited here" do
       row = deposit!(name: "key of May")
 

@@ -59,16 +59,20 @@ HITOBITO_SERVICE_TOKEN_HMAC_KEYS=production:<64 hex>,production:<64 hex>
 
 - The stage of an instance is `RAILS_STAGE` (default `production`) under
   `RAILS_ENV=production`, else the Rails environment (`development`, `test`).
+  A `RAILS_STAGE` that is no stage (not of `a-z` and `0-9`) is logged as an
+  error, and the stage is `production`.
 - Only entries of the instance's stage are used; the others are logged and
   ignored. The first is active: new HMAC tokens use it. All are accepted: a
   token of this stage is looked up with each of them.
 - The warning on an entry of another stage names that stage only when it is
   at most 32 characters long, else it says "another stage": 64 hex digits
   are a valid stage, and may be a secret typed into the wrong place.
-- The fingerprint of a secret is the Base64 of the SHA-256 of the secret as
-  written (44 characters). It names the secret without giving it away.  A new
-  HMAC token stores the fingerprint of the active secret. An adopted token hash
-  stores the fingerprint given with it.
+- The fingerprint of a secret is the Base64 of the SHA-256 of the secret,
+  lower-cased (44 characters); in a shell:
+  `printf %s "$SECRET" | tr 'A-F' 'a-f' | openssl dgst -sha256 -binary | base64`.
+  It names the secret without giving it away. A new HMAC token stores the
+  fingerprint of the active secret. An adopted token hash stores the
+  fingerprint given with it.
 - An API key of another stage, or whose fingerprint is not accepted here,
   does not work here.
 - Production always starts. Without the variable it has no active secret:
@@ -77,10 +81,13 @@ HITOBITO_SERVICE_TOKEN_HMAC_KEYS=production:<64 hex>,production:<64 hex>
   and test. An entry that is not valid text (invalid UTF-8) is a bad entry
   like any other: "entry N: not valid text", the other entries still count.
 - Every other stage refuses to start on a bad entry and on any `production`
-  entry.
+  entry. Under `RAILS_ENV=production` the committed secrets of development
+  and test are a bad entry in every stage, whatever `RAILS_STAGE` says.
 - Development and test fall back to `service_tokens.hmac_keys_default` in
   the wagon's `config/settings/<environment>.yml`. These values are public on
-  purpose: they only mark development and test tokens.
+  purpose: they only mark development and test tokens. The code knows them by
+  fingerprint (`PUBLIC_FINGERPRINTS`) and reads no file to refuse them; a
+  spec keeps the list in step with both files.
 - Logs and error messages name fingerprints, never secrets, and repeat
   nothing of an entry but a short stage. The core's
   `filter_parameters` (`:token`, `:secret`, ...) keep request parameters such
