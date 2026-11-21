@@ -43,6 +43,6 @@ module CredentialsSpec
 end
 
 %w[credentials credentials/keys credentials/sealer credentials/field credentials/kind
-  credentials/kinds credentials/credential].each do |file|
+  credentials/kinds credentials/credential credentials/lookup].each do |file|
   require_relative "../../../../app/domain/wsjrdp/#{file}"
 end

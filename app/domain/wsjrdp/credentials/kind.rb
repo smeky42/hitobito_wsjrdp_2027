@@ -29,6 +29,8 @@ module Wsjrdp::Credentials
     # One error or warning: a field's name and a code.
     Problem = Data.define(:field, :code) do
       def to_s = "#{field}: #{code}"
+
+      def as_json(*) = {"field" => field, "code" => code.to_s}
     end
 
     # The cast values (only the fields that are set, in the kind's order), the
@@ -57,13 +59,8 @@ module Wsjrdp::Credentials
       alias_method :to_s, :inspect
 
       def as_json(*)
-        {"fields" => values.keys, "errors" => errors.map { |problem| problem_json(problem) },
-         "warnings" => warnings.map { |problem| problem_json(problem) }}
+        {"fields" => values.keys, "errors" => errors.map(&:as_json), "warnings" => warnings.map(&:as_json)}
       end
-
-      private
-
-      def problem_json(problem) = {"field" => problem.field, "code" => problem.code.to_s}
     end
 
     attr_reader :name, :fields, :title_field, :remind_days_before
@@ -109,8 +106,8 @@ module Wsjrdp::Credentials
 
     def cast_given(values, errors)
       values.each_with_object({}) do |(key, value), given|
-        name = key.is_a?(Symbol) ? key.to_s : key
-        field = Wsjrdp::Credentials.text?(name) ? field(name) : nil
+        name = Wsjrdp::Credentials.name_of(key)
+        field = field(name)
         next errors << Problem.new(Wsjrdp::Credentials.shown_name(name), :unknown) unless field
         next if value.nil? || value == ""
 

@@ -22,22 +22,19 @@ module Wsjrdp::Credentials
   #       fields:
   #         <field>: {type: <type>, required: true, secret: true, default: ..., values: [...]}
   #
-  # The registry is read strictly: a key it does not know on any level, a
-  # name outside the grammar (lower-case snake) or longer than
-  # NAME_LENGTH (48), an unknown type, a reserved
-  # field name, an enum without values or with a default outside them, a
-  # default that is no value of its type or on a secret field, a
-  # title_field that is no public field, a remind_days_before that is not a list of positive integers --
-  # each raises RegistryError, which names the place. The file is committed,
-  # so a broken one is a bug in every stage, production included.
+  # The registry is read strictly: anything it does not understand (an
+  # unknown key, a name outside the grammar, an unknown type, a reserved
+  # field name, a default that does not fit or sits on a secret field, ...)
+  # raises RegistryError, which names the place. The file is committed, so
+  # a broken one is a bug in every stage, production included.
   class Kinds
     include Enumerable
 
     PATH = File.expand_path("../../../../config/wsjrdp_credential_kinds.yml", __dir__)
     SOURCE = "config/wsjrdp_credential_kinds.yml"
-    # The names a variable or a file states beside a version's fields, and
-    # the key JSON.load would take for a class name (Sealer::JSON_CREATE_ID:
-    # with most values a text holding it no longer opens).
+    # The names a variable or a file states beside a version's fields, and,
+    # as a precaution, json_class: opening reads with JSON.load, which would
+    # build an object from a hash with that key.
     RESERVED_FIELD_NAMES = (%w[name created_at valid_from expires_at] + [JSON.create_id]).freeze
     TOP_KEYS = %w[kinds].freeze
     KIND_KEYS = %w[title_field remind_days_before fields].freeze

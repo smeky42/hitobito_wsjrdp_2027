@@ -117,6 +117,21 @@ describe Wsjrdp::Credentials::Credential do
         "fields" => %w[mail_from smtp_host smtp_port smtp_password], "key_fingerprint" => fingerprint)
     end
 
+    it "names the version's id when it has one, never its name" do
+      version = described_class.new(kind: kind, account_key: "finanzen", stage: "test", values: values,
+        key_fingerprint: fingerprint, version_name: "made-up version name", version_id: 42)
+
+      expect(version.version_name).to eq("made-up version name")
+      expect(version.version_id).to eq(42)
+      expect(version.inspect).to end_with("key=#{fingerprint} version=42>")
+      expect(version.as_json).to include("version_id" => 42)
+      [version.inspect, version.to_json].each { |text| expect(text).not_to include("made-up version name") }
+      expect {
+        described_class.new(kind: kind, account_key: "finanzen", stage: "test", values: values,
+          key_fingerprint: fingerprint, version_id: "42")
+      }.to raise_error(ArgumentError)
+    end
+
     it "refuses YAML" do
       expect { credential.to_yaml }.to raise_error(TypeError)
       expect { YAML.dump({"c" => credential}) }.to raise_error(TypeError)

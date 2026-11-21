@@ -2,196 +2,126 @@
 
 The credential store keeps the passwords and API keys of the services the
 app talks to (a mailbox, Moss, mailcow, a helpdesk), sealed with a key of the
-instance's stage.
+instance's stage. The code lives in `app/domain/wsjrdp/credentials/` and
+`app/models/wsjrdp_credential.rb`.
 
-**What exists so far** are the building blocks, in plain Ruby under
-`app/domain/wsjrdp/credentials/`: the instance's keys, the sealing, the kind
-registry with the casting of values, and the value object a consumer will
-get. **Nothing reads a credential yet**: there is no table, no lookup, no
-override and no page. The key variable is read and checked at boot, and
-that is all an instance notices.
+**What exists so far:** the keys, the sealing, the kinds, the table with
+its model, three write paths (`Deposit`, `Change`, `Rekey`) and the lookup
+(`Wsjrdp::Credentials.fetch` / `.candidates`). **No consumer reads a
+credential yet**, and there is no override and no page.
 
 ## Terms
 
-| Thing | Meaning | Code |
-|---|---|---|
-| kind | the blueprint of a credential: its fields, which are secret | `Wsjrdp::Credentials::Kind`, `config/wsjrdp_credential_kinds.yml` |
-| account | one credential of a kind, named by its account key (`mail_account` / `finanzen`) | -- (comes with the table) |
-| version | one set of an account's values | -- (comes with the table) |
-| key | 32 random bytes a stage seals its credentials with; known by its fingerprint | `Wsjrdp::Credentials::Keys` |
-| sealed text | the fields of one version, encrypted and authenticated | `Wsjrdp::Credentials::Sealer` |
-| credential | what a consumer gets: the values of one version | `Wsjrdp::Credentials::Credential` |
+| Thing | Meaning |
+|---|---|
+| kind | the blueprint of a credential: its fields, and which are secret (`config/wsjrdp_credential_kinds.yml`) |
+| account | one credential of a kind, named by its account key (`mail_account` / `finanzen`) |
+| version | one set of an account's values in one stage: a row of `wsjrdp_credentials` |
+| key | 32 random bytes a stage seals its secret fields with; known by its fingerprint |
+| credential | what a consumer gets: the values of one version (`Wsjrdp::Credentials::Credential`) |
 
-## Names
+## Names and the one safety rule
 
-- A **stage** is `[a-z0-9]+`, as for the HMAC keys of the API keys
-  (`production`, `staging`, `development`, `test`).
-- A **kind**, an **account key** and a **field name** are lower-case snake,
-  `[a-z][a-z0-9]*(_[a-z0-9]+)*`: no capital, no hyphen, no double
-  underscore, no leading digit -- and at most 48 characters
-  (`Wsjrdp::Credentials.name?`, `NAME_LENGTH`). The registry, the sealer's
-  purpose and the value object all check this one rule. A message repeats
-  any valid name and shows anything else as `(not a name)`, since it may be
-  a value put in the wrong place (64 hex digits never fit). The one
-  exception are the registry's errors: they name the place with the name
-  as written in the file (`kinds.Kx: ...`), which is committed and holds
-  no secret.
+- A **stage** is `[a-z0-9]+`. The stage of an instance is the one of the
+  API keys: `RAILS_STAGE` (default `production`) under
+  `RAILS_ENV=production`, else the Rails environment.
+- A **kind** and a **field name** are lower-case snake without a double
+  underscore, at most 48 characters (`Wsjrdp::Credentials.name?`).
+- An **account key** is wider: lower-case letters of any script and the
+  digits 0-9, joined by single characters of `_ @ , . + -` (none at the
+  start or the end, never two in a row), at most 64 characters
+  (`account_key?`), such as `foo@worldscoutjamboree.de`.
+  Wherever a key enters the store it is folded to lower case and brought
+  to Unicode NFC (`account_key_of`), so `Foo@Example.org` and
+  `foo@example.org` are one account. A key holds no `/`, so the purpose of
+  a sealed value reads one way only. Like a name, a key is repeated in a
+  message only when it is valid.
+- **Valid text** is a String of valid UTF-8 without a NUL character
+  (`Wsjrdp::Credentials.text?`); a String of another encoding counts only
+  when it is plain ASCII. Every value, name and comment must be one.
+- **Nothing ever prints a value or a key.** Messages and logs name fields,
+  entries, places in the registry, codes and key fingerprints. A name is
+  repeated only when it is valid and a stage only when it is short;
+  anything else shows as `(not a name)`, `(not a stage)` or "another
+  stage", since it may be a secret typed into the wrong place (64 hex
+  digits are a valid stage).
+  `inspect`, `as_json` and `pp` of every object of the store follow this
+  rule; Marshal and YAML refuse to dump them. Keep it that way in any new
+  code.
 
-The stage of an instance is the one of the API keys: `RAILS_STAGE` (default
-`production`) under `RAILS_ENV=production`, else the Rails environment
-(`Wsjrdp2027::ServiceTokenHmacKeys.stage`).
+## Keys
 
-## Keys: `HITOBITO_CREDENTIAL_KEYS`
+### `HITOBITO_CREDENTIAL_KEYS`
 
-A comma-separated list of `<stage>:<secret>` entries. The secret is
-**exactly** 32 random bytes as 64 hex digits; its bytes are the AES-256 key
-as they are, nothing is derived from them:
-
-```bash
-openssl rand -hex 32
-```
+A comma-separated list of `<stage>:<64 hex>` entries. The 32 bytes are the
+AES-256 key as they are. Make one with `openssl rand -hex 32`:
 
 ```
 HITOBITO_CREDENTIAL_KEYS=production:<64 hex>,production:<64 hex>
 ```
 
-It is a variable of its own, so that the credential store and the API keys
-(`HITOBITO_SERVICE_TOKEN_HMAC_KEYS`, see [service_tokens.md](service_tokens.md))
-never share a key.
+It is a variable of its own, never shared with
+`HITOBITO_SERVICE_TOKEN_HMAC_KEYS` ([service_tokens.md](service_tokens.md)).
 
-- Only entries of the instance's stage are used. The first is **active**:
-  new credentials are sealed with it. All of them are **accepted**: a
-  credential sealed with any of them can be opened.
-- An entry of another stage is ignored with a warning in the log.
-- A **problem** -- a malformed entry, an entry (or a label) that is not
-  valid UTF-8 text, a secret given twice (in any stage), a `production`
-  entry outside production, a committed, public key in any stage but
-  `test` (below) -- stops every stage but production from starting
-  (`Wsjrdp::Credentials::Keys::ConfigurationError`). Production logs it,
-  ignores the entry and starts.
-- **Without the variable** an instance has no key. That is valid: the log
-  says so in one warning, and sealing raises
-  `Wsjrdp::Credentials::NoKeyError`. Nothing else changes.
-- **No stage has a committed key**, development included (unlike the HMAC
-  keys): a stored credential opens a remote service, so a development key
-  must not be in the source. The one exception is the Rails environment
-  `test`, which falls back to `credentials.keys_default` in the wagon's
-  `config/settings/test.yml`. That key, and the golden-vector spec's key
-  (`CredentialsSpec::GOLDEN_VECTOR_KEY` in
-  `spec/domain/wsjrdp/credentials/standalone.rb`), are made up and public: only the stage `test` accepts them. The
-  code knows them by fingerprint (`Keys::PUBLIC_FINGERPRINTS`), without
-  reading any file, so an image without the settings file still refuses
-  them; a spec keeps the list in step with both keys.
-- Messages and logs name entries by their number and keys by their
-  fingerprint, never a secret. A stage is repeated only when it is at most
-  32 characters long, since 64 hex digits are a valid stage and may be a
-  secret typed into the wrong place; a longer one is "another stage".
-  `inspect`, `to_s` and `as_json` of the keys show fingerprints only;
-  Marshal and YAML refuse them.
+- Only the entries of the instance's stage count. The **first is active**:
+  new values are sealed with it. **All are accepted**: a value sealed with
+  any of them opens. An entry of another stage is ignored with a warning.
+- A **problem** stops every stage but production
+  (`Wsjrdp::Credentials::Keys::ConfigurationError`); production logs it,
+  ignores the entry and starts. Problems are: a malformed entry, an entry
+  or label that is not valid text, a secret given twice, a `production`
+  entry outside production, and a committed public key outside the stage
+  `test`.
+- **Without any key** the instance starts, warns once, and sealing raises
+  `Wsjrdp::Credentials::NoKeyError`.
+- **No stage has a committed key**, development included. Only the Rails
+  environment `test` falls back to `credentials.keys_default` in
+  `config/settings/test.yml`. That key and the golden-vector spec's key are
+  public; the code knows them by fingerprint (`Keys::PUBLIC_FINGERPRINTS`)
+  and refuses them as said above.
+
+### `HITOBITO_CREDENTIAL_LABEL`
+
+Optional free text naming the instance's key (`laptop-a`). It is shown in
+the boot log and written into every version a deposit or a re-key makes.
 
 ### The fingerprint
 
-The fingerprint of a key is the Base64 of the SHA-256 of the secret as
-written, lower-cased (44 characters) -- the same function as for the HMAC
-keys. It names the key without giving it away. To check one in a shell:
+The SHA-256 of the secret, lower-cased, as 64 lower-case hex digits (the
+HMAC keys of the API keys use Base64 instead). The boot log names the
+active and accepted keys by fingerprint. To compute one:
 
 ```bash
-printf %s "$SECRET" | tr 'A-F' 'a-f' | openssl dgst -sha256 -binary | base64
+printf %s "$SECRET" | tr 'A-F' 'a-f' | sha256sum    # macOS: shasum -a 256
 ```
-
-The log names the fingerprints of the active and the accepted keys at boot.
 
 ### Losing a key
 
-A key cannot be recovered from anything the app stores. Losing it means
-entering every credential of that stage again; the providers stay the
-source of truth, so nothing is lost for good. Keep the key in the same safe
-place as `HITOBITO_SERVICE_TOKEN_HMAC_KEYS`, and not in the database backup.
-Until there is a way to re-seal credentials with a new key, an old key stays
-in the list (after the active one) for as long as credentials sealed with it
-are needed.
-
-## `HITOBITO_CREDENTIAL_LABEL`
-
-Optional free text naming this instance's key, e.g. `laptop-a`. It is read
-at boot like the keys, stripped, and empty counts as not set
-(`Wsjrdp::Credentials::Keys#label`). It is named in the boot log line.
+A key cannot be recovered from anything the app stores; losing it means
+entering that stage's credentials again (the providers stay the source of
+truth). Keep it with `HITOBITO_SERVICE_TOKEN_HMAC_KEYS`, not in the database
+backup. Keep an old key in the list, after the active one, until every
+version sealed with it is re-keyed.
 
 ## Sealing
 
-`Wsjrdp::Credentials::Sealer` holds the whole cryptography, two calls into
-Rails' `ActiveSupport::MessageEncryptor` -- the class Rails uses for its own
-encrypted cookies and credential files:
+**Each secret field is sealed by itself** with Rails'
+`ActiveSupport::MessageEncryptor` (AES-256-GCM), so that one field can be
+overwritten alone; fields that are not secret are not sealed. The text is
+bound to its stage, kind, account and field: copied into another account
+or field it does not open, but it can move between versions of the same
+account and field. The stored form is called `rails-me-v1`.
 
-```ruby
-encryptor = ActiveSupport::MessageEncryptor.new(key_bytes, cipher: "aes-256-gcm", serializer: JSON)
-text   = encryptor.encrypt_and_sign(fields, purpose: "credential/#{stage}/#{kind}/#{account_key}")
-fields = encryptor.decrypt_and_verify(text, purpose: "credential/#{stage}/#{kind}/#{account_key}")
-```
-
-```ruby
-text   = Wsjrdp::Credentials::Sealer.seal(fields, key: keys.active!, stage:, kind:, account_key:)
-fields = Wsjrdp::Credentials::Sealer.unseal(text, key:, stage:, kind:, account_key:)
-```
-
-- `cipher:` and `serializer:` are always passed: outside the app's
-  configuration the defaults would be CBC and Marshal.
-- The **purpose** lies inside the sealed text and is authenticated with it:
-  a text opens only for the stage, kind and account it was sealed for. Each
-  part is checked against its grammar first, so none can contain a `/`.
-- The fields are a plain flat hash of string names to strings, integers,
-  `true`, `false` or `nil`; anything else is refused, and so is the field
-  name `json_class` (below). Sealing and opening share this one rule
-  (`Sealer.fields_problem`). A caller hands `seal` the values of
-  `Kind#cast`, not request parameters: a Hash subclass such as
-  `ActiveSupport::HashWithIndifferentAccess` is refused.
-- **Opening never raises for the text.** A wrong key, a changed text,
-  another purpose, a missing key or something that is no sealed text at all
-  give `nil`: "cannot be opened here". (`MessageEncryptor` itself raises
-  `InvalidMessage` for a wrong key or a changed text and returns `nil` for
-  another purpose; the sealer turns both into `nil`.) A text that opens to
-  anything sealing would refuse -- sealed by other code with the same key
-  -- is `nil` as well, so a wrongly shaped result never reaches a
-  consumer.
-- The stored form is called **`rails-me-v1`** (`Sealer::SCHEME`):
-  `Base64(ciphertext)--Base64(nonce)--Base64(tag)`, AES-256-GCM with a
-  random 12-byte nonce and a 16-byte tag. Rails 7.1 writes the inner
-  envelope in one of two spellings and reads both; the app writes the newer
-  one (`load_defaults 7.1`).
-- Neither a sealed text nor a field ever reaches a log or a message. A
-  refusal repeats a field name only when it is a valid name (at most 48
-  characters of the grammar), else it says `(not a name)`.
-
-### Why `json_class` is reserved
-
-`serializer: JSON` makes Rails read a sealed text with `JSON.load`, which in
-the bundled json gem (2.6) runs with `create_additions: true`: a hash with
-the key `json_class` (`JSON.create_id`) is taken for an object to build, and
-the stored value names the class that is looked up. A field of that name can
-be sealed, but what opening the text gives then depends on the value: for
-most values the text no longer opens at all, for a few (`Object`, `Time`,
-`Range` in a probe) it still did. Either way a stored value would decide
-what the reader does, so the sealer refuses the name and the registry
-reserves it. Opening checks the shape of the result afterwards, but it
-cannot stop `JSON.load` from building an object while it parses; only
-someone with the key can seal such a text, and the reserved name keeps our
-own code from doing it. `serializer: JSON` stays: it is the form the design fixes, and
-the golden-vector spec holds it.
-
-### The golden-vector spec
-
-`spec/domain/wsjrdp/credentials/golden_vector_spec.rb` holds two texts
-sealed once with a made-up key (`CredentialsSpec::GOLDEN_VECTOR_KEY` in
-`spec/domain/wsjrdp/credentials/standalone.rb`), one in each envelope spelling, that must keep
-opening to known fields. **It is never repaired by making new texts.** If it
-fails after a Rails upgrade, credentials sealed before the upgrade can no
-longer be opened: stop the upgrade and find out what changed in
-`MessageEncryptor`.
+**The golden-vector spec**
+(`spec/domain/wsjrdp/credentials/golden_vector_spec.rb`) holds texts that
+must keep opening. **Never repair it by making new texts.** If it fails
+after a Rails upgrade, stored credentials can no longer be opened: stop the
+upgrade and find out what changed in `MessageEncryptor`.
 
 ## Kinds: `config/wsjrdp_credential_kinds.yml`
 
-The registry of kinds, committed; it holds no secret. A further service is a
-further kind in this file.
+The registry, committed and free of secrets. A further service is a
+further kind.
 
 ```yaml
 kinds:
@@ -205,82 +135,223 @@ kinds:
       scope:         {type: enum, values: [read, write], default: read}
 ```
 
-A field has a `type` and may be `required`, be `secret` and have a
-`default`; an `enum` lists its `values`. `secret: true` decides how a field
-is shown and how it is read (below); every field is sealed, secret or not.
-
 | Type | Becomes | Accepted |
 |---|---|---|
 | `string` | String | a String, as given |
 | `email` | String | a String of the form of an address |
-| `integer` | Integer | an Integer, or decimal digits with an optional sign (`"587"`) |
+| `integer` | Integer | an Integer that fits a bigint, or up to 19 decimal digits with an optional sign (`"587"`) |
 | `boolean` | `true` / `false` | `true`, `false`, `"true"`, `"false"`, `"1"`, `"0"` |
 | `enum` | String | one of the field's `values` |
 | `url` | String | an absolute `http` or `https` URL with a host and without user info |
 
-Nothing is stripped: `" 587"` is no integer.
-
-**The file is read strictly** (`Wsjrdp::Credentials::Kinds`). Each of these
-raises `Wsjrdp::Credentials::Kinds::RegistryError`, which names the place
-(`config/wsjrdp_credential_kinds.yml: kinds.moss_api.fields.scope.default:
-...`): a key it does not know on any level; a kind or field name outside the
-grammar or longer than 48 characters; a type not in the table; a field
-called `name`, `created_at`, `valid_from` or `expires_at` (reserved for a
-version's name and dates) or `json_class` (see "Why `json_class` is
-reserved"); a default on a secret field (the file is committed); a `values`
-on a field that is no enum, an enum without values or with a value twice; a
-default that is no value of its field; a `title_field` that is no field of
-the kind or a secret one; a `remind_days_before` that is not a list of
-positive integers; a file that is no YAML or holds a date or an alias. The
-file is committed, so a broken one is a bug in every stage, production
-included.
-
-### Casting values
-
-`kind.cast(values, stage:)` turns a set of values -- strings from a form or
-a variable, or typed from YAML -- into the values of a version. The result
-has `values`, `errors`, `warnings` and `valid?`.
-
-- A field the kind does not have is an error (`unknown`).
-- `nil` and `""` count as not set. A field that is not set gets its
-  default; a required field that is still not set is an error (`required`).
-- A value that does not fit its type is an error (`not_a_string`,
-  `not_an_email`, `not_an_integer`, `not_a_boolean`, `not_in_values`,
-  `not_a_url`); a string that is not valid UTF-8 is `not_valid_text` for
-  every type. Values that are not a hash (or nil) raise `ArgumentError`.
-- A `url` that is not `https` is a **warning** (`not_https`) when the stage
-  is `production`, and saved all the same; in every other stage nothing is
-  said.
-- Errors and warnings name the field and a code, never a value. An
-  unknown field is named only when it is a valid name, else
-  `(not a name)`: it may be a value put in the wrong place.
-- The result (`Kind::Result`) hands its values out through `values` only.
-  `inspect`, `to_s`, `pp`, `as_json` and `to_json` show field names and
-  codes; Marshal and YAML refuse.
+- Nothing is stripped: `" 587"` is no integer. `nil` and `""` are not set;
+  a field not set gets its default.
+- The file is read strictly: anything it does not understand raises
+  `Kinds::RegistryError` in every stage, production included. Reserved
+  field names: `name`, `created_at`, `valid_from`, `expires_at` (a version's
+  name and dates) and `json_class`. A secret field has no default.
+- `kind.cast(values, stage:)` gives the values with `errors` and `warnings`
+  as codes (`required`, `unknown`, `not_an_integer`, `not_valid_text`, ...).
+  A `url` that is not `https` is a warning (`not_https`) in production only.
 
 ## The value object: `Wsjrdp::Credentials::Credential`
-
-What a consumer will get: the values of one version, with the kind, the
-account key, the stage and the fingerprint of the key it was opened with.
 
 ```ruby
 credential[:smtp_host]             # a public field
 credential.secret(:smtp_password)  # a secret field
 ```
 
-- `[]` refuses a secret field (`Credential::WrongAccess`, pointing to
-  `secret`), and `secret` refuses a public one, so a secret is only ever
-  read on purpose. An unknown field is `Credential::UnknownField`. A field
-  of the kind that is not set is `nil`.
-- No value ever shows: `inspect`, `to_s`, `pp`, `as_json` and `to_json` give
-  the kind, the account key, the stage, the names of the fields that are set
-  and the key's fingerprint; Marshal and YAML refuse.
+`[]` refuses a secret field and `secret` a public one
+(`Credential::WrongAccess`), so a secret is only read on purpose. An unknown
+field is `Credential::UnknownField`; a field that is not set is `nil`.
+`version_name` and `version_id` say which version it is.
+
+## The table: `wsjrdp_credentials`
+
+One row is **one version of one account in one stage**
+(`WsjrdpCredential`). Each column carries its comment in the database.
+
+| Columns | What they hold |
+|---|---|
+| `kind`, `account_key`, `stage` | the account and the stage; fixed once written |
+| `name`, `comment` | the version's own name and comment |
+| `public_data` | the fields that are not secret, plain: `{"smtp_port" => 587}` |
+| `secret_data` | each secret field sealed by itself: `{"smtp_password" => "<sealed text>"}` |
+| `scheme`, `encryption_key_fingerprint`, `encryption_key_label` | the version's one key |
+| `valid_from`, `expires_at`, `revoked_at` | instants in UTC |
+| `remind_days_before`, `remind_emails`, `reminded_at` | reminder data; no mail is sent yet |
+| `last_success_at`, `last_failure_at`, `last_failure_message` | feedback from use; nothing writes them yet |
+| `author_id`, `author_type` | who deposited it |
+
+Nothing is unique beyond the id: versions of an account may overlap.
+
+**One key per version.** Every sealed value of a row uses the key the row
+names, and a new version names the active key even without a secret field.
+Who can write the database but has no key cannot read a sealed value. He
+can change any plain field (point `base_url` elsewhere), and he can put a
+made-up value for a secret field into the plain column: reading never
+depends on the column, and a plain value is not authenticated. Only a
+sealed value of the same name wins over it.
+
+## The model: `WsjrdpCredential`
+
+- **Fixed once written:** `kind`, `account_key`, `stage`, the author and
+  `created_at`. Everything else can change; the key columns through a
+  re-key.
+- **Instants:** `valid_from=`, `expires_at=` and `revoked_at=` take a `Time`
+  or `nil`, nothing else (else `not_an_instant`). A version counts **from
+  `valid_from` on, up to but not including `expires_at`**, and is revoked
+  from `revoked_at` on. Do not use `write_attribute` for instants: it
+  parses a text in the app's time zone.
+- **Reading a field never depends on its column** (`field_values`); a
+  changed kind cannot hide a field. If a name is in both columns, the
+  sealed value wins over the plain one; a plain value is not
+  authenticated.
+- **Writing a field** (`write_field`) puts it into the column named and
+  removes it from the other; the write paths name the column the kind says
+  now.
+- `field_report` lists, by name, which fields are sealed, plain, in both
+  columns, in the wrong column, unknown to the kind, or do not open: for
+  the pages. `secret_key_problem(keys)` says why secret fields cannot be
+  changed with these keys (see `Change` below), or nil.
+- Validation messages are fixed texts; `errors.details` holds codes only.
+- **Hygiene:** `as_json` and `to_xml` leave `secret_data` out; `inspect`
+  and the SQL log mask both value columns (initializer
+  `wsjrdp_2027.credential_log_filter`).
+
+### The states of a row
+
+`row.examine(at:, keys:, kinds:)` gives the state and, where the values
+open and fit, the `Credential` and the kind's warnings (`not_https`). It never raises for the row's content.
+Checked in this order:
+
+| State | Meaning |
+|---|---|
+| `other_stage` | a row of another stage |
+| `key_missing` | sealed with a key this instance does not have |
+| `kind_unknown` | its kind is no longer in the registry |
+| `unreadable` | a sealed value does not open, the scheme is unknown, or the row is malformed |
+| `kind_mismatch` | it opens, but no longer fits its kind |
+| `revoked` | `revoked_at` is reached |
+| `expired` | `expires_at` is reached |
+| `not_yet_valid` | `valid_from` lies ahead |
+| `active` | usable here |
+
+Content comes before the lifecycle, so that a planned version that will not
+open says so before its time comes. When the registry changed since a
+version was written, its fields are cast again with the kind as it is now;
+a version that no longer fits is `kind_mismatch`, until `Change` gives the
+field anew.
+
+### The trail: PaperTrail
+
+PaperTrail records creating, changing, re-keying and deleting a version
+(`item_type` `WsjrdpCredential`, no `main`).
+
+- **No sealed text is ever in the trail**: `secret_data` is skipped, so an
+  old secret cannot be restored, on purpose. `wsjrdp_data` names the secret
+  fields that were set, changed, re-sealed or removed
+  ([log_entries.md](log_entries.md)).
+- A change of secret fields alone is recorded too (names only).
+- The health columns and `updated_at` make no entry.
+- Do not use `row.paper_trail.update_columns`: it writes the changes
+  without the skip.
+
+## The write paths
+
+Each gives a `Wsjrdp::Credentials::WriteResult` and writes nothing on an
+error:
+
+```ruby
+result.saved?        # the row was written
+result.record        # the row as written, nil when nothing was written
+result.field_errors  # Kind::Problem(field, code), e.g. client_secret: key_not_active
+result.errors        # Kind::Problem(attribute, code), e.g. expires_at: not_after_valid_from
+result.warnings      # e.g. base_url: not_https in production
+```
+
+They raise only for a programming error (values that are not a Hash, an
+instant that is not a `Time`, a record that is not saved). `Deposit` and
+`Rekey` also raise `NoKeyError` when the instance has no key; `Change`
+answers `key_missing` for a secret field instead. `Change` and `Rekey` lock
+the row; a row of another stage is `stage: other_stage` and is not changed
+at all. A value column that is not a hash (a row written past the
+validations) is `not_field_values`: `Rekey` changes nothing, `Change`
+writes no field.
+
+### `Deposit`: a new version
+
+```ruby
+Wsjrdp::Credentials::Deposit.call(kind: "moss_api", account_key: "default",
+  values: {"client_id" => "...", "client_secret" => "..."}, name: "key of May",
+  valid_from: Time.utc(2027, 5, 1), expires_at: Time.utc(2027, 11, 1), comment: "...", author: current_person)
+```
+
+Casts the values with the kind and seals each secret field with the active
+key. Always for the instance's own stage, and always needs a key.
+
+### `Change`: change a version
+
+```ruby
+Wsjrdp::Credentials::Change.call(record: row, values: {"client_secret" => "...", "scope" => ""},
+  name: "key of June", valid_from: Time.utc(2027, 6, 1), expires_at: nil)
+Wsjrdp::Credentials::Change.call(record: row, revoked_at: Time.current)  # revoked_at: nil takes it back
+```
+
+- **Only what is given changes.** A field given as `nil` or `""` is
+  removed, so a form must leave out a secret field nobody touched.
+- **The kind's rules are checked for the fields given only.** A version a
+  changed registry left stale can still be revoked, renamed and
+  re-windowed.
+- **A secret field** can be changed only while the version's key is the
+  active key. Otherwise: `key_not_active` (re-key first), `key_missing` (a
+  new version is the way to new secrets) or `unknown_scheme`. Plain fields,
+  name, comment and window change whatever the key.
+
+### `Rekey`: seal a version with the active key
+
+```ruby
+Wsjrdp::Credentials::Rekey.call(record: row)
+```
+
+Every sealed value is opened with the version's key and sealed again with
+the active key; every field moves into the column the kind names now. **All
+or nothing:** a value that does not open (`not_opening`), a missing key
+(`key_missing`) or an unknown scheme changes nothing. With the active key
+already, only misplaced fields move (warning `already_active`).
+
+## The lookup: `Wsjrdp::Credentials.fetch` and `.candidates`
+
+```ruby
+moss = Wsjrdp::Credentials.fetch(:moss_api, "default")    # or Wsjrdp::Credentials::NoCredentialError
+moss[:client_id]
+moss.secret(:client_secret)
+Wsjrdp::Credentials.candidates(:moss_api, "default")      # the usable versions, newest first
+```
+
+- `Wsjrdp::Credentials::Lookup` asks its sources in order; the first that
+  names an account answers for it as a whole. The only source so far is
+  the database (`DatabaseSource`).
+- A usable row is in state `active`. **The newest wins** (by `created_at`);
+  the others are the fallbacks. The window decides *whether* a version
+  counts, never *which* one wins.
+- Nothing is remembered: each call reads the rows again.
+- `NoCredentialError` names the account, the stage and the states found:
+  `moss_api/default: no usable version in stage test (database: 2 versions,
+  none usable: expired 1, other_stage 1)`.
 
 ## Specs
 
-The specs of `spec/domain/wsjrdp/credentials/` are standalone: they do not
-boot Rails and cannot touch a database. From the wagon directory:
+`spec/domain/wsjrdp/credentials/` is standalone (no Rails, no database):
 
 ```bash
 bundle exec rspec spec/domain/wsjrdp/credentials
 ```
+
+The model, the write paths, the lookup with the database and the boot
+wiring need the test database; run them by the rules of `AGENTS.md`
+("Running tests"): `spec/models/wsjrdp_credential_spec.rb`,
+`spec/domain/wsjrdp/credentials_store_spec.rb`,
+`spec/domain/wsjrdp/credentials_keys_boot_spec.rb`. The boot reads the
+environment: set no `HITOBITO_CREDENTIAL*` variable in the shell that runs
+the specs.

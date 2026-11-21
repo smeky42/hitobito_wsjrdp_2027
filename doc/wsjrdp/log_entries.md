@@ -84,6 +84,24 @@ day is deleted when it ends, so its id alone may point to nothing.
 Any other category is written and shown as it is. The message is shown on one
 line (white space squeezed), escaped -- plain text, no HTML.
 
+## `wsjrdp_data` on PaperTrail's own versions
+
+`wsjrdp_data` is also filled on PaperTrail's ordinary `create`, `update` and
+`destroy` rows of one model, through its `meta` option, without an event of
+its own:
+
+| `item_type` | `wsjrdp_data` |
+|---|---|
+| `WsjrdpCredential` | the sorted names of the secret fields that changed, under the keys that have any: `secret_fields_set`, `secret_fields_changed`, `secret_fields_resealed` (a re-key), `secret_fields_removed` (on `destroy`, all of them); `{}` when no secret field changed |
+
+No sealed text is in any column of `versions` (see
+[credentials.md](credentials.md), "The trail: PaperTrail"). A save that
+changes secret fields only is no change PaperTrail sees, so the model
+writes that `update` row itself, with the request's whodunnit,
+`mutation_id` and `whodunnit_type` and nothing in `object` or
+`object_changes`. The core shows these rows by its own rules, without
+`wsjrdp_data`.
+
 ## Showing
 
 `Wsjrdp2027::PaperTrail::VersionDecorator#changes` shows an entry by its

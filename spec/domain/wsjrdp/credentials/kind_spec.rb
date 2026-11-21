@@ -147,6 +147,15 @@ describe Wsjrdp::Credentials::Kind do
       end
     end
 
+    it "integer: only what a bigint holds" do
+      [2**63 - 1, -(2**63), "9223372036854775807", "-9223372036854775808"].each do |value|
+        expect(cast_one("integer", value).errors).to eq([]), value.inspect
+      end
+      [2**63, "9223372036854775808", "1" * 140_000, -(2**63) - 1].each do |value|
+        expect(problems(cast_one("integer", value).errors)).to eq([["f", :not_an_integer]]), value.to_s[0, 30]
+      end
+    end
+
     it "boolean: true or false" do
       {true => true, false => false, "true" => true, "false" => false, "1" => true, "0" => false}.each do |value, cast|
         expect(cast_one("boolean", value).values).to eq({"f" => cast}), value.inspect
@@ -193,6 +202,17 @@ describe Wsjrdp::Credentials::Kind do
       options = (type == "enum") ? {values: %w[a]} : {}
       expect(problems(cast_one(type, invalid, **options).errors)).to eq([["f", :not_valid_text]]), type
     end
+  end
+
+  it "answers not_valid_text for a string with a NUL character, for every type, secret or not" do
+    ["made-up\u0000secret", "\u0000", "https://example.org/\u0000", "587\u0000"].each do |with_nul|
+      Wsjrdp::Credentials::Field::TYPES.each do |type|
+        options = (type == "enum") ? {values: [with_nul]} : {}
+        expect(problems(cast_one(type, with_nul, **options).errors)).to eq([["f", :not_valid_text]]), type
+      end
+    end
+    field = Wsjrdp::Credentials::Field.new(name: "f", type: "string", secret: true)
+    expect(field.cast("made-up\u0000secret")).to eq([nil, :not_valid_text])
   end
 
   describe "a url that is not https" do
