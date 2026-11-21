@@ -20,7 +20,8 @@ module Wsjrdp::Credentials
   # registry never makes a version impossible to revoke or rename. A secret
   # field can be changed only while the version's key is the active one
   # (else key_not_active, key_missing or unknown_scheme). The row is read
-  # again and locked.
+  # again and locked. With expected_updated_at (the row's updated_at when a
+  # form was drawn), a row changed since is refused as stale.
   class Change
     # An attribute left out keeps its value.
     NOT_GIVEN = Object.new.freeze
@@ -28,16 +29,20 @@ module Wsjrdp::Credentials
     def self.call(**) = new(**).call
 
     def initialize(record:, values: nil, name: NOT_GIVEN, comment: NOT_GIVEN, valid_from: NOT_GIVEN,
-      expires_at: NOT_GIVEN, revoked_at: NOT_GIVEN, keys: Keys.current, kinds: Kinds.current)
+      expires_at: NOT_GIVEN, revoked_at: NOT_GIVEN, expected_updated_at: nil, keys: Keys.current, kinds: Kinds.current)
       unless record.is_a?(WsjrdpCredential) && record.persisted?
         raise ArgumentError, "the record is not a saved #{WsjrdpCredential.name}"
       end
       raise ArgumentError, "the values are not a hash" unless values.nil? || values.is_a?(Hash)
+      unless expected_updated_at.nil? || expected_updated_at.is_a?(Time)
+        raise ArgumentError, "expected_updated_at is not a Time"
+      end
 
       @attributes = {name: name, comment: comment, valid_from: valid_from, expires_at: expires_at,
                      revoked_at: revoked_at}.reject { |_attribute, value| value.equal?(NOT_GIVEN) }
       WsjrdpCredential.check_instants!(**@attributes.except(:name, :comment))
       @id = record.id
+      @expected_updated_at = expected_updated_at
       @values = (values || {}).to_h { |name, value| [Wsjrdp::Credentials.name_of(name), value] }
       @keys = keys
       @kinds = kinds
@@ -53,6 +58,10 @@ module Wsjrdp::Credentials
     private
 
     def change(row)
+      # Compared under the lock, to the microsecond.
+      if @expected_updated_at && row.updated_at != @expected_updated_at
+        return WriteResult.new(errors: [Kind::Problem.new("base", :stale)])
+      end
       return WriteResult.new(errors: [Kind::Problem.new("stage", :other_stage)]) unless row.stage == @keys.stage
 
       kind = @kinds[row.kind]

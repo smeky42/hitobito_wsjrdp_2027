@@ -7,7 +7,6 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-require "json"
 require "yaml"
 
 module Wsjrdp::Credentials
@@ -32,10 +31,8 @@ module Wsjrdp::Credentials
 
     PATH = File.expand_path("../../../../config/wsjrdp_credential_kinds.yml", __dir__)
     SOURCE = "config/wsjrdp_credential_kinds.yml"
-    # The names a variable or a file states beside a version's fields, and,
-    # as a precaution, json_class: opening reads with JSON.load, which would
-    # build an object from a hash with that key.
-    RESERVED_FIELD_NAMES = (%w[name created_at valid_from expires_at] + [JSON.create_id]).freeze
+    # The names a variable or a file states beside a version's fields.
+    RESERVED_FIELD_NAMES = %w[name created_at valid_from expires_at].freeze
     TOP_KEYS = %w[kinds].freeze
     KIND_KEYS = %w[title_field remind_days_before fields].freeze
     FIELD_KEYS = %w[type required secret default values].freeze
@@ -217,6 +214,8 @@ module Wsjrdp::Credentials
       end
 
       cast, code = field.cast(default)
+      # An enum's default is one of the values it suggests.
+      code ||= :not_in_values if field.type == "enum" && field.values.none?(cast)
       error("#{path}.default", "is no value of the field (#{code})") if code
       cast
     end

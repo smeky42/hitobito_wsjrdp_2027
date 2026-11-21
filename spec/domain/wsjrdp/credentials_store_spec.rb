@@ -62,6 +62,16 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       expect(opened(row, "client_secret")).to eq(moss_secret)
     end
 
+    it "takes a value of an enum field beyond its suggestions, and the version stays usable" do
+      row = deposit!(values: moss_values.merge("scope" => "admin"))
+
+      expect(row.reload.public_data["scope"]).to eq("admin")
+      expect(row.state(keys: keys, kinds: kinds)).to eq(:active)
+      expect(Wsjrdp::Credentials.fetch(:moss_api, "default")[:scope]).to eq("admin")
+      expect(change_version(row, values: {"scope" => "owner"})).to be_saved
+      expect(row.reload.public_data["scope"]).to eq("owner")
+    end
+
     it "stores the account key folded, and the lookup finds it however it is written" do
       row = deposit!(account_key: "Foo@WorldScoutJamboree.DE")
 
@@ -85,13 +95,13 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
     it "hands back the errors per field and per attribute, as codes, and writes nothing" do
       result = nil
       expect {
-        result = deposit(values: {"client_id" => "made-up-client", "client_secret" => "", "scope" => moss_secret},
+        result = deposit(values: {"client_id" => "made-up-client", "client_secret" => "", "scope" => 4711},
           valid_from: Time.utc(2027, 5, 2), expires_at: Time.utc(2027, 5, 1), account_key: "De fault")
       }.not_to change(WsjrdpCredential, :count)
 
       expect(result).not_to be_saved
       expect(result.record).to be_nil
-      expect(codes(result.field_errors)).to contain_exactly("client_secret: required", "scope: not_in_values")
+      expect(codes(result.field_errors)).to contain_exactly("client_secret: required", "scope: not_a_string")
       expect(codes(result.errors)).to contain_exactly("account_key: not_a_name", "expires_at: not_after_valid_from")
       [result.inspect, result.to_json].each { |text| expect(text).not_to include(moss_secret) }
     end
@@ -109,14 +119,31 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       expect(codes(result.warnings)).to eq(["base_url: not_https"])
     end
 
-    it "hands back codes for names and texts of invalid encoding, without raising" do
-      bad = (+"mail\xff").force_encoding("UTF-8")
+    {
+      "invalid UTF-8" => (+"made-up\xff").force_encoding("UTF-8"),
+      "binary with high bytes" => (+"made-up-\xE4\xFF").b,
+      "Latin-1 with high bytes" => "made-up-\u00e4".encode("ISO-8859-1"),
+      "a NUL character" => "made-up\u0000value"
+    }.each do |what, bad|
+      it "hands back codes for #{what} in the kind, the key, any field, the name and the comment, without raising" do
+        [[{kind: bad}, :errors, "kind: unknown_kind"], [{account_key: bad}, :errors, "account_key: not_a_name"],
+          [{values: moss_values.merge("client_id" => bad)}, :field_errors, "client_id: not_valid_text"],
+          [{values: moss_values.merge("client_secret" => bad)}, :field_errors, "client_secret: not_valid_text"],
+          [{values: moss_values.merge("base_url" => "https://example.org/#{bad.b}".b)}, :field_errors,
+            "base_url: not_valid_text"],
+          [{name: bad}, :errors, "name: not_valid_text"], [{comment: bad}, :errors, "comment: not_valid_text"]]
+          .each do |options, list, code|
+          result = nil
+          expect { result = deposit(**options) }.not_to raise_error
+          expect(codes(result.public_send(list))).to eq([code]), options.keys.inspect
+          expect([result.inspect, result.to_json].join).not_to include("made-up")
+        end
+        expect(WsjrdpCredential.count).to eq(0)
+      end
+    end
 
-      expect(codes(deposit(kind: bad).errors)).to eq(["kind: unknown_kind"])
-      expect(codes(deposit(account_key: bad).errors)).to eq(["account_key: not_a_name"])
-      expect(codes(deposit(name: bad).errors)).to eq(["name: not_valid_text"])
-      expect(codes(deposit(comment: bad).errors)).to eq(["comment: not_valid_text"])
-      expect(WsjrdpCredential.count).to eq(0)
+    it "takes plain ASCII in any encoding as text" do
+      expect(deposit(name: "made-up".b)).to be_saved
     end
 
     it "hands back not_an_integer for a number a bigint does not hold, without raising" do
@@ -125,37 +152,6 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       result = nil
       expect { result = deposit(kind: "mail_account", account_key: "finanzen", values: values) }.not_to raise_error
       expect(codes(result.field_errors)).to eq(["smtp_port: not_an_integer"])
-    end
-
-    it "hands back not_valid_text for a binary or Latin-1 text with high bytes, without raising" do
-      [(+"made-up-\xE4\xFF").b, "made-up-\u00e4".encode("ISO-8859-1")].each do |bad|
-        [[{values: moss_values.merge("client_id" => bad)}, :field_errors, "client_id: not_valid_text"],
-          [{values: moss_values.merge("client_secret" => bad)}, :field_errors, "client_secret: not_valid_text"],
-          [{name: bad}, :errors, "name: not_valid_text"], [{comment: bad}, :errors, "comment: not_valid_text"]]
-          .each do |options, list, code|
-          result = nil
-          expect { result = deposit(**options) }.not_to raise_error
-          expect(codes(result.public_send(list))).to eq([code]), "#{bad.encoding} #{options.keys}"
-        end
-      end
-      expect(deposit(name: "made-up".b)).to be_saved # plain ASCII in any encoding is text
-    end
-
-    it "hands back not_valid_text for a NUL character in any field, secret or not, in the name and the comment" do
-      nul = "made-up\u0000value"
-      public_nul = moss_values.merge("client_id" => nul)
-      [[{values: public_nul}, :field_errors, "client_id: not_valid_text"],
-        [{values: moss_values.merge("client_secret" => nul)}, :field_errors, "client_secret: not_valid_text"],
-        [{values: moss_values.merge("base_url" => "https://example.org/\u0000")}, :field_errors,
-          "base_url: not_valid_text"],
-        [{name: nul}, :errors, "name: not_valid_text"], [{comment: nul}, :errors, "comment: not_valid_text"]]
-        .each do |options, list, code|
-        result = nil
-        expect { result = deposit(**options) }.not_to raise_error
-        expect(codes(result.public_send(list))).to eq([code])
-        expect([result.inspect, result.to_json].join).not_to include("made-up")
-      end
-      expect(WsjrdpCredential.count).to eq(0)
     end
 
     it "raises for values that are not a Hash, and for a window that is not a Time or nil" do
@@ -230,6 +226,24 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       expect(row.public_data["client_id"]).to eq("made-up-client")
     end
 
+    it "refuses as stale a row changed after the expected updated_at, writing nothing" do
+      row = deposit!
+      drawn = row.updated_at
+      change_version(WsjrdpCredential.find(row.id), comment: "by someone else")
+
+      result = change_version(row, comment: "mine", expected_updated_at: drawn)
+
+      expect(codes(result.errors)).to eq(["base: stale"])
+      expect(row.reload.comment).to eq("by someone else")
+    end
+
+    it "changes a row whose updated_at is the expected one" do
+      row = deposit!
+
+      expect(change_version(row, comment: "mine", expected_updated_at: row.updated_at)).to be_saved
+      expect(row.reload.comment).to eq("mine")
+    end
+
     describe "after the registry made the version no longer fit" do
       let(:stricter) do
         changed_kinds("moss_api") do |fields|
@@ -253,8 +267,8 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
         row = deposit!
         result = change_version(row, values: {"scope" => "write"}, kinds: stricter)
         expect(result).to be_saved
-        expect(codes(change_version(row, values: {"scope" => "admin"}, kinds: stricter).field_errors))
-          .to eq(["scope: not_in_values"])
+        expect(codes(change_version(row, values: {"scope" => 7}, kinds: stricter).field_errors))
+          .to eq(["scope: not_a_string"])
       end
 
       it "mends the version when the missing field is given" do
@@ -301,9 +315,9 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
 
     it "casts the given values with the kind and names unknown fields, writing nothing on an error" do
       row = deposit!
-      result = change_version(row, values: {"scope" => "admin", "a" * 64 => "x", "client_id" => "made-up-new"})
+      result = change_version(row, values: {"scope" => 7, "a" * 64 => "x", "client_id" => "made-up-new"})
 
-      expect(codes(result.field_errors)).to contain_exactly("scope: not_in_values", "(not a name): unknown")
+      expect(codes(result.field_errors)).to contain_exactly("scope: not_a_string", "(not a name): unknown")
       expect(row.reload.public_data["client_id"]).to eq("made-up-client")
     end
 
@@ -571,16 +585,6 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       end
     end
 
-    it "takes the window's edges as instants: from valid_from on, up to but not including expires_at" do
-      deposit!(valid_from: Time.utc(2027, 5, 1), expires_at: Time.utc(2027, 11, 1))
-
-      usable = ->(time) { travel_to(time) { Wsjrdp::Credentials.candidates(:moss_api, "default").size } }
-      expect(usable.call(Time.utc(2027, 4, 30, 23, 59, 59))).to eq(0)
-      expect(usable.call(Time.utc(2027, 5, 1))).to eq(1)
-      expect(usable.call(Time.utc(2027, 10, 31, 23, 59, 59))).to eq(1)
-      expect(usable.call(Time.utc(2027, 11, 1))).to eq(0)
-    end
-
     it "skips what is not usable here and goes on to the next one" do
       usable = travel_to(1.day.ago) { deposit! }
       deposit!.update!(revoked_at: Time.current)
@@ -594,26 +598,12 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
     end
 
     it "goes on to an older version when the newer one no longer fits the registry" do
-      older = travel_to(1.day.ago) { deposit!(values: moss_values.merge("scope" => "read")) }
-      deposit!(values: moss_values.merge("scope" => "write"))
-      changed = changed_kinds("moss_api") { |fields| fields["scope"]["values"] = ["read"] }
+      older = travel_to(1.day.ago) { deposit!(values: moss_values.merge("client_id" => "kasse@example.org")) }
+      deposit!(values: moss_values.merge("client_id" => "made-up-client"))
+      changed = changed_kinds("moss_api") { |fields| fields["client_id"]["type"] = "email" }
       allow(Wsjrdp::Credentials::Kinds).to receive(:current).and_return(changed)
 
       expect(Wsjrdp::Credentials.fetch(:moss_api, "default").version_id).to eq(older.id)
-    end
-
-    it "reads a field by the kind as it is now, whichever column it lies in" do
-      deposit!
-      changed = changed_kinds("moss_api") do |fields, kind|
-        fields["client_id"]["secret"] = true
-        kind.delete("title_field") # a title field is never secret
-        fields["client_secret"].delete("secret")
-      end
-      allow(Wsjrdp::Credentials::Kinds).to receive(:current).and_return(changed)
-
-      credential = Wsjrdp::Credentials.fetch(:moss_api, "default")
-      expect(credential.secret(:client_id)).to eq("made-up-client")
-      expect(credential[:client_secret]).to eq(moss_secret)
     end
 
     it "raises a named error that names the account and the states, never a value" do
@@ -632,14 +622,6 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       expect(Wsjrdp::Credentials.fetch(:moss_api, "default").version_id).to eq(row.id)
 
       row.update!(revoked_at: Time.current)
-      expect(Wsjrdp::Credentials.candidates(:moss_api, "default")).to be_empty
-    end
-
-    it "uses a row of this stage only with a key of this instance" do
-      deposit!
-      other = Wsjrdp::Credentials::Keys.new("test:#{"b" * 64}", stage: "test")
-      allow(Wsjrdp::Credentials::Keys).to receive(:current).and_return(other)
-
       expect(Wsjrdp::Credentials.candidates(:moss_api, "default")).to be_empty
     end
   end

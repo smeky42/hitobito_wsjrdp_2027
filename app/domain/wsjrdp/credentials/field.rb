@@ -22,7 +22,8 @@ module Wsjrdp::Credentials
   # - integer: an Integer that fits a bigint, from an Integer or from
   #   decimal digits with an optional sign ("587");
   # - boolean: true or false, from true/false or "true"/"false"/"1"/"0";
-  # - enum: a String, one of the field's values;
+  # - enum: a String; the field's values are what a form suggests, any
+  #   text is taken;
   # - url: a String, an absolute http or https URL with a host and without
   #   user info. One that is not https is a warning in production
   #   (#warning), never an error.
@@ -65,7 +66,7 @@ module Wsjrdp::Credentials
       when "email" then cast_email(value)
       when "integer" then cast_integer(value)
       when "boolean" then BOOLEANS.key?(value) ? ok(BOOLEANS[value]) : failure(:not_a_boolean)
-      when "enum" then values.include?(value) ? ok(value) : failure(:not_in_values)
+      when "enum" then value.is_a?(String) ? ok(value) : failure(:not_a_string)
       when "url" then cast_url(value)
       else raise ArgumentError, "unknown type #{type}"
       end

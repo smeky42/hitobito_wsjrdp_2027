@@ -20,10 +20,9 @@ module Wsjrdp::Credentials
   #   production:<64 hex>,production:<64 hex>
   #
   # The 32 bytes are the AES-256 key as they are; nothing is derived from
-  # them. A key is known by its fingerprint, the Base64 of the SHA-256 of the
-  # secret, lower-cased, as Wsjrdp2027::ServiceTokenHmacKeys makes it:
-  #
-  #   printf %s "$SECRET" | openssl dgst -sha256 -binary | base64
+  # them. A key is known by its fingerprint: the SHA-256 of the secret,
+  # lower-cased, as 64 lower-case hex digits
+  # (`printf %s "$SECRET" | tr 'A-F' 'a-f' | sha256sum`).
   #
   # - The first entry of this instance's stage is active: new texts are
   #   sealed with it.
@@ -152,8 +151,6 @@ module Wsjrdp::Credentials
     end
 
     def production? = stage == PRODUCTION
-
-    def empty? = keys.empty?
 
     # The key new texts are sealed with; nil if there is none.
     def active = keys.first
