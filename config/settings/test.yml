@@ -9,6 +9,13 @@ service_tokens:
   # refuses it.
   hmac_keys_default: "test:558451850472556add67e629c8393b55ddc9a5c68215209faf05a56572d5c350"
 
+credentials:
+  # The key of the credential store in the Rails environment test when
+  # HITOBITO_CREDENTIAL_KEYS is not set (Wsjrdp::Credentials::Keys).
+  # Made up, committed and public: it seals only test credentials, no
+  # other stage has a committed key, and production refuses it.
+  keys_default: "test:b241d094acb3dd40fe70691f85ef930e5c3314ae44302c145b72623d12a952e6"
+
 documents:
   # Specs never write below the wagon's private/uploads; examples that store
   # files stub Wsjrdp2027::DocumentStore.root with a folder of their own.

@@ -129,6 +129,87 @@ describe Wsjrdp2027::ServiceTokenHmacKeys do
     end
   end
 
+  describe "an entry that is not valid text" do
+    # Invalid UTF-8; the literal is a String of invalid encoding.
+    let(:bad_stage) { "produc\xFFtion:#{secret_c}" }
+    let(:bad_secret) { "production:#{"c" * 63}\xFF" }
+
+    it "is recorded and ignored in production, the good entries still active" do
+      keys = keys("production:#{secret_a},#{bad_stage},#{bad_secret},production:#{secret_b}", stage: "production")
+
+      expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_a), fingerprint(secret_b)])
+      expect(keys.active.fingerprint).to eq(fingerprint(secret_a))
+      expect(keys.problems).to eq(["entry 2: not valid text", "entry 3: not valid text"])
+    end
+
+    it "is logged without anything of the entry in production" do
+      output = StringIO.new
+      keys("production:#{secret_a},#{bad_secret}", stage: "production").log_summary(Logger.new(output))
+
+      expect(output.string).to include("entry 2: not valid text")
+      expect(output.string).not_to include("c" * 16)
+    end
+
+    it "refuses to start outside production, the message without the entry" do
+      ["develop\xFFment:#{secret_c}", "development:#{"c" * 63}\xFF"].each do |entry|
+        expect { keys("development:#{secret_a},#{entry}", stage: "development") }
+          .to raise_error(described_class::ConfigurationError) { |error|
+            expect(error.message).to include("entry 2: not valid text")
+            expect(error.message).not_to include("c" * 16)
+            expect(error.message).to be_valid_encoding
+          }
+      end
+    end
+  end
+
+  describe "the warning on an entry of another stage" do
+    # 64 hex digits are a valid stage: a secret typed into the stage slot.
+    let(:typed_secret) { "0123456789abcdef" * 4 }
+
+    def log_of(keys)
+      output = StringIO.new
+      keys.log_summary(Logger.new(output))
+      output.string
+    end
+
+    # No run of 8 characters of the typed secret appears in text.
+    def expect_none_of_typed_secret(text)
+      typed_secret.chars.each_cons(8).map(&:join).each do |window|
+        expect(text).not_to include(window)
+      end
+    end
+
+    it "says another stage for a 64-hex stage in production, the log holding none of it" do
+      keys = keys("production:#{secret_a},#{typed_secret}:#{secret_b}", stage: "production")
+
+      expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_a)])
+      expect(keys.warnings).to eq(["entry 2 belongs to another stage, this is production"])
+      expect_none_of_typed_secret(log_of(keys))
+    end
+
+    it "says another stage for a 64-hex stage outside production, the log holding none of it" do
+      keys = keys("development:#{secret_a},#{typed_secret}:#{secret_b}", stage: "development")
+
+      expect(keys.warnings).to eq(["entry 2 belongs to another stage, this is development"])
+      expect_none_of_typed_secret(log_of(keys))
+    end
+
+    it "still names an ordinary stage" do
+      keys = keys("production:#{secret_a},staging:#{secret_b}", stage: "production")
+
+      expect(keys.warnings).to eq(["entry 2 belongs to stage staging, this is production"])
+    end
+
+    it "names a stage of 32 characters, not one of 33" do
+      keys = keys("production:#{secret_a},#{"s" * 32}:#{secret_b},#{"t" * 33}:#{secret_c}", stage: "production")
+
+      expect(keys.warnings).to eq([
+        "entry 2 belongs to stage #{"s" * 32}, this is production",
+        "entry 3 belongs to another stage, this is production"
+      ])
+    end
+  end
+
   describe ".stage" do
     it "is the Rails environment outside RAILS_ENV=production" do
       expect(described_class.stage).to eq("test")

@@ -26,6 +26,14 @@ How-to guides — authoritative, follow them:
   typed dates, `Wsjrdp::DateInput`: ISO `YYYY-MM-DD` and German `D.M.YYYY` /
   `D.M.YY`, nothing else (no `Date.parse` fragments). Use it for every date
   read from a form, a parameter or a file.
+- [`doc/wsjrdp/credentials.md`](doc/wsjrdp/credentials.md) — the credential
+  store's building blocks under `Wsjrdp::Credentials`: the stage keys in
+  `HITOBITO_CREDENTIAL_KEYS` (exactly 64 hex, no committed key outside
+  `test`), sealing with `ActiveSupport::MessageEncryptor` and the
+  golden-vector spec that is **never** repaired by making new texts, the
+  kind registry `config/wsjrdp_credential_kinds.yml` with its field types,
+  and the value object that never prints a value. Read it before touching
+  anything that stores or reads a password or API key.
 - [`doc/fin/money_conventions.md`](doc/fin/money_conventions.md) — the house standard
   for monetary amounts across the finance tables: currency axes
   (`base_*`/`transaction_*`), signed vs unsigned storage (`debit_credit`
