@@ -19,20 +19,24 @@ module Wsjrdp::Credentials
   #
   # - string: a String, as given;
   # - email: a String of the form of an address;
-  # - integer: an Integer, from an Integer or from decimal digits with an
-  #   optional sign ("587");
+  # - integer: an Integer that fits a bigint, from an Integer or from
+  #   decimal digits with an optional sign ("587");
   # - boolean: true or false, from true/false or "true"/"false"/"1"/"0";
   # - enum: a String, one of the field's values;
   # - url: a String, an absolute http or https URL with a host and without
   #   user info. One that is not https is a warning in production
   #   (#warning), never an error.
   #
-  # Nothing is stripped: " 587" is no integer. A String of invalid encoding
-  # is no value of any type (not_valid_text). A cast answers an error code,
-  # never the value.
+  # Nothing is stripped: " 587" is no integer. A String that is not valid
+  # text (Wsjrdp::Credentials.text?: of invalid encoding, or holding a NUL)
+  # is no value of any type (not_valid_text), secret or not. A cast answers
+  # an error code, never the value.
   class Field
     TYPES = %w[email string integer enum boolean url].freeze
-    INTEGER_FORMAT = /\A[+-]?\d+\z/
+    # At most 19 digits, so that a long text is not parsed at all.
+    INTEGER_FORMAT = /\A[+-]?\d{1,19}\z/
+    # What PostgreSQL's bigint holds.
+    INTEGER_RANGE = (-(2**63))..(2**63 - 1)
     BOOLEANS = {true => true, false => false, "true" => true, "false" => false, "1" => true, "0" => false}.freeze
 
     attr_reader :name, :type, :default, :values
@@ -52,9 +56,9 @@ module Wsjrdp::Credentials
     def secret? = @secret
 
     # [cast value, nil] or [nil, error code] for a value that is set. A
-    # String of invalid encoding is not_valid_text for every type.
+    # String that is not valid text is not_valid_text for every type.
     def cast(value)
-      return failure(:not_valid_text) if value.is_a?(String) && !value.valid_encoding?
+      return failure(:not_valid_text) if value.is_a?(String) && !Wsjrdp::Credentials.text?(value)
 
       case type
       when "string" then value.is_a?(String) ? ok(value) : failure(:not_a_string)
@@ -90,10 +94,8 @@ module Wsjrdp::Credentials
     end
 
     def cast_integer(value)
-      return ok(value) if value.is_a?(Integer)
-      return failure(:not_an_integer) unless value.is_a?(String) && INTEGER_FORMAT.match?(value)
-
-      ok(Integer(value, 10))
+      value = Integer(value, 10) if value.is_a?(String) && INTEGER_FORMAT.match?(value)
+      (value.is_a?(Integer) && INTEGER_RANGE.cover?(value)) ? ok(value) : failure(:not_an_integer)
     end
 
     def cast_url(value)

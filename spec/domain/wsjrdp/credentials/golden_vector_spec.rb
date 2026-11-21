@@ -16,12 +16,17 @@
 # ActiveSupport::MessageEncryptor (doc/wsjrdp/credentials.md, "Sealing").
 # Replacing the texts would only hide that.
 #
+# The texts were replaced once, on 2026-11-21, before any credential had
+# been stored anywhere: the store moved from one sealed text for all fields
+# of a version to one sealed text per secret field, {"value" => ...}, with
+# the field's name in the purpose.
+#
 # Rails 7.1 writes the inner envelope in one of two spellings and reads
 # both: the legacy one, {"_rails":{"message":"<Base64 of the JSON>",...}},
 # when ActiveSupport::Messages::Metadata.use_message_serializer_for_metadata
 # is off (as it is without the app), and {"_rails":{"data":{...},...}} when it
-# is on (as `load_defaults 7.1` sets it in the app). There is one text of
-# each.
+# is on (as `load_defaults 7.1` sets it in the app). There are texts of
+# each, for a string, an integer and true.
 #
 # The key and the values are made up. Standalone, without Rails (see
 # standalone.rb).
@@ -32,39 +37,53 @@ describe "Wsjrdp::Credentials::Sealer golden vectors" do
     Wsjrdp::Credentials::Keys.new("test:#{CredentialsSpec::GOLDEN_VECTOR_KEY}", stage: "test").active
   end
   let(:account) { {stage: "test", kind: "mail_account", account_key: "finanzen"} }
-  let(:fields) do
-    {"mail_from" => "finanzen@example.org", "smtp_host" => "mail.example.org", "smtp_port" => 587,
-     "smtp_password" => "made-up-pässword", "imap_port" => 993}
-  end
+
+  values = {"smtp_password" => "made-up-pässword", "imap_port" => 993, "made_up_flag" => true}
 
   # Sealed with use_message_serializer_for_metadata off: {"_rails":{"message":...}}.
-  legacy = "H7cDi8oq8mYK2Nbh8Sa4vJpDSiv2PO1aCTpnV5tnXdJcNyywR9ObVBZuDK71h1mjAnpUvWbwlCqdiJGC0NHQc1JUNxt8/G6lllraQ2" \
-    "LtVxtve8nxqE66O7t6eU9d87qsyyzJshFXNsqphjbaZ7dAimx+qrfPMKj03l8h3pDpVuakYEad++GCj90LSyJAB0THGQJ/M1QTTt6Q3H" \
-    "OG1kuL3FhUqsswaSZTKT/fRdDp8dUbtNrGujRTrTYshaLhcCMTH05eN5mSUbeSrBFMj2UC5303EN2UVIogUQoAMGvzhJu2PQbHZ3hGhy" \
-    "rsoLvhMrXaa6XnHAr+7FShFYOrYudoKnSTkNF76A==--1NHPjRTdkUDybEP3--kykVaGmsiPevu7xlLJ0rtA=="
+  legacy = {
+    "smtp_password" => "1LMOKuz0kTIoffQrKs9BwrSVHOvADn5O7sj+qDsAnWussoGOkg1xATrdsZyfVbP2tRocZGLS//btVkGeQLjUkwPCOLG0" \
+      "3vmj4pgkQxXNFuYOynxY8HzyG9k1dl1c6hqzTtetJ35tBStMZOj70BZT4FbxU3JoxVDCiNg9YUx0jSmjs86UrrLZNQ==--Rx+nc+BCpXPp" \
+      "VDRG--4LDgNsGdD9U8pASAIMoWnA==",
+    "imap_port" => "lwrHMM1fV64LRaSmlvKEP7ZB3tqQnwoFSiTaZ7wk+G37EiLkKI7Z6QZEZ/01Y4qUYbxk5hXKBH1vCkqEux4wnIaHfUvvOFCw" \
+      "YP+tjrfrB13irM7Mzy1fEM+8GVuXldgXQVLBW6YpIVFE8q+75OxNGA==--1+LUDdpJk6klUrvb--MBRiNdOTbO48NgBT31EHSQ==",
+    "made_up_flag" => "m+5RFi6HEVjOuI1Q4nePi/Sx35EoUqYeqYRue4wBpFMp8EqebH3cI5uVpEgj+kSIAkaxXSWQXA5g5iD0bYc3KA0eH3b7" \
+      "WYQlqMpbEWow+EUhETmo2Ff4M7om0iS1DgtEPRVrlFFIsUuFAgrQaknMsrErQg==--uw8RlB3rL2Z0/t/U--dmHQ/i6Pseid51UUfhlnKQ=="
+  }
 
   # Sealed with use_message_serializer_for_metadata on: {"_rails":{"data":...}}.
-  data = "bkV7m4eqrEQnSKqfcOcuGVF3wlofJP98bATMEZ7i1WbMf2T/c4BAzLMIseGpyw9+V1guHM2NYFN31zNeg8B+jIahWvhODYjPsDkkRR" \
-    "NBoU/yU5sd4yxIHMd96QDmsrcN5teBA2rBTJa7fGQL9fwEHL2XcBqPIvpNL3CUlxthhT/QMyQilMQRGEFX1aFN0dYnOnFWGPBmb/9lUT" \
-    "nto3u58ZR43NSbLZypggp8YW5GtoopB24WjUGXhRPYLfhaXDDGRAHeQ2cBIeJ6--m1AXHtZeMIJp0hdq--RL+BgIwXDoWzAAo53FuPIw=="
+  data = {
+    "smtp_password" => "F/7T6NZ8wmqSw0BZ0P9mFUDylAimsdsGjobbeR9KCz/Pt/vHwI+gzqxUE3of9E3ufvkcl8ImACTLBMyzgN8I5vDYE8xr" \
+      "UBRrkD9hL46X6sqi/x2nKz8mOcWm21cnXVCmvQzIxWmU6M8bLkNEww==--vrf8d3WROz6vgwHe--aOjc2smUdBJJ5TaM4PMUbg==",
+    "imap_port" => "PIo63xV/i75nD83R2NV9X2ue2ZyVO5IpbUikJG6u6bnqw9uFl7xuErhUIlFPFQAVFHUjT4NRaCJ4GJ0f+dp2kuDtytbcDZOj" \
+      "FvElcVb5vYKc0S6k1Du8viM=--qE1JMpHzOm5wIZ/i--gNj8Cc4nPwfTEJaNvVkQOQ==",
+    "made_up_flag" => "fwODnJ+B/pP683JEEskNagW6FkyMWu7h50xGDzkKg/3i1JN5KVE1OwqHZcfx0vcg37GI6UvS76QBT9Ga6YnLY9NiofT7" \
+      "IeTconhQKB/xgZBMlNl5WyKo6R/aQoI7--DnaZqkWn1qicF/u+--WmOLSwU147oPIL4yu+nL/w=="
+  }
 
-  {"legacy envelope" => legacy, "data envelope" => data}.each do |spelling, text|
-    describe "the text in the #{spelling}" do
-      def unseal(text, **purpose) = Wsjrdp::Credentials::Sealer.unseal(text, key: key, **account, **purpose)
+  {"legacy envelope" => legacy, "data envelope" => data}.each do |spelling, texts|
+    describe "the texts in the #{spelling}" do
+      def unseal(text, field, **purpose) = Wsjrdp::Credentials::Sealer.unseal(text, key: key, **account, field: field,
+        **purpose)
 
-      it "opens to the expected fields" do
-        expect(unseal(text)).to eq(fields)
-      end
+      texts.each do |field, text|
+        describe field do
+          it "opens to the expected value" do
+            expect(unseal(text, field)).to eq(values.fetch(field))
+          end
 
-      it "does not open for another purpose" do
-        expect(unseal(text, account_key: "default")).to be_nil
-        expect(unseal(text, stage: "development")).to be_nil
-      end
+          it "does not open for another purpose" do
+            expect(unseal(text, field, account_key: "default")).to be_nil
+            expect(unseal(text, field, stage: "development")).to be_nil
+            expect(unseal(text, (field == "imap_port") ? "smtp_port" : "imap_port")).to be_nil
+          end
 
-      it "does not open with a changed character" do
-        changed = text.dup
-        changed[10] = (changed[10] == "A") ? "B" : "A"
-        expect(unseal(changed)).to be_nil
+          it "does not open with a changed character" do
+            changed = text.dup
+            changed[10] = (changed[10] == "A") ? "B" : "A"
+            expect(unseal(changed, field)).to be_nil
+          end
+        end
       end
     end
   end

@@ -22,7 +22,7 @@ describe Wsjrdp::Credentials::Keys do
 
   def keys(raw, stage:, **options) = described_class.new(raw, stage: stage, **options)
 
-  def fingerprint(secret) = Base64.strict_encode64(OpenSSL::Digest::SHA256.digest(secret))
+  def fingerprint(secret) = OpenSSL::Digest::SHA256.hexdigest(secret)
 
   describe "accepted and active keys" do
     it "takes the first entry of the stage as active and all of it as accepted" do
@@ -35,12 +35,12 @@ describe Wsjrdp::Credentials::Keys do
       expect(keys.find_by_fingerprint(fingerprint(secret_b))).to equal(keys.keys.last)
     end
 
-    it "makes the fingerprint the Base64 of the SHA-256 of the secret as written, lower-cased" do
+    it "makes the fingerprint the hex SHA-256 of the secret as written, lower-cased" do
       upper = "A1" * 32
       key = keys("development:#{upper}", stage: "development").active
 
       expect(key.fingerprint).to eq(fingerprint(upper.downcase))
-      expect(key.fingerprint.length).to eq(44)
+      expect(key.fingerprint).to match(/\A\h{64}\z/)
       expect(described_class.fingerprint_of(upper)).to eq(fingerprint(upper.downcase))
     end
 
@@ -169,6 +169,19 @@ describe Wsjrdp::Credentials::Keys do
       expect(keys.label).to be_nil
       expect(keys.problems).to eq(["the label (#{described_class::LABEL_ENV_NAME}) is not valid text"])
       expect { keys(nil, stage: "development", label: invalid) }.to raise_error(described_class::ConfigurationError)
+    end
+
+    it "is a problem in a label with a NUL character, as in one of invalid encoding" do
+      keys = keys("production:#{secret_a}", stage: "production", label: "made-up\u0000box")
+
+      expect(keys.label).to be_nil
+      expect(keys.problems).to eq(["the label (#{described_class::LABEL_ENV_NAME}) is not valid text"])
+      expect(keys.keys.size).to eq(1)
+      %w[development test].each do |stage|
+        expect { keys(nil, stage: stage, label: "made-up\u0000box") }.to raise_error(described_class::ConfigurationError) { |error|
+          expect(error.message).not_to include("made-up")
+        }
+      end
     end
   end
 

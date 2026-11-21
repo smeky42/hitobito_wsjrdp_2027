@@ -202,6 +202,15 @@ module HitobitoWsjrdp2027
       Wsjrdp::Credentials::Keys.current
     end
 
+    # Keeps the value columns of wsjrdp_credentials out of the SQL log. The
+    # core's filter_parameters come too late: ActiveRecord::Base is loaded
+    # before config/initializers run.
+    initializer "wsjrdp_2027.credential_log_filter" do
+      ActiveSupport.on_load(:active_record) do
+        self.filter_attributes += %w[secret_data public_data]
+      end
+    end
+
     # The person's page at /people/:id in the default group
     # (Person#default_group), handled by PeopleController
     # (Wsjrdp2027::PeopleController): show, and update and destroy -- the

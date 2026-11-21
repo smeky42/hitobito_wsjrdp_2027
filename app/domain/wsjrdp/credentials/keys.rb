@@ -7,7 +7,6 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-require "base64"
 require "openssl"
 
 module Wsjrdp::Credentials
@@ -22,8 +21,7 @@ module Wsjrdp::Credentials
   #
   # The 32 bytes are the AES-256 key as they are; nothing is derived from
   # them. A key is known by its fingerprint, the Base64 of the SHA-256 of the
-  # secret as written (lower-cased), as Wsjrdp2027::ServiceTokenHmacKeys
-  # makes it:
+  # secret, lower-cased, as Wsjrdp2027::ServiceTokenHmacKeys makes it:
   #
   #   printf %s "$SECRET" | openssl dgst -sha256 -binary | base64
   #
@@ -68,8 +66,8 @@ module Wsjrdp::Credentials
     # spec/domain/wsjrdp/credentials/standalone.rb). A spec keeps this list
     # in step with both. Fingerprints only: no key is in this class.
     PUBLIC_FINGERPRINTS = %w[
-      AKt7BWJVkTjRt3MtyPRq1iDTrtotEWPzLyzKe/hhUCU=
-      fRnOxoNDHYDjwYM7pxMiLc+0Sn6d3WgRsT3MsRry6X4=
+      00ab7b0562559138d1b7732dc8f46ad620d3aeda2d1163f32f2cca7bf8615025
+      7d19cec683431d80e3c1833ba713222dcfb44a7e9ddd6811b13dccb11af2e97e
     ].freeze
 
     class ConfigurationError < Error; end
@@ -117,15 +115,20 @@ module Wsjrdp::Credentials
       # value; else nil.
       def raw_value
         value = Rails.configuration.x.credential_keys
-        return value if value.present?
+        return value if given?(value)
 
         Rails.env.test? ? Settings.credentials&.keys_default.presence : nil
       end
 
-      # Base64 of the SHA-256 of the secret as written, lower-cased.
+      # The SHA-256 of the secret, lower-cased, in 64 lower-case hex digits.
       def fingerprint_of(secret_hex)
-        Base64.strict_encode64(OpenSSL::Digest::SHA256.digest(secret_hex.to_s.strip.downcase))
+        OpenSSL::Digest::SHA256.hexdigest(secret_hex.to_s.strip.downcase)
       end
+
+      private
+
+      # As bytes: a value of invalid encoding counts as set (and is refused).
+      def given?(value) = !value.nil? && !value.to_s.b.strip.empty?
     end
 
     attr_reader :stage, :keys, :label, :problems, :warnings, :source
@@ -195,12 +198,15 @@ module Wsjrdp::Credentials
 
     # The label stripped, or nil. Read as bytes re-tagged as UTF-8, as the
     # entries are: under a C or POSIX locale Ruby tags ENV values US-ASCII,
-    # and a correct UTF-8 label would look invalid.
+    # and a correct UTF-8 label would look invalid. Then the one rule for
+    # valid text (Wsjrdp::Credentials.text?): invalid encoding or a NUL
+    # character is a problem -- the label is written into every row a
+    # deposit or a re-key makes, and PostgreSQL stores no NUL.
     def normalize_label(label)
       return nil if label.nil?
 
       text = label.to_s.b.force_encoding(Encoding::UTF_8)
-      unless text.valid_encoding?
+      unless Wsjrdp::Credentials.text?(text)
         problems << "the label (#{LABEL_ENV_NAME}) is not valid text"
         return nil
       end

@@ -10,42 +10,63 @@
 # Standalone, without Rails (see standalone.rb).
 require_relative "standalone"
 
-# Sealing and opening the fields of one account. The keys are made up.
+# Sealing and opening the value of one secret field. The keys and values
+# are made up.
 describe Wsjrdp::Credentials::Sealer do
   let(:keys) { Wsjrdp::Credentials::Keys.new("test:#{"1" * 64},test:#{"2" * 64}", stage: "test") }
   let(:key) { keys.keys.first }
   let(:other_key) { keys.keys.last }
-  let(:account) { {stage: "test", kind: "mail_account", account_key: "finanzen"} }
-  let(:fields) do
-    {"smtp_host" => "mail.example.org", "smtp_port" => 587, "smtp_password" => "made-up secret",
-     "tls" => true, "imap_host" => nil}
-  end
+  let(:account) { {stage: "test", kind: "mail_account", account_key: "finanzen", field: "smtp_password"} }
+  let(:secret) { "made-up secret" }
 
-  def seal(fields = self.fields, key: self.key, **purpose) = described_class.seal(fields, key: key, **account, **purpose)
+  def seal(value = secret, key: self.key, **purpose) = described_class.seal(value, key: key, **account, **purpose)
 
   def unseal(text, key: self.key, **purpose) = described_class.unseal(text, key: key, **account, **purpose)
+
+  def encryptor = ActiveSupport::MessageEncryptor.new(key.bytes, cipher: "aes-256-gcm", serializer: JSON)
+
+  # A text sealed with the right key and purpose by other code.
+  def foreign(content) = encryptor.encrypt_and_sign(content, purpose: described_class.purpose(**account))
 
   it "names its scheme" do
     expect(described_class::SCHEME).to eq("rails-me-v1")
   end
 
-  it "builds the purpose credential/<stage>/<kind>/<account_key>" do
-    expect(described_class.purpose(**account)).to eq("credential/test/mail_account/finanzen")
+  it "builds the purpose credential/<stage>/<kind>/<account_key>/<field>" do
+    expect(described_class.purpose(**account)).to eq("credential/test/mail_account/finanzen/smtp_password")
+  end
+
+  it "seals and opens for an account key that is no name, which is part of the purpose" do
+    key_name = "foo@worldscoutjamboree.de"
+    text = seal(account_key: key_name)
+
+    expect(described_class.purpose(**account, account_key: key_name))
+      .to eq("credential/test/mail_account/foo@worldscoutjamboree.de/smtp_password")
+    expect(unseal(text, account_key: key_name)).to eq(secret)
+    expect(unseal(text, account_key: "foo@worldscoutjamboree.org")).to be_nil
   end
 
   describe "a sealed text" do
-    it "opens to the fields with the same key and purpose" do
-      expect(unseal(seal)).to eq(fields)
+    it "opens to the value with the same key and purpose: a string, an integer, true or false" do
+      ["made-up secret", "", "ünïcode", 587, -1, 2**70, true, false].each do |value|
+        expect(unseal(seal(value))).to eq(value), value.inspect
+      end
+    end
+
+    it "opens to false as false, never as nil" do
+      expect(unseal(seal(false))).to be(false)
+    end
+
+    it "holds exactly {\"value\" => value}" do
+      expect(encryptor.decrypt_and_verify(seal, purpose: described_class.purpose(**account))).to eq("value" => secret)
     end
 
     it "differs every time" do
       expect(seal).not_to eq(seal)
     end
 
-    it "holds no field in plain text" do
-      text = seal
-      expect(text).not_to include("made-up secret")
-      expect(text).not_to include("mail.example.org")
+    it "holds no value in plain text" do
+      expect(seal).not_to include(secret)
     end
 
     it "is Rails' outer form, ciphertext--nonce--tag in Base64" do
@@ -63,10 +84,11 @@ describe Wsjrdp::Credentials::Sealer do
       expect(unseal(text, key: other_key)).to be_nil
     end
 
-    it "is nil for another stage, kind or account" do
+    it "is nil for another stage, kind, account or field" do
       expect(unseal(text, stage: "development")).to be_nil
       expect(unseal(text, kind: "api_key")).to be_nil
       expect(unseal(text, account_key: "default")).to be_nil
+      expect(unseal(text, field: "imap_password")).to be_nil
     end
 
     it "is nil for a changed character anywhere" do
@@ -94,37 +116,30 @@ describe Wsjrdp::Credentials::Sealer do
       expect(unseal(text, key: nil)).to be_nil
     end
 
-    describe "a text sealed by other code, opening to what seal would refuse" do
-      def foreign(content)
-        encryptor = ActiveSupport::MessageEncryptor.new(key.bytes, cipher: "aes-256-gcm", serializer: JSON)
-        encryptor.encrypt_and_sign(content, purpose: described_class.purpose(**account))
-      end
-
+    describe "a text sealed with the right key and purpose, but holding anything else" do
       {
-        "a nested hash" => {"a" => {"b" => "c"}},
-        "an array value" => {"a" => ["b"]},
-        "a float value" => {"a" => 1.5},
-        "a json_class field" => {"json_class" => "Object", "a" => "b"},
-        "an array" => [["a", "b"]],
-        "a string" => "a text",
-        "a number" => 5,
-        "nil" => nil
+        "a bare string" => "a text",
+        "a bare number" => 5,
+        "bare true" => true,
+        "nil" => nil,
+        "an array" => ["a"],
+        "an empty hash" => {},
+        "another name" => {"val" => "a"},
+        "a second name" => {"value" => "a", "other" => "b"},
+        "a nil value" => {"value" => nil},
+        "a float value" => {"value" => 1.5},
+        "an array value" => {"value" => ["a"]},
+        "a hash value" => {"value" => {"a" => "b"}},
+        "a json_class" => {"json_class" => "Object", "value" => "a"}
       }.each do |what, content|
         it "is nil for #{what}" do
           expect(unseal(foreign(content))).to be_nil
         end
       end
 
-      it "opens when it is of the shape seal takes" do
-        expect(unseal(foreign(fields))).to eq(fields)
+      it "opens when it is exactly the shape seal writes" do
+        expect(unseal(foreign({"value" => secret}))).to eq(secret)
       end
-    end
-
-    it "is nil for a sealed value that is not a hash" do
-      encryptor = ActiveSupport::MessageEncryptor.new(key.bytes, cipher: "aes-256-gcm", serializer: JSON)
-      text = encryptor.encrypt_and_sign("a text", purpose: described_class.purpose(**account))
-
-      expect(unseal(text)).to be_nil
     end
   end
 
@@ -132,7 +147,9 @@ describe Wsjrdp::Credentials::Sealer do
     it "refuses purpose parts outside the grammar, when sealing and when opening" do
       [{stage: "Test"}, {stage: "te/st"}, {stage: ""}, {stage: nil}, {kind: "mail/account"},
         {kind: "Mail_account"}, {kind: "mail__account"}, {kind: "_mail"}, {kind: :mail_account},
-        {account_key: "finanzen/x"}, {account_key: "fin-anzen"}, {account_key: "1finanzen"}].each do |part|
+        {account_key: "finanzen/x"}, {account_key: "Finanzen"}, {account_key: "-finanzen"},
+        {account_key: "fin anzen"}, {account_key: "a" * 65}, {account_key: "a\u0301"},
+        {field: "smtp/password"}, {field: "Smtp"}, {field: ""}, {field: nil}, {field: "a" * 49}].each do |part|
         expect { seal(**part) }.to raise_error(described_class::Refused), part.inspect
         expect { unseal("x", **part) }.to raise_error(described_class::Refused), part.inspect
       end
@@ -147,48 +164,18 @@ describe Wsjrdp::Credentials::Sealer do
       expect { unseal("x", key: "1" * 32) }.to raise_error(described_class::Refused)
     end
 
-    it "refuses fields that are not a plain flat hash of string names and JSON scalars" do
-      [nil, "text", [["a", "b"]], {a: "b"}, Class.new(Hash).new.merge!("a" => "b"), {"a" => 1.5}, {"a" => ["b"]}, {"a" => {"b" => 1}},
-        {"a" => :b}, {"a" => (+"\xff").force_encoding("UTF-8")}].each do |bad|
-        expect { seal(bad) }.to raise_error(described_class::Refused), bad.inspect
+    it "refuses a value that is not a string, an integer, true or false" do
+      [nil, 1.5, :symbol, ["a"], {"value" => "a"}, Object.new, (+"\xff").force_encoding("UTF-8"),
+        "made-up\u0000secret"].each do |bad|
+        expect { seal(bad) }.to raise_error(described_class::Refused), bad.class.name
       end
-    end
-
-    it "says that a plain Hash is wanted when given a Hash subclass" do
-      expect { seal(Class.new(Hash).new.merge!("a" => "b")) }
-        .to raise_error(described_class::Refused, "the fields are not a plain Hash")
     end
 
     it "never names a value or the key in a refusal" do
-      expect { seal({"smtp_password" => 1.5}) }.to raise_error(described_class::Refused) { |error|
+      expect { seal(1.5) }.to raise_error(described_class::Refused) { |error|
         expect(error.message).to include("smtp_password")
         expect(error.message).not_to include("1.5")
       }
-    end
-
-    it "names a field only when it is a valid name" do
-      ["a" * 64, "made-up secret"].each do |name|
-        expect { seal({name => 1.5}) }.to raise_error(described_class::Refused) { |error|
-          expect(error.message).not_to include(name)
-          expect(error.message).to include("(not a name)")
-        }
-      end
-    end
-
-    describe "the field name json_class" do
-      it "is refused: JSON.load would take its value for a class to build" do
-        expect(described_class::JSON_CREATE_ID).to eq(JSON.create_id)
-        expect { seal(fields.merge("json_class" => "String")) }
-          .to raise_error(described_class::Refused, /json_class: the name is reserved/)
-      end
-
-      it "would, with a value such as String, make a text that no longer opens" do
-        encryptor = ActiveSupport::MessageEncryptor.new(key.bytes, cipher: "aes-256-gcm", serializer: JSON)
-        text = encryptor.encrypt_and_sign({"json_class" => "String", "a" => "b"},
-          purpose: described_class.purpose(**account))
-
-        expect(unseal(text)).to be_nil
-      end
     end
   end
 end

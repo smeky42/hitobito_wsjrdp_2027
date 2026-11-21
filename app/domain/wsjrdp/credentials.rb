@@ -10,24 +10,30 @@
 # The credential store (doc/wsjrdp/credentials.md): passwords and API keys
 # of the services the app talks to, sealed with a key of the instance's
 # stage. This file holds the names every part shares; the parts live in
-# app/domain/wsjrdp/credentials/:
+# app/domain/wsjrdp/credentials/. No consumer reads a credential yet.
 #
-# - Keys: the instance's encryption keys (HITOBITO_CREDENTIAL_KEYS);
-# - Sealer: the two calls into ActiveSupport::MessageEncryptor;
-# - Kinds: the registry of config/wsjrdp_credential_kinds.yml, and the
-#   casting of a set of values for a kind;
-# - Credential: the value object a consumer gets.
-#
-# Nothing reads a credential yet: there is no table and no lookup.
+#   moss = Wsjrdp::Credentials.fetch(:moss_api, "default")
+#   moss[:client_id]
+#   moss.secret(:client_secret)
 module Wsjrdp::Credentials
   PRODUCTION = "production"
-  # A stage: as for the HMAC keys of the service tokens.
   STAGE_FORMAT = /\A[a-z0-9]+\z/
-  # A kind, an account key, a field name: lower-case snake without a double
-  # underscore, so that each maps to exactly one part of a variable name,
-  # and at most NAME_LENGTH characters (.name? is the one definition).
+  # A kind or a field name. No double underscore, so that each maps to
+  # exactly one part of a variable name.
   NAME_FORMAT = /\A[a-z][a-z0-9]*(?:_[a-z0-9]+)*\z/
   NAME_LENGTH = 48
+
+  # An account key (doc/wsjrdp/credentials.md, "Names"): lower-case or
+  # caseless letters of any script and the digits 0-9, joined by single
+  # characters of _ @ , . + - (none at the start or the end, never two in a
+  # row), at most 64 characters, in Unicode NFC. foo@worldscoutjamboree.de
+  # is one, so is every name.
+  ACCOUNT_KEY_LENGTH = 64
+  # The Hangul fillers are letters (Lo) that show as nothing.
+  ACCOUNT_KEY_LETTER = /[\p{Ll}\p{Lo}&&[^\u115F\u1160\u3164\uFFA0]]/
+  ACCOUNT_KEY_RULE = "lower-case letters and digits, joined by single characters of _ @ , . + -, " \
+    "at most #{ACCOUNT_KEY_LENGTH} characters"
+  ACCOUNT_KEY_FORMAT = /\A(?:#{ACCOUNT_KEY_LETTER}|[0-9])+(?:[_@,.+-](?:#{ACCOUNT_KEY_LETTER}|[0-9])+)*\z/
 
   # The root of every error of the store. No message names a value.
   class Error < StandardError; end
@@ -35,40 +41,74 @@ module Wsjrdp::Credentials
   # Sealing was asked for, but the instance has no key.
   class NoKeyError < Error; end
 
-  # A message repeats a name only when it is valid (.name?, so every legal
-  # name can be repeated), and a stage only when it is at most
-  # SHOWN_STAGE_LENGTH characters: 64 hex digits are a valid stage. Anything
-  # else may be a value put in the wrong place (a secret typed where a stage
-  # or a field name belongs), so a message shows a placeholder instead.
+  # No version of an account is usable here (.fetch).
+  class NoCredentialError < Error; end
+
+  # A message repeats a name only when it is valid, and a stage only when
+  # it is short (64 hex digits are a valid stage). Anything else may be a
+  # secret typed in the wrong place, so a message shows a placeholder.
   SHOWN_STAGE_LENGTH = 32
   NOT_A_NAME = "(not a name)"
   NOT_A_STAGE = "(not a stage)"
 
   def self.stage?(value) = text?(value) && STAGE_FORMAT.match?(value)
 
-  # A kind, an account key or a field name: the grammar, at most
-  # NAME_LENGTH characters.
   def self.name?(value) = text?(value) && value.length <= NAME_LENGTH && NAME_FORMAT.match?(value)
 
-  # A String of valid encoding; regular expressions raise on any other.
-  def self.text?(value) = value.is_a?(String) && value.valid_encoding?
+  # Only the normalized form is a key (.account_key_of).
+  def self.account_key?(value)
+    text?(value) && value.length <= ACCOUNT_KEY_LENGTH && ACCOUNT_KEY_FORMAT.match?(value) &&
+      value.unicode_normalized?(:nfc)
+  end
 
-  # value as a message may show it: a valid name, else placeholder.
+  # A key as it is stored and looked up: lower case (Unicode's full case
+  # mapping) in NFC. Anything that is no text is handed back as given, for
+  # the checks to judge.
+  def self.account_key_of(value)
+    text = name_of(value)
+    return text unless text?(text)
+
+    text.encode(Encoding::UTF_8).unicode_normalize(:nfc).downcase.unicode_normalize(:nfc)
+  end
+
+  # The newest usable version of an account here, or NoCredentialError.
+  def self.fetch(kind, account_key) = lookup.fetch(kind, account_key)
+
+  # The usable versions, newest first: what .fetch gives, then fallbacks.
+  def self.candidates(kind, account_key) = lookup.candidates(kind, account_key)
+
+  # The database, for now the only source.
+  def self.lookup = Lookup.new([DatabaseSource.new])
+
+  # Valid text: valid UTF-8 without a NUL (a String of another encoding only
+  # when it is plain ASCII). Anything else would make a comparison raise,
+  # be transcoded silently, or reach PostgreSQL, whose error quotes it.
+  def self.text?(value)
+    value.is_a?(String) && (value.encoding == Encoding::UTF_8 || value.ascii_only?) && value.valid_encoding? &&
+      !value.include?("\u0000")
+  end
+
+  # A Symbol as its String; anything else as given, for the checks to judge.
+  def self.name_of(value) = value.is_a?(Symbol) ? value.to_s : value
+
   def self.shown_name(value, placeholder: NOT_A_NAME)
-    text = value.is_a?(Symbol) ? value.to_s : value
+    text = name_of(value)
     name?(text) ? text : placeholder
   end
 
-  # value as a message may show it: a stage of at most SHOWN_STAGE_LENGTH
-  # characters, else placeholder.
+  # An account key is repeated only when it is one, as a name is.
+  def self.shown_account_key(value, placeholder: NOT_A_NAME)
+    text = name_of(value)
+    account_key?(text) ? text : placeholder
+  end
+
   def self.shown_stage(value, placeholder: NOT_A_STAGE)
     (stage?(value) && value.length <= SHOWN_STAGE_LENGTH) ? value : placeholder
   end
 
-  # Refuses what Marshal and YAML would otherwise write out of an object
-  # that holds a key or a value: both dump every instance variable. Mixed
-  # into Keys::Key and Credential, which define inspect and as_json
-  # themselves.
+  # For an object that holds a key or a value: Marshal and YAML would dump
+  # every instance variable, so they refuse. The class defines inspect and
+  # as_json itself.
   module Undumpable
     def marshal_dump = raise(TypeError, "#{self.class.name} cannot be dumped")
 

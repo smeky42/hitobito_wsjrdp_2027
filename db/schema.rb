@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_20_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1394,8 +1394,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_20_000100) do
     t.boolean "uniform_order"
     t.string "headgear"
     t.string "patrol"
-    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.date "sepa_mandate_date", comment: "date of the SEPA mandate"
+    t.virtual "search_column", type: :tsvector, as: "to_tsvector('simple'::regconfig, ((((((((((((((((((((((((((((((((((((((((((((((COALESCE((first_name)::text, ''::text) || ' '::text) || COALESCE((last_name)::text, ''::text)) || ' '::text) || COALESCE((company_name)::text, ''::text)) || ' '::text) || COALESCE((nickname)::text, ''::text)) || ' '::text) || COALESCE((email)::text, ''::text)) || ' '::text) || COALESCE((street)::text, ''::text)) || ' '::text) || COALESCE((housenumber)::text, ''::text)) || ' '::text) || COALESCE((zip_code)::text, ''::text)) || ' '::text) || COALESCE((town)::text, ''::text)) || ' '::text) || COALESCE((country)::text, ''::text)) || ' '::text) || COALESCE(additional_information, ''::text)) || ' '::text) || COALESCE((id)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_a)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_name_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_adress_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_email_b)::text, ''::text)) || ' '::text) || COALESCE((additional_contact_phone_b)::text, ''::text)) || ' '::text) || COALESCE((sepa_name)::text, ''::text)) || ' '::text) || COALESCE((sepa_address)::text, ''::text)) || ' '::text) || COALESCE((sepa_mail)::text, ''::text)) || ' '::text) || COALESCE((sepa_iban)::text, ''::text)))", stored: true
     t.index ["authentication_token"], name: "index_people_on_authentication_token"
     t.index ["confirmation_token"], name: "index_people_on_confirmation_token", unique: true
     t.index ["contract_confirmed_by_type", "contract_confirmed_by_id"], name: "index_people_on_contract_confirmed_by"
@@ -1819,6 +1819,35 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_20_000100) do
     t.boolean "is_unit_cost_center", default: false
     t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
+  end
+
+  create_table "wsjrdp_credentials", comment: "Credentials to access outside services", force: :cascade do |t|
+    t.string "kind", null: false
+    t.string "account_key", null: false, comment: "Names the account within its kind"
+    t.string "stage", null: false, comment: "Stage the version works in, e.g. production"
+    t.text "comment", default: "", null: false, comment: "Comment on this version"
+    t.string "name", comment: "Optional name of the version, e.g. the key's name at the provider"
+    t.jsonb "public_data", default: {}, null: false
+    t.jsonb "secret_data", default: {}, null: false, comment: "The secret fields, each sealed by itself with the version's key"
+    t.string "scheme", null: false, comment: "How secret_data is sealed: rails-me-v1"
+    t.string "encryption_key_fingerprint", null: false, comment: "Fingerprint of the key that sealed secret_data: hex(SHA-256(its 64 hex digits, lower-case))"
+    t.string "encryption_key_label", comment: "Label of the encryption key"
+    t.datetime "valid_from"
+    t.datetime "expires_at"
+    t.datetime "revoked_at"
+    t.integer "remind_days_before", default: [], null: false, comment: "Lead times in days, e.g. {30,14,3}; empty = the kind's default", array: true
+    t.string "remind_emails", default: [], null: false, comment: "Free mail addresses", array: true
+    t.datetime "reminded_at", default: [], null: false, comment: "Reserved: one entry per reminder mail that went out", array: true
+    t.datetime "last_success_at"
+    t.datetime "last_failure_at"
+    t.text "last_failure_message"
+    t.bigint "author_id"
+    t.string "author_type", default: "Person"
+    t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_type", "author_id"], name: "index_wsjrdp_credentials_on_author_type_and_author_id"
+    t.index ["stage", "kind", "account_key"], name: "index_wsjrdp_credentials_on_stage_and_kind_and_account_key"
   end
 
   create_table "wsjrdp_deregistration_events", force: :cascade do |t|
