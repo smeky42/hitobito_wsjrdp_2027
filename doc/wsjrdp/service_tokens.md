@@ -62,6 +62,9 @@ HITOBITO_SERVICE_TOKEN_HMAC_KEYS=production:<64 hex>,production:<64 hex>
 - Only entries of the instance's stage are used; the others are logged and
   ignored. The first is active: new HMAC tokens use it. All are accepted: a
   token of this stage is looked up with each of them.
+- The warning on an entry of another stage names that stage only when it is
+  at most 32 characters long, else it says "another stage": 64 hex digits
+  are a valid stage, and may be a secret typed into the wrong place.
 - The fingerprint of a secret is the Base64 of the SHA-256 of the secret as
   written (44 characters). It names the secret without giving it away.  A new
   HMAC token stores the fingerprint of the active secret. An adopted token hash
@@ -71,13 +74,15 @@ HITOBITO_SERVICE_TOKEN_HMAC_KEYS=production:<64 hex>,production:<64 hex>
 - Production always starts. Without the variable it has no active secret:
   HMAC tokens cannot be made there, SHA-256 and unhashed ones can. Bad entries
   are logged and ignored, and so are the committed secrets of development
-  and test.
+  and test. An entry that is not valid text (invalid UTF-8) is a bad entry
+  like any other: "entry N: not valid text", the other entries still count.
 - Every other stage refuses to start on a bad entry and on any `production`
   entry.
 - Development and test fall back to `service_tokens.hmac_keys_default` in
   the wagon's `config/settings/<environment>.yml`. These values are public on
   purpose: they only mark development and test tokens.
-- Logs and error messages name fingerprints, never secrets. The core's
+- Logs and error messages name fingerprints, never secrets, and repeat
+  nothing of an entry but a short stage. The core's
   `filter_parameters` (`:token`, `:secret`, ...) keep request parameters such
   as `token` and `adopted_token` out of the logs.
 

@@ -42,10 +42,14 @@ module Wsjrdp2027
   #
   # Production always starts: a missing variable leaves it without active key
   # (no HMAC token can be made, and only the unhashed and "sha256:" tokens
-  # work), a bad entry is logged and ignored. Any other stage refuses to start
-  # on a bad entry and on any "production" entry, so a production secret never
+  # work), a bad entry -- an entry that is not valid text (invalid UTF-8)
+  # among them -- is logged and ignored. Any other stage refuses to start on a
+  # bad entry and on any "production" entry, so a production secret never
   # makes production tokens work outside production. Entries of a stage other
-  # than this one and production are ignored with a warning.
+  # than this one and production are ignored with a warning, which names
+  # their stage only up to 32 characters ("another stage" beyond): 64 hex
+  # digits are a valid stage, and may be a secret typed into the wrong place.
+  # No message repeats anything else of an entry.
   #
   # Without the variable, development and test fall back to the value in the
   # wagon's config/settings/<environment>.yml. Those values are committed and
@@ -58,6 +62,9 @@ module Wsjrdp2027
     STAGE_FORMAT = /\A[a-z0-9]+\z/
     SECRET_FORMAT = /\A\h{64,}\z/
     FINGERPRINT_FORMAT = %r{\A[A-Za-z0-9+/]{43}=\z}
+    # The longest stage of an entry a warning repeats. A longer one may be a
+    # secret typed into the stage slot, so the warning says "another stage".
+    SHOWN_STAGE_LENGTH = 32
     # The wagon settings that hold the committed, public secrets.
     PUBLIC_SETTINGS = %w[development test].freeze
 
@@ -169,9 +176,22 @@ module Wsjrdp2027
 
     private
 
+    # The entries in order, each a String, or nil where an entry is not valid
+    # text. Split as bytes: String#split and #strip raise on invalid UTF-8.
+    # Re-tagged as UTF-8, so that a correct value Ruby tagged US-ASCII (as
+    # under a C or POSIX locale) is read as it is.
+    def entries(raw)
+      raw.b.split(",").map(&:strip).reject(&:empty?).map do |entry|
+        text = entry.force_encoding(Encoding::UTF_8)
+        text.valid_encoding? ? text : nil
+      end
+    end
+
     def parse(raw)
       seen_secrets = []
-      raw.split(",").map(&:strip).reject(&:empty?).each_with_index do |entry, index|
+      entries(raw).each_with_index do |entry, index|
+        next problems << "entry #{index + 1}: not valid text" if entry.nil?
+
         entry_stage, secret = entry.split(":", 2)
         entry_stage = entry_stage.to_s.strip
         secret = secret.to_s.strip.downcase
@@ -179,10 +199,17 @@ module Wsjrdp2027
         next problems << problem if problem
 
         seen_secrets << secret
-        next warnings << "entry #{index + 1} belongs to stage #{entry_stage}, this is #{stage}" unless entry_stage == stage
+        next warnings << other_stage_warning(entry_stage, index) unless entry_stage == stage
 
         keys << Key.new(entry_stage, secret)
       end
+    end
+
+    # Names the entry's stage only when it is short: 64 hex digits are a
+    # valid stage, and may be a secret typed into the wrong place.
+    def other_stage_warning(entry_stage, index)
+      shown = (entry_stage.length <= SHOWN_STAGE_LENGTH) ? "stage #{entry_stage}" : "another stage"
+      "entry #{index + 1} belongs to #{shown}, this is #{stage}"
     end
 
     def entry_problem(entry_stage, secret, index, seen_secrets)

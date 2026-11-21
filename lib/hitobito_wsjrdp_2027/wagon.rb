@@ -188,6 +188,20 @@ module HitobitoWsjrdp2027
       Wsjrdp2027::ServiceTokenHmacKeys.current
     end
 
+    # The environment Wsjrdp::Credentials::Keys reads, taken at boot: the
+    # keys the credential store seals with, and an optional name for them.
+    initializer "wsjrdp_2027.credential_keys" do |app|
+      app.config.x.credential_keys = ENV["HITOBITO_CREDENTIAL_KEYS"]
+      app.config.x.credential_label = ENV["HITOBITO_CREDENTIAL_LABEL"]
+    end
+
+    # Parses HITOBITO_CREDENTIAL_KEYS once, logs the active and accepted keys
+    # (one warning without any), and stops any stage but production on a
+    # bad entry.
+    config.after_initialize do
+      Wsjrdp::Credentials::Keys.current
+    end
+
     # The person's page at /people/:id in the default group
     # (Person#default_group), handled by PeopleController
     # (Wsjrdp2027::PeopleController): show, and update and destroy -- the
