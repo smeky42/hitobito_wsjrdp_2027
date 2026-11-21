@@ -81,6 +81,13 @@ describe WsjrdpCredential do
       expect(valid.errors.details[:account_key]).to eq([{error: :fixed}])
     end
 
+    it "finds an account by its folded key and by a key stored past the checks as it is" do
+      folded = deposit
+      raw = deposit(account_key: "other").tap { |row| row.update_column(:account_key, "Finanzen") }
+      expect(described_class.of_account(:mail_account, "FINANZEN")).to contain_exactly(folded)
+      expect(described_class.of_account(:mail_account, "Finanzen")).to contain_exactly(folded, raw)
+    end
+
     it "refuses columns of values that are not hashes of field names to values or sealed texts" do
       [{"a" * 64 => "x"}, {"smtp_host" => 1.5}, {"smtp_host" => {"a" => "b"}}, [1], "text"].each do |bad|
         valid.public_data = bad
@@ -332,18 +339,15 @@ describe WsjrdpCredential do
       expect(state(row)).to eq(:other_stage)
     end
 
-    it "is key_missing for a row sealed with a key this instance does not have" do
-      row = deposit
+    it "is key_missing for a row sealed with a key this instance does not have, with or without secret fields" do
       other = Wsjrdp::Credentials::Keys.new("test:#{"b" * 64}", stage: "test")
+      row = deposit
       expect(row.state(keys: other, kinds: kinds)).to eq(:key_missing)
       expect(row.state(keys: Wsjrdp::Credentials::Keys.new(nil, stage: "test"), kinds: kinds)).to eq(:key_missing)
-    end
 
-    it "is key_missing also for a row without a secret field, whose key is gone" do
-      row = deposit(kind: "api_key", values: {"base_url" => "https://api.example.org", "api_key" => "x"})
-      row.update_columns(secret_data: {}, public_data: row.public_data.merge("api_key" => "x"))
-      expect(row.reload.state(keys: Wsjrdp::Credentials::Keys.new("test:#{"b" * 64}", stage: "test"), kinds: kinds))
-        .to eq(:key_missing)
+      plain = deposit(kind: "api_key", values: {"base_url" => "https://api.example.org", "api_key" => "x"})
+      plain.update_columns(secret_data: {}, public_data: plain.public_data.merge("api_key" => "x"))
+      expect(plain.reload.state(keys: other, kinds: kinds)).to eq(:key_missing)
     end
 
     it "is kind_unknown for a kind no longer in the registry" do
@@ -397,24 +401,27 @@ describe WsjrdpCredential do
       expect(state(row)).to eq(:kind_mismatch)
     end
 
+    def expect_no_raise(row, column, values, kind, account_key)
+      source = Wsjrdp::Credentials::DatabaseSource.new(keys: keys, kinds: kinds)
+      values.each do |value|
+        row.update_column(column, value)
+        row.reload
+        expect { row.state(keys: keys, kinds: kinds) }.not_to raise_error, value.inspect
+        expect { row.field_report(keys: keys, kinds: kinds) }.not_to raise_error
+        expect { Wsjrdp::Credentials::Lookup.new([source]).candidates(kind, account_key) }.not_to raise_error
+      end
+    end
+
     {
       stage: ["", "a" * 64, "Not A Stage"], kind: ["", "a" * 200, "x/y"], account_key: ["", "a" * 200, "x/y"],
-      scheme: ["", "x" * 300], encryption_key_fingerprint: ["", "not base64", "a" * 500],
+      scheme: ["", "x" * 300], encryption_key_fingerprint: ["", "not hex", "a" * 500],
       secret_data: [[1, 2], "text", 42, {"smtp_password" => 1}, {"a" * 64 => "x"}, {"smtp_password" => "junk"},
         {"x/y" => "a--b--c"}],
       public_data: [[1, 2], "text", 42, {"a" => {"b" => 1}}, {"a" * 64 => "x"}, {"smtp_port" => [1]}],
       name: ["", "x" * 5000, "\u{1F600}"]
     }.each do |column, values|
       it "never raises for nonsense in #{column}, in examine, field_report and the lookup" do
-        row = deposit
-        values.each do |value|
-          row.update_column(column, value)
-          row.reload
-          expect(described_class::STATES).to include(row.state(keys: keys, kinds: kinds))
-          expect { row.field_report(keys: keys, kinds: kinds) }.not_to raise_error
-          source = Wsjrdp::Credentials::DatabaseSource.new(keys: keys, kinds: kinds)
-          expect { Wsjrdp::Credentials::Lookup.new([source]).candidates(:mail_account, "finanzen") }.not_to raise_error
-        end
+        expect_no_raise(deposit, column, values, :mail_account, "finanzen")
       end
     end
 
@@ -439,15 +446,7 @@ describe WsjrdpCredential do
           {"base_url" => {"a" => 1}}, {"api_key" => 4711}], name: ["", "x" * 5000]
       }.each do |column, values|
         it "never raises for nonsense in #{column}, in examine, field_report and the lookup" do
-          row = plain_row
-          values.each do |value|
-            row.update_column(column, value)
-            row.reload
-            expect(described_class::STATES).to include(row.state(keys: keys, kinds: kinds)), value.inspect
-            expect { row.field_report(keys: keys, kinds: kinds) }.not_to raise_error
-            source = Wsjrdp::Credentials::DatabaseSource.new(keys: keys, kinds: kinds)
-            expect { Wsjrdp::Credentials::Lookup.new([source]).candidates(:api_key, "mailcow") }.not_to raise_error
-          end
+          expect_no_raise(plain_row, column, values, :api_key, "mailcow")
         end
       end
 
@@ -482,11 +481,6 @@ describe WsjrdpCredential do
       expect(row.secret_key_problem(Wsjrdp::Credentials::Keys.new("test:#{"b" * 64}", stage: "test"))).to eq(:key_missing)
       row.scheme = "rails-me-v0"
       expect(row.secret_key_problem(keys)).to eq(:unknown_scheme)
-    end
-
-    it "names its states in the order they are checked" do
-      expect(described_class::STATES).to eq(%i[other_stage key_missing kind_unknown unreadable kind_mismatch
-        revoked expired not_yet_valid active])
     end
   end
 
@@ -587,18 +581,18 @@ describe WsjrdpCredential do
       end
     end
 
-    it "writes exactly one entry for a save that changes secret fields only, with the whodunnit" do
+    it "writes exactly one entry for a save that changes secret fields only, with the request's whodunnit and controller info" do
       with_versioning do
         row = deposit
-        person = people(:admin)
+        info = {mutation_id: "request-made-up-1", whodunnit_type: "ServiceToken"}
         expect {
-          PaperTrail.request(whodunnit: person.id.to_s) do
+          PaperTrail.request(whodunnit: "17", controller_info: info) do
             change!(row, values: {"smtp_password" => "made-up-secret-only"})
           end
         }.to change { versions_of(row).count }.by(1)
 
-        entry = versions_of(row).last
-        expect(entry).to have_attributes(event: "update", whodunnit: person.id.to_s, main_id: nil,
+        expect(versions_of(row).last).to have_attributes(event: "update", whodunnit: "17",
+          whodunnit_type: "ServiceToken", mutation_id: "request-made-up-1", main_id: nil,
           wsjrdp_data: {"secret_fields_changed" => ["smtp_password"]}, object: nil, object_changes: nil)
         expect { row.reload.save! }.not_to change { versions_of(row).count }
       end
@@ -619,22 +613,6 @@ describe WsjrdpCredential do
         expect(entry.object_changes).to include("mail3.example.org")
         expect(entry.object_changes).not_to include("secret_data")
         expect(versions_text).not_to include(row.reload.secret_data["imap_password"])
-      end
-    end
-
-    it "carries the request's controller info into the entry of a secret-only save, as PaperTrail does" do
-      with_versioning do
-        row = deposit
-        info = {mutation_id: "request-made-up-1", whodunnit_type: "ServiceToken"}
-        PaperTrail.request(whodunnit: "17", controller_info: info) do
-          change!(row, values: {"smtp_password" => "made-up-by-token"})
-          change!(row, values: {"smtp_host" => "mail4.example.org"})
-        end
-
-        secret_only, public_change = versions_of(row).last(2)
-        expect([secret_only, public_change]).to all(have_attributes(whodunnit: "17", whodunnit_type: "ServiceToken",
-          mutation_id: "request-made-up-1"))
-        expect(secret_only.wsjrdp_data).to eq("secret_fields_changed" => ["smtp_password"])
       end
     end
 

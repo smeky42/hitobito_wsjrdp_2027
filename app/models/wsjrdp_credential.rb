@@ -33,8 +33,6 @@ class WsjrdpCredential < ActiveRecord::Base
   EXPIRED = :expired               # expires_at is reached
   NOT_YET_VALID = :not_yet_valid   # valid_from lies ahead
   ACTIVE = Wsjrdp::Credentials::Lookup::USABLE # usable here
-  STATES = [OTHER_STAGE, KEY_MISSING, KIND_UNKNOWN, UNREADABLE, KIND_MISMATCH, REVOKED, EXPIRED,
-    NOT_YET_VALID, ACTIVE].freeze
 
   # credential: whenever the values open and fit the kind, whatever the
   # state; warnings: the kind's warnings of those values (base_url:
@@ -71,8 +69,11 @@ class WsjrdpCredential < ActiveRecord::Base
   has_paper_trail on: %i[create update destroy], skip: UNTRAILED_COLUMNS,
     meta: {wsjrdp_data: ->(row) { row.trail_data }}
 
+  # Also the key as given: a row written past the checks with a key not in
+  # its one form is still found, and can be deleted.
   scope :of_account, lambda { |kind, account_key|
-    where(kind: kind.to_s, account_key: Wsjrdp::Credentials.account_key_of(account_key.to_s))
+    key = account_key.to_s
+    where(kind: kind.to_s, account_key: [key, Wsjrdp::Credentials.account_key_of(key)].uniq)
   }
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
 
@@ -119,7 +120,7 @@ class WsjrdpCredential < ActiveRecord::Base
   def state(**context) = examine(**context).state
 
   # Never raises for the row's content: whatever a row holds, it is one of
-  # STATES.
+  # the states above.
   def examine(at: Time.current, keys: Wsjrdp::Credentials::Keys.current, kinds: Wsjrdp::Credentials::Kinds.current)
     return Examination.new(OTHER_STAGE, nil) unless stage == keys.stage
     return Examination.new(KEY_MISSING, nil) unless keys.accepted?(encryption_key_fingerprint)

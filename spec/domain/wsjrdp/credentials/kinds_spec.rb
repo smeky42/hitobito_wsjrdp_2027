@@ -160,15 +160,14 @@ describe Wsjrdp::Credentials::Kinds do
       end
     end
 
-    it "reserves name, created_at, valid_from, expires_at and json_class" do
-      expect(described_class::RESERVED_FIELD_NAMES).to eq(%w[name created_at valid_from expires_at json_class])
+    it "reserves name, created_at, valid_from and expires_at" do
+      expect(described_class::RESERVED_FIELD_NAMES).to eq(%w[name created_at valid_from expires_at])
     end
 
     {
       "outside the grammar" => ["Smtp-Host", "the name is not lower-case snake"],
       "longer than 48 characters" => ["a" * 49, "the name is longer than 48 characters"],
-      "reserved" => ["name", "the name is reserved"],
-      "json_class" => ["json_class", "the name is reserved"]
+      "reserved" => ["name", "the name is reserved"]
     }.each do |what, (name, message)|
       it "refuses a field name #{what} in a kind with a title_field, naming the place" do
         kinds = {"k" => {"title_field" => "f", "fields" => {name => {"type" => "string"}, "f" => {"type" => "string"}}}}

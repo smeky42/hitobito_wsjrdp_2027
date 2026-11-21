@@ -10,7 +10,7 @@
 # The credential store (doc/wsjrdp/credentials.md): passwords and API keys
 # of the services the app talks to, sealed with a key of the instance's
 # stage. This file holds the names every part shares; the parts live in
-# app/domain/wsjrdp/credentials/. No consumer reads a credential yet.
+# app/domain/wsjrdp/credentials/.
 #
 #   moss = Wsjrdp::Credentials.fetch(:moss_api, "default")
 #   moss[:client_id]

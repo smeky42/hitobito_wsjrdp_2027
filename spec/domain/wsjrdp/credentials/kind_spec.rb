@@ -78,10 +78,10 @@ describe Wsjrdp::Credentials::Kind do
 
     describe "the result" do
       let(:result) do
-        moss.cast({"client_id" => "made-up-id", "client_secret" => "made-up-secret",
+        moss.cast({"client_id" => 4711, "client_secret" => "made-up-secret",
                    "base_url" => "http://made-up.example.org", "scope" => "made-up-scope"}, stage: "production")
       end
-      let(:made_up) { %w[made-up-id made-up-secret made-up.example.org made-up-scope] }
+      let(:made_up) { %w[made-up-secret made-up.example.org made-up-scope] }
 
       it "never names a value in any printed form" do
         shown = [result.inspect, result.to_s, result.pretty_inspect, PP.pp({r: result}, +""), result.as_json.to_s,
@@ -90,14 +90,14 @@ describe Wsjrdp::Credentials::Kind do
           result.errors.inspect, result.errors.to_json, result.warnings.map(&:to_s), result.warnings.inspect,
           result.warnings.to_json].join
 
-        expect(problems(result.errors)).to eq([["scope", :not_in_values]])
+        expect(problems(result.errors)).to eq([["client_id", :not_a_string]])
         expect(problems(result.warnings)).to eq([["base_url", :not_https]])
         made_up.each { |value| expect(shown).not_to include(value) }
       end
 
       it "gives field names and codes in as_json" do
-        expect(result.as_json).to eq("fields" => %w[base_url client_id client_secret],
-          "errors" => [{"field" => "scope", "code" => "not_in_values"}],
+        expect(result.as_json).to eq("fields" => %w[base_url client_secret scope],
+          "errors" => [{"field" => "client_id", "code" => "not_a_string"}],
           "warnings" => [{"field" => "base_url", "code" => "not_https"}])
       end
 
@@ -169,11 +169,12 @@ describe Wsjrdp::Credentials::Kind do
       expect(one("boolean", default: false).cast({}, stage: "test").values).to eq("f" => false)
     end
 
-    it "enum: one of its values" do
+    it "enum: any text, its values being suggestions" do
       expect(cast_one("enum", "tls", values: %w[starttls tls]).values).to eq("f" => "tls")
-      ["TLS", "ssl", :tls].each do |value|
+      expect(cast_one("enum", "ssl", values: %w[starttls tls]).values).to eq("f" => "ssl")
+      [:tls, 1].each do |value|
         expect(problems(cast_one("enum", value, values: %w[starttls tls]).errors))
-          .to eq([["f", :not_in_values]]), value.inspect
+          .to eq([["f", :not_a_string]]), value.inspect
       end
     end
 
@@ -190,7 +191,7 @@ describe Wsjrdp::Credentials::Kind do
         expect(cast_one("url", value).values).to eq({"f" => value}), value
       end
       ["ftp://example.org", "example.org", "/api", "https://", "https:example.org", "https://user:pw@example.org",
-        "https://user@example.org", "https://exa mple.org", "mailto:a@example.org", ""].reject(&:empty?).each do |value|
+        "https://user@example.org", "https://exa mple.org", "mailto:a@example.org"].each do |value|
         expect(problems(cast_one("url", value).errors)).to eq([["f", :not_a_url]]), value
       end
     end

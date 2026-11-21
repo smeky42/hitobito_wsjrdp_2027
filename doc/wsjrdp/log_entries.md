@@ -92,7 +92,7 @@ its own:
 
 | `item_type` | `wsjrdp_data` |
 |---|---|
-| `WsjrdpCredential` | the sorted names of the secret fields that changed, under the keys that have any: `secret_fields_set`, `secret_fields_changed`, `secret_fields_resealed` (a re-key), `secret_fields_removed` (on `destroy`, all of them); `{}` when no secret field changed |
+| `WsjrdpCredential` | the sorted names of the secret fields that changed, under the keys that have any: `secret_fields_set`, `secret_fields_changed`, `secret_fields_resealed` (a re-key), `secret_fields_removed` (a field removed; on `destroy`, every secret field); `{}` when no secret field changed |
 
 No sealed text is in any column of `versions` (see
 [credentials.md](credentials.md), "The trail: PaperTrail"). A save that

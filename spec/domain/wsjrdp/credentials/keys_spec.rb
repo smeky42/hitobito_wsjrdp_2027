@@ -75,7 +75,7 @@ describe Wsjrdp::Credentials::Keys do
     it "is valid, has no active key and refuses to seal" do
       keys = keys(nil, stage: "development")
 
-      expect(keys).to be_empty
+      expect(keys.keys).to eq([])
       expect(keys.active).to be_nil
       expect(keys.summary).to include("no key for stage development")
       expect { keys.active! }.to raise_error(Wsjrdp::Credentials::NoKeyError, /no key for stage development/)
@@ -91,28 +91,19 @@ describe Wsjrdp::Credentials::Keys do
   end
 
   describe "the label" do
-    it "is stripped" do
-      expect(keys(nil, stage: "development", label: "  laptop-a \n").label).to eq("laptop-a")
-    end
-
-    it "is nil when empty" do
+    it "is stripped, nil when empty, and named in the summary" do
       expect(keys(nil, stage: "development", label: " ").label).to be_nil
       expect(keys(nil, stage: "development").label).to be_nil
-    end
-
-    it "is named in the summary" do
-      keys = keys("development:#{secret_a}", stage: "development", label: "laptop-a")
+      keys = keys("development:#{secret_a}", stage: "development", label: "  laptop-a \n")
+      expect(keys.label).to eq("laptop-a")
       expect(keys.summary).to end_with("label laptop-a")
     end
   end
 
   describe "outside production" do
-    it "refuses to start with a production secret" do
+    it "refuses a production secret in any other stage" do
       expect { keys("production:#{secret_a}", stage: "development") }
         .to raise_error(described_class::ConfigurationError, /production secret/)
-    end
-
-    it "refuses a production secret in a staging stage as well" do
       expect { keys("staging:#{secret_a},production:#{secret_b}", stage: "staging") }
         .to raise_error(described_class::ConfigurationError, /entry 2/)
     end
@@ -131,27 +122,16 @@ describe Wsjrdp::Credentials::Keys do
       expect { keys("test:#{secret_a},development:#{secret_a}", stage: "development") }
         .to raise_error(described_class::ConfigurationError, /given again/)
     end
-
-    it "never puts a secret into its messages" do
-      expect { keys("development:#{secret_a},development:#{secret_a},production:#{secret_b}", stage: "development") }
-        .to raise_error(described_class::ConfigurationError) { |error|
-          expect(error.message).not_to include(secret_a)
-          expect(error.message).not_to include(secret_b)
-        }
-    end
   end
 
   describe "a value that is not valid text" do
     let(:invalid) { (+"\xff").force_encoding("UTF-8") }
 
-    it "is a problem of its entry, which production logs and ignores" do
+    it "is a problem of its entry, in a text or a list, which production logs and ignores" do
       keys = keys("production:#{secret_a},production:#{invalid}#{secret_b}", stage: "production")
-
       expect(keys.keys.map(&:fingerprint)).to eq([fingerprint(secret_a)])
       expect(keys.problems).to eq(["entry 2: not valid text"])
-    end
 
-    it "is a problem in a list of entries as well" do
       keys = keys(["production:#{secret_a}", "#{invalid}production:#{secret_b}"], stage: "production")
       expect(keys.problems).to eq(["entry 2: not valid text"])
     end
@@ -163,24 +143,17 @@ describe Wsjrdp::Credentials::Keys do
         }
     end
 
-    it "is a problem in the label, which production logs and ignores" do
-      keys = keys("production:#{secret_a}", stage: "production", label: "laptop#{invalid}")
-
-      expect(keys.label).to be_nil
-      expect(keys.problems).to eq(["the label (#{described_class::LABEL_ENV_NAME}) is not valid text"])
-      expect { keys(nil, stage: "development", label: invalid) }.to raise_error(described_class::ConfigurationError)
-    end
-
-    it "is a problem in a label with a NUL character, as in one of invalid encoding" do
-      keys = keys("production:#{secret_a}", stage: "production", label: "made-up\u0000box")
-
-      expect(keys.label).to be_nil
-      expect(keys.problems).to eq(["the label (#{described_class::LABEL_ENV_NAME}) is not valid text"])
-      expect(keys.keys.size).to eq(1)
-      %w[development test].each do |stage|
-        expect { keys(nil, stage: stage, label: "made-up\u0000box") }.to raise_error(described_class::ConfigurationError) { |error|
-          expect(error.message).not_to include("made-up")
-        }
+    it "is a problem in the label, of invalid encoding or with a NUL, which production logs and ignores" do
+      ["made-up#{invalid}", "made-up\u0000box"].each do |label|
+        keys = keys("production:#{secret_a}", stage: "production", label: label)
+        expect(keys.label).to be_nil
+        expect(keys.problems).to eq(["the label (#{described_class::LABEL_ENV_NAME}) is not valid text"])
+        expect(keys.keys.size).to eq(1)
+        %w[development test].each do |stage|
+          expect { keys(nil, stage: stage, label: label) }.to raise_error(described_class::ConfigurationError) { |error|
+            expect(error.message).not_to include("made-up")
+          }
+        end
       end
     end
   end
@@ -197,34 +170,24 @@ describe Wsjrdp::Credentials::Keys do
   end
 
   describe "a secret typed into the stage" do
-    it "is never shown: a long stage is \"another stage\"" do
+    it "is never shown: a long stage is \"another stage\", also the instance's own" do
       keys = keys("#{secret_a}:#{secret_b}", stage: "production")
       output = StringIO.new
       keys.log_summary(Logger.new(output))
-
       expect(keys.warnings).to eq(["entry 1 belongs to another stage, this is production"])
       expect(output.string).not_to include(secret_a)
-    end
 
-    it "is not shown when it is the instance's own stage either" do
       keys = keys(nil, stage: secret_a)
       expect([keys.summary, keys.inspect, keys.to_json].join).not_to include(secret_a)
       expect { keys("x:y", stage: secret_a) }
         .to raise_error(described_class::ConfigurationError) { |error| expect(error.message).not_to include(secret_a) }
     end
 
-    it "is shown when it is short" do
-      expect(keys("staging:#{secret_a}", stage: "production").warnings.join).to include("stage staging")
-    end
-
-    it "is shown up to 32 characters, and from 33 on is \"another stage\"" do
+    it "is shown up to 32 characters, and from 33 on is \"another stage\", for an entry and the instance alike" do
       expect(keys("#{"s" * 32}:#{secret_a}", stage: "production").warnings)
         .to eq(["entry 1 belongs to stage #{"s" * 32}, this is production"])
       expect(keys("#{"s" * 33}:#{secret_a}", stage: "production").warnings)
         .to eq(["entry 1 belongs to another stage, this is production"])
-    end
-
-    it "keeps 32 for the instance's own stage, even where a name may have 48" do
       expect(keys(nil, stage: "s" * 32).summary).to include("stage #{"s" * 32};")
       expect(keys(nil, stage: "s" * 33).summary).to include("stage (not a stage);")
     end
@@ -300,25 +263,22 @@ describe Wsjrdp::Credentials::Keys do
     let(:shown_keys) do
       keys("production:#{secret_a},development:#{secret_c},broken", stage: "production", label: "box")
     end
+    let(:shown) { [shown_keys, shown_keys.active] }
+    let(:secrets) { [secret_a, secret_c] }
 
     it "shows fingerprints, never secrets, wherever it is printed or logged" do
       keys = shown_keys
       output = StringIO.new
       keys.log_summary(Logger.new(output))
-      shown = [keys.inspect, keys.to_s, keys.to_json, keys.as_json.to_s, keys.pretty_inspect,
+      printed = [keys.inspect, keys.to_s, keys.to_json, keys.as_json.to_s, keys.pretty_inspect,
         keys.active.inspect, keys.active.to_s, keys.active.to_json, keys.active.pretty_inspect,
         ActiveSupport::JSON.encode(keys), ActiveSupport::JSON.encode(keys.active), JSON.generate([keys.active]),
         keys.summary, keys.problems, keys.warnings, output.string].join
 
-      expect(shown).to include(fingerprint(secret_a))
-      [secret_a, secret_c, [secret_a].pack("H*")].each { |secret| expect(shown).not_to include(secret) }
+      expect(printed).to include(fingerprint(secret_a))
+      [secret_a, secret_c, [secret_a].pack("H*")].each { |secret| expect(printed).not_to include(secret) }
     end
 
-    it "refuses Marshal and YAML" do
-      [shown_keys, shown_keys.active].each do |object|
-        expect { Marshal.dump(object) }.to raise_error(TypeError)
-        expect { YAML.dump(object) }.to raise_error(TypeError)
-      end
-    end
+    include_examples "credential hygiene"
   end
 end

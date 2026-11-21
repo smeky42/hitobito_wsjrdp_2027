@@ -42,6 +42,22 @@ module CredentialsSpec
   end
 end
 
+# Needs shown (the objects to print) and secrets (texts none may show).
+RSpec.shared_examples "credential hygiene" do
+  it "never shows a secret, and refuses a dump" do
+    shown.each do |object|
+      [object.inspect, object.to_s, object.pretty_inspect, object.to_json].each do |text|
+        # The message names the class only: the text would show the secret.
+        secrets.each { |secret| expect(text).not_to include(secret), "#{object.class} shows a secret" }
+      end
+      next unless object.is_a?(Wsjrdp::Credentials::Undumpable)
+
+      expect { Marshal.dump(object) }.to raise_error(TypeError), object.class.name
+      expect { YAML.dump(object) }.to raise_error(TypeError), object.class.name
+    end
+  end
+end
+
 %w[credentials credentials/keys credentials/sealer credentials/field credentials/kind
   credentials/kinds credentials/credential credentials/lookup].each do |file|
   require_relative "../../../../app/domain/wsjrdp/#{file}"

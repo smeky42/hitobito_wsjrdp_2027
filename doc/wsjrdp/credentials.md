@@ -141,7 +141,7 @@ kinds:
 | `email` | String | a String of the form of an address |
 | `integer` | Integer | an Integer that fits a bigint, or up to 19 decimal digits with an optional sign (`"587"`) |
 | `boolean` | `true` / `false` | `true`, `false`, `"true"`, `"false"`, `"1"`, `"0"` |
-| `enum` | String | one of the field's `values` |
+| `enum` | String | any text; the field's `values` are suggestions for the form, its `default` one of them |
 | `url` | String | an absolute `http` or `https` URL with a host and without user info |
 
 - Nothing is stripped: `" 587"` is no integer. `nil` and `""` are not set;
@@ -149,7 +149,7 @@ kinds:
 - The file is read strictly: anything it does not understand raises
   `Kinds::RegistryError` in every stage, production included. Reserved
   field names: `name`, `created_at`, `valid_from`, `expires_at` (a version's
-  name and dates) and `json_class`. A secret field has no default.
+  name and dates). A secret field has no default.
 - `kind.cast(values, stage:)` gives the values with `errors` and `warnings`
   as codes (`required`, `unknown`, `not_an_integer`, `not_valid_text`, ...).
   A `url` that is not `https` is a warning (`not_https`) in production only.
@@ -222,7 +222,9 @@ sealed value of the same name wins over it.
 ### The states of a row
 
 `row.examine(at:, keys:, kinds:)` gives the state and, where the values
-open and fit, the `Credential` and the kind's warnings (`not_https`). It never raises for the row's content.
+open and fit, the `Credential` and the kind's warnings (`not_https`).
+It never raises for the row's content.
+
 Checked in this order:
 
 | State | Meaning |
@@ -307,6 +309,9 @@ Wsjrdp::Credentials::Change.call(record: row, revoked_at: Time.current)  # revok
   active key. Otherwise: `key_not_active` (re-key first), `key_missing` (a
   new version is the way to new secrets) or `unknown_scheme`. Plain fields,
   name, comment and window change whatever the key.
+- **`expected_updated_at:`** (optional): the row's `updated_at` when the
+  form was drawn. A row changed since is refused as `base: stale`; the
+  check runs under the lock.
 
 ### `Rekey`: seal a version with the active key
 
