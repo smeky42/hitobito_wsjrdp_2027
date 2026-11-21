@@ -84,6 +84,15 @@ module Wsjrdp::Credentials
         part == part.upcase && Wsjrdp::Credentials.account_key?(Wsjrdp::Credentials.account_key_of(part))
     end
 
+    # The common start of the variable names of one account, for a page to
+    # show. A part that is not a valid name shows as NOT_A_NAME.
+    def self.account_prefix(stage, kind, account_key)
+      key = Wsjrdp::Credentials.account_key_of(account_key)
+      account = Wsjrdp::Credentials.account_key?(key) ? account_part(key) : NOT_A_NAME
+      parts = [Wsjrdp::Credentials.shown_stage(stage, placeholder: NOT_A_NAME), Wsjrdp::Credentials.shown_name(kind)]
+      OVERRIDE_PREFIX + [*parts.map { |part| (part == NOT_A_NAME) ? part : part.upcase }, account].join(SEPARATOR)
+    end
+
     def production? = stage == PRODUCTION
 
     # The account whose variables name the part of this key, under this

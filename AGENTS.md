@@ -38,7 +38,8 @@ How-to guides — authoritative, follow them:
   kinds, the table `wsjrdp_credentials` and its states, the write paths
   `Deposit`, `Change` and `Rekey`, the lookup `Wsjrdp::Credentials.fetch`,
   and the overrides (`HITOBITO_CREDENTIAL__…` variables, then the
-  git-ignored `config/wsjrdp_credentials.local.yml`, then the database).
+  git-ignored `config/wsjrdp_credentials.local.yml`, then the database),
+  and the admin pages with their reveal of a value.
   Rule: nothing ever prints a value or a key. Read it before touching
   anything that stores or reads a password or API key.
 - [`doc/fin/money_conventions.md`](doc/fin/money_conventions.md) — the house standard

@@ -187,6 +187,15 @@ describe Wsjrdp::Credentials::Variables do
       end
     end
 
+    it "names the variables of an account by their common start, a part that is no name as such" do
+      expect(described_class.account_prefix("development", "moss_api", "default"))
+        .to eq("HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__DEFAULT")
+      expect(described_class.account_prefix("development", "moss_api", "Not A Name"))
+        .to eq("HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__(not a name)")
+      expect(described_class.account_prefix("development", "mail_account", "Foo@WorldScoutJamboree.de"))
+        .to eq("HITOBITO_CREDENTIAL__DEVELOPMENT__MAIL_ACCOUNT__FOO_WORLDSCOUTJAMBOREE_DE")
+    end
+
     describe "in production" do
       let(:prefix) { "HITOBITO_CREDENTIAL__PRODUCTION__MOSS_API__DEFAULT__" }
 
