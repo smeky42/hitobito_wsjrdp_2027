@@ -15,6 +15,9 @@
 -#  small, :grid .booking-detail-label) and need nothing here.
 :css
   .fin-detail-list dt { font-weight: 400; font-size: .875rem; }
+  /* Its rows' gutters reach 4px past the list's padding; in a table's row
+     that empty edge would make the table scroll sideways. */
+  .exp-detail .fin-detail-list { overflow-x: clip; }
   /* The copy icon (Fin::FinAccountsHelper#fin_account_copyable) and the new-tab
      icon (wsjrdp_newtab_link) beside a value: a little air; the copy handler
      reads the clicked element, so the icon itself takes no clicks. */

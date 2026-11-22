@@ -99,7 +99,8 @@ class Wsjrdp::TableState
   # from the builder's unapplied draft -- see doc/wsjrdp/expandable_table.md,
   # "Presets".
   FilterPreset = Data.define(:key, :label, :slots, :active, :toggle_wire, :icon, :css_class,
-    :group, :attribute, :value, :group_values, :exclusive, :lifts, :pins, :toggle_lifts, :group_label) do
+    :group, :attribute, :value, :group_values, :exclusive, :lifts, :pins, :toggle_lifts, :group_label,
+    :segmented, :title) do
     # Data has no per-member defaults; this override gives the display members
     # and the group ones theirs, so a slot preset is constructed by naming
     # neither. `lifts` are the liftable fixed keys a preset lifts, `pins` the
@@ -107,7 +108,7 @@ class Wsjrdp::TableState
     # leads to (nil: the toggle leaves it alone).
     def initialize(key:, label:, slots:, active:, toggle_wire:, icon: nil, css_class: nil,
       group: nil, attribute: nil, value: nil, group_values: nil, exclusive: false, lifts: nil, pins: nil,
-      toggle_lifts: nil, group_label: nil)
+      toggle_lifts: nil, group_label: nil, segmented: false, title: nil)
       super
     end
 
@@ -119,6 +120,13 @@ class Wsjrdp::TableState
 
     # Is this button one alternative of an exclusive group (exactly one pressed)?
     def exclusive? = exclusive
+
+    # Is this button one segment of a fixed group of several answers (several
+    # may be pressed, an "all" button in front)?
+    def segmented? = segmented
+
+    # Does the button sit in a segmented control?
+    def in_segment? = exclusive || segmented
 
     # Is this button one member of a group sharing a slot, rather than a preset
     # owning its own slots?
@@ -195,12 +203,22 @@ class Wsjrdp::TableState
     GROUP_KEYS = %i[group attribute operator members].freeze
     GROUP_OPTIONAL_KEYS = %i[exclusive unrestricted_label].freeze
     UNRESTRICTED_NAME = "ohne Einschränkung"
+    # The tooltip of the "all" button of a fixed group of several answers.
+    ALL_NAME = "alle wählen bzw. abwählen"
     UNRESTRICTED_ICON = "asterisk"
     # The css class of a preset button that shows its icon only; its label is
     # the tooltip and the accessible name (shared/wsjrdp/filtering/_line).
     ICON_ONLY_CLASS = "flt-preset-icon-only"
     MEMBER_KEYS = %i[key label value icon css_class].freeze
     MEMBER_REQUIRED_KEYS = %i[key label value].freeze
+
+    # `group.member` in the lifts param; for a group of several answers
+    # `group.a+b`, and `group.-` for none.
+    def self.choice_token(group, chosen)
+      return "#{group[:key]}.#{chosen}" unless group[:multiple]
+
+      "#{group[:key]}.#{chosen.empty? ? "-" : chosen.join("+")}"
+    end
 
     # `schema` is the dataset's filter schema module and is nil for an inert
     # filter; `user_query` is nil when there is no user part at all (an inert
@@ -370,7 +388,7 @@ class Wsjrdp::TableState
     # fixed group off its default, in declared order.
     def lifts_param(toggled, choices)
       keys = (@liftable + @optional).select { |key| toggled.include?(key) }
-      groups = @fixed_groups.filter_map { |group| "#{group[:key]}.#{choices[group[:key]]}" if choices[group[:key]] }
+      groups = @fixed_groups.filter_map { |group| Filter.choice_token(group, choices[group[:key]]) if choices.key?(group[:key]) }
       (keys + groups).join(",")
     end
 
@@ -379,6 +397,9 @@ class Wsjrdp::TableState
     def preset_sets!(key, sets)
       sets.to_h { |group, member|
         declared = @fixed_groups.find { |candidate| candidate[:key] == group.to_s }
+        if declared&.dig(:multiple)
+          raise ArgumentError, "filter preset #{key}: sets #{group}, a fixed group of several answers"
+        end
         unless declared && declared[:members].any? { |candidate| candidate[:key] == member.to_s }
           raise ArgumentError, "filter preset #{key}: sets #{group}: #{member}, which is no fixed group's member"
         end
@@ -392,6 +413,8 @@ class Wsjrdp::TableState
     # One button per member of a fixed group -- an exclusive segment, exactly
     # one pressed; each leads to the state with its member chosen.
     def fixed_group_presets(group)
+      return multiple_fixed_group_presets(group) if group[:multiple]
+
       chosen = choice(group[:key])
       group[:members].map do |member|
         choices = @choices.dup
@@ -407,6 +430,35 @@ class Wsjrdp::TableState
           slots: nil, active: chosen == member[:key], toggle_wire: wire, exclusive: true,
           icon: (UNRESTRICTED_ICON if unrestricted), css_class: (ICON_ONLY_CLASS if unrestricted),
           group: "fixed-#{group[:key]}", group_label: group[:label], toggle_lifts: lifts_param(@toggled, choices))
+      end
+    end
+
+    # A fixed group of several answers: an "all" button (all members, or none
+    # when all are chosen), then one toggle per member.
+    def multiple_fixed_group_presets(group)
+      chosen = choice(group[:key])
+      all_keys = group[:members].pluck(:key)
+      lifts_for = ->(keys) {
+        choices = @choices.dup
+        ordered = all_keys & keys
+        if ordered.sort == group[:default].sort
+          choices.delete(group[:key])
+        else
+          choices[group[:key]] = ordered.freeze
+        end
+        lifts_param(@toggled, choices)
+      }
+      all = (all_keys - chosen).empty?
+      everything = Wsjrdp::TableState::FilterPreset.new(key: "#{group[:key]}.all",
+        label: ALL_NAME, slots: nil, active: all, toggle_wire: wire, segmented: true,
+        icon: UNRESTRICTED_ICON, css_class: ICON_ONLY_CLASS, title: group[:all_title],
+        group: "fixed-#{group[:key]}", group_label: group[:label], toggle_lifts: lifts_for.call(all ? [] : all_keys))
+      [everything] + group[:members].map do |member|
+        pressed = chosen.include?(member[:key])
+        Wsjrdp::TableState::FilterPreset.new(key: "#{group[:key]}.#{member[:key]}", label: member[:label],
+          slots: nil, active: pressed, toggle_wire: wire, segmented: true, title: member[:title],
+          group: "fixed-#{group[:key]}", group_label: group[:label],
+          toggle_lifts: lifts_for.call(pressed ? chosen - [member[:key]] : chosen + [member[:key]]))
       end
     end
 
@@ -1212,7 +1264,17 @@ class Wsjrdp::TableState
       }
       # Each fixed group's member in force, unless it is the one without slots.
       fixed_group_declarations(policy_field).each do |group|
-        member = group[:members].find { |candidate| candidate[:key] == ((@choices || {})[group[:key]] || group[:default]) }
+        chosen = (@choices || {}).fetch(group[:key]) { group[:default] }
+        if group[:multiple]
+          # The chosen answers share one slot; none or all chosen restrict nothing.
+          values = group[:members].select { |member| chosen.include?(member[:key]) }.pluck(:value)
+          next if values.empty? || values.size == group[:members].size
+
+          slots = [[[group[:attribute], Filter::GROUP_OPERATOR, *values]]].freeze
+          entries << {key: Filter.choice_token(group, chosen), slots: slots, show: group[:show]}.freeze
+          next
+        end
+        member = group[:members].find { |candidate| candidate[:key] == chosen }
         next if member[:slots].blank?
 
         entries << {key: "#{group[:key]}.#{member[:key]}", slots: member[:slots], show: group[:show]}.freeze
@@ -1259,8 +1321,10 @@ class Wsjrdp::TableState
 
     def fixed_group_declaration(group)
       what = "filter fixed group #{group[:key].inspect}"
-      unknown = group.keys - %i[key label default members show]
+      allowed = %i[key label default members show] + (group[:multiple] ? %i[multiple attribute all_title] : [])
+      unknown = group.keys - allowed
       raise ArgumentError, "#{what}: unknown keyword: #{unknown.first.inspect}" if unknown.any?
+      return multiple_fixed_group_declaration(group, what) if group[:multiple]
 
       key = group.fetch(:key).to_s
       raise ArgumentError, "#{what}: key must match #{TOKEN_PATTERN.inspect}" unless key.match?(TOKEN_PATTERN)
@@ -1281,6 +1345,37 @@ class Wsjrdp::TableState
       raise ArgumentError, "#{what}: show #{show.inspect} -- :readonly or :hidden" unless %i[readonly hidden].include?(show)
 
       {key: key, label: group.fetch(:label).to_s, default: default, members: members.freeze, show: show}.freeze
+    end
+
+    # A fixed group of several answers (`multiple: true`): members are values
+    # of `attribute:`, the chosen ones share one `in` slot; the default is a
+    # list of member keys.
+    def multiple_fixed_group_declaration(group, what)
+      key = group.fetch(:key).to_s
+      raise ArgumentError, "#{what}: key must match #{TOKEN_PATTERN.inspect}" unless key.match?(TOKEN_PATTERN)
+      raise ArgumentError, "#{what}: a group of several answers needs an attribute:" if group[:attribute].blank?
+
+      members = Array(group.fetch(:members)).map do |member|
+        member = member.transform_keys(&:to_sym)
+        unknown = member.keys - %i[key label value title]
+        raise ArgumentError, "#{what}: member: unknown keyword: #{unknown.first.inspect}" if unknown.any?
+        member_key = member.fetch(:key).to_s
+        raise ArgumentError, "#{what}: member key #{member_key.inspect}" unless member_key.match?(TOKEN_PATTERN)
+
+        {key: member_key, label: member.fetch(:label).to_s, value: member.fetch(:value).to_s,
+         title: member[:title]&.to_s}.freeze
+      end
+      keys = members.pluck(:key)
+      raise ArgumentError, "#{what}: duplicate member" if keys.uniq.size != keys.size
+      default = Array(group.fetch(:default)).map(&:to_s)
+      stray = default - keys
+      raise ArgumentError, "#{what}: default #{stray.first.inspect} is no member" if stray.any?
+
+      show = (group[:show] || :readonly).to_sym
+      raise ArgumentError, "#{what}: show #{show.inspect} -- :readonly or :hidden" unless %i[readonly hidden].include?(show)
+
+      {key: key, label: group[:label]&.to_s, default: (keys & default).freeze, members: members.freeze, show: show,
+       multiple: true, attribute: group[:attribute].to_s, all_title: group[:all_title]&.to_s}.freeze
     end
 
     TOKEN_PATTERN = /\A[a-z][a-z0-9_]*\z/
@@ -1306,13 +1401,25 @@ class Wsjrdp::TableState
       named.each do |token|
         group_key, member_key = token.split(".", 2)
         group = groups.find { |candidate| candidate[:key] == group_key }
-        next unless group && member_key && member_key != group[:default]
+        next unless group && member_key
+
+        if group[:multiple]
+          # `a+b`, or `-` for none; only declared members, in declared order.
+          named_keys = (member_key == "-") ? [] : member_key.split("+")
+          chosen = group[:members].pluck(:key) & named_keys
+          next if member_key != "-" && chosen.empty?
+          next if chosen.sort == group[:default].sort
+
+          @choices[group_key] = chosen.freeze
+          next
+        end
+        next if member_key == group[:default]
         next unless group[:members].any? { |member| member[:key] == member_key }
 
         @choices[group_key] = member_key
       end
       @choices.freeze
-      @toggled + groups.filter_map { |group| "#{group[:key]}.#{@choices[group[:key]]}" if @choices[group[:key]] }
+      @toggled + groups.filter_map { |group| Filter.choice_token(group, @choices[group[:key]]) if @choices.key?(group[:key]) }
     end
 
     def default_lifts(_value, _policy_field)
