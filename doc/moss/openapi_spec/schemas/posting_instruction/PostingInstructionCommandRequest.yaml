@@ -1,0 +1,6 @@
+type: object
+required:
+  - command
+properties:
+  command:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionCommand'

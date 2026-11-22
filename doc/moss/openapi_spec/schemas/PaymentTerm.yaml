@@ -1,0 +1,41 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the payment term
+    example: "a9aa1059-30d7-4df9-a335-c7339c682d74"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the payment term belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  description:
+    type: string
+    description: Description of the payment term
+    example: "30 Tage netto"
+  code:
+    type: string
+    description: External reference code for the payment term as used in the accounting system
+    example: "1030"
+  netDueDays:
+    type: integer
+    description: Net payment due date in days. Applied differently based on dueDateCalculationType
+    example: 30
+  monthEndAdvances:
+    type: integer
+    description: Number of month-end periods to advance before counting netDueDays. Only applicable when dueDateCalculationType is EXACT_ONLINE
+    example: 2
+  status:
+    $ref: './PaymentTermStatus.yaml'
+    description: Current status of the payment term
+  dueDateCalculationType:
+    $ref: './PaymentTermDueDateCalculationType.yaml'
+    description: Due date calculation method
+  lines:
+    type: array
+    items:
+      $ref: './PaymentTermLine.yaml'
+    description: Early-payment discount tiers (Skonto)
+    default: []
+required: [id, organisationId, description, netDueDays, status, lines]

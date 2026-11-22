@@ -1,0 +1,8 @@
+type: string
+description: Overall accounting integration status.
+enum:
+  - CONNECTED
+  - NOT_CONNECTED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: CONNECTED

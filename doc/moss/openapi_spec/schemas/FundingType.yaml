@@ -1,0 +1,6 @@
+type: string
+enum:
+  - CREDIT
+  - DEBIT
+  - UNKNOWN_DEFAULT_OPEN_API
+example: "CREDIT"

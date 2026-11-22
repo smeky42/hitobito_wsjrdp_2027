@@ -1,0 +1,15 @@
+type: string
+enum:
+  - NOT_MATCHED
+  - AUTO_MATCHED
+  - MANUALLY_MATCHED
+  - UNKNOWN_DEFAULT_OPEN_API
+example: "AUTO_MATCHED"
+description: |
+  The matched status of the bank transaction.
+  
+  **Statuses**
+  - `NOT_MATCHED`: The transaction has not been matched.
+  - `AUTO_MATCHED`: The transaction has been automatically matched.
+  - `MANUALLY_MATCHED`: The transaction has been manually matched.
+  - `UNKNOWN_DEFAULT_OPEN_API`: The matched status is unknown.

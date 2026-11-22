@@ -1,0 +1,12 @@
+type: string
+enum:
+  - MON
+  - TUE
+  - WED
+  - THU
+  - FRI
+  - SAT
+  - SUN
+  - UNKNOWN_DEFAULT_OPEN_API
+description: Days of the week for time restriction limits
+example: MON

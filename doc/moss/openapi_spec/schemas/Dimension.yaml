@@ -1,0 +1,46 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: |
+      Unique identifier of the dimension.
+      Cost center and cost carrier dimensions have fixed dimension ids, while other dimensions have non-fixed UUIDs.
+      Cost center dimension has id 00000000-0000-0000-0000-000000000001.
+      Cost carrier dimension has id 00000000-0000-0000-0000-000000000002.
+    example: "af5f2270-9a4d-467f-9ca7-69562369979c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the dimension belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  name:
+    type: string
+    description: Name of the dimension in Moss
+    example: "Project ID"
+  erpName:
+    type: [string, "null"]
+    description: Name of the dimension in the accounting system
+    example: "Project ID"
+  erpId:
+    type: [string, "null"]
+    description: Unique identifier of the dimension in accounting system
+    example: "Project ID"
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp (ISO-8601)
+    example: "2026-01-19T14:45:48.710643Z"
+  updateTime:
+    type: string
+    format: date-time
+    description: Last update timestamp (ISO-8601)
+    example: "2026-01-19T14:45:48.714413Z"
+  deleteTime:
+    type: [string, "null"]
+    format: date-time
+    description: Deletion timestamp (ISO-8601)
+    example: null
+  status:
+    $ref: './DimensionStatus.yaml'
+required: [id, organisationId, name, createTime, updateTime, status]

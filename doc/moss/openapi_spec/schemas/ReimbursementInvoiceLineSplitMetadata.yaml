@@ -1,0 +1,8 @@
+type: object
+properties:
+  selfIssuedReceipt:
+    type: boolean
+    default: false
+    description: Whether this reimbursement line has a self-issued receipt
+description: |
+  Metadata specific to reimbursement invoice line split expenses.

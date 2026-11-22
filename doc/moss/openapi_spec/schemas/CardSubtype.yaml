@@ -1,0 +1,13 @@
+type: string
+enum:
+  - MULTI_USE
+  - SINGLE_USE
+  - PROJECT
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Subtype of card for specific use cases:
+
+  * `MULTI_USE`: Reusable cards for ongoing expenses. **Required validation**: Must include either a `MONTHLY_PERIOD` or `YEARLY_PERIOD` limit.
+  * `SINGLE_USE`: One-time usage cards for specific purchases
+  * `PROJECT`: Cards dedicated to specific projects or cost centers
+example: MULTI_USE

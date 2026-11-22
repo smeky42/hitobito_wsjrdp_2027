@@ -1,0 +1,14 @@
+type: string
+description: |
+  Duplicate status value.
+  * `NOT_CHECKED` - The document hasn't been checked yet (initial status).
+  * `DUPLICATE` - The document is a duplicate to another existing document.
+  * `NO_DUPLICATE` - The document is not a duplicate.
+  * `UNKNOWN_DEFAULT_OPEN_API` - Unknown status value (fallback for future statuses).
+enum:
+  - NOT_CHECKED
+  - DUPLICATE
+  - NO_DUPLICATE
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "NO_DUPLICATE"

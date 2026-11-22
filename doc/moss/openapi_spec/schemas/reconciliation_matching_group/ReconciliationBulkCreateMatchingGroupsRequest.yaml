@@ -1,0 +1,11 @@
+type: object
+required:
+  - matchingGroups
+description: Request to create multiple reconciliation matching groups.
+properties:
+  matchingGroups:
+    type: array
+    maxItems: 100
+    description: Matching groups to create, up to 100 per request.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/ReconciliationCreateMatchingGroupRequest'

@@ -1,0 +1,55 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank transaction.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  bankAccountId:
+    type: string
+    format: uuid
+    description: the bank account where the transaction took place
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the dimension item belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  transactionType:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionType'
+    description: Type of the bank transaction
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: Amount of the transaction in the bank account currency with fees included. This is the amount that is actually debited from or credited to the customer's bank account.
+    example:
+      amount: "100.50"
+      currency: "EUR"
+  bookingDate:
+    type: string
+    format: date
+    description: Date when the transaction is booked into customer account
+    example: "2024-01-01"
+  valueDate:
+    type: string
+    format: date
+    description: Date used for the calculation of interest on the funds debited from or credited to the customer’s account
+    example: "2024-01-01"
+  description:
+    type: string
+    description: Description of the transaction
+    example: "Top-up"
+  counterparty:
+    type: string
+    description: Counterparty of the transaction
+    example: "Coffee Shop Berlin"
+  purpose:
+    type: string
+    description: |
+      Payment purpose (reference text) of the transaction. Not present for internal Moss card transactions.
+      For payouts, it contains a reference to the corresponding expense.
+    example: "NG-502344"
+  fees:
+    type: array
+    description: Array of fees associated with the transaction
+    items: { $ref: '../../openapi.yaml#/components/schemas/BankTransactionFee' }
+required: [id, organisationId, bankAccountId, transactionType, amount, bookingDate, valueDate, fees]

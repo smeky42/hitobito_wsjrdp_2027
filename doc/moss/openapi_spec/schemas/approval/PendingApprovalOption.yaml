@@ -1,0 +1,10 @@
+type: object
+description: A set of slots that together satisfy a pending approval option for a step.
+properties:
+  slots:
+    type: array
+    description: Slots that make up this pending approval option.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/PendingApprovalSlot'
+required:
+  - slots

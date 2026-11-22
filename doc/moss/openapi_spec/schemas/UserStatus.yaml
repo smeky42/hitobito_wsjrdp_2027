@@ -1,0 +1,19 @@
+type: string
+enum:
+  - INVITED
+  - ACTIVE
+  - DEACTIVATED
+  - HIDDEN
+  - STAGED_FOR_INVITE
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Current status of the user account. 
+
+  **Statuses:**
+  - `INVITED`: invited but not yet activated (cannot login)
+  - `ACTIVE`: active, can login and act
+  - `DEACTIVATED`: disabled / left org (cannot login)
+  - `HIDDEN`: placeholder for user during the new organisation application/KYC process until verification or data completion
+  - `STAGED_FOR_INVITE`: provisioned by HRIS integration, invite not yet issued
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown status value (fallback for future statuses)
+example: ACTIVE

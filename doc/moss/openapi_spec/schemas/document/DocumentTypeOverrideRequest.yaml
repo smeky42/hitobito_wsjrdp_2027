@@ -1,0 +1,12 @@
+type: object
+properties:
+  documentType:
+    type: string
+    enum:
+      - INVOICE
+      - RECEIPT
+      - REIMBURSEMENT_BUSINESS_EXPENSE
+      - PURCHASE
+      - SUPPORTING
+required:
+  - documentType

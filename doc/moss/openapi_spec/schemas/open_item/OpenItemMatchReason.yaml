@@ -1,0 +1,32 @@
+type: object
+description: An open item field that contributed to a suggested match.
+required:
+  - objectType
+  - fieldType
+  - level
+properties:
+  objectType:
+    type: string
+    description: Object containing the matched field.
+    enum:
+      - OPEN_ITEM
+      - EXPENSE
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+  fieldType:
+    type: string
+    description: Open item field used for matching.
+    enum:
+      - COUNTERPARTY_NAME
+      - DOCUMENT_DATE
+      - DUE_DATE
+      - IBAN
+      - DOCUMENT_NUMBER
+      - OUTSTANDING_AMOUNT
+      - PAYMENT_REFERENCE
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+  level:
+    $ref: '../../openapi.yaml#/components/schemas/MatchReasonConfidenceLevel'
+  highlight:
+    $ref: '../../openapi.yaml#/components/schemas/MatchReasonHighlight'

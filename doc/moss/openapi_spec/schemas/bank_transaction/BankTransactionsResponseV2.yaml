@@ -1,0 +1,8 @@
+allOf:
+  - $ref: '../../openapi.yaml#/components/schemas/BaseResponse'
+  - type: object
+    properties:
+      data:
+        type: array
+        items: { $ref: '../../openapi.yaml#/components/schemas/BankTransactionV2' }
+        description: Array of bank transactions

@@ -1,0 +1,19 @@
+type: object
+properties:
+  location:
+    anyOf:
+      - $ref: './PerDiemLocation.yaml'
+      - type: "null"
+    description: Location information for this itinerary item
+  arrivalTime:
+    type: [string, "null"]
+    format: date-time
+    description: Arrival time at this location (local time)
+    example: "2023-10-01T14:30:00"
+  departureTime:
+    type: [string, "null"]
+    format: date-time
+    description: Departure time from this location (local time)
+    example: "2023-10-02T09:00:00"
+description: |
+  Single item in a per diem travel itinerary.

@@ -1,0 +1,31 @@
+type: object
+allOf:
+  - $ref: './AccountingEventActionSlim.yaml'
+  - type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+        description: Unique identifier of the accounting event action.
+      createTime:
+        type: string
+        format: date-time
+        description: Creation timestamp of the accounting event action.
+        example: "2026-07-01T10:15:30Z"
+      actorId:
+        type: string
+        format: uuid
+        description: Identifier of the actor that created the action.
+      source:
+        $ref: './AccountingEventActionMessageSource.yaml'
+      messages:
+        type: array
+        description: Messages produced while processing the action.
+        items:
+          $ref: './AccountingEventActionMessage.yaml'
+    required:
+      - id
+      - createTime
+      - actorId
+      - source
+      - messages

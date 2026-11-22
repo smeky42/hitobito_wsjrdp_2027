@@ -1,0 +1,11 @@
+type: string
+description: Latest accounting event sync status.
+enum:
+  - CREATED
+  - PENDING
+  - SYNCED
+  - SYNC_FAILED
+  - ARCHIVED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: SYNCED

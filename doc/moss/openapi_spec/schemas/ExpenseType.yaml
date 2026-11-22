@@ -1,0 +1,31 @@
+type: string
+enum:
+  - CARD_TRANSACTION
+  - CARD_TRANSACTION_LINE
+  - FX_FEE
+  - REIMBURSEMENT
+  - REIMBURSEMENT_INVOICE_LINE
+  - REIMBURSEMENT_INVOICE_LINE_SPLIT
+  - MILEAGE_LINE
+  - MILEAGE_LINE_SPLIT
+  - PER_DIEM_LINE
+  - INVOICE
+  - INVOICE_LINE
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Type of expense (used for both expense headers and lines).
+
+  **Types:**
+  - `CARD_TRANSACTION`: Expenses from card transactions
+  - `CARD_TRANSACTION_LINE`: Card transaction line items (nested within card transactions)
+  - `FX_FEE`: Foreign exchange fee line items (nested within card transactions)
+  - `REIMBURSEMENT`: Reimbursement expenses
+  - `REIMBURSEMENT_INVOICE_LINE`: Reimbursement invoice line expenses
+  - `REIMBURSEMENT_INVOICE_LINE_SPLIT`: Reimbursement invoice line split expenses (nested within reimbursement invoice lines)
+  - `MILEAGE_LINE`: Mileage line expenses
+  - `MILEAGE_LINE_SPLIT`: Mileage line split expenses for UK VAT reclaims (nested within mileage lines)
+  - `PER_DIEM_LINE`: Per diem line expenses
+  - `INVOICE`: Invoice-based expenses
+  - `INVOICE_LINE`: Invoice line items (nested within invoices)
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown expense type (fallback for future types)
+example: "CARD_TRANSACTION"

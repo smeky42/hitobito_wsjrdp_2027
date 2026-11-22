@@ -100,7 +100,7 @@ See [`README.md`](README.md) for the dev-environment setup.
   `public-api.getmoss.com`) — not even read-only ones, and not for testing.
   API access uses real production credentials against real financial data.
 - **Do** read the **local OpenAPI spec** at
-  [`doc/moss_export_examples/openapi_spec/`](doc/moss_export_examples/openapi_spec/)
+  [`doc/moss/openapi_spec/`](doc/moss/openapi_spec/)
   as the authoritative source for endpoints and field schemas.
 - **Browsing the developer docs is allowed** on the domain
   `https://developers.getmoss.com/` only (stay on that domain). The per-operation

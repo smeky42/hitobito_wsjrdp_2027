@@ -1,0 +1,13 @@
+type: string
+enum:
+  - FX_FEE
+  - PAYMENT_FEE
+  - UNKNOWN_DEFAULT_OPEN_API
+example: "FX_FEE"
+description: |
+  Type of the bank transaction fee.
+  
+  **Types:**
+  - `FX_FEE`: A fee charged for currency conversion.
+  - `PAYMENT_FEE`: A fee charged for processing a payment.
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown type value (fallback for future types)

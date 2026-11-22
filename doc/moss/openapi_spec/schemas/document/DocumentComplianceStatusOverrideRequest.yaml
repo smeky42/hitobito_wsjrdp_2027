@@ -1,0 +1,16 @@
+type: object
+properties:
+  status:
+    description: The compliance status to override the document with. \
+      - COMPLIANT - the document was marked earlier as non-compliant, but the user claims it's actually compliant \
+      - NON_COMPLIANT - the document was marked earlier as compliant, but the user claims it's actually non-compliant \
+      - NON_COMPLIANT_BUT_ACCEPTED - the document was marked earlier as non-compliant, and the user confirms that, but accepts it anyway to proceed
+    type: string
+    enum:
+      - COMPLIANT
+      - NON_COMPLIANT
+      - NON_COMPLIANT_BUT_ACCEPTED
+  comment:
+    description: An optional comment to explain the override
+    type: string
+    example: "This invoice is from non-EU, so need to book it anyway"

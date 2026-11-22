@@ -1,0 +1,25 @@
+type: object
+required:
+  - usageInPercentage
+  - prNumber
+  - auto
+properties:
+  usageInPercentage:
+    type: number
+    format: double
+    description: Percentage of purchase request usage
+    example: 75.5
+  prNumber:
+    type: string
+    description: Purchase request number
+    example: "PR-2023-001"
+  auto:
+    type: boolean
+    description: Whether the purchase request usage was automatically determined
+    example: true
+  poNumber:
+    type: [string, "null"]
+    description: Purchase order number
+    example: "PO-2023-001"
+description: |
+  Purchase request usage metadata for invoice expenses.

@@ -1,0 +1,21 @@
+type: string
+description: |
+  Lifecycle status of an open item.
+
+  * `PENDING` - created but not yet approved, not payable.
+  * `OPEN` - approved and outstanding.
+  * `SETTLED_VIA_ALLOCATION` - settled by allocating a credit note rather than by payment.
+  * `IN_TRANSIT` - fully covered by a payment that has not settled yet.
+  * `PARTIAL_IN_TRANSIT` - partially covered by a payment that has not settled yet.
+  * `CLEARED` - fully settled.
+  * `DELETED` - soft deleted, no longer relevant.
+enum:
+  - PENDING
+  - OPEN
+  - SETTLED_VIA_ALLOCATION
+  - IN_TRANSIT
+  - PARTIAL_IN_TRANSIT
+  - CLEARED
+  - DELETED
+  - UNKNOWN_DEFAULT_OPEN_API
+example: OPEN

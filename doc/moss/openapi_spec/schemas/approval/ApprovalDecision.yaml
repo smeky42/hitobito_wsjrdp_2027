@@ -1,0 +1,24 @@
+type: object
+description: A single decision made on an approval step.
+properties:
+  userId:
+    type: string
+    description: Identifier of the user who made the decision.
+  decision:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalDecisionType'
+  decidedAt:
+    type: string
+    format: date-time
+    description: Timestamp when the decision was made.
+    example: "2026-07-01T10:30:00Z"
+  source:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalDecisionSource'
+  comment:
+    type: string
+    description: Optional comment left with the decision.
+    nullable: true
+required:
+  - userId
+  - decision
+  - decidedAt
+  - source

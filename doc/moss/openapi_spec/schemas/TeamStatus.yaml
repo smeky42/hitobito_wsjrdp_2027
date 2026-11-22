@@ -1,0 +1,14 @@
+type: string
+enum:
+  - ACTIVE
+  - ARCHIVED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Current status of the team.
+
+  **Statuses:**
+  - `ACTIVE`: Team is active and operational
+  - `ARCHIVED`: Team has been archived and is no longer in use
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown status value (fallback for future statuses)
+example: ACTIVE

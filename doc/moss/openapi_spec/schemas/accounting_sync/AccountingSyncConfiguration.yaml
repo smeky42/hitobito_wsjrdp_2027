@@ -1,0 +1,20 @@
+type: object
+description: Accounting sync configuration for the organization.
+properties:
+  mode:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingSyncMode'
+  updateTime:
+    type: string
+    format: date-time
+    description: When the configuration was last updated, if ever.
+    example: "2026-09-10T08:00:00Z"
+  actorId:
+    type: string
+    format: uuid
+    description: Identifier of the user or system that last updated the configuration, if any.
+    example: "b8e7c123-4567-89ab-cdef-123456789012"
+  latestSync:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingSync'
+    description: The most recent accounting sync run, if any (absent when no sync has run yet).
+required:
+  - mode

@@ -1,0 +1,6 @@
+type: object
+properties:
+  status:
+    $ref: './AccountingEventLogStatus.yaml'
+required:
+  - status

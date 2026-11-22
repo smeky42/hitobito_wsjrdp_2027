@@ -1,0 +1,13 @@
+type: string
+description: |
+  Due date calculation method.
+  - DAYS_AFTER_INVOICE_DATE: calculates due date as invoice date plus netDueDays
+  - DAYS_AFTER_INVOICE_MONTH: calculates due date as the last day of the month of the invoice plus netDueDays
+  - EXACT_ONLINE: calculates due date as the invoice date advanced by monthEndAdvances month-end periods plus netDueDays; mirrors Exact Online calculation
+enum:
+  - DAYS_AFTER_INVOICE_DATE
+  - DAYS_AFTER_INVOICE_MONTH
+  - EXACT_ONLINE
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: DAYS_AFTER_INVOICE_DATE

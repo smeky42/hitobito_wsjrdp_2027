@@ -1,0 +1,11 @@
+type: string
+description: Status of the underlying approval ticket.
+enum:
+  - IN_PROGRESS
+  - FAILED
+  - COMPLETED
+  - CANCELLED
+  - INVALIDATED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "IN_PROGRESS"

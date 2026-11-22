@@ -1,0 +1,10 @@
+type: string
+description: The type of document the open item was created from.
+enum:
+  - INVOICE
+  - CREDIT_NOTE
+  - CARD_TRANSACTION
+  - REIMBURSEMENT
+  - FX_FEE
+  - UNKNOWN_DEFAULT_OPEN_API
+example: INVOICE

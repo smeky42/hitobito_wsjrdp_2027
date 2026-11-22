@@ -1,0 +1,16 @@
+type: object
+description: |
+  Partial update request for accounting periods.
+  - Field not provided = no change
+  - Field set to value = update to new value
+properties:
+  name:
+    type: [string, "null"]
+    description: Human-readable accounting period name.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "July 2026"
+  status:
+    $ref: './AccountingPeriodStatus.yaml'
+    description: New accounting period status.

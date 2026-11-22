@@ -1,0 +1,14 @@
+type: object
+properties:
+  verifierId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the user who verified the invoice
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  verificationTime:
+    type: [string, "null"]
+    format: date-time
+    description: When the invoice was verified
+    example: "2023-10-01T10:00:00Z"
+description: |
+  Information about who verified the invoice and when.

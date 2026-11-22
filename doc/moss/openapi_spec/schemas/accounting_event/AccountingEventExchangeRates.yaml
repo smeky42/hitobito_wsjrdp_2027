@@ -1,0 +1,7 @@
+type: object
+description: Exchange rates from the original currency to the settlement and home currencies, as supplied by the accounting service. Either rate may be absent when unavailable. Historical events may omit exchangeRates entirely.
+properties:
+  originalToSettlementRate:
+    $ref: './AccountingEventExchangeRate.yaml'
+  originalToHomeRate:
+    $ref: './AccountingEventExchangeRate.yaml'

@@ -1,0 +1,25 @@
+type: string
+enum:
+  - CARD
+  - PAYOUT
+  - WITHDRAWAL
+  - TOP_UP
+  - REPAYMENT
+  - FX_FEE
+  - PAYMENT_FEE
+  - EXTERNAL
+  - UNKNOWN_DEFAULT_OPEN_API
+example: "CARD"
+description: |
+  Type of the bank transaction.
+
+  **Types:**
+  - `CARD`: A card transaction, such as a purchase or refund.
+  - `PAYOUT`: A payout transaction, such as a transfer to a bank account.
+  - `WITHDRAWAL`: A withdrawal transaction, such as an ATM withdrawal.
+  - `TOP_UP`: A top-up transaction, such as adding funds to a card.
+  - `REPAYMENT`: A repayment transaction, such as repaying a card balance.
+  - `FX_FEE`: A foreign exchange fee transaction.
+  - `PAYMENT_FEE`: A payment fee transaction.
+  - `EXTERNAL`: An external transaction, such as a transaction from a third-party service.
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown type value (fallback for future types)

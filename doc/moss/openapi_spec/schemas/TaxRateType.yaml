@@ -1,0 +1,7 @@
+type: string
+description: Type of tax rate
+enum:
+  - VAT
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "VAT"

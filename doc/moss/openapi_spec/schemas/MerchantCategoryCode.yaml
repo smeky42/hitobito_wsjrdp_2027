@@ -1,0 +1,50 @@
+type: string
+enum:
+  - ADVERTISING_MARKETING
+  - AIRLINES_CAR_RENTAL_AND_LODGING
+  - ALCOHOL_BARS
+  - BOOKS_NEWSPAPERS
+  - CHARITY
+  - CLOTHING
+  - CLUBS_MEMBERSHIPS
+  - CLOUD_COMPUTING
+  - DIGITAL_GOODS
+  - EDUCATION
+  - ELECTRONICS
+  - ENTERTAINMENT
+  - FUEL_GAS
+  - GENERAL_MERCHANDISE
+  - GOVERNMENT_SERVICES
+  - INSURANCE
+  - INTERNET_PHONE
+  - LEGAL_SERVICES
+  - MEDICAL
+  - OFFICE_SUPPLIES_CLEANING
+  - OTHER_TRAVEL_EXPENSES_MISC
+  - PARKING
+  - POLITICAL_ORGANIZATIONS
+  - PROFESSIONAL_SERVICES_CONSULTANT_CONTRACTOR
+  - PUBLIC_TRANSPORT
+  - RELIGIOUS_ORGANIZATIONS
+  - RESTAURANTS
+  - SHIPMENT_FREIGHT_MOVING_AND_DELIVERY_SERVICES
+  - STREAMING_SERVICES
+  - SUPERMARKETS_GROCERY_STORES
+  - TAXI_RIDESHARE
+  - TAXES_TAX_PREPARATION_FEES_LICENSES_AND_TAXES
+  - TOLL_BRIDGE_FEES
+  - UTILITIES
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Merchant Category Codes (MCC) for controlling card transactions.
+
+  These are merchant category groups that include multiple individual MCC codes.
+  Each group represents a business category such as restaurants, gas stations, etc.
+
+  Examples:
+  * `RESTAURANTS`: Includes dining establishments, fast food, cafes
+  * `FUEL_GAS`: Includes gas stations and fuel purchases
+  * `ENTERTAINMENT`: Includes movies, gaming, concerts
+  * `MEDICAL`: Includes hospitals, clinics, pharmacies
+  * `AIRLINES_CAR_RENTAL_AND_LODGING`: Includes travel-related expenses
+example: RESTAURANTS

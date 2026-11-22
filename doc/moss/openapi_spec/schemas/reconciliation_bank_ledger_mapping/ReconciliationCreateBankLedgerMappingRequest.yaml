@@ -1,0 +1,14 @@
+type: object
+description: Request to create a bank ledger mapping linking a bank account to a general ledger account.
+properties:
+  bankAccountId:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank account to map.
+    example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+  glAccountContinuityId:
+    type: string
+    format: uuid
+    description: Continuity ID of the general ledger account. Stays the same across account versions if applicable.
+    example: "7c1e9a52-4d3b-4f8e-a6b2-91d0c5e3f7a4"
+required: [bankAccountId, glAccountContinuityId]

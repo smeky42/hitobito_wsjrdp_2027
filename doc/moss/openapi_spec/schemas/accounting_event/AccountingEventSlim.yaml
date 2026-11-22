@@ -1,0 +1,77 @@
+type: object
+description: |
+  Accounting event summary. The amount is in the original event currency.
+  The optional homeAmount is in the organisation's home currency.
+  The optional settlementAmount is only populated for bank transaction events.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the accounting event.
+    example: "evt7c123-4567-89ab-cdef-123456789012"
+  organisationId:
+    type: string
+    format: uuid
+    description: Organisation identifier owning this accounting event.
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  sourceId:
+    type: [string, "null"]
+    format: uuid
+    description: Source identifier when the source is an expense or bank movement.
+    example: "b8e7c123-4567-89ab-cdef-123456789012"
+  title:
+    type: string
+    description: Short display title of the accounting event.
+    example: "EV-1A2B"
+  subtitle:
+    type: string
+    description: Secondary display text of the accounting event.
+    example: "EXPENSE INVOICE AMAZON EUR SYNCED"
+  sourceType:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingEventSourceType'
+  sourceSubtype:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingEventSourceSubtype'
+  counterparty:
+    type: string
+    description: Counterparty shown for the accounting event.
+    example: "Amazon"
+  amount:
+    $ref: '../Money.yaml'
+  homeAmount:
+    $ref: '../Money.yaml'
+  settlementAmount:
+    $ref: '../Money.yaml'
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp of the accounting event.
+    example: "2026-07-01T10:15:30Z"
+  lastAttempt:
+    type: string
+    format: date-time
+    description: Timestamp of the latest sync attempt.
+    example: "2026-07-01T10:15:30Z"
+  latestAction:
+    $ref: './AccountingEventActionSlim.yaml'
+  status:
+    deprecated: true
+    allOf:
+      - $ref: '../../openapi.yaml#/components/schemas/AccountingEventLogStatus'
+  errorMessage:
+    deprecated: true
+    allOf:
+      - type: [string, "null"]
+        description: Error message from the latest sync attempt, when available.
+        example: "NetSuite API timeout"
+required:
+  - id
+  - organisationId
+  - title
+  - subtitle
+  - sourceType
+  - counterparty
+  - amount
+  - createTime
+  - lastAttempt
+  - latestAction
+  - status

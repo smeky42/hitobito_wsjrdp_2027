@@ -1,0 +1,91 @@
+type: object
+properties:
+  externalUserId:
+    type: string
+    description: |
+      External identifier of the actual person/user who initiated this action in the calling system.
+      Required for traceability and compliance reasons.
+    minLength: 1
+    maxLength: 255
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "john.doe@company.com"
+  name:
+    type: string
+    description: Name of the supplier in Moss. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "ACME Corp."
+  code:
+    type: string
+    description: |
+      Account number of the supplier in the accounting system. Cannot be blank or contain leading/trailing whitespace.
+      If your accounting integration generates supplier numbers in the ERP, omit this field.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "7430000"
+  status:
+    $ref: './SupplierStatus.yaml'
+    default: ACTIVE
+    description: Status of the supplier. Defaults to `ACTIVE` when omitted.
+  defaultExpenseAccountId:
+    type: string
+    format: uuid
+    description: ID of the default expense account (sub-category) for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  defaultVatRateId:
+    type: string
+    format: uuid
+    description: ID of the default VAT rate for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440001"
+  defaultCostCenterId:
+    type: string
+    format: uuid
+    description: ID of the default cost center for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440002"
+  defaultCostCarrierId:
+    type: string
+    format: uuid
+    description: ID of the default cost carrier for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440003"
+  defaultTeamId:
+    type: string
+    format: uuid
+    description: ID of the default team for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440004"
+  currency:
+    type: string
+    description: ISO 4217 currency code for the supplier's default currency
+    example: "EUR"
+  vatId:
+    type: string
+    description: VAT identification number of the supplier
+    example: "DE123456789"
+  iban:
+    type: string
+    description: IBAN of the supplier's bank account (use accountNumber for GBP/UK suppliers)
+    example: "DE89370400440532013000"
+  bic:
+    type: string
+    description: BIC/SWIFT code of the supplier's bank (use sortCode for GBP/UK suppliers)
+    example: "DEUTDEDB"
+  accountNumber:
+    type: string
+    description: Bank account number for GBP/UK suppliers. Use instead of iban for GBP/UK bank accounts.
+    example: "12345678"
+  sortCode:
+    type: string
+    description: Sort code for GBP/UK suppliers. Use instead of bic for GBP/UK bank accounts.
+    example: "12-34-56"
+  defaultPaymentMethod:
+    $ref: './SupplierPaymentMethod.yaml'
+  paymentTermId:
+    type: string
+    format: uuid
+    description: ID of the default payment terms for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440005"
+  address:
+    $ref: './SupplierAddress.yaml'
+required: [name, status, defaultPaymentMethod]

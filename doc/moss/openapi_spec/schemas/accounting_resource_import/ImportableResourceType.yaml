@@ -1,0 +1,12 @@
+type: string
+description: Resource type that can be imported from the connected accounting platform.
+enum:
+  - SUPPLIER
+  - EXPENSE_ACCOUNT
+  - VAT_RATES
+  - COST_CARRIER
+  - COST_CENTER
+  - ACCOUNTING_PERIOD
+  - MISCELLANEOUS
+  - DIMENSION
+  - PAYMENT_TERM

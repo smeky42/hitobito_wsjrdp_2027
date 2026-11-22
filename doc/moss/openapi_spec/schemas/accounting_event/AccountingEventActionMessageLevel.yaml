@@ -1,0 +1,7 @@
+type: string
+description: Severity of an accounting event action message.
+enum:
+  - WARNING
+  - ERROR
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API

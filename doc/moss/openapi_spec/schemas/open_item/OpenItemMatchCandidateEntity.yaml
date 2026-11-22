@@ -1,0 +1,70 @@
+type: object
+description: Open item details used to explain a match candidate.
+required:
+  - openItemId
+  - organisationId
+  - matchReasons
+  - sourceId
+  - counterpartyId
+  - documentType
+  - grossAmount
+  - netAmount
+  - vatAmount
+  - outstandingAmount
+  - currency
+properties:
+  openItemId:
+    type: string
+    format: uuid
+    description: Unique identifier of the open item.
+  organisationId:
+    type: string
+    format: uuid
+    description: Organisation that owns the open item.
+  matchReasons:
+    type: array
+    description: Reasons this open item was included in the candidate.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/OpenItemMatchReason'
+  sourceId:
+    type: string
+    format: uuid
+    description: Identifier of the source document.
+  counterpartyId:
+    type: string
+    format: uuid
+    description: Identifier of the counterparty.
+  documentType:
+    $ref: '../../openapi.yaml#/components/schemas/OpenItemDocumentType'
+  grossAmount:
+    type: number
+    description: Gross amount of the source document.
+  netAmount:
+    type: number
+    description: Net amount of the source document.
+  vatAmount:
+    type: number
+    description: VAT amount of the source document.
+  outstandingAmount:
+    type: number
+    description: Amount still outstanding on the open item.
+  currency:
+    type: string
+    description: Currency of the open item amounts.
+  documentDate:
+    type: string
+    format: date
+    description: Date of the source document.
+  dueDate:
+    type: string
+    format: date
+    description: Date the open item is due.
+  counterpartyName:
+    type: string
+    description: Counterparty name.
+  documentNumber:
+    type: string
+    description: Source document number.
+  bookingText:
+    type: string
+    description: Booking text of the source document.

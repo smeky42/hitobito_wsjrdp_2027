@@ -1,0 +1,56 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the tax rate
+    example: "e852fc73-1f4b-4ce7-937f-ac5ee2231ddc"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the tax rate belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  type:
+    type: string
+    description: Type of tax applied (e.g. VAT)
+    enum:
+      - VAT
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: "VAT"
+  country:
+    type: string
+    description: Country code where this tax rate applies (ISO 3166-1 alpha-2)
+    pattern: '^[A-Z]{2}$'
+    example: "DE"
+  name:
+    type: string
+    description: Display name of the tax rate
+    example: "Standard"
+  rate:
+    type: number
+    format: double
+    description: Tax rate percentage applied (e.g. 19 for 19%)
+    example: 19.0
+  code:
+    type: string
+    description: Tax code used in the accounting system
+    example: "000001"
+  reverseCharge:
+    type: boolean
+    description: Whether VAT is accounted for by the recipient under the reverse-charge mechanism
+    example: false
+  status:
+    $ref: './TaxRateStatus.yaml'
+    description: Current status of the tax rate
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp (ISO-8601)
+    example: "2025-08-25T09:57:30.035Z"
+  updateTime:
+    type: string
+    format: date-time
+    description: Last update timestamp (ISO-8601)
+    example: "2025-08-25T09:57:30.035Z"
+required: [id, organisationId, type, country, name, rate, code, reverseCharge, status, createTime, updateTime]

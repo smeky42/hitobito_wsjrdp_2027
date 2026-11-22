@@ -1,0 +1,15 @@
+type: object
+required:
+  - clientOrganisationIds
+properties:
+  clientOrganisationIds:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    description: Client organisation IDs to aggregate advisor tasks for.
+    items:
+      type: string
+      format: uuid
+    example:
+      - "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+      - "7e34eb2a-5c6d-4f2d-bda4-2d3df7ded80e"

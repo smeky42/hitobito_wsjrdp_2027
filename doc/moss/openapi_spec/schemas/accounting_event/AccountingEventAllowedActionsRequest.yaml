@@ -1,0 +1,14 @@
+type: object
+description: Request to resolve allowed actions for accounting events.
+required:
+  - eventIds
+properties:
+  eventIds:
+    type: array
+    description: Unique identifiers of the accounting events to resolve allowed actions for.
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+      format: uuid
+    example: ["b8e7c123-4567-89ab-cdef-123456789012"]

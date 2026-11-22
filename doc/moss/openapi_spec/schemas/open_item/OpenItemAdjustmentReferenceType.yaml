@@ -1,0 +1,13 @@
+type: string
+description: |
+  The kind of adjustment an allocation originates from:
+  - `CREDIT_NOTE`: a credit note netted against the open item.
+  - `DISCOUNT`: an early payment discount (Skonto) applied to the open item.
+  - `POSTING_INSTRUCTION_LINE`: a posting instruction line netted against the open item.
+enum:
+  - CREDIT_NOTE
+  - DISCOUNT
+  - POSTING_INSTRUCTION_LINE
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: CREDIT_NOTE

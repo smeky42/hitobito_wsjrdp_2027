@@ -1,0 +1,57 @@
+type: object
+required:
+  - id
+  - linkStatus
+  - linkSource
+  - createdBy
+  - candidates
+properties:
+  id:
+    type: string
+    format: uuid
+    example: "1e3b42ec-587d-4fe5-8807-22c0235ee825"
+  linkStatus:
+    type: string
+    enum:
+      - CREATED
+      - DELETED
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+  createdBy:
+    $ref: '../../openapi.yaml#/components/schemas/DocumentActor'
+  candidates:
+    description: Candidates considered for linking with the given document, in descending order of confidence
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required:
+        - linkedEntityId
+        - linkedEntityType
+        - confidence
+      properties:
+        linkedEntityId:
+          type: string
+          format: uuid
+        linkedEntityType:
+          type: string
+          enum:
+            - EXPENSE
+            - BANK_TRANSACTION
+            - ACCOUNT_RECEIVABLE
+            - PURCHASE_ORDER
+            - SUPPLIER
+            - UNKNOWN_DEFAULT_OPEN_API
+          default: UNKNOWN_DEFAULT_OPEN_API
+        confidence:
+          type: object
+          required:
+            - score
+          properties:
+            score:
+              type: number
+              format: double
+              minimum: 0.0
+              maximum: 1.0
+            comment:
+              type: string

@@ -1,0 +1,8 @@
+type: string
+description: Type of entity the posting instruction references.
+enum:
+  - BANK_TRANSACTION
+  - OPEN_ITEM
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "BANK_TRANSACTION"

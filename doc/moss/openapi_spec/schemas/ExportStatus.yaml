@@ -1,0 +1,19 @@
+type: string
+enum:
+  - NOT_EXPORTED
+  - READY_FOR_EXPORT
+  - EXPORT_PENDING
+  - EXPORTED
+  - EXPORT_FAILED
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Status of the expense export to accounting systems.
+
+  **Statuses:**
+  - `NOT_EXPORTED`: Expense has not been exported
+  - `READY_FOR_EXPORT`: Expense is ready for export
+  - `EXPORT_PENDING`: Export is in progress
+  - `EXPORTED`: Expense has been successfully exported
+  - `EXPORT_FAILED`: Export failed
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown export status (fallback for future statuses)
+example: "NOT_EXPORTED"

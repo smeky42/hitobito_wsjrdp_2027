@@ -1,0 +1,73 @@
+type: object
+description: A general ledger account.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the general ledger account.
+    example: "3b5d64ae-7a9f-6aa7-aa29-44e2457aa047"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation.
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  generalLedgerId:
+    type: string
+    format: uuid
+    description: Unique identifier of the general ledger this account belongs to.
+    example: "2a4c53fd-698e-5ff6-9918-33d1346ff936"
+  continuityId:
+    type: string
+    format: uuid
+    description: Identifies the same account across versions, e.g. a DATEV account that gets a new ID each fiscal year.
+    example: "7c1e9a52-4d3b-4f8e-a6b2-91d0c5e3f7a4"
+  validFrom:
+    type: string
+    format: date
+    description: First day this account is valid. Absent means open-ended.
+    example: "2026-01-01"
+  validTo:
+    type: string
+    format: date
+    description: Last day this account is valid. Absent means open-ended.
+    example: "2026-12-31"
+  status:
+    type: string
+    description: Status of the general ledger account.
+    enum:
+      - ACTIVE
+      - INACTIVE
+      - ARCHIVED
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: "ACTIVE"
+  code:
+    type: string
+    description: Account code used in the chart of accounts.
+    example: "1000"
+  name:
+    type: string
+    description: Display name of the general ledger account.
+    example: "Cash and Cash Equivalents"
+  type:
+    type: string
+    description: Account type classification.
+    enum:
+      - ASSET
+      - LIABILITY
+      - EQUITY
+      - REVENUE
+      - EXPENSE
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: "ASSET"
+  normalBalance:
+    type: string
+    description: The normal balance side of this account type (debit-normal or credit-normal).
+    enum:
+      - DEBIT
+      - CREDIT
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: "DEBIT"
+required: [id, organisationId, generalLedgerId, continuityId]

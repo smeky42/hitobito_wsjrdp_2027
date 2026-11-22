@@ -1,0 +1,11 @@
+type: string
+description: Type of command applied to a posting instruction.
+enum:
+  - UPDATE_POSTING_DATE
+  - UPDATE_CURRENCY
+  - DELETE
+  - ADD_LINE
+  - SUBMIT
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "UPDATE_POSTING_DATE"

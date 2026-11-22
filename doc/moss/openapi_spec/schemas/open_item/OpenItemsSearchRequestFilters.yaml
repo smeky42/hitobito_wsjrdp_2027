@@ -1,0 +1,66 @@
+type: object
+description: Filters applied to the search. All filters are combined with AND. An empty list matches nothing.
+properties:
+  ids:
+    type: array
+    description: Filter by open item id.
+    items:
+      type: string
+      format: uuid
+  sourceIds:
+    type: array
+    description: Filter by the id of the source document, usually the expense.
+    items:
+      type: string
+      format: uuid
+  counterpartyIds:
+    type: array
+    description: Filter by supplier or employee.
+    items:
+      type: string
+      format: uuid
+  statuses:
+    type: array
+    description: Filter by open item status.
+    items:
+      $ref: './OpenItemStatus.yaml'
+  documentTypes:
+    type: array
+    description: Filter by source document type.
+    items:
+      $ref: './OpenItemDocumentType.yaml'
+  currencies:
+    type: array
+    description: Filter by ISO 4217 currency code.
+    items:
+      type: string
+  outstandingAmountMin:
+    type: number
+    format: double
+    description: Only return open items with an outstanding amount greater than or equal to this value.
+  outstandingAmountMax:
+    type: number
+    format: double
+    description: Only return open items with an outstanding amount less than or equal to this value.
+  dueDateFrom:
+    type: string
+    format: date
+    description: Only return open items due on or after this date.
+  dueDateTo:
+    type: string
+    format: date
+    description: Only return open items due on or before this date.
+  createDateFrom:
+    type: string
+    format: date
+    description: Only return open items created on or after this date.
+  createDateTo:
+    type: string
+    format: date
+    description: Only return open items created on or before this date.
+  documentNumber:
+    type: string
+    description: Case-insensitive partial match on the invoice number of the source document.
+  freeText:
+    type: string
+    description: Case-insensitive partial match across invoice number, booking text and supplier name.

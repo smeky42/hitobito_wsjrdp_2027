@@ -1,0 +1,8 @@
+type: string
+description: Whether to confirm or reject the suggested match.
+enum:
+  - CONFIRM
+  - REJECT
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "CONFIRM"

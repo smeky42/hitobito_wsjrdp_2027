@@ -1,0 +1,40 @@
+type: object
+properties:
+  filters:
+    type: object
+    properties:
+      bankAccountId:
+        type: string
+        format: uuid
+        description: Filter transactions by bank account ID.
+        example: "123e4567-e89b-12d3-a456-426614174000"
+      bookingDateFrom:
+        type: string
+        format: date
+        description: Filter transactions with booking date from this date (inclusive).
+        example: "2024-01-01"
+      bookingDateTo:
+        type: string
+        format: date
+        description: Filter transactions with booking date to this date (inclusive).
+        example: "2024-01-31"
+      inMatchingGroup:
+        type: [boolean, "null"]
+        description: |
+          Filter by matching group membership.
+          - `true`: only transactions that are part of a matching group
+          - `false`: only transactions not in any matching group
+          - `null` or omitted: no filter applied
+        example: true
+      matchingGroupIds:
+        type: array
+        description: Filter transactions belonging to any of the specified matching group IDs.
+        items:
+          type: string
+          format: uuid
+        example: ["837574c8-e813-4bb3-b31e-c7358758c29c"]
+    required: [bankAccountId]
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+required: [filters]

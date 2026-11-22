@@ -1,0 +1,9 @@
+type: string
+description: Status of a ledger sync operation.
+enum:
+  - IN_PROGRESS
+  - FAILED
+  - SUCCESS
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: SUCCESS

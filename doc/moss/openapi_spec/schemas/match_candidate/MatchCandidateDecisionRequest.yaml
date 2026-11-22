@@ -1,0 +1,6 @@
+type: object
+required:
+  - decision
+properties:
+  decision:
+    $ref: '../../openapi.yaml#/components/schemas/MatchCandidateDecision'

@@ -1,0 +1,32 @@
+type: [string, "null"]
+enum:
+  - NOT_PAID
+  - IN_PREPARATION
+  - PREPARED
+  - SCHEDULED
+  - IN_EXECUTION
+  - COMPLETED
+  - CANCELLED
+  - FAILED
+  - DELETED
+  - SKIPPED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Payment status indicating the current state of payment processing.
+  
+  Common statuses across invoice and reimbursement:
+  - **NOT_PAID**: Payment has not been initiated
+  - **SCHEDULED**: Payment has been scheduled for future processing
+  - **IN_EXECUTION**: Payment is currently being processed (was FILE_EXPORTED for invoices)
+  - **COMPLETED**: Payment has been successfully completed (was PAID for invoices)
+  - **FAILED**: Payment processing failed
+  - **SKIPPED**: Payment was intentionally skipped (was PAYMENT_SKIPPED for invoices)
+  
+  Reimbursement-specific statuses:
+  - **IN_PREPARATION**: Payment is being prepared
+  - **PREPARED**: Payment has been prepared but not yet scheduled
+  - **CANCELLED**: Payment was cancelled
+  - **DELETED**: Payment record was deleted
+example: "NOT_PAID"
+

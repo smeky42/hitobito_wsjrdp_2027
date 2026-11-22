@@ -1,0 +1,22 @@
+type: object
+properties:
+  paymentStatus:
+    $ref: '../openapi.yaml#/components/schemas/PaymentStatus'
+  paymentChannel:
+    $ref: '../openapi.yaml#/components/schemas/PaymentChannel'
+  paymentTime:
+    type: [string, "null"]
+    format: date-time
+    description: When the payment was processed
+    example: "2023-10-01T10:00:00Z"
+  paymentRecipientType:
+    type: [string, "null"]
+    description: Type of payment recipient
+    example: "USER"
+  paymentRecipientId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the payment recipient
+    example: "123e4567-e89b-12d3-a456-426614174000"
+description: |
+  Metadata specific to reimbursement expenses, containing payment information.

@@ -1,0 +1,32 @@
+type: object
+description: A single step within an approval process.
+properties:
+  stepId:
+    type: string
+    description: Identifier of the step.
+  position:
+    type: integer
+    description: Ordinal position of the step within the process.
+    example: 1
+  status:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalStepStatus'
+  current:
+    type: boolean
+    description: Whether this is the step currently awaiting action.
+  decisions:
+    type: array
+    description: Decisions made so far on this step.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/ApprovalDecision'
+  pendingOptions:
+    type: array
+    description: Remaining sets of eligible approvers that can still act on this step.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/PendingApprovalOption'
+required:
+  - stepId
+  - position
+  - status
+  - current
+  - decisions
+  - pendingOptions

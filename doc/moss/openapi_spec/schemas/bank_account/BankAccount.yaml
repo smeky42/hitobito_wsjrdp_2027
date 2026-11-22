@@ -1,0 +1,23 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank account.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the bank account item belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  fundingType:
+    $ref: '../../openapi.yaml#/components/schemas/FundingType'
+    description: Type of the bank account
+  accountStatus:
+    $ref: '../../openapi.yaml#/components/schemas/BankAccountStatus'
+    description: Status of the bank account
+  currency:
+    type: string
+    description: ISO 4217 currency code for the currency of the bank account
+    example: "EUR"
+required: [id, organisationId, fundingType, accountStatus, currency]

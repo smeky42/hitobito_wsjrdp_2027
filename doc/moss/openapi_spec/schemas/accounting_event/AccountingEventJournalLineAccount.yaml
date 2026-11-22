@@ -1,0 +1,22 @@
+type: object
+description: Ledger account posted to by a journal line.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the ledger account.
+    example: "3b2a1c4d-1234-4567-89ab-cdef01234567"
+  externalId:
+    type: string
+    description: Identifier of the ledger account in the connected accounting system.
+    example: "6000"
+  code:
+    type: string
+    description: Display code of the ledger account.
+    example: "6000"
+  name:
+    type: string
+    description: Display name of the ledger account.
+    example: "Office supplies"
+  type:
+    $ref: './AccountingEventJournalLineAccountType.yaml'

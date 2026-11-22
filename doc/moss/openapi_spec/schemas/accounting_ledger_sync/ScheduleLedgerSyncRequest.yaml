@@ -1,0 +1,17 @@
+type: object
+description: Request to schedule a ledger sync.
+properties:
+  types:
+    type: array
+    description: Types of ledger data to sync. At least one type is required.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/LedgerSyncType'
+    minItems: 1
+    example:
+      - GENERAL_LEDGER_ACCOUNT
+      - GENERAL_LEDGER_JOURNAL_ENTRY
+  parameters:
+    $ref: '../../openapi.yaml#/components/schemas/LedgerSyncParameters'
+    nullable: true
+required:
+  - types

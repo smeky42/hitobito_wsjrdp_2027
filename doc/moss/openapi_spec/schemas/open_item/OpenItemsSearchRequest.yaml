@@ -1,0 +1,26 @@
+type: object
+required:
+  - pagination
+properties:
+  bankTransactionId:
+    type: string
+    format: uuid
+    description: |
+      When set, filters and sort are ignored and open items are suggested as matches for this bank transaction
+      instead of being searched by filters.
+  filters:
+    $ref: './OpenItemsSearchRequestFilters.yaml'
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+  sort:
+    type: object
+    properties:
+      sortBy:
+        type: string
+        description: Field to sort by.
+        enum:
+          - CREATE_TIME
+        example: CREATE_TIME
+      sortOrder:
+        $ref: '../shared/SortOrder.yaml'

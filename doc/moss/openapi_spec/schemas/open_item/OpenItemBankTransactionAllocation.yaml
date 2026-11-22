@@ -1,0 +1,19 @@
+type: object
+description: A bank transaction allocated against the open item.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank transaction allocation.
+  bankTransactionId:
+    type: string
+    format: uuid
+    description: The bank transaction covering this allocation.
+  flowId:
+    type: string
+    format: uuid
+    description: Group identifier shared by bank transactions belonging to the same flow.
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+  status:
+    $ref: './OpenItemAllocationStatus.yaml'

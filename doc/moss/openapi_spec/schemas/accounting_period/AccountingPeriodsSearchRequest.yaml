@@ -1,0 +1,42 @@
+type: object
+required:
+  - filters
+  - pagination
+properties:
+  filters:
+    type: object
+    properties:
+      startDate:
+        type: string
+        format: date
+        description: Filter accounting periods starting on or after this date.
+        example: "2026-07-01"
+      endDate:
+        type: string
+        format: date
+        description: Filter accounting periods ending on or before this date.
+        example: "2026-07-31"
+      statuses:
+        type: array
+        description: Filter accounting periods by status.
+        items:
+          $ref: './AccountingPeriodStatus.yaml'
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+  sort:
+    type: object
+    properties:
+      sortBy:
+        type: string
+        description: Field to sort by.
+        enum:
+          - PERIOD_START
+          - PERIOD_END
+          - FISCAL_YEAR
+          - NAME
+          - CODE
+          - STATUS
+        example: PERIOD_START
+      sortOrder:
+        $ref: '../shared/SortOrder.yaml'

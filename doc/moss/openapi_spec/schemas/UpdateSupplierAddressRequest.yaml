@@ -1,0 +1,32 @@
+type: object
+description:  |
+  Partial address update for supplier. All fields are optional and support the following update semantics:
+  - Field not provided (undefined) = no change
+  - Field set to null = clear the field (except for country, where null values are ignored and do not clear the field)
+  - Field set to value = update to new value
+properties:
+  streetAddress:
+    type: [string, "null"]
+    description: First line of the street address (null to clear)
+    example: "Unter den Linden 1"
+  addressLine2:
+    type: [string, "null"]
+    description: Second line of the street address (null to clear)
+    example: "Suite 100"
+  city:
+    type: [string, "null"]
+    description: City (null to clear)
+    example: "Berlin"
+  postCode:
+    type: [string, "null"]
+    description: Postal or ZIP code (null to clear)
+    example: "10117"
+  country:
+    type: string
+    description: ISO 3166-1 alpha-2 country code (2 uppercase letters). Note - null values are ignored and do not clear the field.
+    minLength: 2
+    maxLength: 2
+    pattern: '^[A-Z]{2}$'
+    x-pattern-message: 'must be a valid ISO 3166-1 alpha-2 country code (2 uppercase letters, e.g. DE, GB, US)'
+    example: "DE"
+

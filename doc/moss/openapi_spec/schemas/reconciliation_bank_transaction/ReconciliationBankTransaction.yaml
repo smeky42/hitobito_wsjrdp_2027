@@ -1,0 +1,65 @@
+type: object
+description: A bank transaction enriched with reconciliation context, including fees and matching group information.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank transaction.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  bankAccountId:
+    type: string
+    format: uuid
+    description: The bank account where the transaction took place.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation.
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  transactionType:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionType'
+    description: Type of the bank transaction.
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: Total amount of the transaction including fees, in the bank account currency. Outgoing amounts (e.g. card purchases, payouts) are negative; incoming amounts (e.g. top-ups) are positive.
+    example:
+      amount: "-204.50"
+      currency: "EUR"
+  amountBeforeFees:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: Base amount of the transaction before fees are applied, in the bank account currency. Same sign convention as `amount`.
+    example:
+      amount: "-200.00"
+      currency: "EUR"
+  originalAmount:
+    type: [object, "null"]
+    description: Amount in the original transaction currency before FX conversion. Only present when the transaction currency differs from the bank account currency.
+    allOf:
+      - $ref: '../../openapi.yaml#/components/schemas/Money'
+    example:
+      amount: "-215.50"
+      currency: "USD"
+  bookingDate:
+    type: string
+    format: date
+    description: Date when the transaction is booked into the customer account.
+    example: "2024-01-01"
+  valueDate:
+    type: string
+    format: date
+    description: Date used for the calculation of interest on the funds debited from or credited to the customer's account.
+    example: "2024-01-01"
+  counterparty:
+    type: [string, "null"]
+    description: Counterparty of the transaction.
+    example: "Coffee Shop Berlin"
+  matchingGroupId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the matching group this transaction belongs to, if any.
+    example: "b653c04b-cf30-42f3-8b09-350121c8903c"
+  fees:
+    type: array
+    description: Array of fees associated with the transaction.
+    items: { $ref: '../../openapi.yaml#/components/schemas/BankTransactionFee' }
+required: [id, bankAccountId, organisationId, transactionType, amount, amountBeforeFees, bookingDate, valueDate, fees]

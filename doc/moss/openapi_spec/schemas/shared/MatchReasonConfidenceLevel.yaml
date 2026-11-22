@@ -1,0 +1,10 @@
+type: string
+description: How closely a field matched.
+enum:
+  - EXACT
+  - FUZZY
+  - PARTIAL
+  - RANGE
+  - SIMILAR
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API

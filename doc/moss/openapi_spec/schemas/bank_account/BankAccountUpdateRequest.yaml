@@ -1,0 +1,12 @@
+type: object
+description: >
+  Replaces the editable fields of the bank account. Overwrites all editable fields with the given values.
+properties:
+  alias:
+    type: string
+    description: Optional user-defined alias/display name override for the bank account.
+  expenseAccountId:
+    type: string
+    format: uuid
+    description: Unique identifier of the expense account to map this bank account to.
+    example: "123e4567-e89b-12d3-a456-426614174001"

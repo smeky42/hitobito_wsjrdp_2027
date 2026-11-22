@@ -1,0 +1,94 @@
+type: object
+description: |
+  Partial update request for supplier. All fields are optional and support the following update semantics:
+  - Field not provided (undefined) = no change
+  - Field set to null = clear the field (except for status, address, and defaultPaymentMethod where null values are ignored and do not clear the field)
+  - Field set to value = update to new value
+properties:
+  externalUserId:
+    type: string
+    description: |
+      External identifier of the actual person/user who initiated this action in the calling system.
+      Required for traceability and compliance reasons.
+    minLength: 1
+    maxLength: 255
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "john.doe@company.com"
+  status:
+    $ref: './SupplierStatus.yaml'
+    description: Status of the supplier. Note - null values are ignored and do not clear the field.
+  name:
+    type: [string, "null"]
+    description: Name of the supplier in Moss. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "ACME Corp."
+  code:
+    type: [string, "null"]
+    description: Account number of the supplier in the accounting system. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "7430000"
+  defaultExpenseAccountId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default expense account (sub-category) for this supplier (null to clear)
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  defaultVatRateId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default VAT rate for this supplier (null to clear)
+    example: "550e8400-e29b-41d4-a716-446655440001"
+  defaultCostCenterId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default cost center for this supplier (null to clear)
+    example: "550e8400-e29b-41d4-a716-446655440002"
+  defaultCostCarrierId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default cost carrier for this supplier (null to clear)
+    example: "550e8400-e29b-41d4-a716-446655440003"
+  defaultTeamId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default team for this supplier (null to clear)
+    example: "550e8400-e29b-41d4-a716-446655440004"
+  currency:
+    type: [string, "null"]
+    description: ISO 4217 currency code for the supplier's default currency (null to clear)
+    example: "EUR"
+  vatId:
+    type: [string, "null"]
+    description: VAT identification number of the supplier (null to clear)
+    example: "DE123456789"
+  iban:
+    type: [string, "null"]
+    description: IBAN of the supplier's bank account (use accountNumber for GBP/UK suppliers, null to clear)
+    example: "DE89370400440532013000"
+  bic:
+    type: [string, "null"]
+    description: BIC/SWIFT code of the supplier's bank (use sortCode for GBP/UK suppliers, null to clear)
+    example: "DEUTDEDB"
+  accountNumber:
+    type: [string, "null"]
+    description: Bank account number for GBP/UK suppliers. Use instead of iban for GBP/UK bank accounts. (null to clear)
+    example: "12345678"
+  sortCode:
+    type: [string, "null"]
+    description: Sort code for GBP/UK suppliers. Use instead of bic for GBP/UK bank accounts. (null to clear)
+    example: "12-34-56"
+  defaultPaymentMethod:
+    $ref: './SupplierPaymentMethod.yaml'
+    description: Default payment method for the supplier. Note - null values are ignored and do not clear the field.
+  paymentTermId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default payment terms for this supplier (null to clear)
+    example: "550e8400-e29b-41d4-a716-446655440005"
+  address:
+    $ref: './UpdateSupplierAddressRequest.yaml'
+    description: Address of the supplier. Note - null values are ignored and do not clear the entire address.

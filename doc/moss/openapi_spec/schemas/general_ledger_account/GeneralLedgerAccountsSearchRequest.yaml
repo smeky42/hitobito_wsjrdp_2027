@@ -1,0 +1,37 @@
+type: object
+properties:
+  filters:
+    type: object
+    properties:
+      ledgerId:
+        type: string
+        format: uuid
+        description: Filter accounts belonging to a specific general ledger.
+        example: "2a4c53fd-698e-5ff6-9918-33d1346ff936"
+      freeText:
+        type: string
+        description: Free-text search across account code and name.
+        example: "Cash"
+      ids:
+        type: array
+        description: Filter by specific account IDs.
+        items:
+          type: string
+          format: uuid
+        example: ["3b5d64ae-7a9f-6aa7-aa29-44e2457aa047"]
+      continuityIds:
+        type: array
+        description: Filter by account continuity IDs.
+        items:
+          type: string
+          format: uuid
+        example: ["7c1e9a52-4d3b-4f8e-a6b2-91d0c5e3f7a4"]
+      validAsOf:
+        type: string
+        format: date
+        description: Only return accounts valid on this date (inclusive). Defaults to today. Accounts with no validity dates count as open-ended.
+        example: "2026-01-01"
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+required: [filters]

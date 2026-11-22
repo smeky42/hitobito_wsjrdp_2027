@@ -1,0 +1,27 @@
+type: object
+required:
+  - manuallyMatched
+  - autoMatched
+  - unmatched
+  - readyToMatch
+  - excluded
+  - all
+properties:
+  manuallyMatched:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchingSummaryBreakdown'
+    title: BankTransactionMatchingSummaryCounts
+  autoMatched:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchingSummaryBreakdown'
+    title: BankTransactionMatchingSummaryCounts
+  unmatched:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchingSummaryBreakdown'
+    title: BankTransactionMatchingSummaryCounts
+  readyToMatch:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchingSummaryBreakdown'
+    title: BankTransactionMatchingSummaryCounts
+  excluded:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchingSummaryBreakdown'
+    title: BankTransactionMatchingSummaryCounts
+  all:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchingSummaryBreakdown'
+    title: BankTransactionMatchingSummaryCounts

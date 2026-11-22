@@ -1,0 +1,8 @@
+type: string
+description: Status of the financial period.
+enum:
+  - OPEN
+  - LOCKED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: OPEN

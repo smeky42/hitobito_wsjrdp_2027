@@ -1,0 +1,19 @@
+type: string
+enum:
+  - MOSS
+  - FIN_API
+  - YAPILY
+  - EBICS
+  - CSV
+  - UNKNOWN_DEFAULT_OPEN_API
+example: "MOSS"
+description: |
+  The source of the bank transaction.
+  
+  **Types:**
+  - `MOSS`: Transactions made using Moss accounts.
+  - `FIN_API`: Bank transaction imported from Open Banking API.
+  - `YAPILY`: Bank transaction imported from Yapily.
+  - `EBICS`: Bank transaction imported from EBICS.
+  - `CSV`: Bank transaction uploaded via CSV.
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown type value (fallback for future types)

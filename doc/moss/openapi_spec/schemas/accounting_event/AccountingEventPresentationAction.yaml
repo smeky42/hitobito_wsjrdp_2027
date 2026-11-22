@@ -1,0 +1,32 @@
+type: object
+description: An action that can be performed on an accounting event, with its allowed status and any denial reasons.
+required:
+  - actionType
+  - allowed
+  - denialReasons
+properties:
+  actionType:
+    $ref: './AccountingEventCommandType.yaml'
+  allowed:
+    type: boolean
+    description: Whether the action is allowed for the accounting event.
+    example: true
+  denialReasons:
+    type: array
+    description: Reasons why the action is denied, empty when allowed.
+    items:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: Denial reason code.
+        message:
+          type: [string, "null"]
+          description: Human-readable denial message.
+        metadata:
+          type: [object, "null"]
+          description: Additional metadata for the denial reason.
+          additionalProperties: true
+    example: []

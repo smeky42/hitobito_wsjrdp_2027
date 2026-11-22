@@ -1,0 +1,45 @@
+type: object
+description: Accounting connection details.
+properties:
+  connectionId:
+    type: string
+    format: uuid
+    description: Connection identifier.
+  organisationId:
+    type: string
+    format: uuid
+    description: Organization identifier.
+  platform:
+    type: string
+    description: Accounting platform code.
+    example: ExactOnlineNL
+  connectionState:
+    type: string
+    description: Current platform connection state.
+    enum:
+      - NEW
+      - AUTHENTICATION_REQUIRED
+      - INCOMPLETE_SETUP
+      - CONNECTED
+      - DELETED
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: CONNECTED
+  supportsPlatformConnectionCheck:
+    type: boolean
+    description: Whether platform connection checks are supported.
+  linkUrl:
+    type: string
+    description: Optional platform link URL.
+    example: https://example.com/connect
+  details:
+    type: object
+    description: Optional platform-specific connection details.
+    additionalProperties:
+      type: string
+required:
+  - connectionId
+  - organisationId
+  - platform
+  - connectionState
+  - supportsPlatformConnectionCheck

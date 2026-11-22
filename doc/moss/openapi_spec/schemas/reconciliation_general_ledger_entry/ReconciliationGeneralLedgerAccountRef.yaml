@@ -1,0 +1,17 @@
+type: object
+description: General ledger account the entry was posted to, as it was at posting time.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the general ledger account.
+    example: "3b5d64ae-7a9f-6aa7-aa29-44e2457aa047"
+  code:
+    type: string
+    description: Account code in the chart of accounts.
+    example: "1200"
+  name:
+    type: string
+    description: Account name in the chart of accounts.
+    example: "Bank"
+required: [id]

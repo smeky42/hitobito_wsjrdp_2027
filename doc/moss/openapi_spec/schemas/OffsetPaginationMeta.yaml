@@ -1,0 +1,28 @@
+type: object
+properties:
+  type:
+    type: string
+    description: Type of pagination
+    example: "offset"
+  page:
+    type: integer
+    description: Current page number (1-based)
+    example: 123
+  pageSize:
+    type: integer
+    description: Number of items per page
+    example: 123
+  hasMore:
+    type: boolean
+    description: Whether there are more pages available
+    example: true
+  totalPages:
+    type: integer
+    description: Total number of pages (optional)
+    example: 456
+  totalItems:
+    type: integer
+    format: int64
+    description: Total number of items across all pages (optional)
+    example: 789
+required: [type, page, pageSize, hasMore]

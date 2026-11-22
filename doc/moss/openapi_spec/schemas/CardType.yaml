@@ -1,0 +1,7 @@
+type: string
+enum:
+  - VIRTUAL
+  - PHYSICAL
+  - UNKNOWN_DEFAULT_OPEN_API
+description: Type of card to create
+example: VIRTUAL

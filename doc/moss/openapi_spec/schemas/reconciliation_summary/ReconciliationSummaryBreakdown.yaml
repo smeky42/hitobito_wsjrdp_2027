@@ -1,0 +1,33 @@
+type: object
+description: The breakdown of the specified period summary for bank statement or ledger.
+properties:
+  openingBalance:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: The opening balance of the specified period in the bank account currency.
+    example:
+      amount: "3500.25"
+      currency: "EUR"
+  moneyIn:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: The money received in the specified period in the bank account currency.
+    example:
+      amount: "400.50"
+      currency: "EUR"
+  moneyOut:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: The money paid out in the specified period in the bank account currency.
+    example:
+      amount: "200.25"
+      currency: "EUR"
+  closingBalance:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: The closing balance of the specified period in the bank account currency.
+    example:
+      amount: "3700.50"
+      currency: "EUR"
+  count:
+    type: integer
+    format: int64
+    description: The number of bank transactions or general ledger entries in the specified period.
+    example: 12
+required: [openingBalance, moneyIn, moneyOut, closingBalance, count]

@@ -1,0 +1,33 @@
+type: object
+properties:
+  evidenceStatus:
+    type: [string, "null"]
+    description: |
+      Whether this split line has an evidenced fuel receipt.
+      - `EVIDENCED`: A fuel receipt has been uploaded and matched to this split line.
+      - `UNEVIDENCED`: No fuel receipt has been matched yet.
+    example: "EVIDENCED"
+  distance:
+    type: [number, "null"]
+    format: double
+    description: Tier distance in the rate unit. Null for UNEVIDENCED rows.
+    example: 10.5
+  distanceUnit:
+    type: [string, "null"]
+    description: Unit of the distance (e.g. `MILES`, `KM`).
+    example: "MILES"
+  rate:
+    type: [number, "null"]
+    format: double
+    description: Per-unit advisory fuel rate for this row. Null for UNEVIDENCED rows.
+    example: 0.14
+  rateCurrency:
+    type: [string, "null"]
+    description: ISO 4217 currency code for the advisory fuel rate.
+    example: "GBP"
+description: |
+  Metadata specific to mileage line split expenses (`MILEAGE_LINE_SPLIT`).
+
+  Mileage split lines represent individual VAT reclaim rows within a UK mileage expense.
+  Each row corresponds to a distance tier at a different advisory fuel rate, allowing the
+  VAT-reclaimable portion to be calculated per tier.

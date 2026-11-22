@@ -1,0 +1,30 @@
+type: object
+required:
+  - filters
+properties:
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+  filters:
+    $ref: './BankTransactionsSearchRequestV2Filters.yaml'
+  sort:
+    type: object
+    properties:
+      sortBy:
+        type: string
+        description: Field to sort by
+        enum:
+          - BOOKING_DATE
+          - AMOUNT
+          - COUNTERPARTY
+          - SETTLEMENT_DATE
+        default: BOOKING_DATE
+        example: BOOKING_DATE
+      sortOrder:
+        type: string
+        description: Sort direction
+        enum:
+          - ASC
+          - DESC
+        default: DESC
+        example: DESC

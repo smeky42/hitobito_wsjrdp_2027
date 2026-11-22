@@ -1,0 +1,9 @@
+type: string
+description: Current status of the expense account
+enum:
+  - ACTIVE
+  - DEACTIVATED
+  - DELETED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: ACTIVE

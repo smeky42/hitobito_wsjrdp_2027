@@ -1,0 +1,21 @@
+type: object
+description: Detailed approval overview for a single reference ID.
+properties:
+  referenceId:
+    type: string
+    description: Unique identifier of the entity this approval overview is for.
+    example: "b8e7c123-4567-89ab-cdef-123456789012"
+  state:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalState'
+  autoApprovalReason:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalAutoApprovalReason'
+    nullable: true
+  verification:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalProcess'
+    nullable: true
+  approval:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalProcess'
+    nullable: true
+required:
+  - referenceId
+  - state

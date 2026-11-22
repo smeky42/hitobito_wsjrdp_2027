@@ -1,0 +1,26 @@
+type: object
+description: Suggested matches for the bank transaction.
+required:
+  - id
+  - bankTransactionId
+  - matchedBankTransactions
+  - matchedOpenItems
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the match candidate.
+  bankTransactionId:
+    type: string
+    format: uuid
+    description: Bank transaction for which the candidate was found.
+  matchedBankTransactions:
+    type: array
+    description: Bank transactions included in the candidate.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchCandidateEntity'
+  matchedOpenItems:
+    type: array
+    description: Open items included in the candidate.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/OpenItemMatchCandidateEntity'

@@ -1,0 +1,31 @@
+type: object
+description: Embedding vector for a file
+properties:
+  fileId:
+    type: string
+    format: uuid
+    description: Unique identifier of the file this embedding was generated for
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  status:
+    type: string
+    description: Whether the embedding has been computed for this file
+    enum:
+      - OK
+      - EMBEDDING_NOT_FOUND
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: "OK"
+  embedding:
+    anyOf:
+      - type: array
+        items:
+          type: number
+          format: float
+        description: Embedding vector as an array of floating-point values. Present only when status is OK.
+        example: [0.023, -0.145, 0.872]
+      - type: "null"
+  model:
+    type: string
+    description: Name of the model used to generate this embedding. Present only when status is OK.
+    example: "gemini-embedding-2:768"
+required: [fileId, status]

@@ -1,0 +1,9 @@
+type: string
+description: Accounting event source type.
+enum:
+  - ALLOCATION
+  - EXPENSE
+  - BANK_TRANSACTION
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: EXPENSE

@@ -1,0 +1,19 @@
+allOf:
+  - $ref: '../../openapi.yaml#/components/schemas/BaseResponse'
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          count:
+            type: integer
+            description: Number of bank transactions imported
+          ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+            description: IDs of the imported bank transactions
+        required:
+          - count
+          - ids

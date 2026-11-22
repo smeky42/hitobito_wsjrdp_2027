@@ -1,0 +1,34 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the expense account
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the expense account belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  status:
+    $ref: './ExpenseAccountStatus.yaml'
+    description: Current status of the expense account
+  name:
+    type: string
+    description: Name of the expense account in Moss
+    example: "Telefon"
+  code:
+    type: string
+    description: Account number of the expense account in the accounting system
+    example: "440050"
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp (ISO-8601)
+    example: "2025-08-25T09:57:30.456Z"
+  updateTime:
+    type: string
+    format: date-time
+    description: Last update timestamp (ISO-8601)
+    example: "2025-08-25T09:57:30.456Z"
+required: [id, organisationId, status, name, createTime, updateTime]

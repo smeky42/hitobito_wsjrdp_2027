@@ -1,0 +1,11 @@
+type: string
+description: |
+  Status of a payment allocation.
+
+  * `APPLIED` - the allocation is in effect.
+  * `CANCELLED` - the allocation was cancelled and no longer reduces the outstanding amount.
+enum:
+  - APPLIED
+  - CANCELLED
+  - UNKNOWN_DEFAULT_OPEN_API
+example: APPLIED

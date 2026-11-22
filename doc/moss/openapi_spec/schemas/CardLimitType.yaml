@@ -1,0 +1,13 @@
+type: string
+enum:
+  - MONTHLY_PERIOD
+  - YEARLY_PERIOD
+  - USAGE_LIMIT
+  - ONE_TIME
+  - POS_LOCATION
+  - TIME_RESTRICTION
+  - PROJECT
+  - MERCHANT_CATEGORY
+  - UNKNOWN_DEFAULT_OPEN_API
+description: Type of card limit
+example: MONTHLY_PERIOD

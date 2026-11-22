@@ -1,0 +1,10 @@
+type: string
+description: Type of decision made on an approval step.
+enum:
+  - APPROVED
+  - REJECTED
+  - DISMISSED
+  - UNKNOWN
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "APPROVED"

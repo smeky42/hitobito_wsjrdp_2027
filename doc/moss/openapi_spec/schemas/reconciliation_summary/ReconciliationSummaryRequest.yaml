@@ -1,0 +1,18 @@
+type: object
+properties:
+  bankLedgerMappingId:
+    type: string
+    format: uuid
+    description: The unique identifier of the bank ledger mapping.
+    example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  fromDate:
+    type: string
+    format: date
+    description: Start date of the summary.
+    example: "2026-01-01"
+  toDate:
+    type: string
+    format: date
+    description: End date of the summary.
+    example: "2026-01-31"
+required: [bankLedgerMappingId, fromDate, toDate]

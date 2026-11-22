@@ -1,0 +1,16 @@
+type: object
+description: File reference attached to an accounting event.
+properties:
+  fileId:
+    type: string
+    format: uuid
+    description: Identifier used to retrieve the file from the file service.
+  name:
+    type: string
+    description: Original file name.
+  mimeType:
+    type: string
+    description: File MIME type.
+  size:
+    type: integer
+    description: File size in bytes.

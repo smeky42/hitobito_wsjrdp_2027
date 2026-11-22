@@ -1,0 +1,39 @@
+type: object
+description: A posting instruction with its lines.
+required:
+  - id
+  - status
+  - directLedger
+  - currency
+  - lines
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the posting instruction.
+  status:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionStatus'
+  directLedger:
+    type: boolean
+    description: Whether the posting goes directly to the ledger without interacting with Moss entities
+  currency:
+    type: string
+    pattern: '^[A-Z]{3}$'
+    description: ISO 4217 currency code.
+    example: "EUR"
+  postingDate:
+    type: string
+    format: date
+    description: Posting date.
+    example: "2026-01-30"
+  accountingPeriodId:
+    type: string
+    format: uuid
+    description: Identifier of the accounting period derived from the posting date.
+  reference:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionReference'
+  lines:
+    type: array
+    description: Non-deleted lines, ordered by position.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/PostingInstructionLine'

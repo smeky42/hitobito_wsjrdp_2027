@@ -1,0 +1,27 @@
+type: object
+required:
+  - synced
+  - created
+  - pending
+  - failed
+properties:
+  synced:
+    type: integer
+    description: Number of synced accounting events.
+    example: 76
+  created:
+    type: integer
+    description: Number of newly created accounting events.
+    example: 31
+  pending:
+    type: integer
+    description: Number of pending accounting events.
+    example: 16
+  failed:
+    type: integer
+    description: Number of failed accounting events.
+    example: 3
+  archived:
+    type: integer
+    description: Number of archived accounting events.
+    example: 3

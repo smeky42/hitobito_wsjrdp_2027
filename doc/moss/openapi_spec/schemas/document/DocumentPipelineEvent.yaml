@@ -1,0 +1,28 @@
+type: object
+description: An event recorded as part of the document's processing pipeline
+required:
+  - eventType
+  - status
+  - timestamp
+properties:
+  eventType:
+    type: string
+    description: Type of the pipeline event
+    example: "DocumentValidated"
+  eventId:
+    type: string
+    format: uuid
+    description: Identifier of the source event that triggered this pipeline event
+    example: "d52a7115-452e-493b-9f44-744734622c73"
+  pipelineExecutionId:
+    type: string
+    format: uuid
+    description: Identifier of the pipeline execution run that produced this event
+    example: "d52a7115-452e-493b-9f44-744734622c73"
+  status:
+    $ref: '../../openapi.yaml#/components/schemas/DocumentStatus'
+  timestamp:
+    type: string
+    format: date-time
+    description: Time the event occurred
+    example: "2024-03-15T10:30:00Z"

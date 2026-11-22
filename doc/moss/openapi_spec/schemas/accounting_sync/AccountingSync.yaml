@@ -1,0 +1,25 @@
+type: object
+description: A single accounting sync run.
+properties:
+  mode:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingSyncMode'
+  createTime:
+    type: string
+    format: date-time
+    description: When the sync was triggered.
+    example: "2026-09-15T09:40:00Z"
+  actorId:
+    type: string
+    format: uuid
+    description: Identifier of the user or system that triggered the sync.
+    example: "b8e7c123-4567-89ab-cdef-123456789012"
+  eventCount:
+    type: integer
+    format: int32
+    description: Number of accounting events included in the sync.
+    example: 12
+required:
+  - mode
+  - createTime
+  - actorId
+  - eventCount

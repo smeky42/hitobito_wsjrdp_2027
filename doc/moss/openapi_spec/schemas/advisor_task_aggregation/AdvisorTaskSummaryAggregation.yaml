@@ -1,0 +1,15 @@
+type: object
+required:
+  - missingReceiptsCount
+  - completedCount
+properties:
+  missingReceiptsCount:
+    type: integer
+    format: int64
+    description: Total number of missing receipts across the advisor's clients in the active accounting period.
+    example: 84
+  completedCount:
+    type: integer
+    format: int64
+    description: Total number of completed card transactions across the advisor's clients in the active accounting period.
+    example: 23

@@ -1,0 +1,18 @@
+type: object
+description: Subledger entity (e.g. supplier or bank account) referenced by a journal line.
+properties:
+  type:
+    $ref: './AccountingEventSubledgerEntityType.yaml'
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the subledger entity.
+    example: "6f5e4d3c-1234-4567-89ab-cdef01234567"
+  code:
+    type: string
+    description: Display code of the subledger entity.
+    example: "SUP-1001"
+  name:
+    type: string
+    description: Display name of the subledger entity.
+    example: "Amazon"

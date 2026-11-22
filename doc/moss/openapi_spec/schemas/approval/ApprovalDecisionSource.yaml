@@ -1,0 +1,8 @@
+type: string
+description: Source of an approval decision.
+enum:
+  - MANUAL
+  - AUTO
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "MANUAL"

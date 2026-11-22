@@ -1,0 +1,20 @@
+type: object
+description: Exchange rate expressed as units of target currency per unit of base currency. Multiply an amount in the base currency by the rate to obtain an amount in the target currency.
+required:
+  - baseCurrency
+  - targetCurrency
+  - rate
+properties:
+  baseCurrency:
+    type: string
+    description: ISO 4217 code of the currency being converted from.
+    example: "USD"
+  targetCurrency:
+    type: string
+    description: ISO 4217 code of the currency being converted to.
+    example: "EUR"
+  rate:
+    type: number
+    format: double
+    description: Units of target currency per unit of base currency.
+    example: 0.9

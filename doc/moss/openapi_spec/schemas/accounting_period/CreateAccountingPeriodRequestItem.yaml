@@ -1,0 +1,31 @@
+type: object
+required: [fiscalYear, name, code, periodStart, periodEnd, status]
+properties:
+  fiscalYear:
+    type: integer
+    description: Fiscal year the accounting period belongs to.
+    example: 2026
+  name:
+    type: string
+    description: Human-readable accounting period name.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "July 2026"
+  code:
+    type: string
+    description: Accounting period code.
+    minLength: 1
+    example: "2026-07"
+  periodStart:
+    type: string
+    format: date
+    description: Inclusive period start date.
+    example: "2026-07-01"
+  periodEnd:
+    type: string
+    format: date
+    description: Inclusive period end date.
+    example: "2026-07-31"
+  status:
+    $ref: './AccountingPeriodStatus.yaml'

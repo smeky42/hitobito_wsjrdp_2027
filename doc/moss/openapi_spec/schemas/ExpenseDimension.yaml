@@ -1,0 +1,19 @@
+type: object
+properties:
+  dimensionId:
+    type: string
+    format: uuid
+    description: Unique identifier of the dimension
+    example: "a1b2c3d4-5678-9abc-def0-123456789012"
+  dimensionItemId:
+    type: string
+    format: uuid
+    description: Unique identifier of the dimension item
+    example: "b2c3d4e5-6789-0abc-def1-234567890123"
+required:
+  - dimensionId
+  - dimensionItemId
+description: |
+  Accounting dimension information for expense line items. Dimensions allow
+  categorizing and tracking expenses according to your organization's accounting
+  structure (e.g., departments, projects, locations).

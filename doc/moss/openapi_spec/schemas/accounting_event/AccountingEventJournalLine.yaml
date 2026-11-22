@@ -1,0 +1,19 @@
+type: object
+description: Single line of the accounting journal created for the event.
+properties:
+  lineNumber:
+    type: integer
+    description: Sequential number of the journal line within the journal.
+    example: 1
+  account:
+    $ref: './AccountingEventJournalLineAccount.yaml'
+  debitAmount:
+    $ref: './AccountingEventAmount.yaml'
+  creditAmount:
+    $ref: './AccountingEventAmount.yaml'
+  memo:
+    type: string
+    description: Free-text memo of the journal line.
+    example: "Amazon invoice INV-1234"
+  subledgerEntity:
+    $ref: './AccountingEventSubledgerEntity.yaml'

@@ -1,0 +1,8 @@
+type: string
+description: Type of the subledger entity referenced by the journal line.
+enum:
+  - SUPPLIER
+  - BANK_ACCOUNT
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: SUPPLIER

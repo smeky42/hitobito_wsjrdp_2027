@@ -1,0 +1,34 @@
+type: object
+properties:
+  externalUserId:
+    type: string
+    description: |
+      External identifier of the actual person/user who initiated this action in the calling system.
+      Required for traceability and compliance reasons.
+    minLength: 1
+    maxLength: 255
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "john.doe@company.com"
+  name:
+    type: string
+    description: Name of the dimension in Moss. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "Project ID"
+  erpName:
+    type: string
+    description: Name of the dimension in the accounting system. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "Project Identifier"
+  erpId:
+    type: string
+    description: Unique identifier of the dimension in accounting system. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "PROJ_001"
+required: [name, erpName, erpId]

@@ -1,0 +1,19 @@
+type: object
+description: A reconciliation matching group linking bank transactions to general ledger entries.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the matching group.
+    example: "b653c04b-cf30-42f3-8b09-350121c8903c"
+  source:
+    type: string
+    description: Origin of the matching group.
+    enum:
+      - MANUAL
+      - AGENT
+      - MATCHER
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+    example: "MANUAL"
+required: [id, source]

@@ -1,0 +1,28 @@
+type: object
+description: Error format based on RFC 9457 Problem Details with modifications
+properties:
+  type:
+    type: string
+    description: Error type identifier (not a URL, unlike RFC 9457)
+    example: "ERR_VALIDATION_FAILED"
+  title:
+    type: string
+    description: Short, human-readable summary of the error
+    example: "Validation failed for property 'currency'"
+  detail:
+    type: string
+    description: Detailed explanation of the error
+    example: "Validation failed for property 'currency': should be one of EUR, USD, GBP, CHF, PLN, SEK. Provided: CZK"
+  pointer:
+    type: string
+    description: JSON pointer to the field that caused the error (RFC 6901)
+    example: "#/currency"
+  status:
+    type: integer
+    description: HTTP status code (optional, for RFC 9457 compatibility)
+    example: 400
+  instance:
+    type: string
+    description: URI reference for this specific error occurrence
+    example: "/v1/expenses"
+required: [type, title]

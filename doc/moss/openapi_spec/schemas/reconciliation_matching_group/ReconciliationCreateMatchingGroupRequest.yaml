@@ -1,0 +1,23 @@
+type: object
+description: Request to create a reconciliation matching group linking bank transactions to general ledger entries.
+properties:
+  bankLedgerMappingId:
+    type: string
+    format: uuid
+    description: ID of the bank ledger mapping under which to post this group.
+    example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  bankTransactionIds:
+    type: array
+    description: IDs of the bank transactions to include in the matching group.
+    items:
+      type: string
+      format: uuid
+    example: ["cab57118-355a-4a27-8ca1-37b6b7c4290d"]
+  generalLedgerEntryIds:
+    type: array
+    description: IDs of the general ledger entries to include in the matching group.
+    items:
+      type: string
+      format: uuid
+    example: ["1e3b42ec-587d-4fe5-8807-22c0235ee825"]
+required: [bankLedgerMappingId, bankTransactionIds, generalLedgerEntryIds]

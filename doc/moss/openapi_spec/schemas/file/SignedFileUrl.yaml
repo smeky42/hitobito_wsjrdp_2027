@@ -1,0 +1,22 @@
+type: object
+properties:
+  fileId:
+    type: string
+    format: uuid
+    description: Unique identifier of the file.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  url:
+    type: string
+    description: Signed, time-limited URL for downloading the file content. Expires 5 minutes after it is issued.
+    example: "https://storage.googleapis.com/moss-files/837574c8-e813-4bb3-b31e-c7358758c29c?X-Goog-Signature=..."
+  name:
+    type: string
+    format: string
+    description: Name of the file.
+    example: "Invoice 203341.pdf"
+  originalName:
+    type: string
+    format: string
+    description: Original uploaded name of the file.
+    example: "Invoice 203341.pdf"
+required: [fileId, url, name, originalName]

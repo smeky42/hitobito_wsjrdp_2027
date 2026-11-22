@@ -1,0 +1,12 @@
+type: object
+properties:
+  count:
+    type: integer
+    description: Number of missing receipts
+    example: 12
+  userId:
+    type: string
+    format: uuid
+    description: User ID
+    example: "afafb141-9033-49bd-ad2a-c425e6329173"
+required: [count, userId]

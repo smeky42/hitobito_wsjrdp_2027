@@ -39,7 +39,7 @@ into this wagon's Hitobito bookkeeping? This document collects
   migration [`db/migrate/20260411000100_add_moss_balance_movements.rb`](../../db/migrate/20260411000100_add_moss_balance_movements.rb),
   model [`app/models/moss_balance_movement.rb`](../../app/models/moss_balance_movement.rb)
 - **Local OpenAPI spec** (authoritative for endpoints/fields):
-  [`doc/moss_export_examples/openapi_spec/openapi.yaml`](../moss_export_examples/openapi_spec/openapi.yaml)
+  [`doc/moss/openapi_spec/openapi.yaml`](../moss/openapi_spec/openapi.yaml)
   (+ `schemas/…`).
 
 ---
@@ -54,7 +54,7 @@ into this wagon's Hitobito bookkeeping? This document collects
 
 Permitted sources of information — in this order:
 
-1. **Local OpenAPI spec** (`doc/moss_export_examples/openapi_spec/`): the
+1. **Local OpenAPI spec** (`doc/moss/openapi_spec/`): the
    **authoritative** source for endpoints, request/response schemas and field
    names. `openapi.yaml` holds the `paths:` block; schemas live under
    `schemas/<area>/<Name>.yaml` (e.g.
@@ -198,7 +198,7 @@ movements); the API entity is called **Bank Transaction**
 ### API endpoints (complete)
 
 Source: **local OpenAPI spec**, `paths:` block
-(`doc/moss_export_examples/openapi_spec/openapi.yaml`). **⛔ Reference only — do
+(`doc/moss/openapi_spec/openapi.yaml`). **⛔ Reference only — do
 not call.** The `operationId` doubles as the kebab-case slug of the developer-doc
 page `/api/<operation>`.
 

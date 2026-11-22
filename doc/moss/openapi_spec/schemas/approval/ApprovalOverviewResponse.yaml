@@ -1,0 +1,9 @@
+allOf:
+  - $ref: '../../openapi.yaml#/components/schemas/BaseResponse'
+  - type: object
+    properties:
+      data:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/ApprovalOverview'
+        description: Detailed approval overview, one entry per requested reference ID. A reference ID with no approval process, or that does not belong to the authenticated organization, has state NOT_FOUND.
