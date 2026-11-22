@@ -130,9 +130,9 @@ describe Fin::PersonalAccountsFilterSchema do
       expect(numbers([[["moss_status", "not_in", "active"]]])).to eq(%w[700202 700203])
     end
 
-    it "offers exactly the two options, labelled aktiv and inaktiv" do
+    it "offers exactly the three options, labelled aktiv, inaktiv and gelöscht" do
       options = schema.find(:moss_status).options.pairs
-      expect(options).to eq([["active", "aktiv"], ["deactivated", "inaktiv"]])
+      expect(options).to eq([["active", "aktiv"], ["deactivated", "inaktiv"], ["deleted", "gelöscht"]])
     end
   end
 

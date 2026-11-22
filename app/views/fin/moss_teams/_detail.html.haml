@@ -1,0 +1,32 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of one Moss team, on its page and in a list row: its fields,
+-#  its users and the suppliers with it as default team.
+-#
+-#  Locals: record (MossTeam), ctx (Fin::AttrFormatContext)
+-#          edit_url, edit_turbo_frame: see fin/moss_organisation/_detail_shell
+- team = record
+= render layout: "fin/moss_organisation/detail_shell",
+  locals: {edit_url: local_assigns[:edit_url], edit_turbo_frame: local_assigns[:edit_turbo_frame]} do
+  = fin_detail(team, ctx, editing: false, layout: :list) do |d|
+    - d.attrs :name, :status, :department, :team_lead
+    - d.attrs :comment, comment: {blank: :dash}
+    - d.attrs :moss_team_uuid, :moss_department_uuid, :team_lead_uuid, :moss_organisation_uuid,
+        :last_seen_at, :moss_removed_at, :created_at, :updated_at
+    - d.custom title: "Benutzer", key: :users do
+      = render "fin/moss_organisation/table", rows: team_users, columns: moss_users_table_columns,
+        noun: "Benutzer", id: "mtu_#{team.id}",
+        apply_url: apply_users_moss_team_path(team)
+    - suppliers = team.default_suppliers.order(:number).to_a
+    - if suppliers.any?
+      - d.custom title: "Standard-Team dieser Kreditoren (#{suppliers.size})", key: :default_suppliers do
+        %ul.moss-org-list
+          - suppliers.each do |account|
+            %li= moss_team_supplier(account)
+    - d.raw_data title: "Weitere Moss-Daten" do
+      - d.raw_entries :additional_info, title: "Zusatzdaten"

@@ -234,6 +234,8 @@ module Wsjrdp2027::Person
       # as: sets the *_type filter too, so this only ever returns Person rows.
       has_many :moss_bookings, -> { order(:id) },
         as: :contribution_subject, inverse_of: :contribution_subject, dependent: :nullify
+      # Mostly one; a few people have several Moss users.
+      has_many :moss_users, -> { order(:id) }, inverse_of: :person, dependent: :nullify
 
       # Overwrite addition_emails to establish a default ordering
       has_many :additional_emails, -> { order(:position, :id) }, as: :contactable, inverse_of: :contactable, dependent: :destroy

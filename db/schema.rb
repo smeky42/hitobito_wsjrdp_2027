@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_22_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -974,6 +974,41 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.unique_constraint ["moss_expense_id", "sub_row_number"], deferrable: :deferred, name: "unq_moss_bookings_expense_sub_row"
   end
 
+  create_table "moss_departments", comment: "Moss departments (API /v1/departments)", force: :cascade do |t|
+    t.uuid "moss_department_uuid", null: false, comment: "Moss department id (API field `id`)"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "API field `organisationId`"
+    t.uuid "owner_uuid", comment: "Moss user owning the department (API field `ownerId`)"
+    t.string "name", comment: "API field `name`"
+    t.datetime "last_seen_at", comment: "Last sync that returned the row"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the row; cleared when it comes back"
+    t.text "comment", default: "", null: false, comment: "Hitobito's own note on the row; the only field edited here"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moss_department_uuid"], name: "index_moss_departments_on_moss_department_uuid", unique: true
+    t.index ["owner_uuid"], name: "index_moss_departments_on_owner_uuid"
+  end
+
+  create_table "moss_dimensions", comment: "Moss dimensions (API /v1/dimensions)", force: :cascade do |t|
+    t.uuid "moss_dimension_uuid", null: false, comment: "Moss dimension id (API field `id`); fixed for cost centers and cost carriers"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "API field `organisationId`"
+    t.string "name", comment: "API field `name`"
+    t.string "erp_name", comment: "API field `erpName`"
+    t.string "erp_id", comment: "API field `erpId`"
+    t.string "status", comment: "API field `status`: ACTIVE, DELETED, ..."
+    t.string "items_table", comment: "Hitobito table holding the dimension's items (wsjrdp_cost_centers, wsjrdp_spheres); NULL = none"
+    t.datetime "moss_created_at", comment: "API field `createTime`"
+    t.datetime "moss_updated_at", comment: "API field `updateTime`"
+    t.datetime "moss_deleted_at", comment: "API field `deleteTime`"
+    t.datetime "last_seen_at", comment: "Last sync that returned the row"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the row; cleared when it comes back"
+    t.text "comment", default: "", null: false, comment: "Hitobito's own note on the row; the only field edited here"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moss_dimension_uuid"], name: "index_moss_dimensions_on_moss_dimension_uuid", unique: true
+  end
+
   create_table "moss_expenses", comment: "L2: one row per expense of a reimbursement (N); one SHELL row for a card payment, invoice or top-up", force: :cascade do |t|
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
@@ -997,6 +1032,24 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.index ["moss_transaction_id"], name: "index_moss_expenses_transaction"
     t.index ["type"], name: "index_moss_expenses_type"
     t.unique_constraint ["moss_transaction_id", "expense_number"], deferrable: :deferred, name: "unq_moss_expenses_transaction_expense_number"
+  end
+
+  create_table "moss_teams", comment: "Moss teams (API /v1/teams)", force: :cascade do |t|
+    t.uuid "moss_team_uuid", null: false, comment: "Moss team id (API field `id`)"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "API field `organisationId`"
+    t.uuid "moss_department_uuid", comment: "Moss department of the team (API field `departmentId`)"
+    t.uuid "team_lead_uuid", comment: "Moss user leading the team (API field `teamLeadId`)"
+    t.string "name", comment: "API field `name`"
+    t.string "status", comment: "API field `status`: ACTIVE, ARCHIVED, ..."
+    t.datetime "last_seen_at", comment: "Last sync that returned the row"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the row; cleared when it comes back"
+    t.text "comment", default: "", null: false, comment: "Hitobito's own note on the row; the only field edited here"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moss_department_uuid"], name: "index_moss_teams_on_moss_department_uuid"
+    t.index ["moss_team_uuid"], name: "index_moss_teams_on_moss_team_uuid", unique: true
+    t.index ["team_lead_uuid"], name: "index_moss_teams_on_team_lead_uuid"
   end
 
   create_table "moss_transactions", comment: "L1: one row per Moss transaction (card payment, invoice, reimbursement, top-up)", force: :cascade do |t|
@@ -1104,6 +1157,33 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.check_constraint "moss_balance_account_kind IS NULL OR (moss_balance_account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_transactions_moss_balance_account_kind"
     t.check_constraint "supplier_account_kind IS NULL OR (supplier_account_kind::text = ANY (ARRAY['BANK'::character varying::text, 'TRANSIT'::character varying::text, 'CLEARING'::character varying::text, 'LIABILITY'::character varying::text, 'CREDITOR'::character varying::text, 'DEBITOR'::character varying::text, 'INCOME'::character varying::text, 'EXPENSE'::character varying::text, 'EQUITY'::character varying::text, 'UNKNOWN'::character varying::text]))", name: "chk_moss_transactions_supplier_account_kind"
     t.check_constraint "type::text = ANY (ARRAY['MossCardTransaction'::character varying::text, 'MossInvoice'::character varying::text, 'MossReimbursement'::character varying::text, 'MossTopUp'::character varying::text])", name: "chk_moss_transactions_type"
+  end
+
+  create_table "moss_users", comment: "Moss users (API /v1/users); mostly one per person", force: :cascade do |t|
+    t.uuid "moss_user_uuid", null: false, comment: "Moss user id (API field `id`)"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "API field `organisationId`"
+    t.uuid "moss_team_uuid", comment: "Moss team of the user (API field `teamId`)"
+    t.uuid "manager_uuid", comment: "Moss user managing the user (API field `managerId`)"
+    t.bigint "person_id", comment: "Hitobito person behind the Moss user; several Moss users may share one"
+    t.string "email", comment: "API field `email`"
+    t.string "first_name", comment: "API field `firstName`"
+    t.string "last_name", comment: "API field `lastName`"
+    t.string "phone", comment: "CSV user export column `phone`; not in the API"
+    t.string "status", comment: "API field `status`: INVITED, ACTIVE, DEACTIVATED, ..."
+    t.string "roles", default: [], null: false, comment: "API field `roles`: USER, TEAMLEAD, ...", array: true
+    t.datetime "moss_created_at", comment: "API field `createTime`"
+    t.datetime "moss_updated_at", comment: "API field `updateTime`"
+    t.datetime "last_seen_at", comment: "Last sync that returned the row"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the row; cleared when it comes back"
+    t.text "comment", default: "", null: false, comment: "Hitobito's own note on the row; the only field edited here"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((email)::text)", name: "index_moss_users_on_lower_email"
+    t.index ["manager_uuid"], name: "index_moss_users_on_manager_uuid"
+    t.index ["moss_team_uuid"], name: "index_moss_users_on_moss_team_uuid"
+    t.index ["moss_user_uuid"], name: "index_moss_users_on_moss_user_uuid", unique: true
+    t.index ["person_id"], name: "index_moss_users_on_person_id"
   end
 
   create_table "mounted_attributes", force: :cascade do |t|
@@ -1802,7 +1882,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.string "number", null: false, comment: "Moss: cost center, DATEV: KOST2 (SKR42), KOST1 (SKR03)"
     t.string "name"
     t.string "short_name"
-    t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
+    t.string "moss_status", comment: "Moss Status: active, deactivated or deleted; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "cost center manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
     t.decimal "budget_2025", precision: 20, scale: 3, comment: "Budget 2025; NULL = not set"
@@ -1817,7 +1897,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.string "visibility", default: "auto", null: false
     t.boolean "is_unit_cost_center", default: false
+    t.uuid "moss_uuid", comment: "Moss cost center UUID (Moss dimension item, field `id`)"
+    t.datetime "moss_created_at", comment: "Moss dimension item field `createTime`"
+    t.datetime "moss_updated_at", comment: "Moss dimension item field `updateTime`"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "Moss organisation (API field `organisationId`)"
     t.index ["manager_person_id"], name: "index_wsjrdp_cost_centers_on_manager_person_id"
+    t.index ["moss_uuid"], name: "index_wsjrdp_cost_centers_on_moss_uuid", unique: true, where: "(moss_uuid IS NOT NULL)"
     t.index ["number"], name: "index_wsjrdp_cost_centers_on_number", unique: true
   end
 
@@ -2112,11 +2197,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.integer "datev_function_number", comment: "DATEV Hauptfunktionsnummer (Funktion); only set for Automatik-/Funktionskonten"
     t.integer "datev_additional_function", comment: "DATEV Zusatzfunktion"
     t.jsonb "other_datev_columns", default: {}, null: false, comment: "Other DATEV-specific columns"
-    t.string "moss_status", comment: "active or deactivated; NULL = unknown to Moss (counts as deactivated)"
+    t.string "moss_status", comment: "Moss Status: active, deactivated or deleted; NULL = unknown to Moss (counts as deactivated)"
     t.string "moss_category", comment: "Moss Category (e.g., OTHER, TRAVEL_AND_TRANSPORTATION)"
     t.jsonb "other_moss_columns", default: {}, null: false, comment: "other Moss-specific columns"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future use"
     t.boolean "is_unit_budget", default: true, null: false, comment: "Flag to indicate if a booking on this account belongs to the budget of a unit"
+    t.uuid "moss_uuid", comment: "Moss expense account UUID (API /v1/expense-accounts, field `id`)"
+    t.datetime "moss_created_at", comment: "Moss expense account field `createTime`"
+    t.datetime "moss_updated_at", comment: "Moss expense account field `updateTime`"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "Moss organisation (API field `organisationId`)"
+    t.index ["moss_uuid"], name: "index_wsjrdp_ledger_accounts_on_moss_uuid", unique: true, where: "(moss_uuid IS NOT NULL)"
     t.index ["number"], name: "index_wsjrdp_ledger_accounts_on_number", unique: true
     t.check_constraint "number::text !~ '^[1-9]\\d{5}$'::text", name: "chk_ledger_account_number_not_personal_account"
   end
@@ -2263,8 +2353,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.string "datev_short_name", comment: "DATEV Kurzbezeichnung (max. 15 chars)"
     t.string "datev_nummer_fremdsystem", comment: "DATEV Nummer Fremdsystem (max. 15 chars) the first 15 characters of the Moss supplier UUID"
     t.jsonb "other_datev_columns", default: {}, null: false, comment: "Other DATEV-specific columns (for a future DATEV Personenkonten-Stammdaten export)"
-    t.string "moss_uuid", comment: "Moss supplier UUID (API field `id`); only obtainable via the Moss API"
-    t.string "moss_status", comment: "Moss Status active or deactivated; NULL = unknown to Moss (counts as deactivated)"
+    t.uuid "moss_uuid", comment: "Moss supplier UUID (API field `id`); only obtainable via the Moss API"
+    t.string "moss_status", comment: "Moss Status: active, deactivated or deleted; NULL = unknown to Moss (counts as deactivated)"
     t.string "moss_type", comment: "Moss Type"
     t.string "moss_account_holder_name"
     t.string "moss_default_currency"
@@ -2277,6 +2367,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.jsonb "other_moss_columns", default: {}, null: false, comment: "Other Moss-specific columns from the Moss supplier export (VAT Code/Rate/Name, payment terms, ...)"
     t.jsonb "additional_info", default: {}, null: false, comment: "Reserved for future, yet-unknown data (JSONB); empty by default."
     t.boolean "is_unit_budget", default: true, null: false, comment: "Flag to indicate if a booking on this account belongs to the budget of a unit"
+    t.uuid "default_moss_team_uuid", comment: "Moss team a new expense of the supplier goes to (Moss supplier API field `defaultTeamId`)"
+    t.uuid "default_moss_expense_account_uuid", comment: "Supplier's default expense account (Moss supplier API field `defaultExpenseAccountId`)"
+    t.uuid "default_moss_cost_center_uuid", comment: "Supplier's default cost center (Moss supplier API field `defaultCostCenterId`)"
+    t.uuid "default_moss_cost_carrier_uuid", comment: "Supplier's default cost carrier, a sphere (Moss supplier API field `defaultCostCarrierId`)"
+    t.datetime "moss_created_at", comment: "Moss supplier field `createTime`"
+    t.datetime "moss_updated_at", comment: "Moss supplier field `updateTime`"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "Moss organisation (API field `organisationId`)"
+    t.index ["default_moss_cost_carrier_uuid"], name: "index_personal_accounts_on_default_moss_cost_carrier_uuid", where: "(default_moss_cost_carrier_uuid IS NOT NULL)"
+    t.index ["default_moss_cost_center_uuid"], name: "index_personal_accounts_on_default_moss_cost_center_uuid", where: "(default_moss_cost_center_uuid IS NOT NULL)"
+    t.index ["default_moss_expense_account_uuid"], name: "index_personal_accounts_on_default_moss_expense_account_uuid", where: "(default_moss_expense_account_uuid IS NOT NULL)"
+    t.index ["default_moss_team_uuid"], name: "index_personal_accounts_on_default_moss_team_uuid", where: "(default_moss_team_uuid IS NOT NULL)"
+    t.index ["moss_uuid"], name: "index_wsjrdp_personal_accounts_on_moss_uuid", unique: true, where: "(moss_uuid IS NOT NULL)"
     t.index ["number"], name: "index_wsjrdp_personal_accounts_on_number", unique: true
     t.index ["represented_person_id"], name: "index_wsjrdp_personal_accounts_on_represented_person_id"
     t.check_constraint "account_kind::text = 'CREDITOR'::text AND number::text ~ '^[7-9]'::text OR account_kind::text = 'DEBITOR'::text AND number::text ~ '^[1-6]'::text", name: "chk_personal_account_kind_matches_number"
@@ -2289,7 +2391,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.string "number", null: false, comment: "Moss: cost carrier, DATEV: KOST1 (SKR42), implicit (SKR03)"
     t.string "name"
     t.string "short_name"
-    t.string "moss_status", comment: "Moss Status: active or deactivated; NULL = unknown to Moss (counts as deactivated)"
+    t.string "moss_status", comment: "Moss Status: active, deactivated or deleted; NULL = unknown to Moss (counts as deactivated)"
     t.string "manager_name", comment: "sphere manager"
     t.bigint "manager_person_id", comment: "Optional n:1 (<-> people)"
     t.decimal "budget_2025", precision: 20, scale: 3, comment: "Budget 2025; NULL = not set"
@@ -2303,7 +2405,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
     t.text "comment", default: "", null: false
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.string "visibility", default: "auto", null: false
+    t.uuid "moss_uuid", comment: "Moss cost carrier UUID (Moss dimension item, field `id`)"
+    t.datetime "moss_created_at", comment: "Moss dimension item field `createTime`"
+    t.datetime "moss_updated_at", comment: "Moss dimension item field `updateTime`"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "Moss organisation (API field `organisationId`)"
     t.index ["manager_person_id"], name: "index_wsjrdp_spheres_on_manager_person_id"
+    t.index ["moss_uuid"], name: "index_wsjrdp_spheres_on_moss_uuid", unique: true, where: "(moss_uuid IS NOT NULL)"
     t.index ["number"], name: "index_wsjrdp_spheres_on_number", unique: true
   end
 
@@ -2351,6 +2458,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_21_000100) do
   add_foreign_key "moss_transactions", "datev_bookings", column: "clearing_datev_booking_id", on_delete: :nullify
   add_foreign_key "moss_transactions", "wsjrdp_camt_transactions", column: "camt_transaction_id", on_delete: :nullify
   add_foreign_key "moss_transactions", "wsjrdp_internal_transfers", column: "internal_transfer_id", on_delete: :nullify
+  add_foreign_key "moss_users", "people", on_delete: :nullify
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_openid_requests", "oauth_access_grants", column: "access_grant_id", on_delete: :cascade

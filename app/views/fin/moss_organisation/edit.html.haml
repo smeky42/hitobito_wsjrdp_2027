@@ -1,0 +1,15 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of a Moss record, as a page or in the detail's frame.
+- if turbo_frame_request?
+  = wsjrdp_detail_frame(page_frame_prefix, entry.id) do
+    .px-3.pt-2.pb-3= render "fin/moss_organisation/comment_form"
+- else
+  #main
+    = render "fin/moss_organisation/page_header"
+    = render "fin/moss_organisation/comment_form"

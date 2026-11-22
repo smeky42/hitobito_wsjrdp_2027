@@ -1,0 +1,14 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The heading of a Moss record's page and edit page.
+%h1.mb-3.d-flex.align-items-baseline.flex-wrap.gap-2
+  %span.text-muted.fw-light= entry.class.model_name.human
+  %span= entry.to_s
+  - if entry.removed_from_moss?
+    %span.badge.text-bg-secondary.fs-6{title: "Seit #{fin_date_time(entry.moss_removed_at)} nicht mehr in Moss"}
+      nicht mehr in Moss

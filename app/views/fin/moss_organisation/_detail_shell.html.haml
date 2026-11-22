@@ -1,0 +1,32 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Around the detail of a Moss record (render layout:): the "Bearbeiten"
+-#  button and the detail's styles.
+-#
+-#  Locals: edit_url: the edit page; nil = no button
+-#          edit_turbo_frame: where that page opens, the whole page by default
+- edit_url = local_assigns[:edit_url]
+:css
+  .moss-org-detail { position: relative; }
+  .moss-org-detail dd { font-variant-numeric: tabular-nums; }
+  .moss-org-detail .fin-detail-list:first-of-type { border-top: 0 !important; }
+  .moss-org-detail-edit { position: absolute; top: 0; right: 0; z-index: 1; }
+  .moss-org-detail-editable .fin-detail-list:first-of-type > .row:nth-child(-n+2) > dd { padding-right: 6.5rem; }
+  /* In a list row: the button on a line of its own (beside the row's
+     "Detailseite" links), and the detail's sections inset and padded below. */
+  .exp-detail .moss-org-detail-edit { position: static; text-align: right; padding: var(--exp-detail-pad-y, 1rem) .25rem .5rem 0 !important; }
+  .exp-detail .moss-org-detail-editable .fin-detail-list:first-of-type > .row > dd { padding-right: 0; }
+  .exp-detail .moss-org-detail .bk-item-detail > :not(.fin-detail-list) { padding-left: .5rem; padding-right: .5rem; }
+  .exp-detail .moss-org-detail > .bk-item-detail { padding-bottom: var(--exp-detail-pad-y, 1rem); }
+  .moss-org-detail .moss-org-list { margin-bottom: 0; }
+.moss-org-detail{class: ("moss-org-detail-editable" if edit_url)}
+  - if edit_url
+    .moss-org-detail-edit.p-2
+      = link_to "Bearbeiten", edit_url, class: "btn btn-sm btn-outline-primary",
+        data: {turbo_frame: local_assigns[:edit_turbo_frame].presence || "_top"}
+  = yield

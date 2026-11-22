@@ -352,6 +352,22 @@ Rails.application.routes.draw do
         get "moss/#{slug}", to: "moss_transactions#index", kind: kind, as: "moss_#{slug}"
         post "moss/#{slug}/apply", to: "moss_transactions#apply", kind: kind, as: "apply_moss_#{slug}"
       end
+      # The Moss users, teams and departments (Fin::MossOrganisationController):
+      # a list each, a record's page, and an edit page for its comment.
+      resources :moss_users, path: "moss/users", only: [:index, :show, :edit, :update] do
+        collection { post :apply } # PRG target of the CNF filter builder
+      end
+      resources :moss_teams, path: "moss/teams", only: [:index, :show, :edit, :update] do
+        collection { post :apply }
+        member { post :apply_users } # PRG target of the filter over the team's users
+      end
+      resources :moss_departments, path: "moss/departments", only: [:index, :show, :edit, :update] do
+        collection { post :apply }
+        member do # PRG targets of the filters over the department's teams and users
+          post :apply_teams
+          post :apply_users
+        end
+      end
       # "Zahlungsverkehr" section: its overview at /fin/payments, the orders
       # (SEPA files), the debits and the returns. See doc/fin/payments.md.
       get :payments, path: "payments", to: "payments#index", as: "fin_payments"

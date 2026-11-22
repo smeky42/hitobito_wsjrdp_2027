@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The list of a Moss tab: the expandable table, a row opening the record's
+-#  detail.
+-#
+-#  Locals: columns: the table's columns with their cells
+-#          title:   the page's heading
+-#          empty:   what an empty list says
+-#          noun:    the plural for the count line
+-# The stream action redirect_top, which a save from a row's detail answers with.
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+#main
+  %h1= title
+  = render "fin/moss_organisation/table", rows: rows, columns: columns, noun: noun, empty: empty,
+    id: row_id_prefix, apply_url: apply_path

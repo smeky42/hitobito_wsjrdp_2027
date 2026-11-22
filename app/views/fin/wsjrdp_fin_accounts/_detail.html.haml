@@ -27,6 +27,9 @@
   .fin-account-detail .fin-copy, .fin-account-detail a.ms-1[target="_blank"] { margin-left: .65rem !important; }
   .fin-account-detail-edit { position: absolute; top: 0; right: 0; z-index: 1; }
   .fin-account-detail-editable .fin-detail-list:first-of-type > .row:nth-child(-n+2) > dd { padding-right: 6.5rem; }
+  /* In a list row: the button on a line of its own, beside the row's links. */
+  .exp-detail .fin-account-detail-edit { position: static; text-align: right; padding: var(--exp-detail-pad-y, 1rem) .25rem .5rem 0 !important; }
+  .exp-detail .fin-account-detail-editable .fin-detail-list:first-of-type > .row > dd { padding-right: 0; }
 .fin-account-detail{class: ("fin-account-detail-editable" if edit_url)}
   - if edit_url
     .fin-account-detail-edit.p-2

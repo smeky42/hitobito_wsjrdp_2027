@@ -11,7 +11,8 @@ module Sheet
   # "Moss" -- the third sub-item of the Finanzen main-nav section (between
   # Beiträge and Buchhaltung). Holds the Moss overview (default tab), the
   # transactions list and the four kind tabs, which are the same list pinned to
-  # one kind (Fin::MossTransactionsController, route default `kind`). This is
+  # one kind (Fin::MossTransactionsController, route default `kind`), then the
+  # users, teams and departments (Fin::MossOrganisationController). This is
   # also the sheet of Fin::MossController (controller "fin/moss" ->
   # Sheet::Fin::Moss), so /fin/moss renders the tabs directly. See
   # doc/navigation.md.
@@ -34,6 +35,11 @@ module Sheet
     tab :moss_reimbursements_tab_label, :moss_reimbursements_path
     tab :moss_invoices_tab_label, :moss_invoices_path
     tab :moss_top_ups_tab_label, :moss_top_ups_path
+    # The organisation in Moss (Fin::MossOrganisationController).
+    # From the audit tier up (Wsjrdp2027::FinanceAccess.moss_organisation_models).
+    tab "fin.tabs.moss_users", :moss_users_path, if: ->(view, *) { view.can?(:show, MossUser) }
+    tab "fin.tabs.moss_teams", :moss_teams_path, if: ->(view, *) { view.can?(:show, MossTeam) }
+    tab "fin.tabs.moss_departments", :moss_departments_path, if: ->(view, *) { view.can?(:show, MossDepartment) }
 
     def left_nav?
       true

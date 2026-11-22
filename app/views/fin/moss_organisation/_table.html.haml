@@ -1,0 +1,29 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A table of Moss records: a tab's list (fin/moss_organisation/_list) or a
+-#  table of users or teams inside a record's detail.
+-#
+-#  Locals: rows:      the Wsjrdp::ExpandableTableRows
+-#          columns:   the table's columns with their cells
+-#          id:        the table's row id prefix, unique on the page
+-#          apply_url: the PRG target of the filter
+-#          noun:      the plural, e.g. "Benutzer"
+-#          empty:     what an empty table says (optional)
+= wsjrdp_expandable_table do |t|
+  - t.rows rows, id: id
+  - t.columns columns, menu: true
+  - t.gaps max: "3rem", grow_max: "8rem"
+  - t.row_key { |record| record.id }
+  - t.row_class { |record| moss_org_row_class(record) }
+  - t.detail_page(column: true) { |record| polymorphic_path(record) }
+  - t.detail_src { |record| polymorphic_path(record) }
+  - t.paging
+  - t.filter apply_url: apply_url
+  - t.summary "#{rows.total_count} #{noun}"
+- if rows.total_count.zero?
+  %p.text-muted.small.mt-2.mb-0= local_assigns[:empty] || "Keine #{noun} für diese Auswahl."

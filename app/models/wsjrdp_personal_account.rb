@@ -14,11 +14,23 @@
 class WsjrdpPersonalAccount < ActiveRecord::Base
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
+  STATUS_DELETED = "deleted"
 
   validates :number, presence: true, uniqueness: true
 
   belongs_to :represented_person, class_name: "Person", optional: true,
     inverse_of: :personal_accounts
+
+  # A supplier's default Moss team, by Moss UUID; may dangle.
+  belongs_to :default_moss_team, class_name: "MossTeam", optional: true,
+    primary_key: :moss_team_uuid, foreign_key: :default_moss_team_uuid, inverse_of: :default_suppliers
+  # A supplier's defaults in Moss, by Moss UUID; each may dangle.
+  belongs_to :default_moss_expense_account, class_name: "WsjrdpLedgerAccount", optional: true,
+    primary_key: :moss_uuid, foreign_key: :default_moss_expense_account_uuid, inverse_of: false
+  belongs_to :default_moss_cost_center, class_name: "WsjrdpCostCenter", optional: true,
+    primary_key: :moss_uuid, foreign_key: :default_moss_cost_center_uuid, inverse_of: false
+  belongs_to :default_moss_cost_carrier, class_name: "WsjrdpSphere", optional: true,
+    primary_key: :moss_uuid, foreign_key: :default_moss_cost_carrier_uuid, inverse_of: false
 
   # Bookings whose Konto (account) is this personal account
   # rubocop:disable Rails/HasManyOrHasOneDependent -- deliberately no
@@ -39,7 +51,8 @@ class WsjrdpPersonalAccount < ActiveRecord::Base
 
   # moss_status is NULL for accounts without a Moss connection
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
-  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
+  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, STATUS_DELETED, nil]) }
+  scope :deleted, -> { where(moss_status: STATUS_DELETED) }
 
   # Every personal account with its two-sided booking totals as REAL columns:
   #

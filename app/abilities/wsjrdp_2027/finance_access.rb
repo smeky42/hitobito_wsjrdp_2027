@@ -33,9 +33,12 @@ module Wsjrdp2027::FinanceAccess
       WsjrdpPersonalAccount]
   end
 
-  # The finance models with person-level payment details, from the audit
-  # tier up.
-  def self.person_level_models = [AccountingEntry, WsjrdpDirectDebitPreNotification]
+  # The Moss users, teams and departments: personal data, so from the audit
+  # tier up, like the person-level models.
+  def self.moss_organisation_models = [MossUser, MossTeam, MossDepartment]
+
+  # The finance models with person-level data, from the audit tier up.
+  def self.person_level_models = [AccountingEntry, WsjrdpDirectDebitPreNotification, *moss_organisation_models]
 
   # What the write and the manage tier may do with an Umbuchung
   # (WsjrdpInternalTransfer): the same, everything.

@@ -37,6 +37,15 @@ module Wsjrdp2027::VariousAbility
       end
     end
 
+    # The Moss users, teams and departments: from the audit tier up.
+    Wsjrdp2027::FinanceAccess.moss_organisation_models.each do |model|
+      on(model) do
+        permission(:finance_audit).may(:show, :log).if_finance_audit
+        permission(:finance).may(:show, :log, :create, :update).if_finance_write
+        permission(:finance_manage).may(:show, :log, :create, :update, :manage, :admin_finance).if_finance_manage
+      end
+    end
+
     # WsjrdpInternalTransfer: an Umbuchung only links statement rows the
     # write tier works on anyway, so the write tier may do with it everything
     # the manage tier may -- destroying one included, which keeps the rows and

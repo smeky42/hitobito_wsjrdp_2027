@@ -18,14 +18,15 @@
 module Fin::PersonalAccountsFilterSchema
   extend Wsjrdp::Filtering::FilterSchema
 
-  # Moss knows an account as active or deactivated; an account it does not know
+  # Moss knows an account as active, deactivated or deleted; an account it does not know
   # at all has moss_status NULL. NULL counts as INAKTIV here (the column's own
   # comment says the same), which is why the attribute filters on
   # COALESCE(moss_status, 'deactivated') rather than on the raw column -- the
   # same expression the table's "Moss Status" cell and its sort use.
   MOSS_STATUS_OPTIONS = Wsjrdp::Filtering::Options.values(-> {
     [[WsjrdpPersonalAccount::STATUS_ACTIVE, I18n.t("fin.moss_status.active")],
-      [WsjrdpPersonalAccount::STATUS_DEACTIVATED, I18n.t("fin.moss_status.deactivated")]]
+      [WsjrdpPersonalAccount::STATUS_DEACTIVATED, I18n.t("fin.moss_status.deactivated")],
+      [WsjrdpPersonalAccount::STATUS_DELETED, I18n.t("fin.moss_status.deleted")]]
   })
 
   # All case variants of the text operators; the UI collapses each ci/cs pair

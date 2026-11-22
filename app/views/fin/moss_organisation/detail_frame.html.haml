@@ -1,0 +1,11 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  #show's answer to a frame request: the detail in the frame that asked.
+= wsjrdp_detail_frame(page_frame_prefix, entry.id) do
+  = render "detail", record: entry, ctx: detail_format_context,
+    edit_url: (edit_entry_path if can?(:update, entry)), edit_turbo_frame: turbo_frame_request_id

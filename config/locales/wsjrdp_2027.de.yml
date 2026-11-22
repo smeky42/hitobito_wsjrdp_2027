@@ -66,6 +66,15 @@ de:
       wsjrdp_personal_account:
         one: Kreditor
         other: Kreditoren
+      moss_user:
+        one: Moss-Benutzer
+        other: Moss-Benutzer
+      moss_team:
+        one: Moss-Team
+        other: Moss-Teams
+      moss_department:
+        one: Moss-Abteilung
+        other: Moss-Abteilungen
       wsjrdp_cost_center:
         one: Kostenstelle
         other: Kostenstellen
@@ -792,6 +801,58 @@ de:
         booking_posting_text: Buchungstext
         comment: Kommentar
         contribution_subject: Beteiligte Person
+        created_at: Erstellt
+        updated_at: Geändert
+
+      # de.activerecord.attributes.moss_user (API /v1/users)
+      moss_user:
+        first_name: Vorname
+        last_name: Nachname
+        email: E-Mail
+        phone: Telefon
+        status: Status
+        roles: Rollen
+        team: Team
+        manager: Manager
+        person: Person
+        moss_user_uuid: Moss-ID
+        moss_team_uuid: Team-ID
+        manager_uuid: Manager-ID
+        moss_created_at: In Moss angelegt
+        moss_updated_at: In Moss geändert
+        comment: Kommentar
+        moss_organisation_uuid: Moss-Organisation
+        last_seen_at: Zuletzt von Moss geladen
+        moss_removed_at: Nicht mehr in Moss seit
+        created_at: Erstellt
+        updated_at: Geändert
+
+      # de.activerecord.attributes.moss_team (API /v1/teams)
+      moss_team:
+        name: Name
+        status: Status
+        department: Abteilung
+        team_lead: Team-Lead
+        moss_team_uuid: Moss-ID
+        moss_department_uuid: Abteilungs-ID
+        team_lead_uuid: Team-Lead-ID
+        comment: Kommentar
+        moss_organisation_uuid: Moss-Organisation
+        last_seen_at: Zuletzt von Moss geladen
+        moss_removed_at: Nicht mehr in Moss seit
+        created_at: Erstellt
+        updated_at: Geändert
+
+      # de.activerecord.attributes.moss_department (API /v1/departments)
+      moss_department:
+        name: Name
+        owner: Owner
+        moss_department_uuid: Moss-ID
+        owner_uuid: Owner-ID
+        comment: Kommentar
+        moss_organisation_uuid: Moss-Organisation
+        last_seen_at: Zuletzt von Moss geladen
+        moss_removed_at: Nicht mehr in Moss seit
         created_at: Erstellt
         updated_at: Geändert
 
@@ -2212,6 +2273,10 @@ de:
       invoices: "Rechnungen"
       reimbursements: "Erstattungen"
       top_ups: "Einzahlungen"
+      # The Moss organisation tabs (Fin::MossOrganisationController).
+      moss_users: "Benutzer"
+      moss_teams: "Teams"
+      moss_departments: "Abteilungen"
     # Zahlungsverkehr (doc/fin/payments.md): Aufträge, Einzüge, Rückläufer.
     accounts:
       top_up_hint: "Diese Felder geben die Kontoverbindung für Einzahlungen auf ein Wallet oder ein Nicht-SEPA-Konto an."
@@ -2549,13 +2614,15 @@ de:
     status:
       active: "Aktiv"
       deactivated: "Deaktiviert"
+      deleted: "Gelöscht"
       soft_deleted: "Gelöscht"
-    # The Kreditoren list collapses the Moss status to these two values: an
+    # The Kreditoren list collapses the Moss status to these values: an
     # account Moss does not know (moss_status NULL) counts as inaktiv. Lower
     # case, because they appear as a table cell value and as filter options.
     moss_status:
       active: "aktiv"
       deactivated: "inaktiv"
+      deleted: "gelöscht"
     # The detail-partial kit (doc/fin/detail_partials.md): the value side of a
     # field the blank mode :unset keeps visible (Fin::DetailValue::BLANK_MODES),
     # and the summary of the one collapsible raw area of a detail.
@@ -2571,6 +2638,31 @@ de:
     debit_credit_long:
       D: "Soll"
       C: "Haben"
+    # The Moss users, teams and departments (Fin::MossOrganisationController).
+    moss_organisation:
+      # User and team statuses as Moss sends them (UserStatus, TeamStatus).
+      statuses:
+        INVITED: "Eingeladen"
+        ACTIVE: "Aktiv"
+        DEACTIVATED: "Deaktiviert"
+        HIDDEN: "Verborgen"
+        STAGED_FOR_INVITE: "Einladung vorbereitet"
+        ARCHIVED: "Archiviert"
+        UNKNOWN_DEFAULT_OPEN_API: "Unbekannt"
+      # User roles (UserRole).
+      roles:
+        USER: "Mitarbeiter"
+        SUPER_USER: "Admin"
+        APPLICANT: "Antragsteller"
+        ACCOUNTANT: "Buchhalter"
+        INTERNAL_ACCOUNTANT: "Interner Buchhalter"
+        EXTERNAL_ACCOUNTANT: "Externer Buchhalter"
+        TEAMLEAD: "Teammanager"
+        PAYER: "Zahlungsberechtigt"
+        PURCHASER: "Einkäufer"
+        UNKNOWN_DEFAULT_OPEN_API: "unbekannte Rolle"
+      comment_hint: "Nur der Kommentar wird in Hitobito gepflegt; alle anderen Felder kommen aus Moss."
+      moss_users_hint: "Nur Person und Kommentar werden in Hitobito gepflegt; alle anderen Felder kommen aus Moss."
     moss:
       # The four kinds of a Moss transaction (the STI types of moss_transactions).
       kinds:

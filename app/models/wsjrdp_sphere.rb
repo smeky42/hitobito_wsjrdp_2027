@@ -14,6 +14,7 @@ class WsjrdpSphere < ActiveRecord::Base
 
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
+  STATUS_DELETED = "deleted"
 
   # The foreign key is spelled out: the column is `manager_person_id`, not the
   # `manager_id` a belongs_to would derive from the association name.
@@ -24,7 +25,8 @@ class WsjrdpSphere < ActiveRecord::Base
 
   # moss_status is NULL for spheres unknown to Moss
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
-  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
+  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, STATUS_DELETED, nil]) }
+  scope :deleted, -> { where(moss_status: STATUS_DELETED) }
 
   def active?
     moss_status == STATUS_ACTIVE

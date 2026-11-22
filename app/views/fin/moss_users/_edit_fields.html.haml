@@ -1,0 +1,24 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A user's edit fields: Moss data read-only, the linked person editable.
+-#
+-#  Locals: f: the form
+- user = f.object
+= form_like_labeled(t("activerecord.attributes.moss_user.first_name"),
+  user.first_name.presence || fin_detail_blank_content(:unset))
+= form_like_labeled(t("activerecord.attributes.moss_user.last_name"),
+  user.last_name.presence || fin_detail_blank_content(:unset))
+= form_like_labeled(t("activerecord.attributes.moss_user.email"), moss_users_email_link(user))
+= form_like_labeled(t("activerecord.attributes.moss_user.team"), fin_format_moss_user_team(user))
+= form_like_labeled(t("activerecord.attributes.moss_user.manager"), fin_format_moss_user_manager(user))
+- if permitted_attr?(:person_id)
+  - previous = Person.find_by(id: user.person_id_was)
+  - help = previous ? safe_join(["Bisher verknüpft: ", moss_org_person(previous)]) : "Bisher ist keine Person verknüpft."
+  = f.labeled_person_field :person, help_inline: help
+- else
+  = form_like_labeled(t("activerecord.attributes.moss_user.person"), moss_org_person(user.person))

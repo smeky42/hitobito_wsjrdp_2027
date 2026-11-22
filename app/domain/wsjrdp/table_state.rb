@@ -206,6 +206,8 @@ class Wsjrdp::TableState
     # The tooltip of the "all" button of a fixed group of several answers.
     ALL_NAME = "alle wählen bzw. abwählen"
     UNRESTRICTED_ICON = "asterisk"
+    # The button of a group's "others" member: every value not named.
+    OTHERS_ICON = "ellipsis-h"
     # The css class of a preset button that shows its icon only; its label is
     # the tooltip and the accessible name (shared/wsjrdp/filtering/_line).
     ICON_ONLY_CLASS = "flt-preset-icon-only"
@@ -457,6 +459,7 @@ class Wsjrdp::TableState
         pressed = chosen.include?(member[:key])
         Wsjrdp::TableState::FilterPreset.new(key: "#{group[:key]}.#{member[:key]}", label: member[:label],
           slots: nil, active: pressed, toggle_wire: wire, segmented: true, title: member[:title],
+          icon: (OTHERS_ICON if member[:others]), css_class: (ICON_ONLY_CLASS if member[:others]),
           group: "fixed-#{group[:key]}", group_label: group[:label],
           toggle_lifts: lifts_for.call(pressed ? chosen - [member[:key]] : chosen + [member[:key]]))
       end
@@ -1266,12 +1269,8 @@ class Wsjrdp::TableState
       fixed_group_declarations(policy_field).each do |group|
         chosen = (@choices || {}).fetch(group[:key]) { group[:default] }
         if group[:multiple]
-          # The chosen answers share one slot; none or all chosen restrict nothing.
-          values = group[:members].select { |member| chosen.include?(member[:key]) }.pluck(:value)
-          next if values.empty? || values.size == group[:members].size
-
-          slots = [[[group[:attribute], Filter::GROUP_OPERATOR, *values]]].freeze
-          entries << {key: Filter.choice_token(group, chosen), slots: slots, show: group[:show]}.freeze
+          slots = multiple_group_slots(group, chosen)
+          entries << {key: Filter.choice_token(group, chosen), slots: slots, show: group[:show]}.freeze if slots
           next
         end
         member = group[:members].find { |candidate| candidate[:key] == chosen }
@@ -1282,6 +1281,24 @@ class Wsjrdp::TableState
       entries.freeze
       slots = entries.flat_map { |entry| entry[:slots] }
       [entries, slots.empty? ? nil : schema.parse_fixed!(slots, schema: bound)]
+    end
+
+    # The one slot of a fixed group of several answers, or nil when none or
+    # all are chosen. Its conditions are ORed: the chosen values, and for the
+    # "others" member every value no member names, or none (so the attribute
+    # must offer not_in and blank).
+    def multiple_group_slots(group, chosen)
+      picked = group[:members].select { |member| chosen.include?(member[:key]) }
+      return nil if picked.empty? || picked.size == group[:members].size
+
+      attribute = group[:attribute]
+      values = picked.reject { |member| member[:others] }.pluck(:value)
+      conditions = values.any? ? [[attribute, Filter::GROUP_OPERATOR, *values]] : []
+      if picked.any? { |member| member[:others] }
+        named = group[:members].reject { |member| member[:others] }.pluck(:value)
+        conditions += [[attribute, "not_in", *named], [attribute, "blank"]]
+      end
+      [conditions].freeze
     end
 
     # The policy's fixed entries as declared, keys as Strings. A key is needed
@@ -1357,14 +1374,17 @@ class Wsjrdp::TableState
 
       members = Array(group.fetch(:members)).map do |member|
         member = member.transform_keys(&:to_sym)
-        unknown = member.keys - %i[key label value title]
+        unknown = member.keys - %i[key label value title others]
         raise ArgumentError, "#{what}: member: unknown keyword: #{unknown.first.inspect}" if unknown.any?
         member_key = member.fetch(:key).to_s
         raise ArgumentError, "#{what}: member key #{member_key.inspect}" unless member_key.match?(TOKEN_PATTERN)
 
-        {key: member_key, label: member.fetch(:label).to_s, value: member.fetch(:value).to_s,
-         title: member[:title]&.to_s}.freeze
+        # `others: true`: every value the other members do not name, and none.
+        others = member[:others] ? true : false
+        {key: member_key, label: member.fetch(:label).to_s, value: (member.fetch(:value).to_s unless others),
+         title: member[:title]&.to_s, others: others}.freeze
       end
+      raise ArgumentError, "#{what}: more than one others member" if members.count { |m| m[:others] } > 1
       keys = members.pluck(:key)
       raise ArgumentError, "#{what}: duplicate member" if keys.uniq.size != keys.size
       default = Array(group.fetch(:default)).map(&:to_s)

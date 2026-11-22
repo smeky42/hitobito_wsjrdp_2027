@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The page of one Moss user, team or department: the heading and the
+-#  record's detail in a frame of its own.
+-# The stream action redirect_top, which a save from the frame answers with.
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+#main
+  = render "fin/moss_organisation/page_header"
+  - frame_id = wsjrdp_detail_frame_id(page_frame_prefix, entry.id)
+  = turbo_frame_tag(frame_id, class: "d-block") do
+    = render "detail", record: entry, ctx: Fin::AttrFormatContext.regular,
+      edit_url: (edit_entry_path if can?(:update, entry)), edit_turbo_frame: frame_id

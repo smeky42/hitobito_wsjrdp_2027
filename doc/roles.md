@@ -78,7 +78,8 @@ and nothing else, in particular no access to the contingent's people.
 `FinanceAuditor` is the audit tier for external auditors, `FinanceAccountant`
 the write tier for external accountants. Neither holds a `layer_*`
 permission, so neither reaches a person's page but one: `finance_audit` opens
-the person-level finance views (Beitragsbuchungen, `fin/person_fees`) and,
+the person-level finance views (Beitragsbuchungen, `fin/person_fees`, the
+Moss users, teams and departments) and,
 read-only, a person's Beitrag page (`show_finance` on the person, below) --
 no other page of the people.
 
