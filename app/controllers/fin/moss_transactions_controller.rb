@@ -87,12 +87,11 @@ class Fin::MossTransactionsController < Fin::FinController
   # its memory apart from the other tabs'. The general tab gets the dataset's
   # own defaults, no fixed slot and no exclusions.
   #
-  # The general tab also gets the kinds as a "Schnellauswahl": the same preset
-  # GROUP the wallet statement shows (Fin::MossKinds.preset_group), so one click
-  # narrows the list to the card payments and two pressed buttons WIDEN it to
-  # both kinds through one `kind in (…)` slot. A KIND TAB declares none -- its
-  # kind is already pinned as a fixed slot, and a button offering another kind
-  # would promise a list the pin cannot give.
+  # The general tab also gets the kinds as a "Schnellauswahl": a fixed group of
+  # several answers (Fin::MossKinds.fixed_group) behind an "all" asterisk, every
+  # kind chosen by default; the choice is remembered like the filter. A KIND
+  # TAB declares none -- its kind is already pinned as a fixed slot, and a
+  # button offering another kind would promise a list the pin cannot give.
   TRANSACTIONS_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::MossTransactionsColumns.codec,
     sort: {hidden: [["booking_date", "desc"]]},
@@ -100,8 +99,9 @@ class Fin::MossTransactionsController < Fin::FinController
     per_page: {default: 50},
     filter: {policy: :remember, schema: Fin::MossTransactionsFilterSchema,
              fixed: -> { current_kind ? [{slots: [[["kind", "in", current_kind]]], show: :hidden}] : [] },
-             presets: -> { current_kind ? [] : [Fin::MossKinds.preset_group] },
+             fixed_groups: -> { current_kind ? [] : [Fin::MossKinds.fixed_group] },
              exclude: -> { current_kind ? %i[kind] : [] }},
+    lifts: {policy: :remember},
     pane: {default: 1},
     store_key: -> { "#{controller_path}#index/#{current_kind}" if current_kind }
 

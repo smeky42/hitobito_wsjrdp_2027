@@ -20,15 +20,17 @@ describe Fin::MossController do
   it "renders the tiles on an empty database" do
     get :index
     expect(response).to be_successful
-    expect(response.body).to include("Transaktionen gesamt").and include("Einzahlung")
+    expect(response.body).to include("Alle Transaktionen").and include("Einzahlung")
   end
 
+  # The total tile opens "Alle" with every kind chosen again (an empty `u`),
+  # whatever kind choice the list remembers; no tile resets the filter.
   it "links each kind tile to the kind's tab and the total tile to the transactions list" do
     get :index
     hrefs = Nokogiri::HTML(response.body).css("#main a").pluck("href")
     expect(hrefs).to include(moss_card_transactions_path, moss_invoices_path,
-      moss_reimbursements_path, moss_top_ups_path, moss_transactions_path)
-    expect(hrefs.grep(/\?f=/)).to be_empty
+      moss_reimbursements_path, moss_top_ups_path, "#{moss_transactions_path}?u=")
+    expect(hrefs.grep(/[?&]f=/)).to be_empty
   end
 
   # One transaction of the kind with one expense and `bookings` bookings.
@@ -46,8 +48,8 @@ describe Fin::MossController do
     tx
   end
 
-  # The cards: count, signed sum and average per kind and over all, the sign as
-  # its own glyph -- a plus green, a minus muted.
+  # The cards: count and signed sum per kind and over all, the average per kind
+  # only; the sign as its own glyph -- a plus green, a minus muted.
   it "counts, sums and averages per kind, with the sign as a coloured glyph" do
     create_transaction("MossTopUp", amount: 500)
     create_transaction("MossInvoice", amount: -100)
@@ -57,7 +59,7 @@ describe Fin::MossController do
     expect(response).to be_successful
     expect(response.body).to include("06.03.2026")
     cards = Nokogiri::HTML(response.body).css("#main a.border.rounded").map { |a| a.text.squish }
-    expect(cards).to include("3 Transaktionen gesamt Σ +350,00 € Ø +116,67 €",
+    expect(cards).to include("3 Alle Transaktionen Σ +350,00 €",
       "1 Einzahlung Σ +500,00 € Ø +500,00 €",
       "2 Rechnung Σ -150,00 € Ø -75,00 €",
       "0 Kartenzahlung Σ 0,00 € Ø 0,00 €")
@@ -118,7 +120,7 @@ describe Fin::MossController do
     # ist nicht EUR" (operator short form `ni`).
     links = doc.css("table.moss-structure a").map { |a| [a.text, CGI.unescape(a["href"])] }
     expect(links).to eq([
-      ["1 in Fremdwährung", "#{moss_transactions_path}?f=!(!(!(cur,ni,'EUR')))"],
+      ["1 in Fremdwährung", "#{moss_transactions_path}?u=&f=!(!(!(cur,ni,'EUR')))"],
       ["1 in Fremdwährung", "#{moss_invoices_path}?f=!(!(!(cur,ni,'EUR')))"]
     ])
   end

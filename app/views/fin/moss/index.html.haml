@@ -23,19 +23,23 @@
     Moss-Wallets: Einzahlungen positiv, Ausgaben negativ.
 
   -# The cards in tab order: the total first, then the kinds (KINDS order).
-  -# Each card: count, kind, the signed sum of the transaction amounts (Σ) and
-  -# the average per transaction (Ø); a minus is muted, a plus green.
+  -# Each card: count, kind, the signed sum of the transaction amounts (Σ) and,
+  -# on a kind card, the average per transaction (Ø) -- over all kinds an
+  -# average says nothing. A minus is muted, a plus green.
   -# A kind card wears its kind's mark: the icon in front of the word and the
-  -# colour as the top edge (.moss-kind-tile reads it from the kind class). The
-  -# total card gets .moss-kind-tile WITHOUT a kind class -- its edge is then
-  -# transparent, which keeps every card exactly the same size.
+  -# colour as the top edge, the total card grey (shared/wsjrdp/_moss_kind_styles).
+  -# All cards share one width and one height (a grid with equal rows), however
+  -# they wrap. The fixed width fits a sum up to 10.999.999,99 € with the
+  -# padding on both sides.
+  :css
+    .moss-tiles { display: grid; grid-template-columns: repeat(auto-fill, 9.5rem); grid-auto-rows: 1fr; gap: 1rem; }
+    .moss-tiles > a { white-space: nowrap; }
   - tile_class = "border rounded p-3 text-reset text-decoration-none moss-kind-tile"
-  .d-flex.flex-wrap.gap-3.mb-4
-    = link_to moss_transactions_path, class: tile_class, title: "Alle Transaktionen öffnen" do
+  .moss-tiles.mb-4
+    = link_to moss_all_transactions_path, class: "#{tile_class} moss-total-tile", title: "Alle Transaktionen öffnen" do
       .fs-3.fw-semibold= number_with_delimiter(ov.total_count, delimiter: ".")
-      .text-muted.small Transaktionen gesamt
+      .text-muted.small Alle Transaktionen
       .small.fw-semibold{title: "Summe aller Transaktionen = rechnerischer Wallet-Stand"}= safe_join(["Σ ", moss_signed_amount_display(ov.total_sum)])
-      .small{title: "Durchschnittlicher Transaktionsbetrag"}= safe_join(["Ø ", moss_signed_amount_display(ov.total_average)])
     - ov.kinds.each do |k|
       = link_to moss_kind_tab_path(k.kind), class: "#{tile_class} #{moss_kind_css_class(k.kind)}", title: "#{moss_kind_tab_label(k.kind)} öffnen" do
         .fs-3.fw-semibold= number_with_delimiter(k.count, delimiter: ".")

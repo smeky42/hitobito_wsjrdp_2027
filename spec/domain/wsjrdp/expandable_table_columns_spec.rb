@@ -153,7 +153,8 @@ describe Wsjrdp::ExpandableTableColumns do
       cell = ->(row) { row }
       expect(columns.fetch("amount").to_table_column(cell: cell)).to eq(
         key: "amount", abbr: "amt", label: "Betrag", condensed_label: nil,
-        header_label: nil, header_tooltip: nil, group: nil, grow: 0, tabular_nums: true, merge: nil, merge_share: 1,
+        header_label: nil, short_label: nil, header_tooltip: nil, group: nil, grow: 0, tabular_nums: true, merge: nil,
+        merge_share: 1,
         target_width: nil, target_grow: 0, truncate: false, sticky: false,
         merge_layouts: nil, header_align: nil, merged_cell: nil,
         numeric: true, width: nil, mobile: true, narrow: true, pinned: nil, visibility: :toggle,

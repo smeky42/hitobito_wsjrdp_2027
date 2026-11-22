@@ -15,9 +15,10 @@
 # object MUST preload them; account / cost-center NAMES come from a per-request
 # lookup map.
 module Fin::MossTransactionsHelper
-  # The description column shows at most this many characters; the full text
-  # is in the row's detail.
-  DESCRIPTION_LENGTH = 100
+  # The description column shows as many lines as the list view's CSS allows
+  # (.moss-desc), so a wide column shows more of it; the full text is in the
+  # row's detail. This cap only keeps the page small.
+  DESCRIPTION_LENGTH = 600
 
   def moss_transaction_table_columns
     Fin::MossTransactionsColumns::COLUMNS.map do |col|
@@ -39,7 +40,9 @@ module Fin::MossTransactionsHelper
     when "signed_total_base_amount"
       moss_transaction_amount_cell(tx)
     when "description"
-      safe_join([tx.description(length: DESCRIPTION_LENGTH), moss_transaction_subject_links(tx)].compact_blank)
+      text = tx.description(length: DESCRIPTION_LENGTH)
+      safe_join([(content_tag(:span, text, class: "moss-desc") if text.present?),
+        moss_transaction_subject_links(tx)].compact)
     when "party"
       moss_transaction_party(tx)
     when "cost_centers"
@@ -252,41 +255,11 @@ module Fin::MossTransactionsHelper
     public_send(:"apply_moss_#{Fin::MossTransactionsController::KIND_TABS.fetch(current_kind)}_path")
   end
 
-  # --- the HTML labels of the kind tabs (Sheet::Fin::Moss) --------------------
-  #
-  # A sheet tab may declare its label as a SYMBOL instead of an i18n key; the
-  # core then calls the helper method of that name with the sheet entry as its
-  # only argument and hands the result to link_to (Sheet::Tab::Renderer#label),
-  # so an html_safe return value renders as HTML. That is the whole trick by
-  # which the four kind tabs carry their icon without patching the core -- see
-  # doc/navigation.md §5.
-  #
-  # One method per kind tab, GENERATED just below (spelled out here so that a
-  # grep for the symbol in Sheet::Fin::Moss lands in this file):
-  #
-  #     moss_card_transactions_tab_label   moss_invoices_tab_label
-  #     moss_reimbursements_tab_label      moss_top_ups_tab_label
-  #
-  # The names follow the tab slugs of Fin::MossTransactionsController::KIND_TABS
-  # -- and thus each tab's own path helper (moss_invoices_tab_label next to
-  # moss_invoices_path in the sheet). They are derived from the kind's
-  # expense_type slug instead of being read out of KIND_TABS, because reading
-  # that constant while THIS module is loaded would be circular: including the
-  # helper is what a controller does on `class … < Fin::FinController`, i.e.
-  # before its body defines KIND_TABS. Only the method NAME is derived; the
-  # WORDS still come from KIND_TABS at call time via moss_kind_tab_label, so a
-  # tab and its label can never drift apart (a drifting slug would be a loud
-  # NoMethodError on the tab, not a silently wrong word).
-  Fin::MossKinds::STYLE.each_key do |kind|
-    define_method(:"moss_#{Fin::MossKinds.slug(kind).pluralize}_tab_label") do |_entry = nil|
-      moss_kind_tab_label_with_icon(kind)
-    end
-  end
+  # --- the kind tabs' labels (Sheet::Fin::Moss#render_kind_tabs) ------------
 
   # The kind's icon in front of its tab label ("Rechnungen"), as one html_safe
-  # string. The icon is deliberately NOT tinted and carries no kind class: the
-  # tabs are rendered on pages that do not know the kind stylesheet (/fin among
-  # them, whose quick links reuse these very labels), and a bare <i> needs none.
+  # string. The icon is deliberately NOT tinted and carries no kind class: a
+  # bare <i> needs no kind stylesheet.
   def moss_kind_tab_label_with_icon(kind)
     safe_join([moss_kind_icon(kind), " ", moss_kind_tab_label(kind)])
   end

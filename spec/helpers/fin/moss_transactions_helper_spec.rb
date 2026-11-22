@@ -10,20 +10,12 @@
 require "spec_helper"
 
 # The kind's visual vocabulary as the views get it: the CHIP (wallet rows, the
-# booking detail header) and the html_safe TAB LABELS the Moss sheet declares by
-# symbol. Icon and colour class come from Fin::MossKinds, every WORD from the
+# booking detail header) and the html_safe TAB LABELS of the Moss sheet's kind
+# tabs. Icon and colour class come from Fin::MossKinds, every WORD from the
 # locale -- so this spec reads the locale rather than repeating German text.
 # Plus the date cells of the listing, whose dates are invented.
 describe Fin::MossTransactionsHelper do
   def chip(type) = Nokogiri::HTML.fragment(helper.moss_kind_chip(type)).at_css("span.moss-kind")
-
-  # The four kind tabs of Sheet::Fin::Moss and the kind each one stands for.
-  let(:tab_labels) do
-    {"MossCardTransaction" => :moss_card_transactions_tab_label,
-     "MossReimbursement" => :moss_reimbursements_tab_label,
-     "MossInvoice" => :moss_invoices_tab_label,
-     "MossTopUp" => :moss_top_ups_tab_label}
-  end
 
   # The three date columns of the listing, each showing its own raw column --
   # and the one of them that writes its own em dash.
@@ -89,13 +81,10 @@ describe Fin::MossTransactionsHelper do
     end
   end
 
-  # A sheet tab may declare its label as a SYMBOL; the core then calls the
-  # helper method of that name WITH THE SHEET ENTRY as its only argument and
-  # renders the html_safe result inside the link (Sheet::Tab::Renderer#label).
   describe "the kind tab labels" do
     it "renders each one as the tab's own word behind the kind's icon" do
-      tab_labels.each do |kind, method|
-        label = helper.public_send(method, nil)
+      Fin::MossKinds::STYLE.each_key do |kind|
+        label = helper.moss_kind_tab_label_with_icon(kind)
         expect(label).to be_html_safe
         fragment = Nokogiri::HTML.fragment(label)
         expect(fragment.text.strip).to eq(I18n.t("fin.tabs.#{Fin::MossKinds.slug(kind).pluralize}"))
@@ -103,15 +92,6 @@ describe Fin::MossTransactionsHelper do
         expect(fragment.at_css("i")["class"]).to eq("fas fa-#{Fin::MossKinds.icon(kind)}")
         expect(fragment.at_css("i")["aria-hidden"]).to eq("true")
       end
-    end
-
-    # The method NAME is derived from the kind's slug, the sheet writes it out:
-    # a drifting slug must be a loud NoMethodError on the tab, not a silently
-    # missing label.
-    it "provides every symbol label the Moss sheet declares" do
-      symbols = Sheet::Fin::Moss.tabs.map(&:label_key).grep(Symbol)
-      expect(symbols).to include(*tab_labels.values)
-      expect(symbols).to all(satisfy { |sym| helper.respond_to?(sym) })
     end
   end
 end

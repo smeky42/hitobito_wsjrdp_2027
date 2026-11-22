@@ -202,7 +202,7 @@
 -# one box (see the .flt-pane rules in shared/wsjrdp/_expandable_table_styles).
 .wsjrdp-pane.flt-pane{id: et_pane_id(state), class: ("open" if open), data: {pane_cookie: pane_cookie}}
   .pane-body
-    .flt-root{class: ("flt-disabled" if disabled), data: {catalog: catalog.to_json, value: value.to_json, locked: locked.to_json, pinned_out_of_sight: state.filter.hidden_slots.any?.to_s, locked_catalog: locked_catalog.to_json, condensed_locked: condensed_locked.to_s, disabled: disabled.to_s, presets: presets.map { |p| {key: p.key, label: p.label, slots: p.slots, group: p.group, attribute: p.attribute, value: p.value, group_values: p.group_values} }.to_json, presets_bar: presets_id}}
+    .flt-root{class: ("flt-disabled" if disabled), data: {catalog: catalog.to_json, value: value.to_json, locked: locked.to_json, locked_notes: state.filter.locked_notes.to_json, pinned_out_of_sight: state.filter.hidden_slots.any?.to_s, locked_catalog: locked_catalog.to_json, condensed_locked: condensed_locked.to_s, disabled: disabled.to_s, presets: presets.map { |p| {key: p.key, label: p.label, slots: p.slots, group: p.group, attribute: p.attribute, value: p.value, group_values: p.group_values} }.to_json, presets_bar: presets_id}}
       .flt-slots
       - unless disabled
         .d-flex.flex-wrap.align-items-center.gap-2.mt-2
@@ -231,6 +231,9 @@
       var catalog = JSON.parse(root.dataset.catalog);
       var value = JSON.parse(root.dataset.value || "[]");
       var locked = JSON.parse(root.dataset.locked || "[]");
+      // A fixed group with no answer chosen, as words ("Art: keine gewählt").
+      var lockedNotes = JSON.parse(root.dataset.lockedNotes || "[]");
+      var hasLocked = locked.length > 0 || lockedNotes.length > 0;
       var lockedCatalog = JSON.parse(root.dataset.lockedCatalog || "{}");
       var condensedLocked = root.dataset.condensedLocked === "true";
       var disabled = root.dataset.disabled === "true";
@@ -725,8 +728,15 @@
         var row = el("div", "flt-locked-row");
         row.title = "Fest vorgegeben – nicht änderbar";
         row.appendChild(icon("lock")).classList.add("flt-lock");
+        lockedNotes.forEach(function (note, ni) {
+          if (ni > 0) row.appendChild(el("span", "flt-locked-and", "und"));
+          var chip = el("span", "flt-chip");
+          chip.title = note + " — fest vorgegeben, nicht änderbar";
+          chip.appendChild(el("span", "flt-chip-text", note));
+          row.appendChild(chip);
+        });
         locked.forEach(function (slot, li) {
-          if (li > 0) row.appendChild(el("span", "flt-locked-and", "und"));
+          if (li > 0 || lockedNotes.length) row.appendChild(el("span", "flt-locked-and", "und"));
           var group = el("span", "flt-locked-slot");
           slot.forEach(function (cond, ci) {
             if (ci > 0) group.appendChild(el("span", "flt-or", "oder"));
@@ -741,10 +751,10 @@
       // multi-condition slot wrapped in parentheses so the AND/OR structure is
       // unambiguous. No "Fest:" prefix -- the lock icon carries that meaning.
       function renderLockedCondensed() {
-        var text = locked.map(function (slot) {
+        var text = lockedNotes.concat(locked.map(function (slot) {
           var conds = slot.map(condFullText).join(" ODER ");
           return (slot.length > 1) ? ("(" + conds + ")") : conds;
-        }).join(" UND ");
+        })).join(" UND ");
         var row = el("div", "flt-locked-summary");
         row.title = "Fest vorgegebene Bedingungen – nicht änderbar";
         row.appendChild(icon("lock")).classList.add("flt-lock");
@@ -754,12 +764,12 @@
 
       function render() {
         slotsEl.textContent = "";
-        if (locked.length) { condensedLocked ? renderLockedCondensed() : renderLockedFull(); }
+        if (hasLocked) { condensedLocked ? renderLockedCondensed() : renderLockedFull(); }
         // Fully read-only: show the user conditions as read-only chips too, then
         // stop (no editor, no add/remove).
         if (disabled) {
           value.forEach(function (slot, si) {
-            if (si > 0 || locked.length) slotsEl.appendChild(el("div", "flt-und", "UND"));
+            if (si > 0 || hasLocked) slotsEl.appendChild(el("div", "flt-und", "UND"));
             var row = el("div", "flt-slot flt-slot-locked");
             slot.forEach(function (cond, ci) {
               if (ci > 0) row.appendChild(el("span", "flt-or", "oder"));
@@ -767,13 +777,13 @@
             });
             slotsEl.appendChild(row);
           });
-          if (!value.length && !locked.length) {
+          if (!value.length && !hasLocked) {
             slotsEl.appendChild(el("span", "flt-empty-hint", "Keine Bedingungen."));
           }
           return;
         }
         value.forEach(function (slot, si) {
-          if (si > 0 || locked.length) slotsEl.appendChild(el("div", "flt-und", "UND"));
+          if (si > 0 || hasLocked) slotsEl.appendChild(el("div", "flt-und", "UND"));
           var row = el("div", "flt-slot");
           var presetLabel = presetLabelBySlot[slotKey(slot)] || groupSlotLabel(slot);
           if (presetLabel) {
@@ -833,7 +843,7 @@
 
         if (!value.length) {
           // Empty state: one waiting slot instead of just a button.
-          if (locked.length) slotsEl.appendChild(el("div", "flt-und", "UND"));
+          if (hasLocked) slotsEl.appendChild(el("div", "flt-und", "UND"));
           var emptyRow = el("div", "flt-slot flt-slot-empty");
           var addFirst = el("button", "flt-add-cond");
           addFirst.type = "button";
