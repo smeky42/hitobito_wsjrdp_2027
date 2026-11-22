@@ -35,6 +35,10 @@ module Wsjrdp::Credentials
     "at most #{ACCOUNT_KEY_LENGTH} characters"
   ACCOUNT_KEY_FORMAT = /\A(?:#{ACCOUNT_KEY_LETTER}|[0-9])+(?:[_@,.+-](?:#{ACCOUNT_KEY_LETTER}|[0-9])+)*\z/
 
+  # The category of the store's entries in the Hitobito log; the wagon
+  # registers it.
+  LOG_CATEGORY = "credentials"
+
   # The root of every error of the store. No message names a value.
   class Error < StandardError; end
 

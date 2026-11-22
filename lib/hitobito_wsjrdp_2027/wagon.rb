@@ -28,9 +28,11 @@ module HitobitoWsjrdp2027
       # be defined before admin_only_assignment exists.
       Role.include Wsjrdp2027::Role
 
-      # The runs of registering the registration uploads
-      # (Wsjrdp2027::RegisterDocumentsJob) are logged under this category.
-      HitobitoLogEntry.categories |= %w[documents]
+      # Our categories of the Hitobito log, each a tab of its page:
+      # documents for registering the registration uploads
+      # (Wsjrdp2027::RegisterDocumentsJob), credentials for the credential
+      # store (Wsjrdp::Credentials::LOG_CATEGORY).
+      HitobitoLogEntry.categories |= %w[documents credentials]
 
       # Own permissions, extending the core's Role::Permissions (the
       # core keeps that constant mutable precisely to allow this). Our

@@ -86,6 +86,8 @@ Rails.application.routes.draw do
       get "/" => "credentials#show", :as => :credential
       # The value of one hidden field, as JSON, never cached.
       post "reveal" => "credentials#reveal", :as => :reveal_credential
+      # "Verbindung testen" of one version, as JSON, never cached.
+      post "connection_test" => "credentials#test_connection", :as => :test_connection_credential
       get "versions/new" => "credential_versions#new", :as => :new_credential_version
       post "versions" => "credential_versions#create", :as => :credential_versions
     end

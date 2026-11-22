@@ -3100,6 +3100,50 @@ de:
     field_report:
       wrong_column: "Das Feld %{field} liegt in der falschen Spalte (versiegelt oder offen, anders als die Art sagt)."
       not_opening: Das geheime Feld %{field} lässt sich nicht öffnen.
+    connection_test:
+      button: Verbindung testen
+      running: Teste …
+      confirm_insecure: >-
+        Die Adresse %{host} ist nicht verschlüsselt (http). Client-ID und Secret gehen dann im
+        Klartext übers Netz. Trotzdem testen?
+      ok: Verbindung ok
+      failed: Fehlgeschlagen
+      steps:
+        token: beim Holen des Tokens
+        read: beim Lesen eines Benutzers
+      scope: Scope %{value}
+      expires_in: Token %{minutes} min gültig
+      duration: "%{ms} ms"
+      status: HTTP %{status}
+      tracing_id: Tracing-ID %{id}
+      insecure: unverschlüsselt (http)
+      last_success_html: zuletzt erfolgreich getestet %{time}
+      last_failure_html: "zuletzt fehlgeschlagen %{time}: %{message}"
+      exchanges:
+        title:
+          one: Anfrage und Antwort (1)
+          other: Anfragen und Antworten (%{count})
+        request_headers: Anfrage-Header
+        request_body: Anfrage-Body
+        response_headers: Antwort-Header
+        response_body: Antwort-Body
+      log:
+        ok: "Moss-Verbindung getestet: %{account} – ok"
+        failed: "Moss-Verbindung getestet: %{account} – fehlgeschlagen %{step}: %{message}"
+      history:
+        title:
+          one: Verbindungstests (1)
+          other: Verbindungstests (%{count})
+        empty: Noch keine Tests.
+        when: Wann
+        who: Wer
+        what: Ergebnis
+        all: Alle im Hitobito Log
+      refused:
+        not_found: Diese Version gibt es nicht.
+        not_offered: Diese Version lässt sich nicht testen.
+        not_confirmed: Der Test über http braucht eine Bestätigung.
+        other: Nicht getestet.
     reveal:
       refused:
         disabled: Anzeigen ist abgeschaltet.

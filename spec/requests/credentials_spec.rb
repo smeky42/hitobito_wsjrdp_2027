@@ -76,7 +76,8 @@ describe "Credential store pages", type: :request do
         [:post, "/credentials/mail_account/finanzen/versions"], [:get, "/credentials/versions/#{row.id}/edit"],
         [:patch, "/credentials/versions/#{row.id}"], [:delete, "/credentials/versions/#{row.id}"],
         [:post, "/credentials/versions/#{row.id}/revoke"], [:post, "/credentials/versions/#{row.id}/unrevoke"],
-        [:post, "/credentials/versions/#{row.id}/rekey"], [:post, "/credentials/reload_local_file"]
+        [:post, "/credentials/versions/#{row.id}/rekey"], [:post, "/credentials/reload_local_file"],
+        [:post, "/credentials/moss_api/default/connection_test"]
       ]
       requests.each do |verb, path|
         sign_in(people(:cmt_leader)) # for the next request only: an exception leaves no session behind
@@ -797,6 +798,140 @@ describe "Credential store pages", type: :request do
         expect(response).to redirect_to("/credentials/mail_account/finanzen")
         delete "/credentials/versions/#{other.id}"
         expect(WsjrdpCredential.count).to eq(0)
+      end
+    end
+
+    # Moss is never called: every request is stubbed (WebMock).
+    describe "testing a Moss connection" do
+      let(:moss_url) { "https://moss.example.org" }
+      let(:access_token) { "made-up-access-token-0815" }
+
+      def moss_row!(base_url: moss_url, **options)
+        deposit!(kind: "moss_api", account_key: "default", values: {"base_url" => base_url,
+                                                                    "client_id" => "kid_made-up", "client_secret" => moss_secret}, **options)
+      end
+
+      def stub_moss(base_url: moss_url, token_status: 200)
+        stub_request(:post, "#{base_url}/oauth2/token").to_return(status: token_status,
+          body: ((token_status == 200) ? {access_token: access_token, expires_in: 3600, scope: "read"} : {error: "invalid_client"}).to_json)
+        stub_request(:get, "#{base_url}/v1/users?page_size=1").to_return(status: 200,
+          body: {data: [{id: "u-1", email: "made-up@example.org"}], meta: {tracingId: "t-1"}}.to_json)
+      end
+
+      def test!(row, **params)
+        post "/credentials/moss_api/default/connection_test", params: {source: "database", version_id: row.id, **params}
+      end
+
+      it "offers the test on active and planned Moss versions only" do
+        active = moss_row!
+        planned = moss_row!(valid_from: 2.days.from_now)
+        expired = moss_row!(valid_from: 3.days.ago, expires_at: 1.day.ago)
+        deposit!
+
+        get "/credentials/moss_api/default"
+        [active, planned].each do |row|
+          expect(html.find("#credential-version-#{row.id}")).to have_button("Verbindung testen")
+        end
+        expect(html.find("#credential-version-#{expired.id}")).not_to have_button("Verbindung testen")
+        get "/credentials/mail_account/finanzen"
+        expect(html).not_to have_button("Verbindung testen")
+      end
+
+      it "tests a version, keeps the outcome without touching updated_at, and shows no secret" do
+        row = moss_row!
+        stub_moss
+        updated_at = row.reload.updated_at
+
+        expect { test!(row) }.not_to change(PaperTrail::Version, :count)
+
+        expect(response.headers["Cache-Control"]).to include("no-store")
+        expect(response.parsed_body["ok"]).to be(true)
+        history = Capybara.string(response.parsed_body["history"])
+        expect(history.find("[data-credential-connection-history]", visible: :all).text(:all))
+          .to include("Verbindungstests (1)")
+        expect(row.reload.last_success_at).to be_present
+        expect(row.updated_at).to eq(updated_at)
+        expect_nothing_secret(moss_secret, access_token)
+      end
+
+      it "writes each test into the Hitobito log, without a value or personal data" do
+        row = moss_row!
+        stub_moss
+        test!(row)
+        stub_moss(token_status: 401)
+        test!(row)
+
+        entries = HitobitoLogEntry.where(category: "credentials").order(:id)
+        expect(entries.map(&:level)).to eq(%w[info warn])
+        expect(entries.map(&:subject)).to eq([row, row])
+        payload = entries.first.payload
+        expect(payload).to include("event" => "moss_connection_test", "payload_version" => 1, "person_id" => admin.id,
+          "account" => {"kind" => "moss_api", "account_key" => "default", "source" => "database",
+                        "version_id" => row.id, "position" => nil})
+        expect(payload["outcome"]).to include("ok" => true, "host" => "moss.example.org")
+        expect(payload["requests"].pluck("step", "method", "status")).to eq([["token", "POST", 200], ["read", "GET", 200]])
+        expect(payload["requests"].first.dig("response", "body", "access_token")).to eq("[entfernt]")
+        expect(payload["requests"].last.dig("response", "body", "data")).to eq(["u-1"])
+        expect(entries.last.message).to eq("Moss-Verbindung getestet: moss_api/default – fehlgeschlagen beim Holen " \
+          "des Tokens: invalid_client")
+        entries.each do |entry|
+          [moss_secret, access_token, "made-up@example.org"].each { |text| expect(entry.payload.to_json).not_to include(text) }
+        end
+
+        expect(Wsjrdp::Credentials::MossConnectionTest.log_entries("moss_api", "default",
+          Wsjrdp::Credentials::Overview.new.account("moss_api", "default").versions.find { |v| v.id == row.id }))
+          .to eq(entries.reverse)
+      end
+
+      it "tests an override and logs it by its payload" do
+        use_env_override
+        stub_moss(base_url: "https://public-api.getmoss.com")
+
+        post "/credentials/moss_api/default/connection_test", params: {source: "variables", position: 1}
+
+        expect(response.parsed_body["ok"]).to be(true)
+        expect_nothing_secret("made-up-env-secret", access_token)
+        entry = HitobitoLogEntry.where(category: "credentials").sole
+        expect(entry).to have_attributes(subject: nil, level: "info")
+        version = Wsjrdp::Credentials::Overview.new.account("moss_api", "default").versions
+          .find { |v| v.source == "variables" }
+        expect(Wsjrdp::Credentials::MossConnectionTest.log_entries("moss_api", "default", version)).to eq([entry])
+      end
+
+      it "reports and keeps a failure" do
+        row = moss_row!
+        stub_moss(token_status: 401)
+
+        test!(row)
+
+        expect(response.parsed_body["ok"]).to be(false)
+        expect(row.reload).to have_attributes(last_failure_message: "invalid_client", last_success_at: nil)
+      end
+
+      it "tests plain http only once confirmed" do
+        row = moss_row!(base_url: "http://moss.example.org")
+        stub_moss(base_url: "http://moss.example.org")
+
+        get "/credentials/moss_api/default"
+        expect(html.find("#credential-version-#{row.id} [data-credential-connection]")["data-confirm-insecure"])
+          .to include("moss.example.org")
+
+        test!(row)
+        expect(response).to have_http_status(422)
+        expect(response.parsed_body).to eq("error" => "Der Test über http braucht eine Bestätigung.")
+        expect(a_request(:post, "http://moss.example.org/oauth2/token")).not_to have_been_made
+
+        test!(row, confirmed: "1")
+        expect(a_request(:post, "http://moss.example.org/oauth2/token")).to have_been_made
+      end
+
+      it "refuses a version it does not offer the test for" do
+        row = moss_row!(valid_from: 3.days.ago, expires_at: 1.day.ago)
+
+        test!(row)
+
+        expect(response).to have_http_status(422)
+        expect(response.parsed_body).to eq("error" => "Diese Version lässt sich nicht testen.")
       end
     end
 
