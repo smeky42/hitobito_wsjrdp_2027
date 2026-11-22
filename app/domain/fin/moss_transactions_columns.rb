@@ -19,23 +19,24 @@ module Fin::MossTransactionsColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "mtcol") do |c|
     # Widths are cut to the content they hold (a dd.mm.yyyy date, the widest
     # kind chip, an amount with its currency plus a foreign-currency second
-    # line), and the description carries NO width: in the widget's fixed table
-    # layout the one width-less column absorbs the leftover space, whereas a
-    # table whose columns are all fixed spreads it over every column -- which
-    # made Art and Betrag grow with the window although their content does not.
+    # line). The date widens towards its target first (target_width), then the
+    # description takes the rest (grow) -- so Art and Betrag keep their width
+    # while the window grows, as their content does not.
     #
     # Buchungsdatum is THE date of a transaction (MossTransaction#value_date):
     # the day the movement was booked in the Moss wallet, the one date every
     # kind carries. The raw payment day is the optional "Zahlungsdatum" column
     # below -- two kinds have none at all, and a card's is a few days before the
-    # row's own date.
-    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", width: "7rem",
+    # row's own date. Its column widens when the table has room; while it is too
+    # narrow for the full word the header says "Datum".
+    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", short_label: "Datum",
+      width: "7rem", target_width: "9rem",
       sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true
     c.column key: "signed_total_base_amount", abbr: "amt", label: "Betrag", numeric: true, sort_first: "desc",
       width: "7.5rem", sort: "moss_transactions.signed_total_base_amount", default: true
-    c.column key: "description", abbr: "dsc", label: "Beschreibung", default: true
+    c.column key: "description", abbr: "dsc", label: "Beschreibung", width: "8rem", grow: 1, default: true
     c.column key: "cost_centers", abbr: "cc", label: "Kostenstellen", width: "12rem",
       default: true
     c.column key: "account_numbers", abbr: "acc", label: "Sachkonten", width: "14rem",

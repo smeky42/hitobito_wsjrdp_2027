@@ -17,10 +17,10 @@
 # Fin::OverviewFigures.
 #
 # A tab's label may also be a SYMBOL, i.e. the name of a helper method whose
-# (html_safe) result is the label -- that is how the Moss kind tabs carry their
-# icon. Since the quick links below reuse renderer.label unchanged, such a tab
-# brings its markup along to /fin as well; that is intended, and the reason the
-# cards put no icon of their own in front of a tab link.
+# (html_safe) result is the label. Since the quick links below reuse
+# renderer.label unchanged, such a tab brings its markup along to /fin as well;
+# that is intended, and the reason the cards put no icon of their own in front
+# of a tab link.
 module Fin::OverviewHelper
   # The label key every "Übersicht" tab uses. A tab with this key duplicates the
   # area link, so it is left out of the quick links; nothing else marks an

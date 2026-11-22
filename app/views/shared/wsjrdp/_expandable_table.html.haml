@@ -18,7 +18,7 @@
 -#                 filter and nesting level. The widget reads the state, never
 -#                 params (D8.4 of doc/plans/2026-09_expandable-table-state.md).
 -#    columns   -- [{ key:, label:, cell: ->(row){..}, numeric:, width:,
--#                    sort_key:, css_class:, condensed_label:, header_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, mobile:, abbr:,
+-#                    sort_key:, css_class:, condensed_label:, header_label:, short_label:, header_tooltip:, group:, grow:, tabular_nums:, merge:, merge_share:, header_align:, merged_cell:, mobile:, abbr:,
 -#                    target_width:, target_grow:, truncate:, sticky: }]
 -#                    (FULL set)
 -#    rows      -- the collection (a Kaminari page when paginating, else any list)
@@ -553,3 +553,5 @@
   = render "shared/wsjrdp/expandable_table_layout_js"
 - if header.variants?
   = render "shared/wsjrdp/expandable_table_header_js"
+- if !condensed && columns.any? { |col| col[:short_label] }
+  = render "shared/wsjrdp/expandable_table_short_label_js"

@@ -77,12 +77,12 @@
   tbody.moss-kind-card_transaction, tbody.moss-kind-invoice,
   tbody.moss-kind-reimbursement, tbody.moss-kind-top_up { --exp-edge: var(--moss-kind-fg); }
 
-  /* The overview tiles (/fin/moss): the kind's colour as a top edge. The
-     fallback keeps a tile without a kind class (the total tile) unmarked
-     instead of borderless-but-shifted. !important because the tiles also wear
-     Bootstrap's .border utility, which declares the whole border !important
-     and would otherwise paint every edge grey. */
+  /* The overview tiles (/fin/moss): the kind's colour as a top edge, grey on
+     the total tile, which stands for every kind. !important because the tiles
+     also wear Bootstrap's .border utility, which declares the whole border
+     !important and would otherwise paint every edge grey. */
   .moss-kind-tile { border-top: 3px solid var(--moss-kind-fg, transparent) !important; }
+  .moss-kind-tile.moss-total-tile { --moss-kind-fg: var(--bs-secondary-color, #6c757d); }
 
   /* Status tags after the first line of a row (foreign currency, Gutschrift,
      a deviating status): outline only, no fill -- they qualify a row, they do

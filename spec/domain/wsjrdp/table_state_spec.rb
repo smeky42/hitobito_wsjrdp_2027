@@ -103,6 +103,9 @@ class FakeFilterSchema
     # so the stand-in only has to answer with the right keys.
     def attributes = known.to_h { |key| [key.to_sym, key] }
 
+    # Wsjrdp::Filtering::BoundSchema#find: the attribute, labelled by its key.
+    def find(key) = (Struct.new(:label).new(key.to_s) if known.include?(key.to_s))
+
     # Wsjrdp::Filtering::BoundSchema#preset_group_values: the values a preset
     # group may name on this attribute, nil when this binding does not carry the
     # attribute or the attribute does not accept the `in` operator -- which here
@@ -1024,8 +1027,14 @@ describe Wsjrdp::TableState do
           expect(by_key(both)["kind.all"]).to have_attributes(active?: true, toggle_lifts: "kind.-")
           expect(both.filter.initial?).to be false
 
+          # None chosen shows no row: in and not in the same list, kept out of
+          # the chips.
           none = resolve(kind_policy, {"u" => "kind.-"})
-          expect(none.filter.fixed_slots).to eq([])
+          expect(none.filter.fixed_slots).to eq([[["kind", "in", "card", "invoice"]],
+            [["kind", "not_in", "card", "invoice"]]])
+          expect(none.filter.readonly_slots).to eq([])
+          expect(none.filter.locked_notes).to eq(["kind: keine gewählt"])
+          expect(both.filter.locked_notes).to eq([])
           expect(by_key(none).values.map(&:active?)).to eq([false, false, false])
           expect(by_key(none)["kind.invoice"].toggle_lifts).to eq("kind.invoice")
         end

@@ -145,7 +145,6 @@ Im Sheet deklariert, oben auf der Seite gerendert:
 ```ruby
 tab "fin.tabs.overview", :moss_path, no_alt: true
 tab "fin.tabs.transactions", :moss_transactions_path
-tab :moss_card_transactions_tab_label, :moss_card_transactions_path  # eine von vier Art-Tabs
 ```
 
 - Args: i18n-Label-Key, Pfad-Helper-**Symbol**, Options.
@@ -153,21 +152,20 @@ tab :moss_card_transactions_tab_label, :moss_card_transactions_path  # eine von 
   eines i18n-Keys, ruft der Core die gleichnamige **Helper-Methode** mit dem
   Sheet-Entry als einzigem Argument auf und gibt deren Rückgabewert an `link_to`
   (`Sheet::Tab::Renderer#label`); ein `html_safe`-String wird also als **HTML**
-  gerendert. So tragen die vier Art-Tabs das Icon ihrer Art vor dem Wort, ohne
-  dass der Core gepatcht werden muss — die Methoden
-  (`moss_card_transactions_tab_label` …) stehen in
-  `Fin::MossTransactionsHelper` und holen das Wort weiterhin aus
-  `fin.tabs.<slug>`.
-- **Folge für `/fin`:** Die Quicklinks der Übersichtsseite sind dieselben
-  `renderer.label` (§1), zeigen also dasselbe HTML — die Art-Links dort tragen
-  die Icons ebenfalls. Wer ein Symbol-Label einführt, prüft daher beide Stellen.
+  gerendert. Die Quicklinks auf `/fin` (§1) nutzen dasselbe Label.
 - `no_alt: true` = **exakter** Pfad-Match (nur `current_page?`), damit die
   „Übersicht" nicht auch auf den Unterpfaden (`…/transactions`) leuchtet.
 - Ohne `no_alt` ist ein Tab auch auf Unterpfaden aktiv (z. B. `transactions`
   auf `/fin/moss/transactions/:id`).
-- **Ein Tab braucht keinen eigenen Controller.** Die vier Art-Tabs des
-  Moss-Bereichs (Kartenzahlungen, Erstattungen, Rechnungen, Einzahlungen) sind
-  dieselbe Liste wie „Transaktionen", auf eine Art festgelegt: eigene Routen
+- **Eine zweite Tab-Leiste.** Ein Sheet kann unter seinen Tabs eine eigene
+  Leiste rendern, indem es `render_tabs` überschreibt (wie `Sheet::Fin::Accounts`
+  mit den Konten). Moss zeigt so auf den Transaktionsseiten die Unter-Tabs
+  „Alle" (`/fin/moss/transactions`) und die vier Arten (Kartenzahlungen,
+  Erstattungen, Rechnungen, Einzahlungen); oben bleibt „Transaktionen" aktiv.
+  Diese Unter-Tabs sind keine `tab`-Deklarationen, darum fehlen sie in den
+  Quicklinks auf `/fin`.
+- **Ein Tab braucht keinen eigenen Controller.** Die vier Art-Tabs sind
+  dieselbe Liste wie „Alle", auf eine Art festgelegt: eigene Routen
   (`/fin/moss/invoices` …) auf `moss_transactions#index` mit der Art als
   **Routen-Default** (`kind: "MossInvoice"`), also ein Pfad-Helper je Tab —
   das Muster der Anlässe/Kurse-Tabs von Hitobito (`events#index` mit
@@ -227,7 +225,7 @@ tab :moss_card_transactions_tab_label, :moss_card_transactions_path  # eine von 
 | Kind-Sheet (Detailseite) | `app/helpers/sheet/fin/moss_transaction.rb` |
 | Linke Unter-Nav | `app/views/fin/_left_nav.html.haml` |
 | Views | `app/views/fin/moss/index.html.haml`, `app/views/fin/moss_transactions/{index,show}.html.haml` |
-| i18n | `config/locales/wsjrdp_2027.de.yml` (`fin.nav.moss`, `fin.tabs.transactions`, `fin.tabs.card_transactions` … für die Art-Tabs) |
+| i18n | `config/locales/wsjrdp_2027.de.yml` (`fin.nav.moss`, `fin.tabs.transactions`, `fin.tabs.moss_all`, `fin.tabs.card_transactions` … für die Unter-Tabs) |
 | Hauptnav (oben) | `app/helpers/wsjrdp_2027/navigation_helper.rb` |
 
 ## 7. Gruppen-Seite: Tab „Finanzen" mit Unter-Tabs

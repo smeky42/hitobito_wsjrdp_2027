@@ -107,7 +107,9 @@ headers spread like space-between: first at the start, last at the end, the
 others centred), `header_align` (override a header's alignment: "start",
 "center", "end"), `header_tooltip` (the header's tooltip), `header_label` (what the header shows instead of the label,
 `""` for a header without title -- the label stays the column's name in the
-columns menu), `group` (a heading over the header: neighbouring shown columns of
+columns menu), `short_label` (what the header shows while the full one does
+not fit the column, e.g. "Datum" for "Buchungsdatum" in a column that widens
+with `target_width`; a script measures and switches), `group` (a heading over the header: neighbouring shown columns of
 the same group share one cell of an extra header row, e.g. "Rolle" over "WSJ"
 and "Kontingent"), `numeric` (right-align), `mobile` (`false` for a column a phone does
 without: under the md breakpoint, 768px, its header, cells and footer collapse
@@ -736,9 +738,11 @@ filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
 
 **A fixed group of several answers** (`multiple: true`): several members may
 be chosen. Each member stands for one `value:` of the group's `attribute:`;
-the chosen ones form one locked `attribute in (values)` condition, none or all
-chosen restrict nothing. The default is a list of member keys; `all_title:`
-and a member's `title:` are tooltips.
+the chosen ones form one locked `attribute in (values)` condition; all chosen
+restrict nothing, none chosen shows no row and says so in a locked chip
+("Art: keine gewählt", `Filter#locked_notes`). The default is a list of
+member keys; `all_title:` and a member's `title:` are tooltips. A member may
+carry the same `icon:` and `css_class:` as a preset button.
 
 ```ruby
 fixed_groups: [{key: "status", multiple: true, attribute: "status", default: %w[active invited],
@@ -756,7 +760,8 @@ lifts: {policy: :remember}
   offer `not_in` and `blank`.
 - A preset's `sets:` cannot name such a group.
 
-Example: `Fin::MossUsersFilterSchema::QUICK_FILTER`.
+Examples: `Fin::MossUsersFilterSchema::QUICK_FILTER`, and the Moss kinds on the
+transactions list (`Fin::MossKinds.fixed_group`).
 
 #### Presets — the filter's "Schnellauswahl"
 

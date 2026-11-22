@@ -26,6 +26,11 @@
 -# The look of a reimbursement's expense sub-rows and the one interaction they
 -# bring (revealing the expenses beyond the cap).
 = render "shared/wsjrdp/moss_expense_rows"
+-# The description stops after six lines with "…": a wide column shows more
+-# of it, a narrow one less (Fin::MossTransactionsHelper#moss_transaction_cell).
+:css
+  .moss-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6;
+    overflow: hidden; overflow-wrap: anywhere; }
 #main
   %h1= moss_transactions_title
 

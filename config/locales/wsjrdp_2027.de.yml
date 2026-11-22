@@ -2268,7 +2268,8 @@ de:
       group_cost_centers: "Gruppen-Kostenstellen"
       payment_references: "Zahlungscodes"
       # The Moss kind tabs (Fin::MossTransactionsController::KIND_TABS): the
-      # plural of fin.moss.kinds.
+      # plural of fin.moss.kinds. moss_all is the sub-tab of every kind.
+      moss_all: "Alle"
       card_transactions: "Kartenzahlungen"
       invoices: "Rechnungen"
       reimbursements: "Erstattungen"

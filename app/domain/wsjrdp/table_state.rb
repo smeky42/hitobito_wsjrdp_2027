@@ -222,6 +222,10 @@ class Wsjrdp::TableState
       "#{group[:key]}.#{chosen.empty? ? "-" : chosen.join("+")}"
     end
 
+    # Whether a group of several answers has none of its members chosen: it
+    # then shows no row.
+    def self.none_chosen?(group, chosen) = group[:members].none? { |member| chosen.include?(member[:key]) }
+
     # `schema` is the dataset's filter schema module and is nil for an inert
     # filter; `user_query` is nil when there is no user part at all (an inert
     # filter, or `policy: :fixed`). `presets` are the policy's quick-select
@@ -275,6 +279,16 @@ class Wsjrdp::TableState
     def catalog = @user_bound ? @user_bound.catalog : EMPTY_CATALOG
 
     def full_catalog = @bound ? @bound.catalog : EMPTY_CATALOG
+
+    # The fixed groups of several answers with none chosen, as notes shown
+    # locked in the filter line and the builder ("Art: keine gewählt"). Their
+    # condition matches no row and would read badly as chips, so it is hidden.
+    def locked_notes
+      @fixed_groups
+        .select { |group| group[:multiple] && group[:show] == :readonly && Filter.none_chosen?(group, choice(group[:key])) }
+        .map { |group| "#{group[:label] || @bound&.find(group[:attribute])&.label || group[:key]}: keine gewählt" }
+        .freeze
+    end
 
     # THE filtered relation. Fixed slots are compiled with the FULL schema (a
     # pinned condition may legitimately use an excluded attribute), the user
@@ -459,7 +473,8 @@ class Wsjrdp::TableState
         pressed = chosen.include?(member[:key])
         Wsjrdp::TableState::FilterPreset.new(key: "#{group[:key]}.#{member[:key]}", label: member[:label],
           slots: nil, active: pressed, toggle_wire: wire, segmented: true, title: member[:title],
-          icon: (OTHERS_ICON if member[:others]), css_class: (ICON_ONLY_CLASS if member[:others]),
+          icon: member[:others] ? OTHERS_ICON : member[:icon],
+          css_class: member[:others] ? ICON_ONLY_CLASS : member[:css_class],
           group: "fixed-#{group[:key]}", group_label: group[:label],
           toggle_lifts: lifts_for.call(pressed ? chosen - [member[:key]] : chosen + [member[:key]]))
       end
@@ -1270,7 +1285,10 @@ class Wsjrdp::TableState
         chosen = (@choices || {}).fetch(group[:key]) { group[:default] }
         if group[:multiple]
           slots = multiple_group_slots(group, chosen)
-          entries << {key: Filter.choice_token(group, chosen), slots: slots, show: group[:show]}.freeze if slots
+          # None chosen: Filter#locked_notes says so in words; the in/not-in
+          # pair would only puzzle as chips.
+          show = Filter.none_chosen?(group, chosen) ? :hidden : group[:show]
+          entries << {key: Filter.choice_token(group, chosen), slots: slots, show: show}.freeze if slots
           next
         end
         member = group[:members].find { |candidate| candidate[:key] == chosen }
@@ -1283,21 +1301,22 @@ class Wsjrdp::TableState
       [entries, slots.empty? ? nil : schema.parse_fixed!(slots, schema: bound)]
     end
 
-    # The one slot of a fixed group of several answers, or nil when none or
-    # all are chosen. Its conditions are ORed: the chosen values, and for the
-    # "others" member every value no member names, or none (so the attribute
-    # must offer not_in and blank).
+    # The one slot of a fixed group of several answers, or nil when all are
+    # chosen. Its conditions are ORed: the chosen values, and for the "others"
+    # member every value no member names, or none (so the attribute must offer
+    # not_in and blank). None chosen shows nothing: a value that is both in and
+    # not in one list matches no row.
     def multiple_group_slots(group, chosen)
       picked = group[:members].select { |member| chosen.include?(member[:key]) }
-      return nil if picked.empty? || picked.size == group[:members].size
+      return nil if picked.size == group[:members].size
 
       attribute = group[:attribute]
+      named = group[:members].reject { |member| member[:others] }.pluck(:value)
+      return [[[attribute, Filter::GROUP_OPERATOR, *named]], [[attribute, "not_in", *named]]].freeze if picked.empty?
+
       values = picked.reject { |member| member[:others] }.pluck(:value)
       conditions = values.any? ? [[attribute, Filter::GROUP_OPERATOR, *values]] : []
-      if picked.any? { |member| member[:others] }
-        named = group[:members].reject { |member| member[:others] }.pluck(:value)
-        conditions += [[attribute, "not_in", *named], [attribute, "blank"]]
-      end
+      conditions += [[attribute, "not_in", *named], [attribute, "blank"]] if picked.any? { |member| member[:others] }
       [conditions].freeze
     end
 
@@ -1374,7 +1393,7 @@ class Wsjrdp::TableState
 
       members = Array(group.fetch(:members)).map do |member|
         member = member.transform_keys(&:to_sym)
-        unknown = member.keys - %i[key label value title others]
+        unknown = member.keys - %i[key label value title others icon css_class]
         raise ArgumentError, "#{what}: member: unknown keyword: #{unknown.first.inspect}" if unknown.any?
         member_key = member.fetch(:key).to_s
         raise ArgumentError, "#{what}: member key #{member_key.inspect}" unless member_key.match?(TOKEN_PATTERN)
@@ -1382,7 +1401,8 @@ class Wsjrdp::TableState
         # `others: true`: every value the other members do not name, and none.
         others = member[:others] ? true : false
         {key: member_key, label: member.fetch(:label).to_s, value: (member.fetch(:value).to_s unless others),
-         title: member[:title]&.to_s, others: others}.freeze
+         title: member[:title]&.to_s, others: others, icon: member[:icon]&.to_s,
+         css_class: member[:css_class]&.to_s}.freeze
       end
       raise ArgumentError, "#{what}: more than one others member" if members.count { |m| m[:others] } > 1
       keys = members.pluck(:key)

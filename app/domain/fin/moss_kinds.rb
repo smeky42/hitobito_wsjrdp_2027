@@ -16,11 +16,11 @@
 # Why a module of its own: the same kind is marked in five places -- the chip
 # in the wallet list, the coloured rail of its row, the tiles of /fin/moss, the
 # kind tabs and the kind buttons of a filter's "Schnellauswahl"
-# (#preset_group, shared by the wallet and the transactions list). Without a
-# single source each view
-# would pick its own icon, and a fifth kind would have to be hunted down five
-# times. Views never see this module directly; they go through
-# Fin::MossTransactionsHelper (moss_kind_chip and friends).
+# (#preset_group on the wallet, #fixed_group on the transactions list).
+# Without a single source each view would pick its own icon, and a fifth kind
+# would have to be hunted down five times. Views never see this module
+# directly; they go through Fin::MossTransactionsHelper (moss_kind_chip and
+# friends).
 #
 # The class carries the SLUG of the generated column
 # moss_transactions.expense_type (card_transaction, invoice, reimbursement,
@@ -59,9 +59,9 @@ module Fin::MossKinds
 
     # The "Schnellauswahl" of the Moss kinds for a table whose filter offers
     # the Art attribute under the key `kind`: ONE declaration
-    # (doc/wsjrdp/expandable_table.md, "Presets") the wallet statement and the
-    # transactions list share, so a kind is worded, marked and ordered the same
-    # wherever it can be picked.
+    # (doc/wsjrdp/expandable_table.md, "Presets") for the wallet statement. It
+    # words, marks and orders the kinds like #fixed_group does on the
+    # transactions list.
     #
     # The four are one GROUP, not four presets of their own: the kinds are
     # alternatives of the same question, so they share ONE slot `kind in (…)`
@@ -80,6 +80,20 @@ module Fin::MossKinds
          {key: slug(kind), label: I18n.t("fin.moss.kind_chips.#{kind}"), value: kind,
           icon: icon(kind), css_class: css_class(kind)}
        end}
+    end
+
+    # The same four kinds as a fixed group of several answers
+    # (doc/wsjrdp/expandable_table.md, "Fixed groups"), for the transactions
+    # list: one segment behind an "all" asterisk, every kind chosen by default.
+    # Unlike the preset group it is a locked condition, not part of the user's
+    # own filter.
+    def fixed_group
+      members = Fin::MossTransactionsFilterSchema::KINDS.map do |kind|
+        {key: slug(kind), label: I18n.t("fin.moss.kind_chips.#{kind}"), value: kind,
+         icon: icon(kind), css_class: css_class(kind)}
+      end
+      {key: "kind", multiple: true, attribute: "kind", default: members.pluck(:key),
+       all_title: "Alle Arten wählen bzw. abwählen", members: members}
     end
 
     private

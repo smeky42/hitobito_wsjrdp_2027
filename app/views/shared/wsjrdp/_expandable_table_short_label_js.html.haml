@@ -1,0 +1,49 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A column's `short_label:` (Wsjrdp::ExpandableTableColumn): its header shows
+-#  the full label when it fits the column and the short one otherwise, chosen
+-#  again whenever the table's wrapper changes its width. Without the script
+-#  the full label shows.
+:css
+  .exp-label-short { display: none; }
+  th.exp-label-shortened .exp-label-full { display: none; }
+  th.exp-label-shortened .exp-label-short { display: inline; }
+:javascript
+  (function () {
+    if (window.__expShortLabels) return;
+    window.__expShortLabels = true;
+    function choose(table) {
+      table.querySelectorAll("thead th").forEach(function (th) {
+        if (!th.querySelector(".exp-label-full")) return;
+        th.classList.remove("exp-label-shortened");
+        if (th.scrollWidth > th.clientWidth + 1) th.classList.add("exp-label-shortened");
+      });
+    }
+    function setup(root) {
+      (root || document).querySelectorAll("table").forEach(function (table) {
+        if (table.__expShortLabels || !table.querySelector("thead .exp-label-full")) return;
+        table.__expShortLabels = true;
+        choose(table);
+        if (window.ResizeObserver) {
+          var width = null;
+          new ResizeObserver(function (entries) {
+            var now = Math.round(entries[0].contentRect.width);
+            if (now === width) return;
+            width = now;
+            choose(table);
+          }).observe(table.closest(".exp-table-wrap") || table.parentElement);
+        }
+      });
+    }
+    window.__expShortLabelsSetup = setup;
+    document.addEventListener("turbo:load", function () { setup(); });
+    document.addEventListener("turbo:frame-load", function (e) { setup(e.target); });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setup(); });
+    else setup();
+  })();
+  if (window.__expShortLabelsSetup) window.__expShortLabelsSetup();

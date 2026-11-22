@@ -24,6 +24,7 @@
 #   abbr            the short wire token (URL / column picker); defaults to key
 #   label           the header
 #   condensed_label the header of the compact in-detail variant, if it differs
+#   short_label     the header when the full one does not fit the column
 #   numeric         right-align
 #   width           fixed CSS width for table-layout: fixed (nil = share the rest)
 #   sort            how this column sorts: an SQL expression (String) for a
@@ -48,7 +49,7 @@
 # one line, `sticky` keeps a leading column in view while the table scrolls
 # sideways.
 class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condensed_label,
-  :header_label, :header_tooltip, :group, :grow, :target_width, :target_grow, :truncate, :sticky, :tabular_nums,
+  :header_label, :short_label, :header_tooltip, :group, :grow, :target_width, :target_grow, :truncate, :sticky, :tabular_nums,
   :merge, :merge_share, :merge_layouts, :header_align, :numeric, :width, :sort, :sort_first, :sort_variants, :default, :mobile,
   :narrow, :pinned, :visibility, :fallback, :css_class)
   SORT_DIRECTIONS = %w[asc desc].freeze
@@ -138,7 +139,8 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   #                 label and cell) or ->(row) { html }; at the right of the
   #                 detail's header line (doc/wsjrdp/expandable_table.md,
   #                 "Columns in the detail")
-  def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, header_tooltip: nil,
+  def initialize(key:, abbr: nil, label: nil, condensed_label: nil, header_label: nil, short_label: nil,
+    header_tooltip: nil,
     group: nil, grow: 0, target_width: nil, target_grow: nil, truncate: false, sticky: false,
     tabular_nums: nil, merge: nil, merge_share: 1, merge_layouts: nil, header_align: nil, numeric: false, width: nil, sort: nil,
     sort_first: "asc", sort_variants: [], default: false, mobile: true, narrow: true, pinned: nil,
@@ -159,7 +161,8 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
         sort: variant.fetch(:sort), first: self.class.validate_direction!(variant.fetch(:first, sort_first)))
     end
     super(key: key, abbr: abbr, label: label,
-          condensed_label: condensed_label, header_label: header_label, header_tooltip: header_tooltip, group: group,
+          condensed_label: condensed_label, header_label: header_label, short_label: short_label,
+          header_tooltip: header_tooltip, group: group,
           grow: grow, target_width: target_width&.to_s, target_grow: target_grow, truncate: truncate ? true : false,
           sticky: sticky ? true : false, tabular_nums: tabular_nums.nil? ? numeric : tabular_nums, merge: merge&.to_s, merge_share: merge_share,
           merge_layouts: merge_layouts, header_align: header_align&.to_s, numeric: numeric, width: width,
@@ -244,7 +247,7 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   # are the header's chips, [{key:, label:, title:, first:}].
   def to_table_column(cell:, merged_cell: nil)
     {key: key, abbr: abbr, label: label, condensed_label: condensed_label,
-     header_label: header_label, header_tooltip: header_tooltip, group: group, grow: grow,
+     header_label: header_label, short_label: short_label, header_tooltip: header_tooltip, group: group, grow: grow,
      target_width: target_width, target_grow: target_grow, truncate: truncate, sticky: sticky,
      tabular_nums: tabular_nums, merge: merge, merge_share: merge_share, merge_layouts: merge_layouts,
      header_align: header_align,

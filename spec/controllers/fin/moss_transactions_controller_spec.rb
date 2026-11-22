@@ -381,6 +381,34 @@ describe Fin::MossTransactionsController do
       expect(response.body).to include("mtcol-invoice_number")
     end
 
+    # The kinds are a second tab bar below the Moss tabs (Sheet::Fin::Moss),
+    # "Alle" first; the Moss bar keeps "Transaktionen" lit.
+    it "shows the kinds as sub-tabs, with the current one lit" do
+      tab_bars = lambda do
+        Nokogiri::HTML(response.body).css("ul.nav-sub").map do |bar|
+          bar.css("li").map { |li| (li["class"].to_s.include?("active") ? "*" : "") + li.text.strip }
+        end
+      end
+
+      get :index
+      expect(tab_bars.call.last).to eq(["*Alle", "Kartenzahlungen", "Erstattungen", "Rechnungen", "Einzahlungen"])
+
+      get :index, params: {kind: "MossInvoice"}
+      bars = tab_bars.call
+      expect(bars.first).to include("*Transaktionen")
+      expect(bars.last).to eq(["Alle", "Kartenzahlungen", "Erstattungen", "*Rechnungen", "Einzahlungen"])
+    end
+
+    # The date column widens with the room the table has; its header carries
+    # the full word and "Datum" for when the word does not fit
+    # (shared/wsjrdp/_expandable_table_short_label_js switches).
+    it "gives the date header a short label" do
+      get :index
+      header = Nokogiri::HTML(response.body).at_css("thead th[data-colkey='booking_date']")
+      expect(header.at_css(".exp-label-full").text).to eq("Buchungsdatum")
+      expect(header.at_css(".exp-label-short").text).to eq("Datum")
+    end
+
     it "ignores a ?kind= query param on the general tab" do
       get :index, params: {kind: "Bogus"}
       expect(response).to be_successful
@@ -687,10 +715,9 @@ describe Fin::MossTransactionsController do
   end
 
   # The filter LINE above the table (doc/wsjrdp/expandable_table.md): on the
-  # general tab the four kind buttons of the "Schnellauswahl"
-  # (Fin::MossKinds.preset_group, the same group the wallet statement shows) and
-  # the applied filter's chips, on a kind tab neither -- the tab pins its kind
-  # itself.
+  # general tab the kinds as a fixed group of several answers in the
+  # "Schnellauswahl" (Fin::MossKinds.fixed_group) and the applied filter's
+  # chips, on a kind tab neither -- the tab pins its kind itself.
   describe "the filter line" do
     def doc = Nokogiri::HTML(response.body)
 
@@ -708,42 +735,55 @@ describe Fin::MossTransactionsController do
 
     let(:kinds) { Fin::MossTransactionsFilterSchema::KINDS }
 
-    # The four are the members of ONE group and therefore render as four plain
-    # buttons in the kinds' own order, worded and marked like the "Art" cells of
-    # the rows.
-    it "offers one Schnellauswahl button per kind on the general tab" do
+    # The lifts param (`u`) a segment button points at.
+    def preset_lifts(link)
+      CGI.unescape(CGI.unescapeHTML(link["href"].to_s)[/[?&]u=([^&]*)/, 1].to_s)
+    end
+
+    # One segment: the "all" asterisk, then the four kinds in their own order,
+    # worded and marked like the "Art" cells of the rows -- every kind chosen.
+    it "offers the kinds as one segment behind an asterisk on the general tab" do
       get :index
 
       expect(line).to be_present
-      expect(preset_links.size).to eq(4)
-      expect(preset_links.map { |a| a.text.strip })
+      expect(doc.css(".flt-segment").size).to eq(1)
+      expect(preset_links.size).to eq(5)
+      expect(preset_links.first["class"].split).to include("flt-preset-icon-only")
+      kind_links = preset_links.drop(1)
+      expect(kind_links.map { |a| a.text.strip })
         .to eq(kinds.map { |kind| I18n.t("fin.moss.kind_chips.#{kind}") })
-      expect(preset_links.map { |a| a.xpath("./i").first["class"] })
+      expect(kind_links.map { |a| a.xpath("./i").first["class"] })
         .to eq(kinds.map { |kind| "fas fa-#{Fin::MossKinds.icon(kind)}" })
-      expect(preset_links.map { |a| a["class"].split.last })
+      expect(kind_links.map { |a| a["class"].split.last })
         .to eq(kinds.map { |kind| Fin::MossKinds.css_class(kind) })
+      expect(preset_links.pluck("aria-pressed")).to eq(%w[true true true true true])
+      expect(response.body).to include("2 Transaktionen")
 
       toggle = line.element_children.last
       expect(toggle["class"].split).to include("pane-toggle")
       expect(toggle["data-pane-target"]).to eq(doc.at_css(".wsjrdp-pane.flt-pane")["id"])
     end
 
-    # Each button points at its OWN kind alone; two pressed ones share the one
-    # `kind in (…)` slot the group stands for.
-    it "points every button at its kind and presses the one the filter names" do
+    # A click takes its kind out of the choice (or puts it back); the asterisk
+    # chooses none when all are chosen. The choice is a locked chip.
+    it "narrows the list to the chosen kinds" do
       get :index
+      expect(preset_links.map { |a| preset_lifts(a) }).to eq(["kind.-",
+        "kind.reimbursement+invoice+top_up", "kind.card_transaction+invoice+top_up",
+        "kind.card_transaction+reimbursement+top_up", "kind.card_transaction+reimbursement+invoice"])
 
-      expect(preset_links.map { |a| preset_filter(a) })
-        .to eq(kinds.map { |kind| "!(!(!(k,in,'#{kind}')))" })
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false false])
-      # A bar of buttons IS the line's left half: "Kein Filter aktiv" would only
-      # repeat what four unpressed buttons already say.
-      expect(doc.css(".flt-nofilter")).to be_empty
-      expect(doc.css(".flt-applied")).to be_empty
+      get :index, params: {u: "kind.top_up"}
+      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false false true])
+      expect(response.body).to include("1 Transaktionen").and include("Vereinskonto")
+      expect(response.body).not_to include("Supermarkt Muster")
+      expect(doc.css(".flt-chip-locked, .flt-applied .flt-chip").map { |chip| chip.text.squish }.join)
+        .to include("Art")
 
-      get :index, params: {f: "!(!(!(k,in,MossTopUp)))"}
-      expect(response.body).to include("1 Transaktionen")
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false true])
+      # None chosen: no row, and the line says so in words.
+      get :index, params: {u: "kind.-"}
+      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false false false])
+      expect(response.body).to include("0 Transaktionen")
+      expect(doc.css(".flt-applied .flt-chip-locked").map { |chip| chip.text.squish }).to eq(["Art: keine gewählt"])
     end
 
     # The tab pins its kind as a HIDDEN fixed slot: a button offering another
@@ -759,16 +799,12 @@ describe Fin::MossTransactionsController do
       expect(doc.css(".flt-applied")).to be_empty
     end
 
-    # The kind slot is the one the Schnellauswahl group stands for: it shows as
-    # the PRESSED button, so chipping it as well would say the same thing twice
-    # (doc/wsjrdp/expandable_table.md, "Presets"). Every other slot is chipped.
-    it "chips the user's own slots, leaving the one a pressed button says" do
+    # A kind the user filters on is a slot of their own, chipped like any other.
+    it "chips the user's own kind slot" do
       get :index, params: {f: "!(!(!(k,in,MossTopUp)),!(!(amt,ge,100)))"}
 
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false true])
-      expect(chip_texts).to eq(["Betrag (Transaktion) ≥ 100"])
-      expect(doc.css(".flt-applied .flt-and")).to be_empty
-      expect(doc.css(".flt-nofilter")).to be_empty
+      expect(preset_links.pluck("aria-pressed")).to eq(%w[true true true true true])
+      expect(chip_texts).to eq(["Art ist Einzahlung", "Betrag (Transaktion) ≥ 100"])
     end
 
     it "chips a slot on an attribute the buttons do not cover, joined by 'und'" do

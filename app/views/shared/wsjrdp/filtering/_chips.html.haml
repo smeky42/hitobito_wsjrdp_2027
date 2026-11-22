@@ -62,19 +62,27 @@
 - presets = Array(local_assigns.fetch(:presets, nil))
 - chips = et_filter_chips(state, presets: presets)
 - locked_chips = et_filter_locked_chips(state)
+-# A fixed group with no answer chosen says so in words (Filter#locked_notes).
+- locked_notes = state.filter.locked_notes
 
-- if chips.any? || locked_chips.any?
+- if chips.any? || locked_chips.any? || locked_notes.any?
   %span.flt-applied
     %span.flt-label Filter
-    - locked_chips.each_with_index do |chip, index|
+    - locked_notes.each_with_index do |note, index|
       - if index.positive?
+        %span.flt-and und
+      %span.flt-chip.flt-chip-locked{title: "#{note} — fest vorgegeben"}
+        %i.fas.fa-lock.flt-chip-lock{"aria-hidden": "true"}
+        = note
+    - locked_chips.each_with_index do |chip, index|
+      - if index.positive? || locked_notes.any?
         %span.flt-and und
       %span.flt-chip.flt-chip-locked.wsjrdp-html-tip{title: "#{chip.text} — fest vorgegeben",
         data: {bs_title: et_filter_chip_tip(chip, hint: "Fest vorgegeben, nicht änderbar")}}
         %i.fas.fa-lock.flt-chip-lock{"aria-hidden": "true"}
         = et_filter_chip_content(chip)
     - chips.each_with_index do |chip, index|
-      - if index.positive? || locked_chips.any?
+      - if index.positive? || locked_chips.any? || locked_notes.any?
         %span.flt-and und
       -# A button, not a link: it changes nothing on the server, it only opens
       -# the pane next to it. `.pane-opener` is the open-only control of

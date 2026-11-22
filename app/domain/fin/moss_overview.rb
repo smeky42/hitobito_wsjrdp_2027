@@ -49,9 +49,6 @@ class Fin::MossOverview
   # positive, spend negative) -- the wallet balance implied by the Moss data.
   def total_sum = kinds.sum(&:sum)
 
-  # The average transaction amount over all kinds, signed like the sum.
-  def total_average = total_count.positive? ? total_sum / total_count : 0
-
   # The totals are the kinds' figures added up, so the structure block's
   # levels and its bars share one set of numbers.
   def expenses_count = kinds.sum(&:expenses_count)

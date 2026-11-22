@@ -225,7 +225,7 @@ describe "Moss organisation pages" do
     end
 
     it "filters by status and department" do
-      get :index, params: {u: "status.-", f: "!(!(!(st,in,ARCHIVED)))"}
+      get :index, params: {u: "status.active+archived+others", f: "!(!(!(st,in,ARCHIVED)))"}
       expect(row_texts).to contain_exactly(include("Team Leer"))
 
       get :index, params: {f: "!(!(!(dp,in,'#{department.moss_department_uuid}')))"}

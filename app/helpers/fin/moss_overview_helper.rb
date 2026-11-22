@@ -45,8 +45,8 @@ module Fin::MossOverviewHelper
     of ? "#{percent} der #{of}" : percent
   end
 
-  # "n in Fremdwährung" as a link to the kind's tab (or the Transaktionen tab)
-  # filtered to those transactions; nothing when there are none.
+  # "n in Fremdwährung" as a link to the kind's tab (or to "Alle", every kind
+  # chosen) filtered to those transactions; nothing when there are none.
   def moss_foreign_currency_tag(count, kind = nil)
     return if count.zero?
 
@@ -61,10 +61,17 @@ module Fin::MossOverviewHelper
   # cannot leave a stale link here. Every transaction carries an original
   # currency, so "not EUR" is exactly the foreign-currency set.
   def moss_foreign_currency_path(kind = nil)
-    base = kind ? moss_kind_tab_path(kind) : moss_transactions_path
     query = Wsjrdp::Filtering::Query.parse([[["currency", "not_in", BASE_CURRENCY]]])
     rison = Wsjrdp::Filtering::UrlCodec.encode(query, schema: Fin::MossTransactionsFilterSchema.bound)
     param = Fin::MossTransactionsController::TRANSACTIONS_POLICY.param_name(:filter)
-    "#{base}?#{param}=#{Wsjrdp::Filtering::UrlCodec.escape_for_query(rison)}"
+    filter = "#{param}=#{Wsjrdp::Filtering::UrlCodec.escape_for_query(rison)}"
+    kind ? "#{moss_kind_tab_path(kind)}?#{filter}" : "#{moss_all_transactions_path}&#{filter}"
+  end
+
+  # "Alle" with every kind chosen again: a figure over all kinds opens the list
+  # of all kinds, whatever kind choice the list remembers (an explicit empty
+  # lifts param is the default choice). The remembered filter stays.
+  def moss_all_transactions_path
+    moss_transactions_path(Fin::MossTransactionsController::TRANSACTIONS_POLICY.param_name(:lifts) => "")
   end
 end

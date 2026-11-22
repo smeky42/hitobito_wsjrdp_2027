@@ -96,10 +96,6 @@ describe Fin::OverviewController do
       [I18n.t("fin.tabs.plans"), wsjrdp_payment_plans_path],
       [I18n.t("fin.nav.moss"), moss_path],
       [I18n.t("fin.tabs.transactions"), moss_transactions_path],
-      [I18n.t("fin.tabs.card_transactions"), moss_card_transactions_path],
-      [I18n.t("fin.tabs.invoices"), moss_invoices_path],
-      [I18n.t("fin.tabs.reimbursements"), moss_reimbursements_path],
-      [I18n.t("fin.tabs.top_ups"), moss_top_ups_path],
       [I18n.t("fin.nav.accounting"), bookkeeping_path],
       [I18n.t("fin.tabs.bookings"), bookings_path],
       [I18n.t("fin.tabs.ledger_accounts"), ledger_accounts_path],
@@ -109,6 +105,10 @@ describe Fin::OverviewController do
       [I18n.t("fin.tabs.participant_fees"), reconciliation_participant_fees_path],
       [I18n.t("fin.nav.controlling"), controlling_path]
     )
+    # The Moss kinds are sub-tabs of Transaktionen (Sheet::Fin::Moss), not
+    # tabs of the sheet, so /fin leaves them out.
+    expect(links.map(&:last)).not_to include(moss_card_transactions_path, moss_reimbursements_path,
+      moss_invoices_path, moss_top_ups_path)
   end
 
   it "leaves the Übersicht tab out of the quick links (it is the area link)" do
