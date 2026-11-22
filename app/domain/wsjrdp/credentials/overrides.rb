@@ -10,13 +10,24 @@
 module Wsjrdp::Credentials
   # The two overrides of this instance, the sources of the lookup in front
   # of the database: the variables, then the local file. .current reads
-  # them once at boot and logs a summary; a change needs a restart.
+  # them once at boot and logs a summary; .reload! reads them again.
   class Overrides < Data.define(:variables, :file)
     include Undumpable
 
     class << self
       def current
         @current ||= build.tap { |overrides| overrides.log_summary(Rails.logger) }
+      end
+
+      # Reads the overrides again, and the keys with them, in this process
+      # only. A problem raises ConfigurationError and keeps the old ones.
+      def reload!
+        overrides = build
+        Keys.from_sources(file: overrides.file)
+        @current = overrides.log_summary(Rails.logger)
+        Keys.reset!
+        Keys.current
+        self
       end
 
       # test: whether this is the Rails environment test, which does not

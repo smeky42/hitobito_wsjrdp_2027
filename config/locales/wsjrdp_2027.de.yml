@@ -2975,6 +2975,11 @@ de:
       not_a_stage: "%{field}: ist keine gültige Umgebung."
       stale: Die Version wurde inzwischen geändert. Bitte die Version neu öffnen und die Änderung dort wiederholen.
       other: "%{field}: %{code}"
+    reload:
+      button: Lokale Datei neu einlesen
+      title: "%{source} und die Schlüssel neu einlesen, ohne Neustart (nur in diesem Prozess)"
+      done: "%{source} wurde neu eingelesen."
+      failed: "Nicht neu eingelesen, es gilt weiter der alte Stand: %{message}"
     notices:
       no_key: >-
         Diese Instanz hat keinen Schlüssel für Zugangsdaten. Neue Versionen, geheime Felder und

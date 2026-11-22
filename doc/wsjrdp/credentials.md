@@ -391,9 +391,10 @@ Wsjrdp::Credentials.candidates(:moss_api, "default")      # the usable versions,
 ## Overrides: variables and the local file
 
 An account can be overridden by environment variables and by a local YAML
-file. Both are read once at boot; a change needs a restart. In development
-a code reload reads the local file (and the keys) again at the next lookup;
-the variables stay as the boot took them.
+file. Both are read once at boot. The button "Lokale Datei neu einlesen" on
+the list page reads the local file (and the keys) again, in that process
+only; a problem keeps the old state. Other processes still need a restart. In development a code reload also reads the local file (and the
+keys) again at the next lookup; the variables stay as the boot took them.
 
 **Which source wins, per account as a whole:** the variables, then the
 file, then the database. If any variable names an account, the variables

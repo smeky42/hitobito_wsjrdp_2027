@@ -368,5 +368,33 @@ describe "Wsjrdp::Credentials: the overrides" do
         expect(read.file.account_names).to eq([%w[moss_api default]])
       end
     end
+
+    describe ".reload!" do
+      around do |example|
+        saved = [Wsjrdp::Credentials::Overrides, Wsjrdp::Credentials::Keys].map { |c| c.instance_variable_get(:@current) }
+        example.run
+      ensure
+        [Wsjrdp::Credentials::Overrides, Wsjrdp::Credentials::Keys].zip(saved) { |c, v| c.instance_variable_set(:@current, v) }
+      end
+
+      it "takes the file read again, and the keys with it" do
+        read = Wsjrdp::Credentials::Overrides.new(variables: variables({}), file: local_file)
+        allow(Wsjrdp::Credentials::Overrides).to receive(:build).and_return(read)
+        Wsjrdp::Credentials::Keys.current
+
+        Wsjrdp::Credentials::Overrides.reload!
+        expect(Wsjrdp::Credentials::Overrides.current).to be(read)
+        expect(Wsjrdp::Credentials::Keys.instance_variable_get(:@current)).not_to be_nil
+      end
+
+      it "keeps the old state when the file has a problem" do
+        before = Wsjrdp::Credentials::Overrides.current
+        allow(Wsjrdp::Credentials::Overrides).to receive(:build)
+          .and_raise(Wsjrdp::Credentials::ConfigurationError, "broken")
+
+        expect { Wsjrdp::Credentials::Overrides.reload! }.to raise_error(Wsjrdp::Credentials::ConfigurationError)
+        expect(Wsjrdp::Credentials::Overrides.current).to be(before)
+      end
+    end
   end
 end
