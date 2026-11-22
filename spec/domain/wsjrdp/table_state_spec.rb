@@ -993,6 +993,62 @@ describe Wsjrdp::TableState do
         end
       end
 
+      # A fixed group of several answers (`multiple: true`): members stand for
+      # values of one attribute, the chosen ones share one locked `in` slot.
+      describe "fixed groups of several answers" do
+        let(:kind_group) do
+          {key: "kind", multiple: true, attribute: "kind", default: %w[card], all_title: "Alle Arten",
+           members: [{key: "card", label: "Karte", value: "card", title: "Nur Karten"},
+             {key: "invoice", label: "Rechnung", value: "invoice"}]}
+        end
+        let(:kind_policy) { filter_policy(policy: :url, fixed_groups: [kind_group]) }
+
+        def by_key(state) = state.filter.presets.index_by(&:key)
+
+        it "puts the default answers in force, locked, and offers an all button and one per member" do
+          state = resolve(kind_policy)
+          expect(state.filter.readonly_slots).to eq([[["kind", "in", "card"]]])
+          presets = by_key(state)
+          expect(presets.keys).to eq(%w[kind.all kind.card kind.invoice])
+          expect(presets.values).to all(have_attributes(segmented?: true, lifting?: true))
+          expect(presets.values.map(&:active?)).to eq([false, true, false])
+          expect(presets["kind.all"]).to have_attributes(icon: "asterisk", title: "Alle Arten")
+          expect(presets["kind.card"].title).to eq("Nur Karten")
+          expect(presets.values.map(&:toggle_lifts)).to eq(["kind.card+invoice", "kind.-", "kind.card+invoice"])
+          expect(state.filter.initial?).to be true
+        end
+
+        it "reads several answers, or none, from the lifts param" do
+          both = resolve(kind_policy, {"u" => "kind.card+invoice"})
+          expect(both.filter.fixed_slots).to eq([])
+          expect(by_key(both)["kind.all"]).to have_attributes(active?: true, toggle_lifts: "kind.-")
+          expect(both.filter.initial?).to be false
+
+          none = resolve(kind_policy, {"u" => "kind.-"})
+          expect(none.filter.fixed_slots).to eq([])
+          expect(by_key(none).values.map(&:active?)).to eq([false, false, false])
+          expect(by_key(none)["kind.invoice"].toggle_lifts).to eq("kind.invoice")
+        end
+
+        it "ignores members it does not declare, and goes back to the default when that is chosen" do
+          expect(resolve(kind_policy, {"u" => "kind.bogus"}).filter.choices).to eq({})
+          expect(resolve(kind_policy, {"u" => "kind.card"}).filter.choices).to eq({})
+          expect(by_key(resolve(kind_policy, {"u" => "kind.invoice"}))["kind.card"].toggle_lifts)
+            .to eq("kind.card+invoice")
+        end
+
+        it "refuses a group without an attribute, a default that is no member, and a preset's sets: on it" do
+          expect { resolve(filter_policy(fixed_groups: [kind_group.except(:attribute)])) }
+            .to raise_error(ArgumentError, /needs an attribute:/)
+          expect { resolve(filter_policy(fixed_groups: [kind_group.merge(default: %w[bogus])])) }
+            .to raise_error(ArgumentError, /default "bogus" is no member/)
+          expect {
+            resolve(filter_policy(fixed_groups: [kind_group],
+              presets: [{key: "x", label: "X", sets: {"kind" => "card"}}]))
+          }.to raise_error(ArgumentError, /a fixed group of several answers/)
+        end
+      end
+
       it "refuses a preset that lifts what is not liftable, and a liftable entry without a key" do
         expect {
           resolve(filter_policy(fixed: [{key: "unit", slots: unit}],

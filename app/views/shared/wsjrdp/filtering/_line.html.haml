@@ -38,7 +38,8 @@
 -#
 -#  The members of an EXCLUSIVE group (FilterPreset#exclusive?) render as ONE
 -#  segmented control -- the unrestricted button (an asterisk, "ohne
--#  Einschränkung") first, exactly one segment pressed -- the other
+-#  Einschränkung") first, exactly one segment pressed --, and so does a fixed
+-#  group of several answers, behind an "all" asterisk. The other
 -#  entries as toggle links with a tick. A lifting preset (FilterPreset#lifting?)
 -#  changes the lifts param as well as the filter. Once the table no longer
 -#  shows its initial selection (a pin lifted, or the user filter other than
@@ -65,8 +66,8 @@
     - if presets.any? && !disabled
       .flt-presets.d-flex.flex-wrap.align-items-center.gap-2{id: presets_id}
         %span.small.text-muted Schnellauswahl
-        - presets.chunk_while { |a, b| a.exclusive? && b.exclusive? && a.group == b.group }.each do |chunk|
-          - if chunk.first.exclusive?
+        - presets.chunk_while { |a, b| a.in_segment? && b.in_segment? && a.group == b.group }.each do |chunk|
+          - if chunk.first.in_segment?
             -# The label and its segment stay together when the bar wraps; a fixed
             -# group (Filter "FIXED GROUPS") says what it asks in front.
             %span.d-inline-flex.align-items-center.gap-1.flt-group
@@ -77,12 +78,13 @@
                   -# An icon-only button (the unrestricted one's asterisk): its
                   -# label is the tooltip and the accessible name.
                   - icon_only = preset.css_class.to_s.split.include?(Wsjrdp::TableState::Filter::ICON_ONLY_CLASS)
+                  - tooltip = preset.title.presence || (preset.label if icon_only)
                   - segment_changes = {filter: preset.toggle_wire}
-                  - segment_changes[:lifts] = preset.toggle_lifts.presence if preset.lifting?
+                  - segment_changes[:lifts] = preset.toggle_lifts if preset.lifting?
                   = link_to et_url(state, segment_changes),
                     class: ["btn btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" "),
                     role: "button", aria: {pressed: preset.active?.to_s, label: (preset.label if icon_only)},
-                    title: (preset.label if icon_only), data: {title: preset.label} do
+                    title: tooltip, data: {title: tooltip || preset.label} do
                     - if preset.icon.present?
                       %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
                     - unless icon_only
@@ -101,7 +103,7 @@
           -# what it was before.
           - preset_class = ["btn btn-sm btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" ")
           - changes = {filter: preset.toggle_wire}
-          - changes[:lifts] = preset.toggle_lifts.presence if preset.lifting?
+          - changes[:lifts] = preset.toggle_lifts if preset.lifting?
           = link_to et_url(state, changes),
             class: preset_class,
             role: "button", title: preset_title,
@@ -113,7 +115,7 @@
               %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
             = preset.label
         - unless state.filter.initial?
-          = link_to et_url(state, {filter: state.filter.default_wire, lifts: nil}),
+          = link_to et_url(state, {filter: state.filter.default_wire, lifts: ""}),
             class: "btn btn-sm btn-link flt-preset-reset", role: "button",
             title: "Die anfängliche Schnellauswahl wiederherstellen" do
             %i.fas.fa-undo{"aria-hidden": "true"}

@@ -179,7 +179,9 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   # the width, else 0. Raises for a target the widget cannot reckon with.
   def self.validate_target!(key, width, target_width, target_grow)
     if target_width.nil?
-      raise ArgumentError, "column #{key}: target_grow needs a target_width" unless target_grow.nil?
+      # 0 is what this method gives a column without a target; a copy made by
+      # #with brings it back in, so it is accepted.
+      raise ArgumentError, "column #{key}: target_grow needs a target_width" unless target_grow.nil? || target_grow == 0
 
       return 0
     end

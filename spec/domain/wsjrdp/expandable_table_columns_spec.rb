@@ -262,6 +262,11 @@ describe Wsjrdp::ExpandableTableColumn do
       expect { column(width: "8rem", target_grow: 1) }.to raise_error(ArgumentError, /needs a target_width/)
     end
 
+    it "takes back the 0 it gave a column without a target, so a copy made by #with keeps working" do
+      plain = column(width: "8rem")
+      expect(plain.with(header_label: "Neu").target_grow).to eq(0)
+    end
+
     it "refuses a target narrower than the width" do
       expect { column(width: "8rem", target_width: "7rem") }.to raise_error(ArgumentError, /narrower/)
     end

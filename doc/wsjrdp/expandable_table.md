@@ -734,6 +734,27 @@ filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema,
 - A default that is no member, a duplicate member and a `sets:` naming what is
   not declared raise.
 
+**A fixed group of several answers** (`multiple: true`): several members may
+be chosen. Each member stands for one `value:` of the group's `attribute:`;
+the chosen ones form one locked `attribute in (values)` condition, none or all
+chosen restrict nothing. The default is a list of member keys; `all_title:`
+and a member's `title:` are tooltips.
+
+```ruby
+fixed_groups: [{key: "status", multiple: true, attribute: "status", default: %w[active invited],
+                members: [{key: "active", label: "Aktiv", value: "ACTIVE"},
+                          {key: "invited", label: "Eingeladen", value: "INVITED"}]}],
+lifts: {policy: :remember}
+```
+
+- Shown as one segment behind an "all" asterisk, which chooses every member,
+  or none when all are chosen.
+- The choice rides in the `lifts` param (`status.a+b`, `status.-` for none);
+  `lifts: {policy: :remember}` remembers it.
+- A preset's `sets:` cannot name such a group.
+
+Example: `Fin::MossUsersFilterSchema::QUICK_FILTER`.
+
 #### Presets — the filter's "Schnellauswahl"
 
 The "Schnellauswahl" bar at the left of the filter line, above the pane, holds
