@@ -223,7 +223,7 @@ One row is **one version of one account in one stage**
 | `scheme`, `encryption_key_fingerprint`, `encryption_key_label` | the version's one key |
 | `valid_from`, `expires_at`, `revoked_at` | instants in UTC |
 | `remind_days_before`, `remind_emails`, `reminded_at` | reminder data; no mail is sent yet |
-| `last_success_at`, `last_failure_at`, `last_failure_message` | feedback from use; nothing writes them yet |
+| `last_success_at`, `last_failure_at`, `last_failure_message` | the last outcome of the connection test (every test is in the Hitobito log) |
 | `author_id`, `author_type` | who deposited it |
 
 Nothing is unique beyond the id: versions of an account may overlap.
@@ -556,8 +556,8 @@ Admin pages in the settings, for admins only (the right
 `:manage_credentials` on `WsjrdpCredential`). They work only in a browser
 session: a request signed in by an API, service or OAuth token gets 403.
 The controllers are `CredentialsController` (the list, the page of one
-account, the reveal) and `CredentialVersionsController` (the forms and
-actions of a version).
+account, the reveal, the connection test) and
+`CredentialVersionsController` (the forms and actions of a version).
 
 - **The list** shows every account from every source, grouped by kind,
   with its state here and whether an override is in use. Above it is a
@@ -616,6 +616,59 @@ A reveal is not logged.
 false, the pages offer no reveal button and the server refuses every
 reveal.
 
+### Testing a Moss connection
+
+"Verbindung testen" is offered on every active or planned `moss_api`
+version of this stage, from any source. The server fetches a token with
+the version's values and then reads one user (`GET /v1/users?page_size=1`).
+The card shows the outcome, or the step that failed with Moss's error
+text, and below it every request and answer with headers and bodies, for
+debugging; that is shown once and not kept. The secret and the token are
+never shown or kept.
+
+- Every test is an entry in the Hitobito log (see "The log entries"):
+  `info` when it worked, `warn` when not, so no error mail goes out. The
+  card lists the version's tests and links the log.
+- A database version also keeps the last outcome in its health columns,
+  without touching `updated_at`, so an open edit form stays valid.
+- A plain `http` base URL is tested with a warning. Outside development
+  the admin confirms it first; the server refuses the test without that
+  confirmation.
+- The Moss code (`Wsjrdp::Moss`) gets the values handed in and does not
+  read the credential store; `Wsjrdp::Credentials::MossConnectionTest`
+  connects the two. No retry, no redirect is followed.
+- Specs stub every request (WebMock); they never call Moss.
+
+### The log entries
+
+The store writes into the Hitobito log (Einstellungen → Hitobito Log, tab
+Credentials, category `credentials`). Only admins see that page
+(`Group::Root::Admin`, permission `admin`), the same people as the
+credential pages. More events will follow, so every payload has the same
+frame:
+
+| Key | Content |
+|---|---|
+| `event` | what happened, e.g. `moss_connection_test` |
+| `payload_version` | the form of this event's payload, starting at 1 |
+| `account` | `kind`, `account_key`, `source`, `version_id` or `position` |
+| `person_id` | who did it |
+| further keys | the event's own |
+
+A database version is the entry's subject; an override has none and is
+found by `account`. Never a value of a version.
+
+`moss_connection_test` adds:
+
+- `outcome`: `ok`, `step` (`token` or `read`), `status`, `message`,
+  `tracing_id`, `scope`, `host`, `insecure`, `duration_ms`.
+- `requests`: per request `step`, `method`, `url`, `status`,
+  `duration_ms`, `error` (no answer) and `response` with a few headers
+  (content type, retry-after, rate limit, trace ids) and the body. The
+  token is cut out, the data of a list is kept as its ids only (no
+  personal data), a body longer than 10,000 characters is cut. Request
+  bodies are not kept.
+
 ## Specs
 
 `spec/domain/wsjrdp/credentials/` and
@@ -631,7 +684,8 @@ wiring need the test database; run them by the rules of `AGENTS.md`
 ("Running tests"): `spec/models/wsjrdp_credential_spec.rb`,
 `spec/domain/wsjrdp/credentials_store_spec.rb`,
 `spec/domain/wsjrdp/credentials_keys_boot_spec.rb`,
-`spec/domain/wsjrdp/credentials_overrides_spec.rb`, and the pages
+`spec/domain/wsjrdp/credentials_overrides_spec.rb`, the Moss check
+`spec/domain/wsjrdp/moss/connection_check_spec.rb` and the pages
 `spec/requests/credentials_spec.rb`. No spec reads the local
 file, but the boot reads the environment: set no `HITOBITO_CREDENTIAL*`
 variable in the shell that runs the specs.

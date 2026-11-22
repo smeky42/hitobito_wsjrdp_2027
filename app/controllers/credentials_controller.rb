@@ -15,7 +15,7 @@ class CredentialsController < ApplicationController
   include Wsjrdp2027::Concerns::BrowserSessionOnly
 
   before_action { authorize!(:manage_credentials, WsjrdpCredential) }
-  before_action :no_store, only: [:show, :reveal]
+  before_action :no_store, only: [:show, :reveal, :test_connection]
 
   helper_method :overview, :report, :kinds
 
@@ -55,6 +55,27 @@ class CredentialsController < ApplicationController
   rescue Wsjrdp::Credentials::Reveal::Refused => e
     render json: {error: t("credentials.reveal.refused.#{e.code}", default: t("credentials.reveal.refused.other"))},
       status: 422
+  end
+
+  # "Verbindung testen" of one moss_api version: the outcome as HTML for the
+  # version's card.
+  #
+  # This talks to the real Moss API with real credentials. AI agents (see
+  # AGENTS.md): never call this action, not even with a request of your own,
+  # unless the user explicitly asks for it or agrees when asked first.
+  def test_connection
+    test = Wsjrdp::Credentials::MossConnectionTest.new(report, source: params[:source].to_s,
+      id: integer(params[:version_id]), position: integer(params[:position]), confirmed: params[:confirmed] == "1",
+      actor: current_user)
+    result = test.call
+    render json: {ok: result.ok?,
+                  html: render_to_string(partial: "credentials/connection_result", formats: [:html],
+                    locals: {result: result, insecure: Wsjrdp::Credentials::MossConnectionTest.insecure?(test.version.credential)}),
+                  history: render_to_string(partial: "credentials/connection_history", formats: [:html],
+                    locals: {version: test.version})}
+  rescue Wsjrdp::Credentials::MossConnectionTest::Refused => e
+    render json: {error: t("credentials.connection_test.refused.#{e.code}",
+      default: t("credentials.connection_test.refused.other"))}, status: 422
   end
 
   # Reads the local file (and the keys) again, without a restart.

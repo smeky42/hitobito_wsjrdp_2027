@@ -256,6 +256,31 @@ module CredentialsHelper
     author ? credential_author(author) : "#{model.model_name.human} #{who}"
   end
 
+  # Who ran a connection test, from the log entry's payload.
+  def credential_log_person(entry)
+    id = entry.payload.is_a?(Hash) ? entry.payload["person_id"] : nil
+    person = id && Person.find_by(id: id)
+    person ? credential_author(person) : id.to_s
+  end
+
+  # The subject column of the Hitobito log: a credential test names its
+  # account and version and links the account's page; anything else as the
+  # core shows it.
+  def format_hitobito_log_entry_subject(entry)
+    account = entry.payload["account"] if entry.payload.is_a?(Hash)
+    unless entry.category == Wsjrdp::Credentials::LOG_CATEGORY && account.is_a?(Hash)
+      return entry.subject && assoc_link(entry.subject)
+    end
+
+    kind, account_key, source = account.values_at("kind", "account_key", "source")
+    label = ["#{credential_name(kind.to_s)}/#{credential_account_key(account_key.to_s)}",
+      (credential_source_label(source) if source.present?), account["version_id"] || account["position"]]
+      .compact_blank.join(" · ")
+    linkable = Wsjrdp::Credentials.name?(kind.to_s) && Wsjrdp::Credentials.account_key?(account_key.to_s) &&
+      can?(:manage_credentials, WsjrdpCredential)
+    link_to_if(linkable, label, linkable ? credential_path(kind: kind, account_key: account_key) : nil)
+  end
+
   # What a history entry did, in short. Public values are shown; a hidden
   # field is named only, never with its value.
   def credential_trail_text(version, row)
