@@ -42,13 +42,16 @@ describe "finance abilities" do
       DatevBookingBatch,
       WsjrdpLedgerAccount,
       WsjrdpCostCenter,
-      WsjrdpPersonalAccount
+      WsjrdpPersonalAccount,
+      MossUser,
+      MossTeam,
+      MossDepartment
     ]
   end
 
   # A Beitragsbuchung and a Vorabankündigung are one person's fee data. Both
   # share the ladder of the other finance models, minus the read tier.
-  let(:person_level_models) { [AccountingEntry, WsjrdpDirectDebitPreNotification] }
+  let(:person_level_models) { [AccountingEntry, WsjrdpDirectDebitPreNotification, MossUser, MossTeam, MossDepartment] }
 
   # Not in the fixtures: a nested Group::Root (as "CMT Warteliste" is in
   # production) and an Extern layer for the auditor.

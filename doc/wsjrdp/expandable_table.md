@@ -751,6 +751,9 @@ lifts: {policy: :remember}
   or none when all are chosen.
 - The choice rides in the `lifts` param (`status.a+b`, `status.-` for none);
   `lifts: {policy: :remember}` remembers it.
+- A member with `others: true` (no `value:`) stands for every value the other
+  members do not name, and for none; it shows as "…". The attribute must
+  offer `not_in` and `blank`.
 - A preset's `sets:` cannot name such a group.
 
 Example: `Fin::MossUsersFilterSchema::QUICK_FILTER`.

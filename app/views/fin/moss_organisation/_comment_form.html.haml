@@ -1,0 +1,25 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The form of a Moss record: the fields Hitobito owns (a subclass may add
+-#  its `_edit_fields`) and the comment. In a frame it stays there until saved.
+= render "fin/shared/sticky_form_actions"
+- form_data = turbo_frame_request? ? {} : {turbo: false}
+= standard_form(entry, {url: entry_path, method: :put, data: form_data}) do |f|
+  = hidden_field_tag("return_url", return_url)
+  = f.error_messages
+  - if permitted_attrs.present?
+    .fin-account-form-actions
+      = form_buttons_if_editable(f, cancel_url: cancel_url)
+  = field_set_tag do
+    %div.pt-3
+    - if lookup_context.exists?("edit_fields", [controller_path], true)
+      = render "#{controller_path}/edit_fields", f: f
+    = input_or_render_attrs(f, :comment, rows: 5)
+    .row.mb-2
+      .col-md-9.offset-md-3.col-xl-8.offset-xl-2.text-muted.small
+        = t("fin.moss_organisation.#{controller_name}_hint", default: t("fin.moss_organisation.comment_hint"))

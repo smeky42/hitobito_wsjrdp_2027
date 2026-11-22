@@ -163,17 +163,22 @@ module Fin::BookkeepingHelper
     content_tag(:span, moss_status_label(status), class: "moss-status moss-status-#{variant}")
   end
 
-  # The two values a summary list knows -- aktiv and inaktiv -- where a record
-  # Moss does not know at all (moss_status NULL) counts as inaktiv, exactly like
+  # The values a summary list knows -- aktiv, inaktiv and gelöscht -- where a
+  # record Moss does not know at all (moss_status NULL) counts as inaktiv, exactly like
   # the COALESCE the filter attribute and the column's sort use.
   # (fin_status_label stays for the places that show the raw Moss status of any
   # record, e.g. the detail formatters of Fin::CostCentersHelper and
   # Fin::PersonalAccountsHelper.)
   def moss_status_label(status)
-    I18n.t("fin.moss_status.#{moss_status_active?(status) ? "active" : "deactivated"}")
+    key = if moss_status_active?(status) then "active"
+    elsif status == WsjrdpCostCenter::STATUS_DELETED then "deleted"
+    else
+      "deactivated"
+    end
+    I18n.t("fin.moss_status.#{key}")
   end
 
-  # WsjrdpCostCenter and WsjrdpPersonalAccount spell the two Moss states
+  # The bookkeeping models spell the Moss states
   # identically, so one comparison serves both pages.
   def moss_status_active?(status)
     status == WsjrdpCostCenter::STATUS_ACTIVE

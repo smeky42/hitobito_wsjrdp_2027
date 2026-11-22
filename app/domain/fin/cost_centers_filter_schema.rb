@@ -19,14 +19,15 @@
 module Fin::CostCentersFilterSchema
   extend Wsjrdp::Filtering::FilterSchema
 
-  # Moss knows a cost center as active or deactivated; one it does not know at
+  # Moss knows a cost center as active, deactivated or deleted; one it does not know at
   # all has moss_status NULL. NULL counts as INAKTIV here (the column's own
   # comment says the same), which is why the attribute filters on
   # COALESCE(moss_status, 'deactivated') rather than on the raw column -- the
   # same expression the table's "Moss Status" cell and its sort use.
   MOSS_STATUS_OPTIONS = Wsjrdp::Filtering::Options.values(-> {
     [[WsjrdpCostCenter::STATUS_ACTIVE, I18n.t("fin.moss_status.active")],
-      [WsjrdpCostCenter::STATUS_DEACTIVATED, I18n.t("fin.moss_status.deactivated")]]
+      [WsjrdpCostCenter::STATUS_DEACTIVATED, I18n.t("fin.moss_status.deactivated")],
+      [WsjrdpCostCenter::STATUS_DELETED, I18n.t("fin.moss_status.deleted")]]
   })
 
   # All case variants of the text operators, the same list the Buchungen page

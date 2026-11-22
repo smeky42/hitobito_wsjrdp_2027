@@ -1037,6 +1037,20 @@ describe Wsjrdp::TableState do
             .to eq("kind.card+invoice")
         end
 
+        it "takes an others member: every value not named, or none, shown as an icon" do
+          policy = filter_policy(policy: :url, fixed_groups: [kind_group.merge(
+            members: kind_group[:members] + [{key: "rest", label: "Andere", others: true}]
+          )])
+          card_and_rest = resolve(policy, {"u" => "kind.card+rest"})
+          expect(card_and_rest.filter.readonly_slots)
+            .to eq([[["kind", "in", "card"], ["kind", "not_in", "card", "invoice"], ["kind", "blank"]]])
+          rest = by_key(card_and_rest)["kind.rest"]
+          expect(rest).to have_attributes(active?: true, icon: "ellipsis-h", css_class: "flt-preset-icon-only")
+
+          only_rest = resolve(policy, {"u" => "kind.rest"})
+          expect(only_rest.filter.readonly_slots).to eq([[["kind", "not_in", "card", "invoice"], ["kind", "blank"]]])
+        end
+
         it "refuses a group without an attribute, a default that is no member, and a preset's sets: on it" do
           expect { resolve(filter_policy(fixed_groups: [kind_group.except(:attribute)])) }
             .to raise_error(ArgumentError, /needs an attribute:/)

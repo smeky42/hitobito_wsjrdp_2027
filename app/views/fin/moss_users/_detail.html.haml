@@ -1,0 +1,44 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of one Moss user, on its page and in a list row. Values come
+-#  from Fin::MossUsersHelper.
+-#
+-#  Locals: record (MossUser), ctx (Fin::AttrFormatContext)
+-#          edit_url, edit_turbo_frame: see fin/moss_organisation/_detail_shell
+- user = record
+= render layout: "fin/moss_organisation/detail_shell",
+  locals: {edit_url: local_assigns[:edit_url], edit_turbo_frame: local_assigns[:edit_turbo_frame]} do
+  = fin_detail(user, ctx, editing: false, layout: :list) do |d|
+    - d.attrs :first_name, :last_name, :email, :phone, :status, :roles,
+        first_name: {blank: :unset}, last_name: {blank: :unset}
+    - d.attrs :person, :team, :manager, person: {blank: :unset}
+    - d.attrs :comment, comment: {blank: :dash}
+    - d.attrs :moss_user_uuid, :moss_team_uuid, :manager_uuid, :moss_organisation_uuid, :moss_created_at, :moss_updated_at,
+        :last_seen_at, :moss_removed_at, :created_at, :updated_at
+    - reports = user.reports.includes(:person).order(:first_name, :last_name).to_a
+    - if reports.any?
+      - d.custom title: "Berichten an #{user} (#{reports.size})", key: :reports do
+        %ul.moss-org-list
+          - reports.each do |report|
+            %li
+              = moss_org_user_cell(report)
+              %span.text-muted.small= moss_org_status_label(report.status)
+    - led_teams = user.led_teams.order(:name).to_a
+    - if led_teams.any?
+      - d.custom title: "Leitet Teams (#{led_teams.size})", key: :led_teams do
+        %ul.moss-org-list
+          - led_teams.each do |team|
+            %li= moss_org_link(team.to_s, moss_team_path(team))
+    - departments = user.owned_departments.order(:name).to_a
+    - if departments.any?
+      - d.custom title: "Owner von Abteilungen (#{departments.size})", key: :owned_departments do
+        %ul.moss-org-list
+          - departments.each do |department|
+            %li= moss_org_link(department.to_s, moss_department_path(department))
+    - d.raw_data title: "Weitere Moss-Daten" do
+      - d.raw_entries :additional_info, title: "Zusatzdaten"

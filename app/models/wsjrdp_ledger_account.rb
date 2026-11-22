@@ -19,6 +19,7 @@
 class WsjrdpLedgerAccount < ActiveRecord::Base
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
+  STATUS_DELETED = "deleted"
 
   validates :number, presence: true, uniqueness: true
 
@@ -41,7 +42,8 @@ class WsjrdpLedgerAccount < ActiveRecord::Base
 
   # moss_status is NULL for accounts without a Moss connection
   scope :active, -> { where(moss_status: STATUS_ACTIVE) }
-  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, nil]) }
+  scope :deactivated, -> { where(moss_status: [STATUS_DEACTIVATED, STATUS_DELETED, nil]) }
+  scope :deleted, -> { where(moss_status: STATUS_DELETED) }
 
   # Every ledger account with its two-sided booking totals as REAL columns:
   #
