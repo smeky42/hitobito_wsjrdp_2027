@@ -76,7 +76,7 @@ describe "Credential store pages", type: :request do
         [:post, "/credentials/mail_account/finanzen/versions"], [:get, "/credentials/versions/#{row.id}/edit"],
         [:patch, "/credentials/versions/#{row.id}"], [:delete, "/credentials/versions/#{row.id}"],
         [:post, "/credentials/versions/#{row.id}/revoke"], [:post, "/credentials/versions/#{row.id}/unrevoke"],
-        [:post, "/credentials/versions/#{row.id}/rekey"]
+        [:post, "/credentials/versions/#{row.id}/rekey"], [:post, "/credentials/reload_local_file"]
       ]
       requests.each do |verb, path|
         sign_in(people(:cmt_leader)) # for the next request only: an exception leaves no session behind
@@ -262,6 +262,30 @@ describe "Credential store pages", type: :request do
         expect(html).to have_css("#credentials-no-key")
         expect(html.find("#credentials-file-skipped")).to have_text("„staging“")
         expect(html.find("#credentials-keys")).to have_text("Diese Umgebung hat keinen Schlüssel.")
+      end
+    end
+
+    describe "reading the local file again" do
+      it "offers the button only when the local file is there" do
+        get "/credentials"
+        expect(html).not_to have_css("#credentials-reload")
+
+        use_overrides(file: Wsjrdp::Credentials::LocalFile.new("stage: test\n", stage: "test", kinds: kinds))
+        get "/credentials"
+        expect(html).to have_button("Lokale Datei neu einlesen")
+      end
+
+      it "reads it again, or keeps the old state and says why" do
+        expect(Wsjrdp::Credentials::Overrides).to receive(:reload!)
+        post "/credentials/reload_local_file"
+        expect(response).to redirect_to("/credentials")
+        expect(flash[:notice]).to include("neu eingelesen")
+
+        allow(Wsjrdp::Credentials::Overrides).to receive(:reload!)
+          .and_raise(Wsjrdp::Credentials::ConfigurationError, "config/wsjrdp_credentials.local.yml: line 2: broken")
+        post "/credentials/reload_local_file"
+        expect(response).to redirect_to("/credentials")
+        expect(flash[:alert]).to include("alte Stand", "line 2: broken")
       end
     end
 

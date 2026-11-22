@@ -81,6 +81,7 @@ Rails.application.routes.draw do
     end
     get "credentials" => "credentials#index", :as => :credentials
     get "credentials/new" => "credentials#new", :as => :new_credential
+    post "credentials/reload_local_file" => "credentials#reload_local_file", :as => :reload_local_file_credentials
     scope "credentials/:kind/:account_key", constraints: {kind: %r{[^/]+}, account_key: %r{[^/]+}}, format: false do
       get "/" => "credentials#show", :as => :credential
       # The value of one hidden field, as JSON, never cached.

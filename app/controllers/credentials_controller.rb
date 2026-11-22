@@ -57,6 +57,14 @@ class CredentialsController < ApplicationController
       status: 422
   end
 
+  # Reads the local file (and the keys) again, without a restart.
+  def reload_local_file
+    Wsjrdp::Credentials::Overrides.reload!
+    redirect_to credentials_path, notice: t("credentials.reload.done", source: Wsjrdp::Credentials::LocalFile::SOURCE)
+  rescue Wsjrdp::Credentials::ConfigurationError => e
+    redirect_to credentials_path, alert: t("credentials.reload.failed", message: e.message)
+  end
+
   private
 
   def overview = @overview ||= Wsjrdp::Credentials::Overview.new
