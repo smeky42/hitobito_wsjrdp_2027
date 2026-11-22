@@ -292,7 +292,7 @@ describe WsjrdpCredential do
     end
 
     describe "#field_report" do
-      it "names the fields that are sealed, plain, in both columns, in the wrong column, unknown or not opening" do
+      it "names the fields that are sealed, plain, in both columns, in the wrong column, further or not opening" do
         row = deposit(values: mail_values.merge("imap_password" => "made-up-imap"))
         row.update_columns(public_data: row.public_data.merge("smtp_password" => "x", "made_up_old" => "y"),
           secret_data: row.secret_data.merge("imap_password" => "junk", "smtp_host" => row.secret_data["smtp_password"]))
@@ -302,7 +302,7 @@ describe WsjrdpCredential do
         expect(report.plain).to include("smtp_host", "smtp_password", "made_up_old")
         expect(report.in_both).to contain_exactly("smtp_password", "smtp_host")
         expect(report.wrong_column).to contain_exactly("smtp_host", "smtp_password")
-        expect(report.unknown).to eq(["made_up_old"])
+        expect(report.further).to eq(["made_up_old"])
         expect(report.not_opening).to contain_exactly("imap_password", "smtp_host")
         expect(report.to_h.to_s).not_to include(password)
         expect(report.to_h.to_s).not_to include("mail.example.org")
@@ -317,7 +317,7 @@ describe WsjrdpCredential do
         data = YAML.safe_load_file(Wsjrdp::Credentials::Kinds::PATH)
         data["kinds"].delete("mail_account")
         report = deposit.field_report(keys: keys, kinds: Wsjrdp::Credentials::Kinds.new(data))
-        expect([report.wrong_column, report.unknown, report.not_opening]).to eq([nil, nil, []])
+        expect([report.wrong_column, report.further, report.not_opening]).to eq([nil, nil, []])
       end
     end
   end
@@ -485,13 +485,25 @@ describe WsjrdpCredential do
   end
 
   describe "a registry changed since the version was written" do
-    it "drops the fields the kind no longer has" do
+    it "keeps a field the kind no longer has as a further field, public or sealed as it lies" do
       row = deposit(values: mail_values.merge("sent_folder" => "Sent"))
-      changed = changed_kinds("mail_account") { |fields| fields.delete("sent_folder") }
+      changed = changed_kinds("mail_account") do |fields|
+        fields.delete("sent_folder")
+        fields.delete("smtp_password")
+      end
 
-      credential = row.examine(keys: keys, kinds: changed).credential
-      expect(credential.field_names).not_to include("sent_folder")
-      expect(credential.secret(:smtp_password)).to eq(password)
+      examination = row.examine(keys: keys, kinds: changed)
+      expect(examination.state).to eq(:active)
+      expect(examination.credential.further_field_names).to eq(%w[sent_folder smtp_password])
+      expect(examination.credential[:sent_folder]).to eq("Sent")
+      expect(examination.credential.secret(:smtp_password)).to eq(password)
+      expect { examination.credential[:smtp_password] }.to raise_error(Wsjrdp::Credentials::Credential::WrongAccess)
+    end
+
+    it "is kind_mismatch for a further field under a reserved name, written past the checks" do
+      row = deposit
+      row.update_column(:public_data, row.public_data.merge("valid_from" => "x"))
+      expect(row.reload.state(keys: keys, kinds: kinds)).to eq(:kind_mismatch)
     end
 
     it "casts the rest again, filling a new default" do

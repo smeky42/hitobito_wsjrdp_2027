@@ -1,0 +1,91 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One row of further fields; without a row, the empty template row. An
+-#  existing field keeps its name and stays public or encrypted, and is
+-#  removed on save when marked. Only a new row can be set to encrypted.
+- scope = "credential_versions.form"
+- new_row = row.nil? || row.new?
+- sealed = row&.sealed
+- secret = row&.secret?
+- base = "credential[further][#{index}]"
+- codes = row ? form.further_problems_of(row) : []
+- write_problems = row ? credential_problems_of(field_errors, row.name) : []
+- invalid = codes.any? || write_problems.any?
+- label_classes = "col-md-3 col-xl-2"
+- value_classes = "col-md-9 col-lg-8 col-xl-8"
+.row.mb-2{data: {credential_further_row: index}}
+  -# The lock of a new row is a switch; on an existing row it only shows
+  -# whether the field is encrypted.
+  %div{class: label_classes}
+    - if new_row
+      %input.form-control.form-control-sm.font-monospace{type: "text", name: "#{base}[name]", value: row&.name,
+        spellcheck: "false", placeholder: t("#{scope}.further_name"), "aria-label": t("#{scope}.further_name"),
+        class: ("is-invalid" if codes.any?), data: {credential_further_name: true}}
+    - else
+      %input{type: "hidden", name: "#{base}[was]", value: row.was}
+      .form-control-plaintext.form-control-sm.font-monospace.text-muted.text-md-end{data: {credential_further_shown_name: true}}= row.name
+  %div{class: value_classes}
+    .credential-further-value
+      .input-group.input-group-sm
+        - if new_row
+          %input.btn-check{type: "checkbox", id: "credential_further_seal_#{index}", name: "#{base}[seal]", value: "1",
+            autocomplete: "off", checked: secret, disabled: key_problem.present?, data: {credential_further_seal: true}}
+          %label.btn.btn-outline-secondary.credential-seal{for: "credential_further_seal_#{index}",
+            title: t("#{scope}.further_seal")}
+            %span.credential-seal-on= icon(:lock)
+            %span.credential-seal-off= icon(:'lock-open')
+            %span.visually-hidden= t("#{scope}.further_seal")
+        - else
+          - state = t("#{scope}.#{sealed ? "further_sealed" : "further_plain"}")
+          %span.input-group-text.bg-transparent.text-muted{title: state,
+            data: {credential_further_state: sealed ? "sealed" : "plain"}}
+            = icon(sealed ? :lock : :'lock-open')
+            %span.visually-hidden= state
+        - unless sealed
+          %input.form-control.form-control-sm.font-monospace{type: "text", name: "#{base}[value]",
+            value: (row.value unless secret || row.nil?), spellcheck: "false", hidden: secret, disabled: secret,
+            "aria-label": t("#{scope}.further_value"), class: ("is-invalid" if invalid),
+            data: {credential_further_value: true}}
+        - if new_row || sealed
+          %input.form-control.form-control-sm.font-monospace{type: "password", name: "credential[further_secret][#{index}]",
+            value: (form.further_secret_text(row).presence if row&.secret?),
+            autocomplete: "new-password", spellcheck: "false", hidden: !secret, disabled: !secret || (sealed && key_problem),
+            placeholder: t("#{scope}.secret_placeholder"), "aria-label": t("#{scope}.further_value"),
+            class: ("is-invalid" if invalid), data: {credential_further_secret: true}}
+          = render "credential_versions/show_secret_button"
+      -# The remove button.
+      - if new_row
+        %a.credential-further-trash.text-danger{href: "#", role: "button", title: t("#{scope}.further_drop"),
+          data: {credential_further_drop: true}}
+          = icon(:'trash-alt')
+          %span.visually-hidden= t("#{scope}.further_drop")
+      - else
+        %input.btn-check{type: "checkbox", id: "credential_further_remove_#{index}", name: "#{base}[remove]", value: "1",
+          autocomplete: "off", checked: row.removed, disabled: sealed && key_problem.present?}
+        %label.credential-further-trash.text-danger.mb-0{for: "credential_further_remove_#{index}", role: "button",
+          title: t("#{scope}.remove")}
+          = icon(:'trash-alt')
+          %span.visually-hidden= t("#{scope}.remove")
+    .form-text
+      - unless new_row
+        %span.credential-remove-hint.me-1= t("#{scope}.further_removed_hint")
+      - if new_row || sealed
+        %span.credential-seal-hint-on= t("#{scope}.further_sealed_hint")
+      - if new_row || !sealed
+        %span.credential-seal-hint-off= t("#{scope}.further_plain_hint")
+    - if sealed && key_problem
+      .form-text.text-danger= t("credentials.version.key_problems.#{key_problem}_html",
+        fingerprint: credential_fingerprint(row_record.encryption_key_fingerprint))
+    - elsif sealed && secret_values.key?(row.name)
+      .form-text= t("#{scope}.secret_set_html", fingerprint: credential_value_fingerprint(secret_values[row.name]))
+    -# Filled by the name check while typing.
+    .invalid-feedback.d-block{hidden: true, data: {credential_further_live: true}}
+    - codes.each do |code|
+      .invalid-feedback.d-block= t("#{scope}.further_codes.#{code}")
+    - write_problems.each do |problem|
+      .invalid-feedback.d-block= credential_problem_message(problem)

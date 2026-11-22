@@ -77,6 +77,17 @@ describe Wsjrdp::Credentials::Variables do
       expect(source.answer("moss_api", "finanzen")).to be_nil
     end
 
+    it "takes a field the kind does not have as a public further field, a misspelt one too" do
+      env = moss.merge("#{prefix}TENANT" => "made-up-tenant", "#{prefix}CLIENT_SECRT" => "made-up-typo")
+      source = variables(env)
+      credential = source.answer("moss_api", "default").candidates.first
+
+      expect(source.problems).to be_empty
+      expect(credential.further_field_names).to eq(%w[client_secrt tenant])
+      expect([credential[:tenant], credential[:client_secrt]]).to eq(%w[made-up-tenant made-up-typo])
+      expect { credential.secret(:tenant) }.to raise_error(Wsjrdp::Credentials::Credential::WrongAccess)
+    end
+
     it "takes an empty value as not set" do
       env = moss.merge("#{prefix}SCOPE" => "", "#{prefix}EXPIRES_AT" => "", "#{prefix}NAME" => "")
       version = variables(env).account("moss_api", "default").versions.first
@@ -153,8 +164,6 @@ describe Wsjrdp::Credentials::Variables do
       "HITOBITO_CREDENTIAL__DEVELOPMENT__1MOSS__DEFAULT__CLIENT_ID" => "the kind is not upper-case snake",
       "HITOBITO_CREDENTIAL__DEV-1__MOSS_API__DEFAULT__CLIENT_ID" => "not in upper case",
       "HITOBITO_CREDENTIAL__DEVELOPMENT__NO_SUCH_KIND__DEFAULT__CLIENT_ID" => "no kind no_such_kind in",
-      "HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__DEFAULT__CLIENT_SECRT" => "CLIENT_SECRT: moss_api has no such field",
-      "HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__DEFAULT__JSON_CLASS" => "JSON_CLASS: moss_api has no such field",
       "HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__DEFAULT__VALID_FROM" => "not an instant",
       "HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__DEFAULT__EXPIRES_AT" => "not an instant",
       "HITOBITO_CREDENTIAL__DEVELOPMENT__MOSS_API__DEFAULT__CREATED_AT" => "not an instant"
@@ -172,9 +181,9 @@ describe Wsjrdp::Credentials::Variables do
     end
 
     it "names every problem in one message, never a value" do
-      refused(moss.merge("#{prefix}EXPIRES_AT" => "tomorrow-#{secret}", "#{prefix}SECRT" => secret)) do |message|
+      refused(moss.merge("#{prefix}EXPIRES_AT" => "tomorrow-#{secret}", "#{prefix}VALID_FROM" => secret)) do |message|
         expect(message).to start_with("HITOBITO_CREDENTIAL__… variables (stage development): ")
-        expect(message).to include("EXPIRES_AT: not an instant", "SECRT: moss_api has no such field")
+        expect(message).to include("EXPIRES_AT: not an instant", "VALID_FROM: not an instant")
         expect(message).not_to include(secret)
       end
     end
@@ -358,12 +367,12 @@ describe Wsjrdp::Credentials::Variables do
 
       it "logs the problems and the warnings, never a value" do
         output = StringIO.new
-        variables(moss.merge("#{prefix}CLIENT_SECRT" => secret,
+        variables(moss.merge("#{prefix}EXPIRES_AT" => secret,
           "HITOBITO_CREDENTIAL__STAGING__MOSS_API__DEFAULT__CLIENT_ID" => secret), stage: "production")
           .log_summary(Logger.new(output))
 
         expect(output.string).to include("ERROR",
-          "CLIENT_SECRT: moss_api has no such field -- refused, no version is used: moss_api/default", "WARN",
+          "EXPIRES_AT: not an instant", "-- refused, no version is used: moss_api/default", "WARN",
           "belongs to stage staging", "overriding moss_api/default")
         expect(output.string).not_to include(secret)
       end

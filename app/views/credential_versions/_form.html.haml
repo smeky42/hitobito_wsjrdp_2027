@@ -29,9 +29,11 @@
   - if row
     -# A send after someone else's change is refused.
     = hidden_field_tag "credential[lock]", params.dig(:credential, :lock) || credential_lock(row)
-  - if all_problems.any?
+  - messages = all_problems.map { |problem| credential_problem_message(problem) }
+  - messages << t("#{scope}.further_problems") if form.further_problems.any?
+  - if messages.any?
     .alert.alert-danger#credential-form-errors
-      = safe_join(all_problems.map { |problem| credential_problem_message(problem) }, tag.br)
+      = safe_join(messages, tag.br)
 
   .row.mb-2{data: {credential_kind_row: true}}
     %span{class: label_classes}= t("credentials.attributes.kind")
@@ -134,6 +136,28 @@
           - problems.each do |problem|
             .invalid-feedback.d-block= credential_problem_message(problem)
 
+    -# The further fields: one row each, and a button to add more.
+    - further_locals = {form: form, field_errors: field_errors, key_problem: key_problem, secret_values: secret_values,
+      row_record: row}
+    %h2.h6.mt-4.mb-3.pb-1.border-bottom{data: {credential_further_heading: true}}= t("credentials.version.further")
+    -# What the name check while typing needs: the names that are taken and
+    -# the messages.
+    - live_messages = %w[not_a_name reserved field_of_the_kind duplicate].to_h { |code| [code, t("#{scope}.further_codes.#{code}")] }
+    #credential-further-rows{data: {reserved: Wsjrdp::Credentials::Kinds::RESERVED_FIELD_NAMES, kind_fields: kind.field_names,
+      length: Wsjrdp::Credentials::NAME_LENGTH, messages: live_messages.to_json}}
+      - form.further_rows.each do |further_row|
+        = render "credential_versions/further_row", row: further_row, index: further_row.index, **further_locals
+    .row.mb-2
+      %div{class: value_classes + " offset-md-3 offset-xl-2"}
+        %button.btn.btn-sm.btn-outline-primary{type: "button",
+          data: {credential_further_add: true, next_index: (form.further_rows.map { |r| r.index.to_i }.max || -1) + 1}}
+          = icon(:plus)
+          = t("#{scope}.further_add")
+    %template#credential-further-template
+      = render "credential_versions/further_row", row: nil, index: "__INDEX__", **further_locals
+    = render "credential_versions/further_js"
+
+  %hr.my-3
   .row.mb-2
     %span{class: label_classes}= t("credentials.attributes.encryption_key_fingerprint")
     %div{class: value_classes}

@@ -13,7 +13,8 @@ module Wsjrdp::Credentials
   # version (doc/wsjrdp/credentials.md, "Overrides").
   #
   # An override's values are plain text in memory; nothing is sealed, and a
-  # version has no row, no id and no key.
+  # version has no row, no id and no key. A field the kind does not have is
+  # a further field, and public.
   class Override
     # The states of a version, in the order they are checked.
     REFUSED = :refused
@@ -27,6 +28,8 @@ module Wsjrdp::Credentials
 
     VERSION_KEYS = [*Kinds::RESERVED_FIELD_NAMES, "vars"].freeze
     INSTANTS = %w[created_at valid_from expires_at].freeze
+    FURTHER_NAME_MESSAGES = {not_a_name: "the field is not lower-case snake of at most #{NAME_LENGTH} characters",
+                             reserved: "the field name is reserved"}.freeze
 
     # One version as given. The values are handed out only through
     # #given_values; inspect and as_json show field names and instants,
@@ -105,10 +108,14 @@ module Wsjrdp::Credentials
         yield "vars", vars.nil? ? "is missing" : "is not a mapping"
         vars = {}
       end
+      # A field the kind does not have is a further field, always public.
       vars.each_key do |field|
         next if Wsjrdp::Credentials.name?(field) && kind.field?(field)
 
-        yield "vars.#{Wsjrdp::Credentials.shown_name(field)}", "#{kind.name} has no such field"
+        code = kind.further_name_problem(field)
+        next unless code
+
+        yield "vars.#{Wsjrdp::Credentials.shown_name(field)}", FURTHER_NAME_MESSAGES.fetch(code)
       end
 
       Version.new(position: position, values: vars, name: (name == "") ? nil : name, **instants)

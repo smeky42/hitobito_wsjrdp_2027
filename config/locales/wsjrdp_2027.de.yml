@@ -2819,6 +2819,7 @@ de:
       moss_api: Moss API
       api_key: API-Key
       basic_auth: Basic Auth
+      keycloak_admin: Keycloak-Admin
     sources:
       variables: Umgebungsvariablen
       file: Lokale Datei
@@ -2850,7 +2851,8 @@ de:
     # The problem messages; %{field} is the name of the field.
     codes:
       required: "%{field}: muss ausgefüllt werden."
-      unknown: "%{field}: kennt die Art nicht."
+      reserved: "%{field}: Dieser Name ist reserviert."
+      field_of_the_kind: "%{field}: ist schon ein Feld der Art."
       not_valid_text: "%{field}: ist kein gültiger Text."
       not_a_string: "%{field}: ist kein Text."
       not_an_email: "%{field}: ist keine E-Mail-Adresse."
@@ -2959,6 +2961,7 @@ de:
       deposited_html: hinterlegt %{time} von %{author}
       created_html: angelegt %{time}
       key_active: (aktiver Schlüssel)
+      further: Weitere Angaben
       variables: Umgebungsvariablen
       read_only: hier nicht änderbar
       refused: >-
@@ -2999,7 +3002,6 @@ de:
     field_report:
       wrong_column: "Das Feld %{field} liegt in der falschen Spalte (versiegelt oder offen, anders als die Art sagt)."
       not_opening: Das geheime Feld %{field} lässt sich nicht öffnen.
-      unknown: Das Feld %{field} kennt die Art nicht.
     reveal:
       refused:
         disabled: Anzeigen ist abgeschaltet.
@@ -3039,6 +3041,7 @@ de:
       title: "Version bearbeiten: %{account}"
     form:
       locked: gesperrt
+      remove: Feld beim Speichern entfernen
       secret_set_html: "Fingerabdruck %{fingerprint}"
       secret: geheim
       secret_placeholder: geheim · wird verschlüsselt gespeichert
@@ -3050,6 +3053,25 @@ de:
       valid_from_help: leer = sofort
       expires_at_help: leer = läuft nicht ab
       show_secret: Eingabe anzeigen
+      further_add: Weitere Angabe hinzufügen
+      further_name: Name
+      further_value: Wert
+      further_seal: geheim (wird verschlüsselt gespeichert)
+      further_sealed_hint: Wird verschlüsselt gespeichert.
+      further_plain_hint: Wird unverschlüsselt gespeichert.
+      further_removed_hint: Wird beim Speichern gelöscht.
+      further_sealed: verschlüsselt
+      further_plain: unverschlüsselt
+      further_drop: Zeile entfernen
+      further_problems: "Weitere Angaben: Bitte die markierten Zeilen prüfen."
+      # The problems of one row of further fields, shown at the row.
+      further_codes:
+        name_missing: Der Name fehlt.
+        not_a_name: "Der Name muss aus Kleinbuchstaben, Ziffern und einzelnen _ bestehen (höchstens 48 Zeichen)."
+        reserved: Dieser Name ist reserviert (name, created_at, valid_from, expires_at).
+        field_of_the_kind: Dieser Name ist schon ein Feld der Art.
+        duplicate: Dieser Name kommt schon vor.
+        value_missing: Der Wert fehlt.
       overridden: "Überschrieben durch %{mark}: eine neue Version der Datenbank wird hier nicht verwendet."
       previous_version: >-
         Die bisherige Version bleibt bis zu ihrem Ablauf als Rückfall bestehen. Soll sie früher

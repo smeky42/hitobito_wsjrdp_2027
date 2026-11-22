@@ -23,8 +23,22 @@ describe Wsjrdp::Credentials::Kinds do
   describe "the committed file" do
     let(:kinds) { described_class.load }
 
-    it "loads with its four kinds" do
-      expect(kinds.names).to eq(%w[mail_account moss_api api_key basic_auth])
+    it "loads with its five kinds" do
+      expect(kinds.names).to eq(%w[mail_account moss_api api_key basic_auth keycloak_admin])
+    end
+
+    it "gives the Keycloak admin login as the scripts use it" do
+      keycloak = kinds.fetch(:keycloak_admin)
+
+      expect(keycloak.field_names).to eq(%w[server_url realm server_realm client_id client_secret admin_username
+        admin_password use_service_account])
+      expect(keycloak.secret_field_names).to eq(%w[client_secret admin_password])
+      expect(keycloak.fields.to_h { |field| [field.name, field.default] }.compact)
+        .to eq("server_url" => "https://login.worldscoutjamboree.de", "server_realm" => "master",
+          "client_id" => "admin-cli", "use_service_account" => false)
+      expect(keycloak.field("use_service_account").type).to eq("boolean")
+      expect(keycloak.fields.select(&:required?).map(&:name)).to eq(%w[server_url realm])
+      expect(keycloak.title_field).to eq("admin_username")
     end
 
     it "gives the fields of a kind in order, secret and public" do

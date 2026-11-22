@@ -1,0 +1,144 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The further fields in the form: add and remove rows, and switch a new
+-#  row between public and encrypted. Names are checked while typing; the
+-#  server checks again. The empty template row never holds a value.
+:css
+  .btn-check:checked + .credential-seal .credential-seal-off,
+  .btn-check:not(:checked) + .credential-seal .credential-seal-on { display: none; }
+  [data-credential-further-row]:has([data-credential-further-seal]:checked) .credential-seal-hint-off,
+  [data-credential-further-row]:has([data-credential-further-seal]:not(:checked)) .credential-seal-hint-on { display: none; }
+  [data-credential-further-row]:has([data-credential-further-seal]:not(:checked)) [data-credential-show-secret] { display: none; }
+  /* Keep the rounded corners when a hidden input sits at the edge. */
+  .credential-further-value > .input-group > .btn-check:first-child + .btn {
+    margin-left: 0 !important;
+    border-top-left-radius: var(--bs-border-radius-sm, .25rem) !important;
+    border-bottom-left-radius: var(--bs-border-radius-sm, .25rem) !important;
+  }
+  .credential-further-value > .input-group > .form-control:not([hidden]):has(+ [hidden]) {
+    border-top-right-radius: var(--bs-border-radius-sm, .25rem) !important;
+    border-bottom-right-radius: var(--bs-border-radius-sm, .25rem) !important;
+  }
+  .credential-further-value { display: flex; align-items: center; gap: .5rem; position: relative; }
+  .credential-further-value > .input-group { flex: 1 1 auto; }
+  .credential-further-trash { cursor: pointer; text-decoration: none; }
+  @media (min-width: 992px) {
+    .credential-further-value .credential-further-trash { position: absolute; left: 100%; margin-left: .5rem; }
+  }
+  /* A row marked for removal. */
+  [data-credential-further-row]:has(input[name$='[remove]']:checked) [data-credential-further-shown-name] { text-decoration: line-through; }
+  [data-credential-further-row]:not(:has(input[name$='[remove]']:checked)) .credential-remove-hint { display: none; }
+:javascript
+  (function () {
+    if (window.WsjrdpCredentialFurther) return
+
+    document.addEventListener("click", (event) => {
+      const add = event.target.closest("[data-credential-further-add]")
+      if (add) {
+        event.preventDefault()
+        const template = document.getElementById("credential-further-template")
+        const list = document.getElementById("credential-further-rows")
+        const index = add.dataset.nextIndex
+        add.dataset.nextIndex = String(Number(index) + 1)
+        list.insertAdjacentHTML("beforeend", template.innerHTML.replaceAll("__INDEX__", index))
+        const name = list.lastElementChild.querySelector("[data-credential-further-name]")
+        if (name) name.focus()
+        return
+      }
+      const drop = event.target.closest("[data-credential-further-drop]")
+      if (drop) {
+        event.preventDefault()
+        drop.closest("[data-credential-further-row]").remove()
+      }
+    })
+
+    document.addEventListener("change", (event) => {
+      const toggle = event.target.closest("[data-credential-further-seal]")
+      if (!toggle) return
+      const row = toggle.closest("[data-credential-further-row]")
+      const plain = row.querySelector("[data-credential-further-value]")
+      const secret = row.querySelector("[data-credential-further-secret]")
+      const [from, to] = toggle.checked ? [plain, secret] : [secret, plain]
+      to.value = from.value
+      from.value = ""
+      from.hidden = true
+      from.disabled = true
+      to.hidden = false
+      to.disabled = false
+    })
+
+    // Checks the names as the server does. A field marked for removal
+    // keeps its name until it is saved.
+    const NAME = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/
+    const check = () => {
+      const list = document.getElementById("credential-further-rows")
+      if (!list) return
+      const reserved = JSON.parse(list.dataset.reserved)
+      const kindFields = JSON.parse(list.dataset.kindFields)
+      const messages = JSON.parse(list.dataset.messages)
+      const length = Number(list.dataset.length)
+      const rows = [...list.querySelectorAll("[data-credential-further-row]")]
+      const nameOf = (row) => {
+        const input = row.querySelector("[data-credential-further-name]")
+        if (input) return input.value.trim()
+        const was = row.querySelector("input[name$='[was]']")
+        return was ? was.value : ""
+      }
+      const counts = {}
+      rows.forEach((row) => {
+        const name = nameOf(row)
+        if (name) counts[name] = (counts[name] || 0) + 1
+      })
+      rows.forEach((row) => {
+        const input = row.querySelector("[data-credential-further-name]")
+        const live = row.querySelector("[data-credential-further-live]")
+        if (!input || !live) return
+        const name = input.value.trim()
+        let code = null
+        if (name !== "") {
+          if (name.length > length || !NAME.test(name)) code = "not_a_name"
+          else if (reserved.includes(name)) code = "reserved"
+          else if (kindFields.includes(name)) code = "field_of_the_kind"
+          else if (counts[name] > 1) code = "duplicate"
+        }
+        input.classList.toggle("is-invalid", code !== null)
+        live.textContent = code ? messages[code] : ""
+        live.hidden = code === null
+      })
+    }
+    document.addEventListener("input", (event) => {
+      if (event.target.closest("[data-credential-further-name]")) check()
+    })
+    // A row marked for removal: its inputs are locked.
+    const markRemoval = (remove) => {
+      const row = remove.closest("[data-credential-further-row]")
+      row.querySelectorAll(".credential-further-value .input-group input:not([hidden]), " +
+        ".credential-further-value .input-group button").forEach((control) => {
+        // A control that was disabled from the start stays disabled.
+        if (!("wasDisabled" in control.dataset)) control.dataset.wasDisabled = control.disabled ? "1" : ""
+        control.disabled = remove.checked || control.dataset.wasDisabled === "1"
+      })
+    }
+    document.addEventListener("change", (event) => {
+      const remove = event.target.closest("input[name$='[remove]']")
+      if (!remove) return
+      markRemoval(remove)
+      check()
+    })
+    const markAll = () => document.querySelectorAll("[data-credential-further-row] input[name$='[remove]']:checked")
+      .forEach(markRemoval)
+    document.addEventListener("turbo:load", markAll)
+    markAll()
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-credential-further-add], [data-credential-further-drop]")) setTimeout(check)
+    })
+    document.addEventListener("turbo:load", check)
+    check()
+
+    window.WsjrdpCredentialFurther = true
+  })();

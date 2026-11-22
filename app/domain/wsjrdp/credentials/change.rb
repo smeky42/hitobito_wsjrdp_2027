@@ -22,6 +22,10 @@ module Wsjrdp::Credentials
   # (else key_not_active, key_missing or unknown_scheme). The row is read
   # again and locked. With expected_updated_at (the row's updated_at when a
   # form was drawn), a row changed since is refused as stale.
+  #
+  # A further field (one the kind does not have) is sealed when
+  # secret_further_fields names it or when it is sealed already. A sealed
+  # further field is treated like a secret field.
   class Change
     # An attribute left out keeps its value.
     NOT_GIVEN = Object.new.freeze
@@ -29,7 +33,8 @@ module Wsjrdp::Credentials
     def self.call(**) = new(**).call
 
     def initialize(record:, values: nil, name: NOT_GIVEN, comment: NOT_GIVEN, valid_from: NOT_GIVEN,
-      expires_at: NOT_GIVEN, revoked_at: NOT_GIVEN, expected_updated_at: nil, keys: Keys.current, kinds: Kinds.current)
+      expires_at: NOT_GIVEN, revoked_at: NOT_GIVEN, expected_updated_at: nil, secret_further_fields: [],
+      keys: Keys.current, kinds: Kinds.current)
       unless record.is_a?(WsjrdpCredential) && record.persisted?
         raise ArgumentError, "the record is not a saved #{WsjrdpCredential.name}"
       end
@@ -44,6 +49,7 @@ module Wsjrdp::Credentials
       @id = record.id
       @expected_updated_at = expected_updated_at
       @values = (values || {}).to_h { |name, value| [Wsjrdp::Credentials.name_of(name), value] }
+      @secret_further_fields = Array(secret_further_fields).map { |field| Wsjrdp::Credentials.name_of(field) }
       @keys = keys
       @kinds = kinds
     end
@@ -77,7 +83,7 @@ module Wsjrdp::Credentials
       planned = plan(row, kind, field_errors)
       warnings = check_result(row, kind, planned, field_errors)
       assign_attributes(row)
-      write_fields(row, kind, planned) if field_errors.empty?
+      write_fields(row, planned) if field_errors.empty?
       row.valid?
       errors = WriteResult.problems_of(row)
       return WriteResult.new(field_errors: field_errors, errors: errors, warnings: warnings) if (errors + field_errors).any?
@@ -86,12 +92,19 @@ module Wsjrdp::Credentials
       WriteResult.new(record: row, warnings: warnings)
     end
 
-    # {name => cast value, or nil to remove}.
+    # {name => cast value, or nil to remove}; @fields holds the field of each.
     def plan(row, kind, field_errors)
       key_problem = row.secret_key_problem(@keys)
+      @fields = {}
       @values.each_with_object({}) do |(name, raw), planned|
         field = kind.field(name)
-        next field_errors << Kind::Problem.new(Wsjrdp::Credentials.shown_name(name), :unknown) unless field
+        unless field
+          code = kind.further_name_problem(name)
+          next field_errors << Kind::Problem.new(Wsjrdp::Credentials.shown_name(name), code) if code
+
+          field = kind.further_field(name, secret: row.sealed?(name) || @secret_further_fields.include?(name))
+        end
+        @fields[name] = field
         next field_errors << Kind::Problem.new(name, key_problem) if field.secret? && key_problem
         next planned[name] = nil if raw.nil? || raw == ""
 
@@ -122,13 +135,13 @@ module Wsjrdp::Credentials
       end
     end
 
-    def write_fields(row, kind, planned)
+    def write_fields(row, planned)
       return if planned.empty?
 
       key = @keys.find_by_fingerprint(row.encryption_key_fingerprint)
       current = row.readable_values(key).first
       planned.each do |name, value|
-        field = kind.field(name)
+        field = @fields.fetch(name)
         next if unchanged?(row, field, current, value)
 
         row.write_field(name, value, secret: field.secret?, key: key)

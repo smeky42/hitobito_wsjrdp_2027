@@ -33,11 +33,12 @@ module Wsjrdp::Credentials
     # and the controller answers only while this is true.
     def self.enabled? = true
 
-    # Whether a field is shown hidden: a secret field, an encrypted field,
-    # and any field the kind does not know (it may be a removed secret).
+    # Whether a field is shown hidden: a secret field and any encrypted
+    # field; every field when the kind is unknown.
     def self.masked?(name, kind:, record: nil)
-      field = kind&.field(name)
-      field.nil? || field.secret? || record&.sealed?(name) || false
+      return true unless kind
+
+      kind.field(name)&.secret? || record&.sealed?(name) || false
     end
 
     attr_reader :version, :field

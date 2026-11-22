@@ -144,7 +144,7 @@ describe Wsjrdp::Credentials do
 
     it "never repeats a 64-hex secret given as a name" do
       result = kind.cast({hex_secret => "x"}, stage: "test")
-      expect([result.errors.first.field, result.errors.first.code]).to eq(["(not a name)", :unknown])
+      expect([result.errors.first.field, result.errors.first.code]).to eq(["(not a name)", :not_a_name])
       expect([result.inspect, result.to_json].join).not_to include(hex_secret)
       # A 64-hex secret is a valid account key; one with a character a key
       # does not take is refused without being repeated.
