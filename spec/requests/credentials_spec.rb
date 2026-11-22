@@ -24,6 +24,10 @@ describe "Credential store pages", type: :request do
 
   def html = Capybara.string(response.body)
 
+  # The empty template row of further fields (a parser keeps a template's
+  # content apart).
+  def further_template = response.body[%r{<template[^>]*credential-further-template[^>]*>.*?</template>}m].to_s
+
   def deposit!(kind: "mail_account", account_key: "finanzen", values: mail_values, **options)
     Wsjrdp::Credentials::Deposit.call(kind: kind, account_key: account_key, values: values, **options)
       .tap { |result| expect(result).to be_saved }.record
@@ -306,22 +310,22 @@ describe "Credential store pages", type: :request do
 
       it "names what is wrong with a row and lists the rows of other stages, deletable only" do
         wrong = deposit!
-        wrong.update_columns(public_data: wrong.public_data.merge("legacy_token" => "made-up-legacy"))
+        wrong.update_columns(public_data: wrong.public_data.merge("smtp_password" => "made-up-plain"))
         other = deposit!(account_key: "finanzen")
         other.update_columns(stage: "development")
 
         get "/credentials/mail_account/finanzen"
 
         card = html.find("#credential-version-#{wrong.id}")
-        expect(card.find("[data-credential-hints]")).to have_text("Das Feld legacy_token kennt die Art nicht.")
-        expect(card.find("[data-credential-field='legacy_token']")).to have_text("••••••••")
+        expect(card.find("[data-credential-hints]")).to have_text("Das Feld smtp_password liegt in der falschen Spalte")
+        expect(card.find("[data-credential-field='smtp_password']")).to have_text("••••••••")
         other_card = html.find("#credential-version-#{other.id}")
         expect(other_card.find("[data-credential-chip='state']")).to have_text("andere Umgebung")
         expect(other_card.find("[data-credential-stage-row]")).to have_text("development")
         expect(other_card).to have_button("Löschen")
         expect(other_card).not_to have_link("Bearbeiten")
         expect(other_card).not_to have_button("Anzeigen")
-        expect_nothing_secret(password, "made-up-legacy")
+        expect_nothing_secret(password, "made-up-plain")
       end
 
       it "shows the overrides read-only with their source, and what they override" do
@@ -824,6 +828,211 @@ describe "Credential store pages", type: :request do
       end
     end
 
+    describe "further fields" do
+      let(:pin) { "made-up-further-pin-2468" }
+
+      def further!(**options)
+        deposit!(values: mail_values.merge("tenant" => "made-up-tenant", "pin" => pin),
+          secret_further_fields: ["pin"], **options)
+      end
+
+      it "keeps a public one plain and seals a secret one by itself" do
+        row = further!
+        expect(row.public_data["tenant"]).to eq("made-up-tenant")
+        expect(row.sealed?("pin")).to be true
+        expect(row.plain?("pin")).to be false
+        expect(Wsjrdp::Credentials.fetch(:mail_account, "finanzen").secret(:pin)).to eq(pin)
+      end
+
+      it "shows them on the card, the sealed one masked and revealable" do
+        row = further!
+        get "/credentials/mail_account/finanzen"
+
+        card = html.find("#credential-version-#{row.id}")
+        expect(card.all("[data-credential-field]").pluck("data-credential-field")).to include("pin", "tenant")
+        expect(card.find("[data-credential-field='tenant']")).to have_text("made-up-tenant")
+        sealed = card.find("[data-credential-field='pin']")
+        expect(sealed).to have_text("••••••••")
+        expect(sealed).to have_button("Anzeigen")
+        expect(card).not_to have_text("kennt die Art nicht")
+        expect_nothing_secret(password, pin)
+      end
+
+      it "reveals a sealed one and refuses a public one" do
+        row = further!
+        post "/credentials/mail_account/finanzen/reveal", params: {source: "database", version_id: row.id, field: "pin"}
+        expect(response.parsed_body).to eq("value" => pin)
+
+        post "/credentials/mail_account/finanzen/reveal",
+          params: {source: "database", version_id: row.id, field: "tenant"}
+        expect(response.parsed_body).to eq("error" => "Dieses Feld ist nicht geheim.")
+      end
+
+      it "shows an override's further field plainly, with its variable" do
+        use_overrides(variables: Wsjrdp::Credentials::Variables.new(
+          {"HITOBITO_CREDENTIAL__TEST__MOSS_API__DEFAULT__CLIENT_ID" => "env-client",
+           "HITOBITO_CREDENTIAL__TEST__MOSS_API__DEFAULT__CLIENT_SECRET" => "made-up-env-secret",
+           "HITOBITO_CREDENTIAL__TEST__MOSS_API__DEFAULT__TENANT" => "made-up-env-tenant"},
+          stage: "test", kinds: kinds
+        ))
+        get "/credentials/moss_api/default"
+
+        field = html.find("[data-credential-source='variables'] [data-credential-field='tenant']")
+        expect(field).to have_text("made-up-env-tenant")
+        expect(field.find("[data-credential-variable]")).to have_text("…__TENANT")
+        expect(field).not_to have_button("Anzeigen")
+        expect_nothing_secret("made-up-env-secret")
+      end
+
+      it "deposits rows from the form, a secret one under a filtered parameter" do
+        params = {credential: {fields: {client_id: "made-up-client"}, secret: {client_secret: moss_secret},
+                               further: {"0" => {name: "tenant", value: "made-up-tenant"},
+                                         "1" => {name: "pin", seal: "1", value: ""},
+                                         "2" => {name: "", value: ""}},
+                               further_secret: {"1" => pin}}}
+
+        expect { post "/credentials/moss_api/kasse/versions", params: params }.to change(WsjrdpCredential, :count).by(1)
+
+        row = WsjrdpCredential.last
+        expect(row.public_data["tenant"]).to eq("made-up-tenant")
+        expect(secret_of(row, "pin")).to eq(pin)
+        expect(row.plain?("pin")).to be false
+        filtered = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters).filter(params)
+        expect(filtered.to_s).not_to include(pin)
+      end
+
+      it "strips the name of a new row, as the live check does" do
+        params = {credential: {fields: {client_id: "made-up-client"}, secret: {client_secret: moss_secret},
+                               further: {"0" => {name: "  tenant ", value: "made-up-tenant"}}}}
+
+        expect { post "/credentials/moss_api/kasse/versions", params: params }.to change(WsjrdpCredential, :count).by(1)
+
+        expect(WsjrdpCredential.last.public_data).to include("tenant" => "made-up-tenant")
+      end
+
+      it "names the problem of each row, saves nothing and gives the typed secret back" do
+        rows = {"0" => {name: "Bad-Name", value: "x"}, "1" => {name: "client_id", value: "x"},
+                "2" => {name: "expires_at", value: "x"}, "3" => {name: "tenant", value: "a"},
+                "4" => {name: "tenant", value: "b"}, "5" => {name: "note", value: ""},
+                "6" => {name: "", value: "x"}, "7" => {name: "pin", seal: "1"}}
+        post "/credentials/moss_api/kasse/versions",
+          params: {credential: {fields: {client_id: "c"}, secret: {client_secret: moss_secret}, further: rows,
+                                further_secret: {"7" => pin}, expires_at: "morgen"}}
+
+        expect(response).to have_http_status(422)
+        expect(WsjrdpCredential.count).to eq(0)
+        expected = {"0" => "aus Kleinbuchstaben", "1" => "schon ein Feld der Art", "2" => "reserviert",
+                    "4" => "kommt schon vor", "5" => "Der Wert fehlt", "6" => "Der Name fehlt"}
+        expected.each do |index, text|
+          expect(html.find("[data-credential-further-row='#{index}']")).to have_text(text)
+        end
+        expect(html.find("[data-credential-further-row='3']")).not_to have_text("kommt schon vor")
+        expect(html.find("input[name='credential[further_secret][7]']")[:value]).to eq(pin)
+        expect(html.find("input[name='credential[secret][client_secret]']")[:value]).to eq(moss_secret)
+        expect(further_template).not_to include(pin)
+      end
+
+      it "prefills the public further fields of the version in use, never a sealed one" do
+        further!
+        get "/credentials/mail_account/finanzen/versions/new"
+
+        rows = html.all("#credential-further-rows [data-credential-further-row]")
+        expect(rows.map { |row| row.find("input[name$='[name]']")[:value] }).to eq(["tenant"])
+        expect(rows.first.find("input[name$='[value]']")[:value]).to eq("made-up-tenant")
+        expect(further_template)
+          .not_to include("made-up")
+        expect_nothing_secret(password, pin)
+      end
+
+      describe "changing" do
+        let!(:row) { further! }
+
+        def further_params(further, further_secret: {})
+          {name: "", comment: "", lock: lock_of(row), further: further, further_secret: further_secret}
+        end
+
+        it "shows a row per field, the sealed one filled in" do
+          get "/credentials/versions/#{row.id}/edit"
+
+          pin_row = html.find("[data-credential-further-row='0']")
+          expect(pin_row.find("input[name='credential[further][0][was]']", visible: :all)[:value]).to eq("pin")
+          pin_input = pin_row.find("input[name='credential[further_secret][0]']")
+          expect(pin_input[:value]).to eq(pin)
+          expect(pin_input[:type]).to eq("password")
+          expect(pin_row).to have_css("[data-credential-further-state='sealed']")
+          tenant_row = html.find("[data-credential-further-row='1']")
+          expect(tenant_row.find("input[name='credential[further][1][value]']")[:value]).to eq("made-up-tenant")
+          expect(tenant_row).to have_css("[data-credential-further-state='plain']")
+          [pin_row, tenant_row].each do |existing|
+            expect(existing).not_to have_css("input[name$='[seal]'], input[name$='[name]']", visible: :all)
+          end
+          expect(further_template).not_to include(pin)
+          expect_nothing_secret
+        end
+
+        it "keeps a sealed one the request leaves out, changes a public one, adds and removes" do
+          patch "/credentials/versions/#{row.id}", params: {credential: further_params(
+            {"0" => {was: "pin"}, "1" => {was: "tenant", value: "made-up-other", remove: "1"},
+             "2" => {name: "region", value: "eu"}}
+          )}
+
+          expect(response).to redirect_to("/credentials/mail_account/finanzen#credential-version-#{row.id}")
+          expect(secret_of(row, "pin")).to eq(pin)
+          expect(row.reload.public_data).not_to have_key("tenant")
+          expect(row.public_data["region"]).to eq("eu")
+        end
+
+        it "keeps a sealed one sent as shown and removes one that is emptied" do
+          with_versioning do
+            expect do
+              patch "/credentials/versions/#{row.id}",
+                params: {credential: further_params({"0" => {was: "pin"}}, further_secret: {"0" => pin})}
+            end.not_to change(PaperTrail::Version, :count)
+          end
+          expect(secret_of(row, "pin")).to eq(pin)
+
+          patch "/credentials/versions/#{row.id}",
+            params: {credential: further_params({"0" => {was: "pin"}}, further_secret: {"0" => ""})}
+          expect(response).to redirect_to("/credentials/mail_account/finanzen#credential-version-#{row.id}")
+          expect(row.reload.sealed?("pin")).to be false
+          expect(row.plain?("pin")).to be false
+        end
+
+        it "never seals a public one in place" do
+          patch "/credentials/versions/#{row.id}",
+            params: {credential: further_params({"1" => {was: "tenant", seal: "1"}}, further_secret: {"1" => "made-up-x"})}
+
+          expect(row.reload.sealed?("tenant")).to be false
+          expect(row.public_data["tenant"]).to eq("made-up-tenant")
+        end
+
+        it "replaces a sealed one only under the active key, and keeps it sealed" do
+          patch "/credentials/versions/#{row.id}",
+            params: {credential: further_params({"0" => {was: "pin", seal: ""}}, further_secret: {"0" => "made-up-new"})}
+          expect(secret_of(row, "pin")).to eq("made-up-new")
+          expect(row.reload.sealed?("pin")).to be true
+
+          allow(Wsjrdp::Credentials::Keys).to receive(:current).and_return(other_keys)
+          result = Wsjrdp::Credentials::Change.call(record: row, values: {"pin" => "made-up-third"})
+          expect(result.field_errors.map(&:to_s)).to eq(["pin: key_not_active"])
+          expect(Wsjrdp::Credentials::Change.call(record: row, values: {"tenant" => "made-up-x"})).to be_saved
+        end
+
+        it "names a sealed one in the trail by name only" do
+          with_versioning do
+            patch "/credentials/versions/#{row.id}", params: {credential: further_params(
+              {"0" => {was: "pin"}, "1" => {was: "tenant", value: "made-up-next"}}, further_secret: {"0" => "made-up-new-pin"}
+            )}
+          end
+          get "/credentials/mail_account/finanzen"
+
+          text = html.find("details[data-credential-trail='#{row.id}']").text(:all)
+          expect(text).to include("tenant: „made-up-tenant“ → „made-up-next“", "geheimes Feld geändert: pin")
+          expect_nothing_secret(password, pin, "made-up-new-pin")
+        end
+      end
+    end
+
     describe "the trail" do
       def trail_of(row)
         get "/credentials/mail_account/finanzen"
@@ -861,7 +1070,8 @@ describe "Credential store pages", type: :request do
         expect_nothing_secret(password, "made-up-changed")
       end
 
-      it "names a field held sealed or secret in the kind without its value, also in older entries" do
+      it "names a field held sealed or secret in the kind without its value, also in older entries; " \
+         "shows a public further field" do
         row = nil
         versioned do
           row = deposit!
@@ -871,12 +1081,13 @@ describe "Credential store pages", type: :request do
         end
 
         text = trail_of(row).text(:all)
-        expect(text).to include("geändert · Felder geändert (Werte nicht gezeigt): smtp_password, legacy_token")
+        expect(text).to include("geändert · legacy_token hinzugefügt: „made-up-legacy“ · " \
+          "Felder geändert (Werte nicht gezeigt): smtp_password")
         expect(text).to include("geändert · Felder geändert (Werte nicht gezeigt): smtp_host · geheimes Feld gesetzt: smtp_host")
         expect(text).to include("Felder: mail_from = finanzen@example.org, smtp_port = 587, smtp_security = starttls, " \
           "imap_port = 993 · Felder (Werte nicht gezeigt): smtp_host")
         expect(text).not_to include("mail.example.org")
-        expect_nothing_secret(password, "made-up-plain-secret", "made-up-legacy", "made-up-sealed-host")
+        expect_nothing_secret(password, "made-up-plain-secret", "made-up-sealed-host")
       end
 
       it "escapes the values" do

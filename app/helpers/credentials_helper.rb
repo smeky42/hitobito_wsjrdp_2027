@@ -31,8 +31,8 @@ module CredentialsHelper
 
   # One field of a version as the page shows it. value: a public value;
   # fingerprint: a short tag of a hidden value; revealable: whether the
-  # reveal button is offered.
-  FieldRow = Data.define(:name, :set, :masked, :value, :fingerprint, :revealable)
+  # reveal button is offered; further: a field the kind does not have.
+  FieldRow = Data.define(:name, :set, :masked, :value, :fingerprint, :revealable, :further)
 
   def credential_kind_label(name) = t("#{I18N}.kinds.#{name}", default: credential_name(name))
 
@@ -192,8 +192,7 @@ module CredentialsHelper
 
   def credential_problems_of(problems, field) = problems.select { |problem| problem.field.to_s == field.to_s }
 
-  # The fields of a version, in the kind's order, then those the kind does
-  # not know.
+  # The fields of a version: the kind's first, then the further fields.
   def credential_field_rows(version, kind, keys)
     if version.record
       credential_database_field_rows(version.record, kind, keys)
@@ -205,11 +204,10 @@ module CredentialsHelper
   # The decrypted values of a database row of this stage, else nil.
   def credential_row_values(row, keys) = (row.stage == keys.stage) ? row.field_values(keys: keys) : nil
 
-  # Hints about a row's fields: in the wrong column, not decryptable, or
-  # unknown to the kind.
+  # Hints about a row's fields: in the wrong column, or not decryptable.
   def credential_field_hints(row, keys, kinds)
     report = row.field_report(keys: keys, kinds: kinds)
-    %i[wrong_column not_opening unknown].flat_map do |list|
+    %i[wrong_column not_opening].flat_map do |list|
       Array(report.public_send(list)).map { |name| t("#{I18N}.field_report.#{list}", field: name) }
     end
   end
@@ -288,7 +286,8 @@ module CredentialsHelper
 
   def credential_database_field_rows(row, kind, keys)
     values = credential_row_values(row, keys)
-    names = (kind ? kind.field_names : []) | row.sealed_texts.keys | row.plain_values.keys
+    kind_names = kind ? kind.field_names : []
+    names = kind_names | (row.sealed_texts.keys | row.plain_values.keys).sort_by(&:to_s)
     reveal = Wsjrdp::Credentials::Reveal.enabled?
     names.map do |name|
       masked = Wsjrdp::Credentials::Reveal.masked?(name, kind: kind, record: row)
@@ -297,7 +296,8 @@ module CredentialsHelper
       value = (values || row.plain_values)[name] unless masked
       FieldRow.new(name: credential_name(name), set: set, masked: masked, value: value,
         fingerprint: (masked && opened) ? credential_value_fingerprint(values[name]) : nil,
-        revealable: masked && opened && reveal && Wsjrdp::Credentials.name?(name))
+        revealable: masked && opened && reveal && Wsjrdp::Credentials.name?(name),
+        further: !kind.nil? && !kind_names.include?(name))
     end
   end
 
@@ -305,12 +305,19 @@ module CredentialsHelper
     return [] unless credential && kind
 
     reveal = Wsjrdp::Credentials::Reveal.enabled?
-    kind.fields.map do |field|
+    rows = kind.fields.map do |field|
       set = credential.field_names.include?(field.name)
       value = (field.secret? ? credential.secret(field.name) : credential[field.name]) if set
       FieldRow.new(name: field.name, set: set, masked: field.secret?, value: field.secret? ? nil : value,
         fingerprint: (set && field.secret?) ? credential_value_fingerprint(value) : nil,
-        revealable: set && field.secret? && reveal)
+        revealable: set && field.secret? && reveal, further: false)
+    end
+    # An override's further fields are public; hidden anyway if one is not.
+    rows + credential.further_field_names.map do |name|
+      secret = credential.secret_field?(name)
+      FieldRow.new(name: name, set: true, masked: secret, value: secret ? nil : credential[name],
+        fingerprint: secret ? credential_value_fingerprint(credential.secret(name)) : nil, revealable: false,
+        further: true)
     end
   end
 

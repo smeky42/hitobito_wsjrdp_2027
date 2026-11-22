@@ -28,7 +28,9 @@ class WsjrdpCredential < ActiveRecord::Base
   KIND_UNKNOWN = :kind_unknown     # its kind is no longer in the registry
   # a sealed value does not open, the scheme is unknown, or the account key is no name
   UNREADABLE = :unreadable
-  KIND_MISMATCH = :kind_mismatch   # it opens, but no longer fits its kind
+  # it opens, but no longer fits its kind (also: a further field with a
+  # name it cannot have)
+  KIND_MISMATCH = :kind_mismatch
   REVOKED = :revoked               # revoked_at is reached
   EXPIRED = :expired               # expires_at is reached
   NOT_YET_VALID = :not_yet_valid   # valid_from lies ahead
@@ -45,8 +47,8 @@ class WsjrdpCredential < ActiveRecord::Base
 
   # Which fields a row holds, by name only, for a page. A list is nil when
   # it cannot be told here (unknown kind; for not_opening another stage, no
-  # key or an unknown scheme).
-  FieldReport = Data.define(:sealed, :plain, :in_both, :wrong_column, :unknown, :not_opening)
+  # key or an unknown scheme). further: the fields the kind does not have.
+  FieldReport = Data.define(:sealed, :plain, :in_both, :wrong_column, :further, :not_opening)
 
   FIXED_COLUMNS = %w[kind account_key stage author_id author_type created_at].freeze
   INSTANTS = %w[valid_from expires_at revoked_at].freeze
@@ -133,14 +135,16 @@ class WsjrdpCredential < ActiveRecord::Base
     values = field_values(keys: keys)
     return Examination.new(UNREADABLE, nil) unless values
 
+    # Only the kind's fields are cast; further fields are taken as they are.
     cast = kind_object.cast(values.select { |name, _value| kind_object.field?(name) }, stage: stage)
-    return Examination.new(KIND_MISMATCH, nil) unless cast.valid?
+    further = values.reject { |name, _value| kind_object.field?(name) }
+    return Examination.new(KIND_MISMATCH, nil) unless cast.valid? && further.keys.none? { |name| kind_object.further_name_problem(name) }
 
-    Examination.new(lifecycle_state(at), credential_of(kind_object, cast.values), cast.warnings)
+    Examination.new(lifecycle_state(at), credential_of(kind_object, cast.values.merge(further)), cast.warnings)
   end
 
-  # {name => value} of every field, whichever column it lies in, fields
-  # the kind no longer has included; nil when a sealed value does not open
+  # {name => value} of every field, whichever column it lies in, further
+  # fields included; nil when a sealed value does not open
   # here.
   def field_values(keys:)
     return nil unless scheme == Wsjrdp::Credentials::Sealer::SCHEME && values_columns_hashes?
@@ -242,7 +246,7 @@ class WsjrdpCredential < ActiveRecord::Base
     plain = plain_values.keys
     FieldReport.new(sealed: shown(sealed), plain: shown(plain), in_both: shown(sealed & plain),
       wrong_column: kind_object && shown(wrong_column_names(kind_object, sealed, plain)),
-      unknown: kind_object && shown((plain | sealed).reject { |name| kind_object.field?(name) }),
+      further: kind_object && shown((plain | sealed).reject { |name| kind_object.field?(name) }.sort),
       not_opening: not_opening_names(keys)&.then { |names| shown(names) })
   end
 
@@ -297,9 +301,11 @@ class WsjrdpCredential < ActiveRecord::Base
     end
   end
 
+  # A sealed further field counts as secret.
   def credential_of(kind_object, values)
     Wsjrdp::Credentials::Credential.new(kind: kind_object, account_key: account_key, stage: stage, values: values,
-      key_fingerprint: encryption_key_fingerprint, version_name: name, version_id: id)
+      key_fingerprint: encryption_key_fingerprint, version_name: name, version_id: id,
+      secret_further_fields: values.keys.select { |name| !kind_object.field?(name) && sealed?(name) })
   end
 
   def trail_secret_change

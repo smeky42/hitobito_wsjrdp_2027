@@ -21,10 +21,10 @@ module Wsjrdp::Credentials
   #   result.valid?    # => false: mail_from is required
   #   result.errors    # => [#<data Problem field="mail_from", code=:required>]
   #
-  # A field the kind does not have is an error; nil and "" count as not set;
-  # a field that is not set gets its default; a required field that is still
-  # not set is an error. Errors and warnings name the field and a code, never
-  # a value.
+  # A field the kind does not have is a further field: a text whose name
+  # is not reserved. nil and "" count as not set; a field of the kind that
+  # is not set gets its default; a required one that is still not set is
+  # an error. Errors and warnings name the field and a code, never a value.
   class Kind
     # One error or warning: a field's name and a code.
     Problem = Data.define(:field, :code) do
@@ -33,11 +33,12 @@ module Wsjrdp::Credentials
       def as_json(*) = {"field" => field, "code" => code.to_s}
     end
 
-    # The cast values (only the fields that are set, in the kind's order), the
-    # errors and the warnings. A plain class, not a Data: a Data would hand
-    # its values out through to_h, deconstruct_keys and ActiveSupport's
-    # as_json. inspect, to_s, pp, as_json and to_json show field names and
-    # codes only; Marshal and YAML refuse.
+    # The cast values (only the fields that are set: the kind's first, then
+    # the further ones), the errors and the warnings. A
+    # plain class, not a Data: a Data would hand its values out through to_h,
+    # deconstruct_keys and ActiveSupport's as_json. inspect, to_s, pp,
+    # as_json and to_json show field names and codes only; Marshal and YAML
+    # refuse.
     class Result
       include Undumpable
 
@@ -85,6 +86,18 @@ module Wsjrdp::Credentials
 
     def public_field_names = fields.reject(&:secret?).map(&:name)
 
+    # Why name cannot be a further field of this kind (:not_a_name,
+    # :reserved, :field_of_the_kind), or nil.
+    def further_name_problem(name)
+      return :not_a_name unless Wsjrdp::Credentials.name?(name)
+      return :reserved if Kinds::RESERVED_FIELD_NAMES.include?(name)
+
+      :field_of_the_kind if field?(name)
+    end
+
+    # A further field: a text, sealed only when secret.
+    def further_field(name, secret: false) = Field.new(name: name, type: "string", secret: secret)
+
     def cast(values, stage:)
       raise ArgumentError, "the values are not a hash" unless values.nil? || values.is_a?(Hash)
 
@@ -92,6 +105,7 @@ module Wsjrdp::Credentials
       given = cast_given(values || {}, errors)
       fill_defaults(given, errors)
       values = fields.filter_map { |field| [field.name, given[field.name]] if given.key?(field.name) }.to_h
+      given.keys.reject { |name| field?(name) }.sort.each { |name| values[name] = given[name] }
       warnings = fields.filter_map do |field|
         code = values.key?(field.name) && field.warning(values[field.name], stage: stage)
         Problem.new(field.name, code) if code
@@ -108,7 +122,12 @@ module Wsjrdp::Credentials
       values.each_with_object({}) do |(key, value), given|
         name = Wsjrdp::Credentials.name_of(key)
         field = field(name)
-        next errors << Problem.new(Wsjrdp::Credentials.shown_name(name), :unknown) unless field
+        unless field
+          code = further_name_problem(name)
+          next errors << Problem.new(Wsjrdp::Credentials.shown_name(name), code) if code
+
+          field = further_field(name)
+        end
         next if value.nil? || value == ""
 
         cast, code = field.cast(value)

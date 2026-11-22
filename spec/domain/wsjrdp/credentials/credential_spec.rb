@@ -67,15 +67,51 @@ describe Wsjrdp::Credentials::Credential do
     end
   end
 
+  describe "further fields" do
+    let(:further) do
+      described_class.new(kind: kind, account_key: "finanzen", stage: "test", key_fingerprint: fingerprint,
+        values: values.merge("tenant" => "made-up-tenant", "pin" => "made-up-pin"), secret_further_fields: ["pin"])
+    end
+
+    it "lists them after the kind's fields, by name" do
+      expect(further.field_names).to eq(%w[mail_from smtp_host smtp_port smtp_password pin tenant])
+      expect(further.further_field_names).to eq(%w[pin tenant])
+    end
+
+    it "gives a public one with [] and a sealed one with #secret only" do
+      expect(further[:tenant]).to eq("made-up-tenant")
+      expect(further.secret(:pin)).to eq("made-up-pin")
+      expect { further[:pin] }.to raise_error(described_class::WrongAccess, /#secret\(:pin\)/)
+      expect { further.secret(:tenant) }.to raise_error(described_class::WrongAccess, /\[:tenant\]/)
+      expect([further.secret_field?(:pin), further.secret_field?(:tenant), further.secret_field?(:smtp_password)])
+        .to eq([true, false, true])
+    end
+
+    it "refuses a name that is neither a field of the kind nor a further field of the version" do
+      expect { further[:other] }.to raise_error(described_class::UnknownField, /has no field other/)
+    end
+
+    it "never shows a further value" do
+      [further.inspect, further.to_json, further.pretty_inspect].each do |text|
+        expect(text).not_to include("made-up-tenant", "made-up-pin")
+      end
+    end
+  end
+
   describe "building" do
     def build(**options)
       described_class.new(kind: kind, account_key: "finanzen", stage: "test", values: values,
         key_fingerprint: fingerprint, **options)
     end
 
-    it "refuses a value of a field the kind does not have, naming the field only" do
-      expect { build(values: values.merge("api_key" => "made-up")) }
-        .to raise_error(ArgumentError, /no field api_key/) { |error| expect(error.message).not_to include("made-up") }
+    it "refuses a further field under a reserved name, naming the field only" do
+      expect { build(values: values.merge("valid_from" => "made-up")) }
+        .to raise_error(ArgumentError, /no field valid_from/) { |error| expect(error.message).not_to include("made-up") }
+    end
+
+    it "refuses a secret further field that is not a further field that is set" do
+      expect { build(secret_further_fields: ["smtp_host"]) }.to raise_error(ArgumentError, /secret further field/)
+      expect { build(secret_further_fields: ["tenant"]) }.to raise_error(ArgumentError, /secret further field/)
     end
 
     it "does not repeat a field name that may be a value in the wrong place" do

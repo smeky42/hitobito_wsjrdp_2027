@@ -17,18 +17,20 @@ module Wsjrdp::Credentials
   #
   # Each secret field is sealed by itself with the active key; the row names
   # that key even without a secret field, so depositing always needs a key
-  # (NoKeyError).
+  # (NoKeyError). A further field (one the kind does not have) is sealed
+  # when secret_further_fields names it, else kept plain.
   class Deposit
     def self.call(**) = new(**).call
 
     def initialize(kind:, account_key:, values:, name: nil, comment: nil, valid_from: nil, expires_at: nil,
-      author: nil, keys: Keys.current, kinds: Kinds.current)
+      author: nil, secret_further_fields: [], keys: Keys.current, kinds: Kinds.current)
       raise ArgumentError, "the values are not a hash" unless values.nil? || values.is_a?(Hash)
 
       WsjrdpCredential.check_instants!(valid_from: valid_from, expires_at: expires_at)
       @kind_name = Wsjrdp::Credentials.name_of(kind)
       @account_key = Wsjrdp::Credentials.account_key_of(account_key)
       @values = values
+      @secret_further_fields = Array(secret_further_fields).map { |field| Wsjrdp::Credentials.name_of(field) }
       # Not name.presence: blank? raises for a text of invalid encoding,
       # which the model refuses with a code instead.
       @attributes = {name: (name == "") ? nil : name, comment: comment, valid_from: valid_from,
@@ -61,10 +63,9 @@ module Wsjrdp::Credentials
       record.kinds_registry = @kinds
       return record unless cast&.valid? && Wsjrdp::Credentials.account_key?(@account_key)
 
-      kind.fields.each do |field|
-        next unless cast.values.key?(field.name)
-
-        record.write_field(field.name, cast.values[field.name], secret: field.secret?, key: key)
+      cast.values.each do |name, value|
+        secret = kind.field(name)&.secret? || (!kind.field?(name) && @secret_further_fields.include?(name))
+        record.write_field(name, value, secret: secret, key: key)
       end
       record
     end

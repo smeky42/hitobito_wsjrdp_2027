@@ -97,6 +97,15 @@ describe Wsjrdp::Credentials::LocalFile do
       expect(credential.version_name).to be_nil
     end
 
+    it "takes a field the kind does not have as a public further field" do
+      content = text.sub(/^( *)smtp_port: 1025\n/) { "#{$&}#{$1}imap_folder_archive: Archiv\n" }
+      credential = file(content).answer("mail_account", "finanzen").candidates.first
+
+      expect(credential.further_field_names).to eq(["imap_folder_archive"])
+      expect(credential[:imap_folder_archive]).to eq("Archiv")
+      expect(credential.secret_field?(:imap_folder_archive)).to be(false)
+    end
+
     it "orders by created_at when every version states it, else by the list" do
       expect(file.account("moss_api", "default").order).to eq(Wsjrdp::Credentials::Override::BY_CREATED_AT)
 
@@ -206,16 +215,16 @@ describe Wsjrdp::Credentials::LocalFile do
       end
     end
 
-    it "refuses a kind, an account key or a field it does not know" do
+    it "refuses a kind or an account key it does not know, and a field name that is reserved or none" do
       refused(text.sub("moss_api:", "moss:")) { |message| expect(message).to include("credentials.moss: no kind moss in") }
       refused(text.sub("default:", "de fault:")) do |message|
         expect(message).to include("credentials.moss_api.(not a name): the account key is not of lower-case letters")
       end
-      refused(with_moss_version { |version| version["vars"]["client_secrt"] = "x" }) do |message|
-        expect(message).to include("credentials.moss_api.default.versions[1].vars.client_secrt: moss_api has no such field")
+      refused(with_moss_version { |version| version["vars"]["Client-Secret"] = "x" }) do |message|
+        expect(message).to include("credentials.moss_api.default.versions[1].vars.(not a name): the field is not lower-case")
       end
       refused(with_moss_version { |version| version["vars"]["name"] = "x" }) do |message|
-        expect(message).to include("versions[1].vars.name: moss_api has no such field")
+        expect(message).to include("versions[1].vars.name: the field name is reserved")
       end
     end
 

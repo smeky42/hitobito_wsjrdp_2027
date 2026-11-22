@@ -9,14 +9,16 @@ instance's stage. The code lives in `app/domain/wsjrdp/credentials/` and
 its model, three write paths (`Deposit`, `Change`, `Rekey`), the lookup
 (`Wsjrdp::Credentials.fetch` / `.candidates`), the overrides by variables
 and a local file, the read model for the pages (`Overview`), the reader
-of typed instants ([`Wsjrdp::InstantInput`](instant_input.md)) and the
-admin pages (see "The pages"). **No consumer reads a credential yet.**
+of typed instants ([`Wsjrdp::InstantInput`](instant_input.md)), the
+admin pages (see "The pages"), further fields and the kind
+`keycloak_admin`. **No consumer reads a credential yet.**
 
 ## Terms
 
 | Thing | Meaning |
 |---|---|
 | kind | the blueprint of a credential: its fields, and which are secret (`config/wsjrdp_credential_kinds.yml`) |
+| further field | a field of a version that its kind does not have: a text, public or encrypted by choice |
 | account | one credential of a kind, named by its account key (`mail_account` / `finanzen`) |
 | version | one set of an account's values in one stage: a row of `wsjrdp_credentials`, or an override |
 | key | 32 random bytes a stage seals its secret fields with; known by its fingerprint |
@@ -129,6 +131,18 @@ upgrade and find out what changed in `MessageEncryptor`.
 The registry, committed and free of secrets. A further service is a
 further kind.
 
+| Kind | For | Secret fields |
+|---|---|---|
+| `mail_account` | a mailbox (SMTP, IMAP) | `smtp_password`, `imap_password` |
+| `moss_api` | the Moss API | `client_secret` |
+| `api_key` | mailcow, geocoding | `api_key` |
+| `basic_auth` | the helpdesk | `password` |
+| `keycloak_admin` | the Keycloak admin login of the scripts | `client_secret`, `admin_password` (both optional) |
+
+`keycloak_admin` signs in either with a service account (client ID and
+secret) or as an admin user (name and password); `use_service_account`
+chooses.
+
 ```yaml
 kinds:
   moss_api:
@@ -157,7 +171,8 @@ kinds:
   field names: `name`, `created_at`, `valid_from`, `expires_at` (they stand
   beside the fields in a variable). A secret field has no default.
 - `kind.cast(values, stage:)` gives the values with `errors` and `warnings`
-  as codes (`required`, `unknown`, `not_an_integer`, `not_valid_text`, ...).
+  as codes (`required`, `not_an_integer`, `not_valid_text`, `reserved`, ...).
+  A field the kind does not have is a further field (below).
   A `url` that is not `https` is a warning (`not_https`) in production only.
 
 ## The value object: `Wsjrdp::Credentials::Credential`
@@ -168,9 +183,31 @@ credential.secret(:smtp_password)  # a secret field
 ```
 
 `[]` refuses a secret field and `secret` a public one
-(`Credential::WrongAccess`), so a secret is only read on purpose. An unknown
-field is `Credential::UnknownField`; a field that is not set is `nil`.
+(`Credential::WrongAccess`), so a secret is only read on purpose. A further
+field is read the same way: `credential[:tenant]` when public,
+`credential.secret(:pin)` when the version holds it sealed
+(`secret_field?` tells which, `further_field_names` lists them). A field of
+the kind that is not set is `nil`; a name that is neither a field of the
+kind nor a further field of this version is `Credential::UnknownField`.
 `version_name` and `version_id` say which version it is.
+
+## Further fields
+
+A version may hold fields its kind does not have, for anything a service
+needs beyond the kind.
+
+- **Name:** a valid field name that is not a field of the kind and not
+  reserved. **Value:** valid text.
+- **Stored** in the same columns as the kind's fields: public ones as
+  plain text, encrypted ones like a secret field.
+- **Encrypted by choice** when the field is added. An encrypted field is
+  treated like a secret field everywhere. A field stays public or
+  encrypted; to change that, remove it and add it again.
+- The kind's checks apply only to the kind's fields. A field that a
+  changed kind no longer has becomes a further field.
+- **Overrides** can set further fields too, always public. **A misspelt
+  field name becomes a further field** and the kind's field stays unset;
+  check the account's page.
 
 ## The table: `wsjrdp_credentials`
 
@@ -218,9 +255,9 @@ sealed value of the same name wins over it.
   removes it from the other; the write paths name the column the kind says
   now.
 - `field_report` lists, by name, which fields are sealed, plain, in both
-  columns, in the wrong column, unknown to the kind, or do not open: for
-  the pages. `secret_key_problem(keys)` says why secret fields cannot be
-  changed with these keys (see `Change` below), or nil.
+  columns, in the wrong column, further, or do not open: for the pages.
+  `secret_key_problem(keys)` says why secret fields cannot be changed with
+  these keys (see `Change` below), or nil.
 - Validation messages are fixed texts; `errors.details` holds codes only.
 - **Hygiene:** `as_json` and `to_xml` leave `secret_data` out; `inspect`
   and the SQL log mask both value columns (initializer
@@ -240,7 +277,7 @@ Checked in this order:
 | `key_missing` | sealed with a key this instance does not have |
 | `kind_unknown` | its kind is no longer in the registry |
 | `unreadable` | a sealed value does not open, the scheme is unknown, or the row is malformed |
-| `kind_mismatch` | it opens, but no longer fits its kind |
+| `kind_mismatch` | it opens, but no longer fits its kind (or holds a further field under a name it cannot have) |
 | `revoked` | `revoked_at` is reached |
 | `expired` | `expires_at` is reached |
 | `not_yet_valid` | `valid_from` lies ahead |
@@ -393,7 +430,8 @@ HITOBITO_CREDENTIAL__STAGING__MOSS_API__DEFAULT__CLIENT_SECRET=made-up-secret
 - Only the instance's own stage counts. A `PRODUCTION` variable outside
   production stops the boot; a variable of another stage is ignored with a
   warning.
-- Values are strings, cast with the kind; an empty value is not set.
+- Values are strings, cast with the kind; an empty value is not set. A
+  field the kind does not have is a public further field.
 
 ### The local file: `config/wsjrdp_credentials.local.yml`
 
@@ -466,8 +504,9 @@ credentials:                       # kind -> account key -> versions
 
 Every variable whose name begins with `HITOBITO_CREDENTIAL` and every key of
 the file must be understood: an unknown key, a name outside the grammar, an
-unknown kind or field, an instant that is none, an expiry not after the
-start. The message names the variable or the place in the file
+unknown kind, a field name that is reserved, an instant that is none, an
+expiry not after the start. The message names the variable or the place in
+the file
 (`credentials.moss_api.default.versions[2].expires_at: not an instant: ...`),
 never a value.
 
@@ -486,7 +525,8 @@ never a value.
   no account (the database answers); a misspelt account key that is still
   a name (`…__MOSS_API__DEFAUL__EXPIRES_AT` names an account `defaul`,
   which does not fit the kind, while `default` is used without its
-  expiry). Check the boot log after changing a variable.
+  expiry); a misspelt field (a further field, see above). Check the boot
+  log and the account's page after changing a variable.
 
 ### A development instance with a key and a file
 
@@ -523,15 +563,22 @@ actions of a version).
   warning when the instance has no key or the local file was skipped.
   Below it are all keys, by fingerprint only.
 - **The page of an account** shows all its versions, the one in use
-  first. Each version shows its state, details and fields. Secret,
-  encrypted and unknown fields show dots and a short hash of the value
-  instead. Overrides are read-only. Each database version has its change
-  history: public values shown, secret fields by name only.
+  first. Each version shows its state, details and fields, then its
+  further fields. Secret and encrypted fields show dots and a short hash
+  of the value instead (every field, if the kind is unknown). Overrides
+  are read-only. Each database version has its change history: public
+  values shown, secret fields by name only.
+- **Further fields** in both forms: one row per field with name and
+  value; rows can be added and removed. Only a new row can be set to
+  encrypted; an existing field keeps its name and how it is stored. A
+  removed field is gone on save; its name can be used again after that.
+  A row with an invalid or duplicate name, or without a value, is refused.
 - **A new version** (`Deposit`) is filled with the public values of the
-  version in use. A secret is always typed anew. The new-account form
-  asks for the kind, the account key and an optional display name, and
-  checks the key while typing. Adding a version does not end the previous
-  one: that ends when it expires or is revoked.
+  version in use, further fields included. A secret is always typed
+  anew. The new-account form asks for the kind, the account key and an
+  optional display name, and checks the key while typing. Adding a
+  version does not end the previous one: that ends when it expires or is
+  revoked.
 - **Changing a version** (`Change`) saves only what the admin changed. A
   form sent after someone else changed the version is refused, so that
   nothing is set back by mistake. The secret fields are filled with their
@@ -551,8 +598,8 @@ The forms hand the write paths plain values
 (`Wsjrdp::Credentials::VersionForm`), never request parameters. Messages
 name fields and problems only, never values. A stored secret appears in
 the HTML of one page only: the edit form of its own version. Secret
-values are sent under `credential[secret]`, which the parameter filter
-masks. The pages are never cached.
+values are sent under `credential[secret]` and `credential[further_secret]`,
+which the parameter filter masks. The pages are never cached.
 
 ### Revealing a value
 

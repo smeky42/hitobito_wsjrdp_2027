@@ -316,11 +316,11 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
       expect(row.reload.public_data["client_id"]).to eq("made-up-client")
     end
 
-    it "casts the given values with the kind and names unknown fields, writing nothing on an error" do
+    it "casts the given values with the kind and names a further field that is no name, writing nothing on an error" do
       row = deposit!
       result = change_version(row, values: {"scope" => 7, "a" * 64 => "x", "client_id" => "made-up-new"})
 
-      expect(codes(result.field_errors)).to contain_exactly("scope: not_a_string", "(not a name): unknown")
+      expect(codes(result.field_errors)).to contain_exactly("scope: not_a_string", "(not a name): not_a_name")
       expect(row.reload.public_data["client_id"]).to eq("made-up-client")
     end
 
@@ -448,6 +448,79 @@ describe "Wsjrdp::Credentials: the write paths and the lookup" do
         expect(change_version(row, name: "still named", kinds: unknown)).to be_saved
         expect(change_version(row, revoked_at: Time.current, kinds: unknown)).to be_saved
       end
+    end
+  end
+
+  describe "further fields" do
+    let(:pin) { "made-up-further-pin-1357" }
+
+    def further!(**options)
+      deposit!(values: moss_values.merge("tenant" => "made-up-tenant", "pin" => pin), secret_further_fields: [:pin],
+        **options)
+    end
+
+    it "deposits a public one plain and a secret one sealed by itself, read like the kind's fields" do
+      row = further!
+
+      expect(row.public_data["tenant"]).to eq("made-up-tenant")
+      expect(row.secret_data.keys).to contain_exactly("client_secret", "pin")
+      expect(opened(row, "pin")).to eq(pin)
+      credential = Wsjrdp::Credentials.fetch(:moss_api, "default")
+      expect([credential[:tenant], credential.secret(:pin)]).to eq(["made-up-tenant", pin])
+    end
+
+    it "lets the kind decide for a field of the kind, whatever secret_further_fields says" do
+      row = deposit!(secret_further_fields: ["client_id"])
+      expect(row.plain?("client_id")).to be true
+    end
+
+    it "refuses one under a reserved name or with a value that is no text, writing nothing" do
+      result = deposit(values: moss_values.merge("name" => "x", "count" => 3))
+      expect(codes(result.field_errors)).to contain_exactly("name: reserved", "count: not_a_string")
+      expect(WsjrdpCredential.count).to eq(0)
+    end
+
+    it "changes one, seals a public one on request, and keeps a sealed one sealed" do
+      row = further!
+      expect(change_version(row, values: {"tenant" => "made-up-next", "pin" => "made-up-new-pin"})).to be_saved
+      expect(row.reload.public_data["tenant"]).to eq("made-up-next")
+      expect(opened(row, "pin")).to eq("made-up-new-pin")
+
+      expect(change_version(row, values: {"tenant" => "made-up-next"}, secret_further_fields: ["tenant"])).to be_saved
+      expect(row.reload.sealed?("tenant")).to be true
+      expect(row.plain?("tenant")).to be false
+    end
+
+    it "changes or removes a sealed one only under the active key, a public one whatever the key" do
+      row = further!(keys: keys_of(key_a))
+      newer = keys_of(key_b, key_a)
+
+      expect(codes(change_version(row, values: {"pin" => nil}, keys: newer).field_errors)).to eq(["pin: key_not_active"])
+      expect(codes(change_version(row, values: {"rate" => "x"}, secret_further_fields: ["rate"], keys: newer)
+        .field_errors)).to eq(["rate: key_not_active"])
+      expect(change_version(row, values: {"tenant" => nil}, keys: newer)).to be_saved
+      expect(row.reload.plain?("tenant")).to be false
+      expect(opened(row, "pin", keys: newer)).to eq(pin)
+    end
+
+    it "keeps each in its column through a re-key" do
+      row = further!(keys: keys_of(key_a))
+      newer = keys_of(key_b, key_a)
+      expect(rekey(row, keys: newer)).to be_saved
+
+      expect(row.reload.plain?("tenant")).to be true
+      expect(opened(row, "pin", keys: newer)).to eq(pin)
+    end
+
+    it "never shows a sealed value in inspect, as_json, the credential or the trail" do
+      row = nil
+      with_versioning { row = further! }
+      credential = Wsjrdp::Credentials.fetch(:moss_api, "default")
+      texts = [row.inspect, row.to_json, credential.inspect, credential.to_json,
+        PaperTrail::Version.where(item: row).map { |version| version.attributes.to_json }.join]
+
+      texts.each { |text| expect(text).not_to include(pin) }
+      expect(PaperTrail::Version.where(item: row).last.wsjrdp_data).to eq("secret_fields_set" => %w[client_secret pin])
     end
   end
 

@@ -64,9 +64,27 @@ describe Wsjrdp::Credentials::Kind do
       expect(problems(moss.cast(nil, stage: "test").errors)).to eq([["client_id", :required], ["client_secret", :required]])
     end
 
-    it "refuses a field the kind does not have" do
-      result = mail.cast(mail_values.merge("smtp_tls" => "1"), stage: "test")
-      expect(problems(result.errors)).to eq([["smtp_tls", :unknown]])
+    it "takes a field the kind does not have as a further field, a text, after the kind's fields by name" do
+      result = mail.cast(mail_values.merge("zone" => "eu", "smtp_tls" => "1", "note" => ""), stage: "test")
+
+      expect(result).to be_valid
+      expect(result.values.keys).to eq(%w[mail_from smtp_host smtp_port smtp_security imap_port smtp_tls zone])
+      expect(result.values["smtp_tls"]).to eq("1")
+    end
+
+    it "refuses a further field whose value is no valid text" do
+      result = mail.cast(mail_values.merge("count" => 5, "bad" => "a\u0000b"), stage: "test")
+      expect(problems(result.errors)).to eq([["count", :not_a_string], ["bad", :not_valid_text]])
+    end
+
+    it "refuses a further field under a reserved name" do
+      expect(problems(mail.cast(mail_values.merge("expires_at" => "x"), stage: "test").errors))
+        .to eq([["expires_at", :reserved]])
+    end
+
+    it "says why a name cannot be a further field" do
+      expect(%w[note smtp_host name Note].map { |name| mail.further_name_problem(name) })
+        .to eq([nil, :field_of_the_kind, :reserved, :not_a_name])
     end
 
     it "does not fill in the default of a field whose value is wrong" do
@@ -122,11 +140,11 @@ describe Wsjrdp::Credentials::Kind do
       end
     end
 
-    it "names an unknown field only when it is a valid name" do
+    it "names a further field only when it is a valid name" do
       result = mail.cast(mail_values.merge("made-up-password" => "1", "a" * 64 => "1", 5 => "1",
-        (+"\xff").force_encoding("UTF-8") => "1", "smtp_tls" => "1"), stage: "test")
+        (+"\xff").force_encoding("UTF-8") => "1", "smtp_tls" => 2), stage: "test")
 
-      expect(problems(result.errors)).to eq([["(not a name)", :unknown]] * 4 + [["smtp_tls", :unknown]])
+      expect(problems(result.errors)).to eq([["(not a name)", :not_a_name]] * 4 + [["smtp_tls", :not_a_string]])
     end
   end
 

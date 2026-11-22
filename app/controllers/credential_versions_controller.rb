@@ -27,17 +27,18 @@ class CredentialVersionsController < ApplicationController
   def new
     name = params[:name]
     name = "" unless Wsjrdp::Credentials.text?(name)
-    @form = Wsjrdp::Credentials::VersionForm.blank(kind, public_values: prefill_values, name: name)
+    @form = Wsjrdp::Credentials::VersionForm.blank(kind, public_values: prefill_values,
+      further_values: prefill_further_values, name: name)
   end
 
   def create
     @form = Wsjrdp::Credentials::VersionForm.submitted(kind: kind, params: params[:credential],
       base: Wsjrdp::Credentials::VersionForm.blank(kind))
-    return render_failed(:new, field_errors: cast.errors) if form.errors.any?
+    return render_failed(:new, field_errors: cast.errors) if form_problems?
 
     @result = Wsjrdp::Credentials::Deposit.call(kind: kind_name, account_key: account_key,
-      values: form.all_values, name: form.name, comment: form.comment,
-      author: current_user, **form.instants)
+      values: form.all_values, secret_further_fields: form.secret_further_fields, name: form.name,
+      comment: form.comment, author: current_user, **form.instants)
     return render_failed(:new) unless result.saved?
 
     redirect_to_version(result.record, t(".created"), result.warnings)
@@ -52,10 +53,10 @@ class CredentialVersionsController < ApplicationController
   def update
     @form = Wsjrdp::Credentials::VersionForm.submitted(kind: kind, params: params[:credential], base: base_form)
     return render_failed(:edit, field_errors: [], errors: [STALE]) unless form_lock
-    return render_failed(:edit, field_errors: changed_field_errors) if form.errors.any?
+    return render_failed(:edit, field_errors: changed_field_errors) if form_problems?
 
     @result = Wsjrdp::Credentials::Change.call(record: row, values: form.changed_values(secrets: key_problem.nil?),
-      expected_updated_at: form_lock, **form.changed_attributes)
+      secret_further_fields: form.secret_further_fields, expected_updated_at: form_lock, **form.changed_attributes)
     return render_failed(:edit) unless result.saved?
 
     redirect_to_version(row, t(".updated"), result.warnings)
@@ -112,17 +113,20 @@ class CredentialVersionsController < ApplicationController
     Wsjrdp::Credentials::VersionForm.of(row, kind: kind, secret_values: opened)
   end
 
-  # Only for the field errors of a form with an invalid date;
+  # An invalid date, or a row of further fields with a problem.
+  def form_problems? = form.errors.any? || form.further_problems.any?
+
+  # Only for the field errors of a form with an invalid date or a bad row;
   # Deposit checks the values itself.
   def cast = kind.cast(form.all_values, stage: keys.stage)
 
-  # For a form with an invalid date: the errors of the public fields it
-  # changes, checked one by one as Change would.
+  # For a form with an invalid date or a bad row: the errors of the public
+  # fields it changes, checked one by one as Change would.
   def changed_field_errors
     form.changed_values(secrets: false).filter_map do |name, text|
       next if text.empty?
 
-      _value, code = kind.field(name).cast(text)
+      _value, code = (kind.field(name) || kind.further_field(name)).cast(text)
       code && Wsjrdp::Credentials::Kind::Problem.new(name, code)
     end
   end
@@ -158,6 +162,14 @@ class CredentialVersionsController < ApplicationController
     (kind.public_field_names - [kind.title_field])
       .select { |name| credential.field_names.include?(name) && !version.record&.sealed?(name) }
       .to_h { |name| [name, credential[name]] }
+  end
+
+  # The public further fields of the version in use, never an encrypted one.
+  def prefill_further_values
+    credential = report.versions.find { |v| v.role == Wsjrdp::Credentials::Overview::ACTIVE }&.credential
+    return {} unless credential
+
+    credential.further_field_names.reject { |name| credential.secret_field?(name) }.to_h { |name| [name, credential[name]] }
   end
 
   def render_failed(template, field_errors: result&.field_errors || [], errors: form.errors + (result&.errors || []))
