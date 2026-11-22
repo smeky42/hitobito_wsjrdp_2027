@@ -1,0 +1,40 @@
+type: object
+properties:
+  bankAccountId:
+    type: string
+    format: uuid
+    description: The unique identifier of the bank account.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  glAccountContinuityId:
+    type: string
+    format: uuid
+    description: Continuity ID of the general ledger account. Stays the same across account versions if applicable.
+    example: "7c1e9a52-4d3b-4f8e-a6b2-91d0c5e3f7a4"
+  fromDate:
+    type: string
+    format: date
+    description: Start date of the summary.
+    example: "2026-01-01"
+  toDate:
+    type: string
+    format: date
+    description: End date of the summary.
+    example: "2026-01-31"
+  currency:
+    type: string
+    description: ISO 4217 currency code for the bank account's currency.
+    example: "EUR"
+  variance:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: The variance between the bank statement and ledger closing balances.
+    example:
+      amount: "20.25"
+      currency: "EUR"
+  statementSummary:
+    $ref: '../../openapi.yaml#/components/schemas/ReconciliationSummaryBreakdown'
+    description: Summary breakdown derived from bank statement transactions.
+  ledgerSummary:
+    $ref: '../../openapi.yaml#/components/schemas/ReconciliationSummaryBreakdown'
+    description: Summary breakdown derived from general ledger entries.
+required: [bankAccountId, glAccountContinuityId, fromDate, toDate, currency, variance, statementSummary, ledgerSummary]
+

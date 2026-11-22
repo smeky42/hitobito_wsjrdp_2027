@@ -1,0 +1,23 @@
+type: object
+required:
+  - filters
+  - pagination
+properties:
+  filters:
+    $ref: './AccountingEventsSearchRequestFilters.yaml'
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+  sort:
+    type: object
+    properties:
+      sortBy:
+        type: string
+        description: Field to sort by.
+        enum:
+          - CREATE_TIME
+          - AMOUNT
+          - STATUS
+        example: CREATE_TIME
+      sortOrder:
+        $ref: '../shared/SortOrder.yaml'

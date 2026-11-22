@@ -1,0 +1,8 @@
+type: string
+description: Current accounting period status.
+enum:
+  - OPEN
+  - LOCKED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: OPEN

@@ -1,0 +1,15 @@
+type: object
+required:
+  - id
+properties:
+  id:
+    type: string
+    description: Unique identifier of the participant
+    example: "john.doe"
+  host:
+    type: boolean
+    description: Whether this participant is the host of the hospitality event
+    example: true
+description: |
+  A participant in a hospitality expense event.
+  Can represent either internal or external participants.

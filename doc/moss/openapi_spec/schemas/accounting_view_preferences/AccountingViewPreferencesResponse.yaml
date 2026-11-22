@@ -1,0 +1,7 @@
+allOf:
+  - $ref: '../../openapi.yaml#/components/schemas/BaseResponse'
+  - type: object
+    properties:
+      data:
+        $ref: './CustomerViewPreferences.yaml'
+        description: Accounting view preferences for the organization.

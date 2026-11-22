@@ -1,0 +1,40 @@
+type: object
+properties:
+  filters:
+    type: object
+    properties:
+      glAccountContinuityId:
+        type: string
+        format: uuid
+        description: Filter entries by the continuity ID of the general ledger account. Matches entries posted to any version of the account.
+        example: "7c1e9a52-4d3b-4f8e-a6b2-91d0c5e3f7a4"
+      postingDateFrom:
+        type: string
+        format: date
+        description: Filter entries with posting date from this date (inclusive).
+        example: "2024-01-01"
+      postingDateTo:
+        type: string
+        format: date
+        description: Filter entries with posting date to this date (inclusive).
+        example: "2024-01-31"
+      inMatchingGroup:
+        type: [boolean, "null"]
+        description: |
+          Filter by matching group membership.
+          - `true`: only entries that are part of a matching group
+          - `false`: only entries not in any matching group
+          - `null` or omitted: no filter applied
+        example: true
+      matchingGroupIds:
+        type: array
+        description: Filter entries belonging to any of the specified matching group IDs.
+        items:
+          type: string
+          format: uuid
+        example: ["b653c04b-cf30-42f3-8b09-350121c8903c"]
+    required: [glAccountContinuityId]
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+required: [filters]

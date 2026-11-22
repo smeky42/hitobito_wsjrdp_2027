@@ -1,0 +1,40 @@
+type: object
+properties:
+  id:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the payment term line
+    example: "d6e4572f-d6ab-4901-9a7e-0ca7ab6ae537"
+  earlyPaymentDeadlineDays:
+    type: [integer, "null"]
+    description: Deadline in days by which early payment must arrive to get the discount
+    example: 5
+  discountPercentage:
+    type: [number, "null"]
+    format: double
+    minimum: 0
+    maximum: 100
+    description: Percentage deducted from invoice amount for qualifying early payment
+    example: 3.0
+  discountLineNumber:
+    type: [integer, "null"]
+    description: "Index for ordering lines. Lower index = earlier deadline / higher discount; higher index = later deadline / lower discount"
+    example: 1
+  lineNumber:
+    type: [integer, "null"]
+    format: int64
+    description: Payment term line number
+    example: 1
+  discountDate:
+    type: [string, "null"]
+    format: date
+    description: Date by which early payment discount applies
+    example: "2024-01-15"
+  discountAmount:
+    anyOf:
+      - $ref: './Money.yaml'
+      - type: "null"
+    description: Discount amount for early payment with currency (previously had no explicit currency field, now self-describing)
+    example:
+      amount: "50.00"
+      currency: "EUR"

@@ -1,0 +1,17 @@
+type: object
+additionalProperties: true
+description: |
+  Source-specific payload of the accounting event, proxied as-is from the upstream
+  accounting service. Fields are not yet individually typed and are added incrementally
+  as they become part of the public contract.
+properties:
+  journalHeader:
+    $ref: './AccountingEventJournalHeader.yaml'
+  journalLines:
+    type: array
+    items:
+      $ref: './AccountingEventJournalLine.yaml'
+  files:
+    type: array
+    items:
+      $ref: './AccountingEventFileRef.yaml'

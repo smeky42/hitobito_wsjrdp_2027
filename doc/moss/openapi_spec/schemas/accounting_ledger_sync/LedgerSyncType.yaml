@@ -1,0 +1,8 @@
+type: string
+description: Type of ledger data to sync.
+enum:
+  - GENERAL_LEDGER_ACCOUNT
+  - GENERAL_LEDGER_JOURNAL_ENTRY
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: GENERAL_LEDGER_ACCOUNT

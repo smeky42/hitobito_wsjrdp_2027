@@ -1,0 +1,8 @@
+type: string
+description: Type of account a posting instruction line posts to.
+enum:
+  - GENERAL_LEDGER
+  - SUPPLIER
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "SUPPLIER"

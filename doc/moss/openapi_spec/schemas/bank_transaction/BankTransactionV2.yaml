@@ -1,0 +1,84 @@
+type: object
+required:
+  - id
+  - organisationId
+  - bankAccountId
+  - transactionType
+  - matchedStatus
+  - excludedFromProcessing
+  - readyToMatch
+  - amount
+  - bookingDate
+  - valueDate
+  - fees
+  - allocations
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank transaction.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  bankAccountId:
+    type: string
+    format: uuid
+    description: the bank account where the transaction took place
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the dimension item belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  transactionType:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionTypeV2'
+    description: Type of the bank transaction
+  provider:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionProvider'
+    description: The provider of the bank transaction.
+  matchedStatus:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchedStatus'
+    description: The matched status of the bank transaction.
+  excludedFromProcessing:
+    type: boolean
+    description: Indicates whether the transaction is excluded from processing
+    example: false
+  readyToMatch:
+    type: boolean
+    description: Whether this bank transaction has any valid match candidates.
+    example: false
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: Amount of the transaction in the bank account currency with fees included. This is the amount that is actually debited from or credited to the customer's bank account.
+    example:
+      amount: "100.50"
+      currency: "EUR"
+  bookingDate:
+    type: string
+    format: date
+    description: Date when the transaction is booked into customer account
+    example: "2024-01-01"
+  valueDate:
+    type: string
+    format: date
+    description: Date used for the calculation of interest on the funds debited from or credited to the customer’s account
+    example: "2024-01-01"
+  description:
+    type: string
+    description: Description of the transaction
+    example: "Top-up"
+  counterparty:
+    type: string
+    description: Counterparty of the transaction
+    example: "Coffee Shop Berlin"
+  counterpartyIban:
+    type: string
+    description: Counterparty IBAN.
+  fees:
+    type: array
+    description: Array of fees associated with the transaction
+    items: { $ref: '../../openapi.yaml#/components/schemas/BankTransactionFee' }
+  allocations:
+    type: array
+    description: Array of allocations associated with the transaction
+    items: { $ref: '../../openapi.yaml#/components/schemas/BankTransactionAllocation' }
+description:
+  Bank transactions represent bank statement lines, including card purchases, payouts to external bank accounts, top-ups, ATM withdrawals, and repayments. Each transaction includes the total amount (inclusive of any fees), booking and value dates, its matched status, an array of associated fees broken down by type (e.g., FX fee, payment fee), and an array of expense allocations.

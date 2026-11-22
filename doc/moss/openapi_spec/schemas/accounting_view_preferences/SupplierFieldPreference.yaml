@@ -1,0 +1,17 @@
+type: object
+properties:
+  code:
+    $ref: './SupplierField.yaml'
+  syncType:
+    $ref: './SupplierFieldSyncType.yaml'
+  create:
+    $ref: './ActionMeta.yaml'
+  update:
+    $ref: './ActionMeta.yaml'
+  required:
+    type: boolean
+  requiredByPaymentSchema:
+    type: boolean
+  display:
+    $ref: './DisplayMeta.yaml'
+required: [code]

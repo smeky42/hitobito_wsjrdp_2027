@@ -1,0 +1,92 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the supplier
+    example: "b4b13057-eb46-412e-a70c-2e2eaf5b8f69"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the supplier belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  status:
+    $ref: './SupplierStatus.yaml'
+    description: Current status of the supplier
+  name:
+    type: string
+    description: Name of the supplier in Moss
+    example: "Nerds GmbH & Co. KG"
+  code:
+    type: string
+    description: Account number of the supplier in the accounting system
+    example: "7430000"
+  currency:
+    type: [string, "null"]
+    description: ISO 4217 currency code for the supplier's default currency
+    example: "EUR"
+  vatIdNo:
+    type: [string, "null"]
+    description: VAT identification number of the supplier
+    example: "DE123456789"
+  iban:
+    type: [string, "null"]
+    description: IBAN of the supplier's bank account (see accountNumber for GBP/UK suppliers)
+    example: "DE89370400440532013000"
+  bic:
+    type: [string, "null"]
+    description: BIC/SWIFT code of the supplier's bank (see sortCode for GBP/UK suppliers)
+    example: "DEUTDEDB"
+  accountNumber:
+    type: [string, "null"]
+    description: Bank account number for GBP/UK suppliers, used in place of iban
+    example: "12345678"
+  sortCode:
+    type: [string, "null"]
+    description: Sort code for GBP/UK suppliers, used in place of bic
+    example: "12-34-56"
+  defaultPaymentMethod:
+    $ref: './SupplierPaymentMethod.yaml'
+  paymentTermId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default payment terms for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440005"
+  address:
+    $ref: './SupplierAddress.yaml'
+  defaultExpenseAccountId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default expense account (sub-category) for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  defaultVatRateId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default VAT rate for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440001"
+  defaultCostCenterId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default cost center for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440002"
+  defaultCostCarrierId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default cost carrier for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440003"
+  defaultTeamId:
+    type: [string, "null"]
+    format: uuid
+    description: ID of the default team for this supplier
+    example: "550e8400-e29b-41d4-a716-446655440004"
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp (ISO-8601)
+    example: "2025-08-25T09:57:31.194Z"
+  updateTime:
+    type: string
+    format: date-time
+    description: Last update timestamp (ISO-8601)
+    example: "2025-08-25T09:57:32.535Z"
+required: [id, organisationId, status, name, createTime, updateTime]

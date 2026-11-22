@@ -1,0 +1,59 @@
+type: object
+description: |
+  An open item represents an amount owed for a single document, tracked from creation until it is fully settled.
+
+  Open items link a document (invoice, credit note, card transaction, reimbursement or FX fee) to the payments,
+  bank transactions and credit note adjustments that settle it.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the open item.
+  sourceId:
+    type: string
+    format: uuid
+    description: |
+      Identifier of the document the open item was created from, usually the expense.
+
+      Not unique. A card transaction captured multiple times produces one open item per capture, all sharing the same `sourceId`.
+  counterpartyId:
+    type: string
+    format: uuid
+    description: The supplier or employee the amount is owed to.
+  counterpartyName:
+    type: string
+    description: Name of the supplier or employee the amount is owed to.
+  counterpartyIban:
+    type: string
+    description: IBAN of the supplier or employee the amount is owed to.
+  createdAt:
+    type: string
+    format: date-time
+    description: When the open item was created.
+  status:
+    $ref: './OpenItemStatus.yaml'
+  documentType:
+    $ref: './OpenItemDocumentType.yaml'
+  originalAmount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+  outstandingAmount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+  dueDate:
+    type: string
+    format: date
+    description: The date the amount is due, when the source document defines one.
+  paymentAllocations:
+    type: array
+    description: Payment instructions allocated against this open item.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/OpenItemPaymentAllocation'
+  bankTransactionAllocations:
+    type: array
+    description: Bank transactions allocated against this open item.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/OpenItemBankTransactionAllocation'
+  adjustmentAllocations:
+    type: array
+    description: Credit note adjustments allocated against this open item.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/OpenItemAdjustmentAllocation'

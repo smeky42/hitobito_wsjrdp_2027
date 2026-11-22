@@ -1,0 +1,7 @@
+type: string
+enum:
+  - ACTIVE
+  - CLOSED
+  - UNKNOWN_DEFAULT_OPEN_API
+description: Status of the bank account.
+example: ACTIVE

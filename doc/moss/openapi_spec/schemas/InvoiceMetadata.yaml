@@ -1,0 +1,97 @@
+type: object
+properties:
+  netDueDate:
+    type: [string, "null"]
+    format: date
+    description: Net payment due date
+    example: "2023-10-25"
+  dueDate:
+    type: [string, "null"]
+    format: date
+    description: Payment due date
+    example: "2023-10-25"
+  invoiceNumber:
+    type: [string, "null"]
+    description: Invoice number from supplier
+    example: "INV-2023-001"
+  paymentStatus:
+    $ref: '../openapi.yaml#/components/schemas/PaymentStatus'
+  paymentChannel:
+    $ref: '../openapi.yaml#/components/schemas/PaymentChannel'
+  paymentReference:
+    type: [string, "null"]
+    description: Payment reference identifier
+    example: "PAY-2023-001"
+  paymentDate:
+    type: [string, "null"]
+    format: date-time
+    description: When the payment was made
+    example: "2023-10-01T10:00:00Z"
+  deliveryDate:
+    type: [string, "null"]
+    format: date
+    description: Date when goods/services were delivered
+    example: "2023-09-25"
+  approvedBy:
+    type: array
+    items:
+      $ref: './InvoiceApprovedBy.yaml'
+    default: []
+    description: List of users who approved this invoice
+  rejectedBy:
+    anyOf:
+      - $ref: './InvoiceRejectedBy.yaml'
+      - type: "null"
+    description: Information about who rejected the invoice
+  rateConversionDate:
+    type: [string, "null"]
+    format: date
+    description: Date used for currency conversion rates
+    example: "2023-09-25"
+  deferred:
+    type: boolean
+    default: false
+    description: Whether this is a deferred payment invoice
+    example: false
+  linkedPurchaseRequestIds:
+    type: array
+    items:
+      type: string
+      format: uuid
+    default: []
+    description: Purchase request IDs linked to this invoice
+    example: ["123e4567-e89b-12d3-a456-426614174000"]
+  verifiers:
+    type: array
+    items:
+      $ref: './InvoiceVerifiedBy.yaml'
+    default: []
+    description: List of users who verified this invoice
+  lastReviewedBy:
+    anyOf:
+      - $ref: './InvoiceLastReviewedBy.yaml'
+      - type: "null"
+    description: Information about who last reviewed the invoice
+  einvoiceEn16931ComplianceStatus:
+    type: [string, "null"]
+    enum:
+      - COMPLIANT
+      - NON_COMPLIANT
+      - EXCEPTION
+      - SUPPLIER_EXEMPT
+      - NOT_APPLICABLE
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: E-invoice EN 16931 compliance status
+    example: "NON_COMPLIANT"
+  paymentTerm:
+    anyOf:
+      - $ref: './InvoicePaymentTerm.yaml'
+      - type: "null"
+    description: Payment terms configuration
+  purchaseRequestUsageMetadata:
+    anyOf:
+      - $ref: './PurchaseRequestUsageMetadata.yaml'
+      - type: "null"
+    description: Purchase request usage information
+description: |
+  Metadata specific to invoice expenses, containing payment and approval information.

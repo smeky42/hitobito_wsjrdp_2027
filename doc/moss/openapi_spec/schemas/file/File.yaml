@@ -1,0 +1,32 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the file.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the file belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  name:
+    type: string
+    format: string
+    description: Name of the file.
+    example: "Invoice 203341.pdf"
+  originalName:
+    type: string
+    format: string
+    description: Original uploaded name of the file.
+    example: "Invoice 203341.pdf"
+  size:
+    type: integer
+    description: Size of file in bytes
+    example: 12345
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp (ISO-8601)
+    example: "2025-08-25T09:57:31.194Z"
+required: [id, organisationId, name, originalName, size, createTime]

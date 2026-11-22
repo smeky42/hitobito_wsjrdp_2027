@@ -1,0 +1,11 @@
+type: string
+description: Type of the journal line account.
+enum:
+  - EXPENSE_ACCOUNT
+  - VAT
+  - BANK_ACCOUNT
+  - CLEARING_ACCOUNT
+  - SUPPLIER
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: EXPENSE_ACCOUNT

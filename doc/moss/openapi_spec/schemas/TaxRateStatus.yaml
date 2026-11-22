@@ -1,0 +1,8 @@
+type: string
+description: Current status of the tax rate
+enum:
+  - ACTIVE
+  - INACTIVE
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "ACTIVE"

@@ -1,0 +1,42 @@
+type: [string, "null"]
+enum:
+  - WISE
+  - KLARNA_OB_SEPA
+  - KLARNA_OB_SEPA_INSTANT
+  - WALLET
+  - SEPA_FILE
+  - MANUAL
+  - PAYMENT_SKIPPED
+  - EXTERNAL_DIRECT_DEBIT
+  - PAY_BY_BANK
+  - N_A
+  - APPLE_PAY
+  - ANDROID_PAY
+  - M4M
+  - CARD
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Payment channel/method indicating how payment was processed.
+  
+  Common channels across invoice and reimbursement:
+  - **N_A**: Not applicable or not specified
+  - **MANUAL**: Manual payment processing
+  - **WALLET**: Payment via digital wallet
+  - **SEPA_FILE**: SEPA file transfer (previously SEPA in invoice data)
+  - **EXTERNAL_DIRECT_DEBIT**: External direct debit (previously DIRECT_DEBIT in invoice data)
+  - **PAY_BY_BANK**: Pay by bank transfer
+  
+  Reimbursement-specific channels:
+  - **WISE**: Payment via Wise
+  - **KLARNA_OB_SEPA**: Klarna Open Banking SEPA transfer
+  - **KLARNA_OB_SEPA_INSTANT**: Klarna Open Banking SEPA instant transfer
+  - **PAYMENT_SKIPPED**: Payment was intentionally skipped
+  
+  Card transaction specific channels:
+  - **APPLE_PAY**
+  - **ANDROID_PAY**
+  - **M4M**
+  - **CARD**
+example: "N_A"
+

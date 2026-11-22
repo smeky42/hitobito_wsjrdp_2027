@@ -1,0 +1,12 @@
+type: object
+properties:
+  id:
+    type: [string, "null"]
+    description: Location identifier
+    example: "loc_123"
+  name:
+    type: [string, "null"]
+    description: Location name
+    example: "Berlin, Germany"
+description: |
+  Location information for per diem itinerary.

@@ -1,0 +1,41 @@
+type: object
+description: A single line of a posting instruction.
+required:
+  - id
+  - postingInstructionId
+  - positionIndex
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the line.
+  postingInstructionId:
+    type: string
+    format: uuid
+    description: Identifier of the posting instruction the line belongs to.
+  positionIndex:
+    type: integer
+    description: Position of the line within the posting instruction.
+    example: 0
+  mainAccountType:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionAccountType'
+  mainAccountId:
+    type: string
+    format: uuid
+    description: Identifier of the main account.
+  contraAccountType:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionAccountType'
+  contraAccountId:
+    type: string
+    format: uuid
+    description: Identifier of the contra account.
+  direction:
+    $ref: '../../openapi.yaml#/components/schemas/PostingDirection'
+  amount:
+    type: number
+    description: Amount of the line.
+    example: 100.50
+  bookingText:
+    type: string
+    description: Booking text of the line.
+    example: "Office supplies"

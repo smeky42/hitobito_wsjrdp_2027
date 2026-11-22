@@ -1,0 +1,14 @@
+type: object
+description: Request for detailed approval overview information for a batch of reference IDs.
+required:
+  - referenceIds
+properties:
+  referenceIds:
+    type: array
+    description: Unique identifiers of the entities (e.g. expenses) to fetch approval overview information for.
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+      format: uuid
+    example: ["b8e7c123-4567-89ab-cdef-123456789012"]

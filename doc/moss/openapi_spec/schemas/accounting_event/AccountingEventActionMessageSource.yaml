@@ -1,0 +1,8 @@
+type: string
+description: Source that produced an accounting event action or message.
+enum:
+  - SYSTEM
+  - EXPORT
+  - PREVALIDATION
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API

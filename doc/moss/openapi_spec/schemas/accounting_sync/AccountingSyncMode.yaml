@@ -1,0 +1,7 @@
+type: string
+description: How the accounting sync was triggered.
+enum:
+  - MANUAL
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: MANUAL

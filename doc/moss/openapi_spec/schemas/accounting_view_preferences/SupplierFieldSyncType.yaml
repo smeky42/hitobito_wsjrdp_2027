@@ -1,0 +1,10 @@
+type: string
+description: Synchronization behavior for a supplier field.
+enum:
+  - MOSS_ONLY
+  - SYNCED_ALWAYS
+  - SYNCED_ON_CREATE
+  - GENERATED
+  - GENERATED_BY_NAME
+  - UNKNOWN_DEFAULT_OPEN_API
+example: MOSS_ONLY

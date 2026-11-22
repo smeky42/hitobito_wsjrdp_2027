@@ -1,0 +1,22 @@
+type: object
+required:
+  - updatedStatus
+  - bankTransactionIds
+properties:
+  updatedStatus:
+    type: string
+    enum:
+      - EXCLUDED
+      - INCLUDED
+  bankTransactionIds:
+    type: array
+    minItems: 1
+    maxItems: 100
+    description: > 
+      Unique identifiers of the bank transactions to be excluded or included. 
+      Bank transaction cannot be excluded if it is already allocated.
+    items:
+      type: string
+      format: uuid
+    example:
+      - "123e4567-e89b-12d3-a456-426614174000"

@@ -1,0 +1,20 @@
+type: object
+required:
+  - currency
+  - directLedger
+properties:
+  currency:
+    type: string
+    pattern: '^[A-Z]{3}$'
+    description: ISO 4217 currency code.
+    example: "EUR"
+  directLedger:
+    type: boolean
+    description: Whether the posting goes directly to the ledger without interacting with Moss entities
+  postingDate:
+    type: string
+    format: date
+    description: Posting date.
+    example: "2026-01-30"
+  reference:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionReference'

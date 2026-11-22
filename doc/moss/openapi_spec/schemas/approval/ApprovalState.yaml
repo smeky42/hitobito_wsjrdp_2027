@@ -1,0 +1,14 @@
+type: string
+description: Overall state of the approval process for a reference ID.
+enum:
+  - NOT_FOUND
+  - VERIFICATION_IN_PROGRESS
+  - APPROVAL_NOT_STARTED
+  - IN_PROGRESS
+  - APPROVED
+  - AUTO_APPROVED
+  - REJECTED
+  - CANCELLED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "IN_PROGRESS"

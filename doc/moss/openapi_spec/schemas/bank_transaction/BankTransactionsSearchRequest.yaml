@@ -1,0 +1,79 @@
+type: object
+properties:
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+  filters:
+    type: object
+    properties:
+      ids:
+        type: array
+        description: Moss IDs of the transactions to search for.
+        items:
+          type: string
+          format: uuid
+        example:
+          - "123e4567-e89b-12d3-a456-426614174000"
+          - "223e4567-e89b-12d3-a456-426614174000"
+      bankAccountId:
+        type: string
+        format: uuid
+        deprecated: true
+        description: Optional and deprecated. Use accountIds instead. Filter transactions by a single bank account ID. Do not provide together with accountIds.
+        example: "123e4567-e89b-12d3-a456-426614174000"
+      accountIds:
+        type: array
+        description: Optional. Filter transactions by one or more bank account IDs. Do not provide together with deprecated bankAccountId.
+        items:
+          type: string
+          format: uuid
+        example:
+          - "123e4567-e89b-12d3-a456-426614174000"
+          - "223e4567-e89b-12d3-a456-426614174000"
+      bookingDateFrom:
+        type: string
+        format: date
+        description: Filter transactions with booking date from this date (inclusive)
+        example: "2024-01-01"
+      bookingDateTo:
+        type: string
+        format: date
+        description: Filter transactions with booking date to this date (inclusive)
+        example: "2024-01-31"
+      transactionTypes:
+        type: array
+        uniqueItems: true
+        minItems: 1
+        description: |
+          Filter transactions by the provided transaction types. Transactions matching any of the given types are returned.
+
+          **Possible values:**
+          - `CARD`: A card transaction, such as a purchase or refund.
+          - `PAYOUT`: A payout transaction, such as a transfer to a bank account.
+          - `WITHDRAWAL`: A withdrawal transaction, such as an ATM withdrawal.
+          - `TOP_UP`: A top-up transaction, such as adding funds to a card.
+          - `REPAYMENT`: A repayment transaction, such as repaying a card balance.
+          - `UNKNOWN_DEFAULT_OPEN_API`: Unknown type value (fallback for future types).
+        example: [CARD, REPAYMENT]
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/BankTransactionType'
+    required: [bookingDateFrom, bookingDateTo]
+  sort:
+    type: object
+    properties:
+      sortBy:
+        type: string
+        description: Field to sort by
+        enum:
+          - bookingDate
+        default: bookingDate
+        example: bookingDate
+      sortOrder:
+        type: string
+        description: Sort direction
+        enum:
+          - ASC
+          - DESC
+        default: DESC
+        example: DESC
+required: [filters]

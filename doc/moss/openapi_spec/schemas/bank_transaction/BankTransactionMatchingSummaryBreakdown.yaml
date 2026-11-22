@@ -1,0 +1,15 @@
+type: object
+required:
+  - count
+  - totalCount
+properties:
+  count:
+    type: integer
+    format: int64
+    description: Number of transactions in this category with the supplied filter.
+    example: 12
+  totalCount:
+    type: integer
+    format: int64
+    description: Number of transactions in this category in total.
+    example: 112

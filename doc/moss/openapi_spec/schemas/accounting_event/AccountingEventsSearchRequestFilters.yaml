@@ -1,0 +1,43 @@
+type: object
+properties:
+  freeText:
+    type: string
+    description: Free-text search over selected accounting event fields.
+    example: "amazon"
+  createTimeFrom:
+    type: string
+    format: date-time
+    description: Filter accounting events created on or after this timestamp.
+    example: "2026-07-01T00:00:00Z"
+  createTimeTo:
+    type: string
+    format: date-time
+    description: Filter accounting events created on or before this timestamp.
+    example: "2026-07-31T23:59:59Z"
+  sourceTypes:
+    type: array
+    description: Filter accounting events by source type.
+    items:
+      $ref: './AccountingEventSourceType.yaml'
+  sourceSubtypes:
+    type: array
+    description: Filter accounting events by source subtype.
+    items:
+      $ref: './AccountingEventSourceSubtype.yaml'
+  statuses:
+    type: array
+    description: Filter accounting events by latest status.
+    items:
+      $ref: './AccountingEventLogStatus.yaml'
+  financialPeriodIds:
+    type: array
+    description: Filter accounting events by financial period id.
+    items:
+      type: string
+      format: uuid
+  sourceIds:
+    type: array
+    description: Filter accounting events by source id.
+    items:
+      type: string
+      format: uuid

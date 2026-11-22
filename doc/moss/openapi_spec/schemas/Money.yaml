@@ -1,0 +1,13 @@
+type: object
+required: [amount, currency]
+properties:
+  amount:
+    type: string
+    format: decimal
+    description: Monetary amount as a decimal string
+    example: "1234.56"
+  currency:
+    type: string
+    format: iso-4217
+    description: ISO 4217 currency code
+    example: "EUR"

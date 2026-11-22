@@ -1,0 +1,8 @@
+type: string
+description: Type of command applied to accounting events.
+enum:
+  - UPDATE_FINANCIAL_PERIOD
+  - ARCHIVE_AND_RETRY
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "UPDATE_FINANCIAL_PERIOD"

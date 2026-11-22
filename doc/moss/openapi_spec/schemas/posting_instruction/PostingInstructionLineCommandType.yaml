@@ -1,0 +1,11 @@
+type: string
+description: Type of command applied to a posting instruction line.
+enum:
+  - UPDATE_BOOKING_TEXT
+  - UPDATE_AMOUNT
+  - UPDATE_MAIN_ACCOUNT_TYPE
+  - UPDATE_MAIN_ACCOUNT_ID
+  - DELETE
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "UPDATE_BOOKING_TEXT"

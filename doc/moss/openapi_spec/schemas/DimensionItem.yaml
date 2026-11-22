@@ -1,0 +1,38 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the dimension item
+    example: "8a684e99-d19b-4f83-8239-7ac89aa1109c"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the dimension item belongs to
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  dimensionId:
+    type: string
+    format: uuid
+    description: "Unique identifier of the dimension this item belongs to (note: fixed value for cost centers – 00000000-0000-0000-0000-000000000001 and for cost carriers – 00000000-0000-0000-0000-000000000002)"
+    example: "af5f2270-9a4d-467f-9ca7-69562369979c"
+  name:
+    type: string
+    description: Name of the dimension item
+    example: "Project Alpha"
+  code:
+    type: string
+    description: Code of the dimension item
+    example: "001"
+  status:
+    $ref: './DimensionItemStatus.yaml'
+  createTime:
+    type: string
+    format: date-time
+    description: Creation timestamp (ISO-8601)
+    example: "2026-01-30T16:24:15.737860Z"
+  updateTime:
+    type: string
+    format: date-time
+    description: Last update timestamp (ISO-8601)
+    example: "2026-01-30T16:24:15.745106Z"
+required: [id, organisationId, dimensionId, name, status, createTime, updateTime]

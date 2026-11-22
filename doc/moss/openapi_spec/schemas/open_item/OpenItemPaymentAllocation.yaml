@@ -1,0 +1,15 @@
+type: object
+description: A payment instruction allocated against the open item.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the payment allocation.
+  paymentInstructionId:
+    type: string
+    format: uuid
+    description: The payment instruction covering this allocation.
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+  status:
+    $ref: './OpenItemPaymentAllocationStatus.yaml'

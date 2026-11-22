@@ -1,0 +1,16 @@
+type: object
+description: Allowed actions for a single accounting event.
+required:
+  - eventId
+  - actions
+properties:
+  eventId:
+    type: string
+    format: uuid
+    description: Unique identifier of the accounting event.
+    example: "b8e7c123-4567-89ab-cdef-123456789012"
+  actions:
+    type: array
+    description: List of actions with their allowed status.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/AccountingEventPresentationAction'

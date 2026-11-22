@@ -1,0 +1,21 @@
+type: string
+enum:
+  - EXPENSE
+  - REFUND
+  - CASHBACK
+  - MAIN
+  - CORRECTION
+  - CREDIT_NOTE
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Subtype of the expense.
+
+  **Subtypes:**
+  - `EXPENSE`: Standard expense
+  - `REFUND`: A returned-funds entry (merchant refund or returned transaction).
+  - `CASHBACK`: Cashback or reward entries associated with card flows
+  - `MAIN`: Main expense entry
+  - `CORRECTION`: Corrective entry for adjustments
+  - `CREDIT_NOTE`: A supplier credit (credit note) applied against an invoice
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown subtype (fallback for future subtypes)
+example: "EXPENSE"

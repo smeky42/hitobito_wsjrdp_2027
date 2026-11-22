@@ -1,0 +1,9 @@
+allOf:
+  - $ref: '../openapi.yaml#/components/schemas/BaseResponse'
+  - type: object
+    properties:
+      data:
+        type: array
+        items:
+          $ref: './ExpenseAccount.yaml'
+        description: Array of expense accounts

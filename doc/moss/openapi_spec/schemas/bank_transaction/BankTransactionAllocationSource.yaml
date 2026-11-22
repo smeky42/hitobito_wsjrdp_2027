@@ -1,0 +1,15 @@
+type: string
+enum:
+  - MANUAL
+  - AGENT
+  - MOSS_PAYMENT
+  - UNKNOWN_DEFAULT_OPEN_API
+example: "MOSS_PAYMENT"
+description: |
+  The matched status of the bank transaction.
+  
+  **Statuses**
+  - `MANUAL`: The allocation has been manually created.
+  - `AGENT`: The allocation was created by an agent.
+  - `MOSS_PAYMENT`: The allocation was created by Moss.
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown allocation source.

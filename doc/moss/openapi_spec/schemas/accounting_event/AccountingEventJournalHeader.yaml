@@ -1,0 +1,22 @@
+type: object
+description: Header of the accounting journal created for the event.
+properties:
+  journalType:
+    $ref: './AccountingEventJournalType.yaml'
+  accountingDate:
+    type: string
+    format: date
+    description: Accounting date of the journal.
+    example: "2026-07-01"
+  financialPeriod:
+    $ref: './AccountingEventFinancialPeriod.yaml'
+  currency:
+    type: string
+    description: ISO 4217 currency code of the journal.
+    example: "EUR"
+  exchangeRates:
+    $ref: './AccountingEventExchangeRates.yaml'
+  memo:
+    type: string
+    description: Free-text memo of the journal.
+    example: "Amazon invoice INV-1234"

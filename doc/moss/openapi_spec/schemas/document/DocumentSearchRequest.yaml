@@ -1,0 +1,96 @@
+type: object
+description: Request for searching documents
+required:
+  - pagination
+properties:
+  filters:
+    type: object
+    description: Optional filters to narrow the search results
+    properties:
+      ids:
+        type: array
+        items:
+          type: string
+          format: uuid
+        description: IDs of the documents to search for
+      types:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/DocumentType'
+        description: Filter by document types
+      categories:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/DocumentCategory'
+        description: Filter by document categories
+      statuses:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/DocumentStatus'
+        description: Filter by document processing statuses
+      complianceStatuses:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/DocumentComplianceStatus'
+      duplicateStatuses:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/DocumentDuplicateStatus'
+      counterpartyIds:
+        type: array
+        items:
+          type: string
+          format: uuid
+        description: Filter by counterparty UUIDs
+      channels:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/DocumentChannel'
+        description: Filter by document ingestion channels
+      createdBy:
+        type: array
+        items:
+          type: string
+          format: uuid
+        description: Filter by user IDs who created the documents
+      createTimeFrom:
+        type: string
+        format: date-time
+        description: Filter documents created at or after this timestamp (inclusive)
+        example: "2024-01-01T00:00:00Z"
+      createTimeTo:
+        type: string
+        format: date-time
+        description: Filter documents created at or before this timestamp (inclusive)
+        example: "2024-12-31T23:59:59Z"
+      extractedDocumentTimeFrom:
+        type: string
+        format: date-time
+        description: Filter by extracted document date from (inclusive)
+        example: "2024-01-01T00:00:00Z"
+      extractedDocumentTimeTo:
+        type: string
+        format: date-time
+        description: Filter by extracted document date to (inclusive)
+        example: "2024-12-31T23:59:59Z"
+      freeText:
+        description: Free text search (currently supports file names only), case-insensitive
+        type: string
+        minLength: 3
+  pagination:
+    type: object
+    description: Pagination parameters
+    properties:
+      page:
+        type: integer
+        minimum: 1
+        default: 1
+        description: Page number (1-based)
+        example: 1
+      pageSize:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        description: Number of items per page
+        example: 20

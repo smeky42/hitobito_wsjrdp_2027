@@ -1,0 +1,22 @@
+type: object
+required:
+  - status
+  - createdBy
+  - createTime
+properties:
+  status:
+    type: string
+    description: Overridden compliance status value.
+    enum:
+      - COMPLIANT
+      - NON_COMPLIANT
+      - NON_COMPLIANT_BUT_ACCEPTED
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+  comment:
+    type: string
+  createdBy:
+    $ref: '../../openapi.yaml#/components/schemas/DocumentActor'
+  createTime:
+    type: string
+    format: date-time

@@ -1,0 +1,35 @@
+type: object
+properties:
+  totalAmount:
+    $ref: './Money.yaml'
+    description: Total calculated per diem amount with currency
+    example:
+      amount: "450.00"
+      currency: "EUR"
+  travelStartTime:
+    type: string
+    format: date-time
+    description: Start time of travel period (local time)
+    example: "2023-10-01T08:00:00"
+  travelEndTime:
+    type: string
+    format: date-time
+    description: End time of travel period (local time)
+    example: "2023-10-03T18:00:00"
+  itinerary:
+    type: array
+    items:
+      $ref: './PerDiemItineraryItem.yaml'
+    description: Travel itinerary with locations and times
+  timezoneOffset:
+    type: string
+    description: Timezone offset for the travel period
+    example: "+01:00"
+required:
+  - totalAmount
+  - travelStartTime
+  - travelEndTime
+  - itinerary
+  - timezoneOffset
+description: |
+  Metadata specific to per diem line expenses, containing travel and policy information.

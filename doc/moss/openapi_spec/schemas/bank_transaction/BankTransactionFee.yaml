@@ -1,0 +1,17 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank transaction fee.
+    example: "837574c8-e813-4bb3-b31e-c7358758c29c"
+  feeType:
+    $ref: '../../openapi.yaml#/components/schemas/BankTransactionFeeType'
+    description: Type of the bank transaction fee
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+    description: Amount of the fee in the bank account currency.
+    example:
+      amount: "100.50"
+      currency: "EUR"
+required: [id, feeType, amount]

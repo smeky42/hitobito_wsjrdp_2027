@@ -1,0 +1,19 @@
+type: object
+required:
+  - exportStatus
+properties:
+  exportStatus:
+    $ref: './ExportStatus.yaml'
+    description: Current status of the expense export to accounting systems
+  firstExportTime:
+    type: [string, "null"]
+    format: date-time
+    description: When the expense was first exported to the accounting system
+    example: "2024-01-15T14:30:00Z"
+  lastExportTime:
+    type: [string, "null"]
+    format: date-time
+    description: When the expense was most recently exported to the accounting system
+    example: "2024-02-20T10:15:30Z"
+description: |
+  Information about expense export to accounting systems, including status and timestamps.

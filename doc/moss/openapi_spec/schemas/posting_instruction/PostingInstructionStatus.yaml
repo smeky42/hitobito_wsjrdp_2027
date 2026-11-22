@@ -1,0 +1,8 @@
+type: string
+description: Lifecycle status of the posting instruction.
+enum:
+  - DRAFTED
+  - POSTED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "DRAFTED"

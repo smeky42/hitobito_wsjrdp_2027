@@ -1,0 +1,8 @@
+type: string
+enum:
+  - PENDING
+  - NEW
+  - PROCESSED
+  - UNKNOWN_DEFAULT_OPEN_API
+description: Status of the card creation request
+example: NEW

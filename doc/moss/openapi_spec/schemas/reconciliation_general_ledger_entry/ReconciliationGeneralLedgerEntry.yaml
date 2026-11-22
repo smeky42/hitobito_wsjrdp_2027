@@ -1,0 +1,67 @@
+allOf:
+  - $ref: './ReconciliationGeneralLedgerEntryBase.yaml'
+  - type: object
+    description: A general ledger entry enriched with reconciliation context.
+    properties:
+      generalLedgerJournalId:
+        type: string
+        format: uuid
+        description: Unique identifier of the general ledger journal this entry belongs to.
+        example: "1e3b42ec-587d-4fe5-8807-22c0235ee825"
+      postingDate:
+        type: string
+        format: date
+        description: Date when the entry was posted to the general ledger.
+        example: "2024-01-15"
+      originalAmount:
+        type: [object, "null"]
+        description: Amount in the original transaction currency before FX conversion. Only present when the entry currency differs from the original transaction currency.
+        allOf:
+          - $ref: '../../openapi.yaml#/components/schemas/Money'
+        example:
+          amount: "1075.00"
+          currency: "USD"
+      exchangeRate:
+        type: [number, "null"]
+        description: Exchange rate applied when converting from the original currency to the general ledger account currency.
+        example: 1.075
+      entryDescription:
+        type: [string, "null"]
+        description: Description of the general ledger entry.
+        example: "Office supplies purchase"
+      entrySourceId:
+        type: [string, "null"]
+        description: Identifier from the source system that generated this general ledger entry.
+        example: "EXP-12345"
+      entryReference:
+        type: [string, "null"]
+        description: Reference of the general ledger entry.
+        example: "RE-4711"
+      journalReference:
+        type: [string, "null"]
+        description: Reference number of the journal this entry belongs to.
+        example: "JNL-2024-001"
+      journalDescription:
+        type: [string, "null"]
+        description: Description of the journal this entry belongs to.
+        example: "January 2024 expense entries"
+      matchingGroupId:
+        type: [string, "null"]
+        format: uuid
+        description: Unique identifier of the matching group this entry belongs to, if any.
+        example: "b653c04b-cf30-42f3-8b09-350121c8903c"
+      source:
+        type: [object, "null"]
+        description: |
+          Raw posting fields from the source accounting system, proxied as-is. Keys depend on the
+          source system, for DATEV for example document_field1 (Belegfeld 1) or contra_account_number.
+        additionalProperties: true
+        example:
+          document_field1: "RE-4711"
+          contra_account_number: 4930
+      relatedEntries:
+        type: [array, "null"]
+        description: All entries of the same journal. Only returned when fetching a single entry.
+        items:
+          $ref: './ReconciliationGeneralLedgerRelatedEntry.yaml'
+    required: [generalLedgerJournalId, postingDate]

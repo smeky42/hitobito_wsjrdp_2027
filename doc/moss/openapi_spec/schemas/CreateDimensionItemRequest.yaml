@@ -1,0 +1,31 @@
+type: object
+properties:
+  externalUserId:
+    type: string
+    description: |
+      External identifier of the actual person/user who initiated this action in the calling system.
+      Required for traceability and compliance reasons.
+    minLength: 1
+    maxLength: 255
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "john.doe@company.com"
+  name:
+    type: string
+    description: Name of the dimension item. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "Marketing Department"
+  code:
+    type: string
+    description: Code of the dimension item. Cannot be blank or contain leading/trailing whitespace.
+    minLength: 1
+    pattern: '^\S(.*\S)?$'
+    x-pattern-message: 'must not be blank or contain leading/trailing whitespace'
+    example: "MKT001"
+  status:
+    $ref: './DimensionItemStatus.yaml'
+    default: ACTIVE
+    description: Status of the dimension item. Defaults to `ACTIVE` when omitted.
+required: [name, status]

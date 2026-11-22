@@ -1,0 +1,17 @@
+type: object
+description: A command applied to the specified accounting events.
+required:
+  - eventIds
+  - command
+properties:
+  eventIds:
+    type: array
+    description: Unique identifiers of the accounting events to update.
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+      format: uuid
+    example: ["b8e7c123-4567-89ab-cdef-123456789012"]
+  command:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingEventCommand'

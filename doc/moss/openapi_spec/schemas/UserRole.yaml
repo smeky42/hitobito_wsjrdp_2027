@@ -1,0 +1,27 @@
+type: string
+enum:
+  - USER
+  - SUPER_USER
+  - APPLICANT
+  - ACCOUNTANT
+  - INTERNAL_ACCOUNTANT
+  - EXTERNAL_ACCOUNTANT
+  - TEAMLEAD
+  - PAYER
+  - PURCHASER
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Role of the user within the organization.
+
+  **Roles:**
+  - `USER`: Standard user with basic access permissions
+  - `SUPER_USER`: Enhanced user with additional permissions
+  - `APPLICANT`: User applying for access or services
+  - `ACCOUNTANT`: User with accounting-related permissions
+  - `INTERNAL_ACCOUNTANT`: Internal accounting staff member
+  - `EXTERNAL_ACCOUNTANT`: External accounting professional
+  - `TEAMLEAD`: Team leader with management permissions
+  - `PAYER`: User authorized to make payments and approve expenses
+  - `PURCHASER`: User authorized to create and manage purchase requests
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown role (fallback for future roles)
+example: USER

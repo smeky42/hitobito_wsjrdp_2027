@@ -1,0 +1,20 @@
+type: object
+required:
+  - expenseId
+properties:
+  expenseId:
+    type: string
+    format: uuid
+    description: The expense to which the transaction is allocated to.
+    example: "c0e78d81-1faf-4b5c-833e-cd6d88d5193a"
+  openItemId:
+    type: string
+    format: uuid
+    description: The open item related to the allocated expense.
+    example: "1219897a-ee57-497d-b846-5a2a92d34e7b"
+  expenseType:
+    $ref: '../../openapi.yaml#/components/schemas/ExpenseType'
+    description: The type of the expense the transaction is allocated to.
+  source:
+    $ref: ./BankTransactionAllocationSource.yaml
+    description: The initiating source of the allocation.

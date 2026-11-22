@@ -1,0 +1,11 @@
+type: string
+description: |
+  Status of an allocation.
+
+  * `APPLIED` - the allocation is in effect.
+  * `REVERSED` - the allocation was reversed and no longer reduces the outstanding amount.
+enum:
+  - APPLIED
+  - REVERSED
+  - UNKNOWN_DEFAULT_OPEN_API
+example: APPLIED

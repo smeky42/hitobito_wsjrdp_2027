@@ -1,0 +1,9 @@
+type: string
+description: Default payment method for the supplier
+enum:
+  - DIRECT_DEBIT
+  - SEPA
+  - NOT_APPLICABLE
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: SEPA

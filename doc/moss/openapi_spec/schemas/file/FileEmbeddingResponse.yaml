@@ -1,0 +1,6 @@
+allOf:
+  - $ref: '../../openapi.yaml#/components/schemas/BaseResponse'
+  - type: object
+    properties:
+      data:
+        $ref: '../../openapi.yaml#/components/schemas/FileEmbedding'

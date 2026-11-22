@@ -1,0 +1,92 @@
+type: object
+properties:
+  cardId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the card used
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  userTransactionTime:
+    type: [string, "null"]
+    format: date-time
+    description: When the user initiated the transaction
+    example: "2023-10-01T14:30:00Z"
+  transactionStatus:
+    type: [string, "null"]
+    enum:
+      - PENDING
+      - ACCEPTED
+      - REVERSED
+      - REJECTED
+      - ERROR
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: Current status of the card transaction
+    example: "ACCEPTED"
+  merchantDetails:
+    anyOf:
+      - $ref: './CardTransactionMerchantDetails.yaml'
+      - type: "null"
+    description: Merchant information for the transaction
+  settlementDate:
+    type: [string, "null"]
+    format: date
+    description: Date when the transaction was settled
+    example: "2023-10-01"
+  serviceDate:
+    type: [string, "null"]
+    format: date-time
+    description: Date when service was provided
+    example: "2023-10-01T14:30:00Z"
+  invoiceDate:
+    type: [string, "null"]
+    format: date-time
+    description: Date of the invoice
+    example: "2023-10-01T14:30:00Z"
+  bookingDate:
+    type: [string, "null"]
+    format: date
+    description: Date when transaction was booked
+    example: "2023-10-01"
+  receiptRequirement:
+    type: [string, "null"]
+    enum:
+      - NOT_ALLOWED
+      - NOT_REQUIRED
+      - REQUIRED
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: Receipt requirement for this transaction
+    example: "REQUIRED"
+  receiptStatus:
+    type: [string, "null"]
+    enum:
+      - NOT_CREATED
+      - CREATED
+      - FETCH_PENDING
+      - FILE_ADDED_AUTOMATICALLY
+      - FILE_ADDED_AUTOMATICALLY_MAIL_FETCHER
+      - FILE_ADDED_AUTOMATICALLY_DIRECT_INTEGRATION
+      - FILE_ADDED
+      - SELF_ISSUED_FILE_ADDED
+      - SOME_FILES_INVALID
+      - ALL_FILES_INVALID
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: Current status of the receipt
+    example: "FILE_ADDED"
+  paymentChannel:
+    $ref: '../openapi.yaml#/components/schemas/PaymentChannel'
+  invoiceNumber:
+    type: [string, "null"]
+    description: Invoice number for the transaction
+    example: "INV-2023-001"
+  einvoiceComplianceStatus:
+    type: [string, "null"]
+    enum:
+      - COMPLIANT
+      - NON_COMPLIANT
+      - EXCEPTION
+      - SUPPLIER_EXEMPT
+      - NOT_APPLICABLE
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: E-invoice compliance status
+    example: "NON_COMPLIANT"
+description: |
+  Metadata specific to card transaction expenses, containing transaction and merchant details.

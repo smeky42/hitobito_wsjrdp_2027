@@ -1,0 +1,13 @@
+type: object
+properties:
+  fileIds:
+    type: array
+    items:
+      type: string
+      format: uuid
+    uniqueItems: true
+    minItems: 1
+    maxItems: 100
+    description: IDs of the files to generate signed URLs for (up to 100).
+    example: ["837574c8-e813-4bb3-b31e-c7358758c29c", "c3f67167-4927-4c6d-ae90-d4b55b211786"]
+required: [fileIds]

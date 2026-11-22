@@ -1,0 +1,11 @@
+type: string
+enum:
+  - ALLOW
+  - BLOCK
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Type of merchant category control for card transactions:
+
+  * `ALLOW`: Only allow transactions from the specified merchant categories
+  * `BLOCK`: Block transactions from the specified merchant categories
+example: ALLOW

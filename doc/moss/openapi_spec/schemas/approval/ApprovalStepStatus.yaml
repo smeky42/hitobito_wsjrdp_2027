@@ -1,0 +1,11 @@
+type: string
+description: Status of an approval step.
+enum:
+  - NEW
+  - PENDING
+  - FAILED
+  - CANCELLED
+  - COMPLETED
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "PENDING"

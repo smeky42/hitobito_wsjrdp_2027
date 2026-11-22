@@ -1,0 +1,15 @@
+type: object
+properties:
+  paymentTermId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the payment term
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  lines:
+    type: array
+    items:
+      $ref: './PaymentTermLine.yaml'
+    default: []
+    description: Payment term lines with discount information
+description: |
+  Payment term configuration for the invoice.

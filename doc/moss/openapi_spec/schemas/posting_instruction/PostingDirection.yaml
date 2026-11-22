@@ -1,0 +1,8 @@
+type: string
+description: Posting direction of a line.
+enum:
+  - DEBIT
+  - CREDIT
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "DEBIT"

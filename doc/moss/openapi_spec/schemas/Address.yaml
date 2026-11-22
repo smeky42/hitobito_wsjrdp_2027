@@ -1,0 +1,28 @@
+type: object
+properties:
+  firstLine:
+    type: string
+    description: First line of the street address
+    example: "Unter den Linden 1"
+  secondLine:
+    type: string
+    description: Second line of the street address (apartment, suite, floor, etc.)
+    example: "Suite 100"
+  houseNumber:
+    type: string
+    description: House number, if not already part of the street address
+    example: "1A"
+  city:
+    type: string
+    description: City
+    example: "Berlin"
+  state:
+    type: string
+    description: State
+    example: "Berlin"
+  postalCode:
+    type: string
+    description: Postal or ZIP code
+    example: "10117"
+  countryCode:
+    $ref: './CountryCode.yaml'

@@ -1,0 +1,11 @@
+type: string
+description: Reason the approval was automatically approved, when applicable.
+enum:
+  - ADMIN_USER
+  - SPEND_UNDER_THRESHOLD
+  - NO_POLICY_FOUND
+  - NO_RULE_FOUND
+  - UNKNOWN
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "SPEND_UNDER_THRESHOLD"

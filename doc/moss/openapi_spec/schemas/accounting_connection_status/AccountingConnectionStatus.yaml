@@ -1,0 +1,25 @@
+type: object
+description: Accounting integration status for the organization.
+properties:
+  status:
+    $ref: '../../openapi.yaml#/components/schemas/AccountingConnectionStatusType'
+  statusChangeErrorCode:
+    type: string
+    description: Optional error code from the last status transition attempt.
+    example: ACCOUNTING_CONNECTION_FAILED
+  statusChangeErrorMessage:
+    type: string
+    description: Optional error message from the last status transition attempt.
+    example: Connection check failed.
+  currentConnection:
+    $ref: './AccountingConnection.yaml'
+    description: Current accounting connection, if any.
+  accountingConnections:
+    type: array
+    deprecated: true
+    description: Deprecated legacy field. Contains zero or one items.
+    items:
+      $ref: './AccountingConnection.yaml'
+required:
+  - status
+  - accountingConnections

@@ -1,0 +1,18 @@
+type: object
+description: Financial period a journal or journal line belongs to.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the financial period.
+    example: "9d3e2b1a-1234-4567-89ab-cdef01234567"
+  code:
+    type: string
+    description: Display code of the financial period.
+    example: "2026-07"
+  externalId:
+    type: string
+    description: Identifier of the financial period in the connected accounting system.
+    example: "PER-2026-07"
+  status:
+    $ref: './AccountingEventFinancialPeriodStatus.yaml'

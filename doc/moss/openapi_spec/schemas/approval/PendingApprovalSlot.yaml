@@ -1,0 +1,10 @@
+type: object
+description: A single pending approval slot and its eligible approvers.
+properties:
+  eligibleUserIds:
+    type: array
+    description: Identifiers of users eligible to fill this slot.
+    items:
+      type: string
+required:
+  - eligibleUserIds

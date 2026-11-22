@@ -1,0 +1,9 @@
+type: string
+description: Operation available for an accounting UI resource.
+enum:
+  - DISABLED
+  - CREATE
+  - UPDATE
+  - DELETE
+  - UNKNOWN_DEFAULT_OPEN_API
+example: CREATE

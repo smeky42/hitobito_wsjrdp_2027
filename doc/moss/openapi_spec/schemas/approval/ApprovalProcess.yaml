@@ -1,0 +1,32 @@
+type: object
+description: State of a single approval process (verification or approval) for a reference ID.
+properties:
+  ticketId:
+    type: string
+    format: uuid
+    description: Unique identifier of the underlying approval ticket.
+    example: "c3f67167-4927-4c6d-ae90-d4b55b211786"
+  ticketStatus:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalProcessTicketStatus'
+  submittedAt:
+    type: string
+    format: date-time
+    description: Timestamp when the ticket was submitted.
+    example: "2026-07-01T10:15:30Z"
+  matchedPolicyRule:
+    $ref: '../../openapi.yaml#/components/schemas/ApprovalPolicyRule'
+    nullable: true
+  steps:
+    type: array
+    description: Approval steps for this process, in order.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/ApprovalStep'
+  currentStepId:
+    type: string
+    description: Identifier of the step currently awaiting action, if any.
+    nullable: true
+required:
+  - ticketId
+  - ticketStatus
+  - submittedAt
+  - steps

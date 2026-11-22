@@ -1,0 +1,11 @@
+type: object
+required:
+  - lineId
+  - command
+properties:
+  lineId:
+    type: string
+    format: uuid
+    description: Identifier of the line the command applies to.
+  command:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionLineCommand'

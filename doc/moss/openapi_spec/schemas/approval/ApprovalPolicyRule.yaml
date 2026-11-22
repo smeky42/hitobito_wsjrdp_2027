@@ -1,0 +1,16 @@
+type: object
+description: The policy rule matched for this approval process, when applicable.
+properties:
+  policyId:
+    type: string
+    description: Identifier of the matched approval policy.
+  ruleId:
+    type: string
+    description: Identifier of the matched rule within the policy.
+  ruleName:
+    type: string
+    description: Display name of the matched rule.
+required:
+  - policyId
+  - ruleId
+  - ruleName

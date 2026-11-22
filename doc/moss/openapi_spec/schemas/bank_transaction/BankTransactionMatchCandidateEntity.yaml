@@ -1,0 +1,55 @@
+type: object
+description: Bank transaction details used to explain a match candidate.
+required:
+  - bankTransactionId
+  - organisationId
+  - matchReasons
+  - accountId
+  - amount
+  - currency
+  - originalAmount
+  - originalCurrency
+  - bookingDate
+properties:
+  bankTransactionId:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank transaction.
+  organisationId:
+    type: string
+    format: uuid
+    description: Organisation that owns the bank transaction.
+  matchReasons:
+    type: array
+    description: Reasons this bank transaction was included in the candidate.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/BankTransactionMatchReason'
+  accountId:
+    type: string
+    format: uuid
+    description: Bank account associated with the bank transaction.
+  amount:
+    type: number
+    description: Bank transaction amount in the account currency.
+  currency:
+    type: string
+    description: Currency of the bank transaction amount.
+  originalAmount:
+    type: number
+    description: Bank transaction amount in the original currency.
+  originalCurrency:
+    type: string
+    description: Original currency of the bank transaction.
+  bookingDate:
+    type: string
+    format: date
+    description: Date the bank transaction was booked.
+  purpose:
+    type: string
+    description: Payment purpose.
+  counterparty:
+    type: string
+    description: Counterparty name.
+  counterpartyIban:
+    type: string
+    description: Counterparty IBAN.

@@ -1,0 +1,39 @@
+type: object
+description: Synchronization information for a specific ledger import type.
+properties:
+  type:
+    $ref: '../../openapi.yaml#/components/schemas/LedgerSyncType'
+  status:
+    $ref: '../../openapi.yaml#/components/schemas/LedgerSyncStatus'
+  lastSyncTime:
+    type: string
+    format: date-time
+    description: Timestamp of the last successful sync, if any.
+    nullable: true
+  lastFullSyncTime:
+    type: string
+    format: date-time
+    description: Timestamp of the last successful full sync, if any.
+    nullable: true
+  lastErrorMessage:
+    type: string
+    description: Error message from the last failed sync attempt, if any.
+    nullable: true
+  createdCount:
+    type: integer
+    description: Number of records created in the last sync.
+    example: 42
+  updatedCount:
+    type: integer
+    description: Number of records updated in the last sync.
+    example: 5
+  deletedCount:
+    type: integer
+    description: Number of records deleted in the last sync.
+    example: 0
+required:
+  - type
+  - status
+  - createdCount
+  - updatedCount
+  - deletedCount

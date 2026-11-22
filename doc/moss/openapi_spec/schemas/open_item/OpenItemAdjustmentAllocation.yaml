@@ -1,0 +1,21 @@
+type: object
+description: An adjustment allocated against the open item, such as a credit note, discount or posting instruction line, reducing the amount left to pay without a cash movement.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the adjustment allocation.
+  referenceId:
+    type: string
+    format: uuid
+    description: The open item the adjustment originates from, for example the credit note or posting instruction line open item being applied.
+  referenceType:
+    $ref: './OpenItemAdjustmentReferenceType.yaml'
+  batchId:
+    type: string
+    format: uuid
+    description: Identifier grouping adjustments applied together in one netting batch.
+  amount:
+    $ref: '../../openapi.yaml#/components/schemas/Money'
+  status:
+    $ref: './OpenItemAllocationStatus.yaml'

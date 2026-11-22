@@ -1,0 +1,19 @@
+type: object
+properties:
+  pagination:
+    $ref: '../shared/RequestPagination.yaml'
+    title: RequestPagination
+  filters:
+    type: object
+    properties:
+      expenseIds:
+        type: array
+        items:
+          type: string
+          format: uuid
+        uniqueItems: true
+        maxItems: 100
+        description: Filter files by expense IDs (up to 100).
+        example: ["837574c8-e813-4bb3-b31e-c7358758c29c", "c3f67167-4927-4c6d-ae90-d4b55b211786"]
+    required: [expenseIds]
+required: [filters]

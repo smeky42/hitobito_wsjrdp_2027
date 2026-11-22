@@ -1,0 +1,13 @@
+type: object
+properties:
+  visible:
+    type: boolean
+  options:
+    type: array
+    items:
+      $ref: './CodeText.yaml'
+  annotation:
+    $ref: './CodeText.yaml'
+  regexPattern:
+    type: string
+required: [visible]

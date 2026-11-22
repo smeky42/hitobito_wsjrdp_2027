@@ -1,0 +1,22 @@
+allOf:
+  - $ref: '../../openapi.yaml#/components/schemas/AccountingEventSlim'
+  - type: object
+    properties:
+      payload:
+        $ref: '../../openapi.yaml#/components/schemas/AccountingEventPayload'
+      actions:
+        type: array
+        items:
+          $ref: '../../openapi.yaml#/components/schemas/AccountingEventAction'
+      presentationMetadata:
+        type: object
+        description: Presentation metadata including allowed actions for this accounting event.
+        properties:
+          actions:
+            type: array
+            description: Allowed actions with their allowed status and denial reasons.
+            items:
+              $ref: '../../openapi.yaml#/components/schemas/AccountingEventPresentationAction'
+    required:
+      - payload
+      - actions

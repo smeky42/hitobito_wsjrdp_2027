@@ -1,0 +1,9 @@
+type: object
+description: Journal-line amounts in the original, home and settlement currencies, when available.
+properties:
+  originalAmount:
+    $ref: '../Money.yaml'
+  homeAmount:
+    $ref: '../Money.yaml'
+  settlementAmount:
+    $ref: '../Money.yaml'

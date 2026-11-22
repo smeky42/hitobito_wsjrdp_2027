@@ -1,0 +1,19 @@
+type: object
+description: Optional parameters for controlling the ledger import behaviour.
+properties:
+  filterFrom:
+    type: string
+    format: date
+    description: Start date (inclusive) for filtering synced data.
+    example: "2026-02-01"
+    nullable: true
+  filterTo:
+    type: string
+    format: date
+    description: End date (inclusive) for filtering synced data.
+    example: "2026-02-31"
+    nullable: true
+  forceFullSync:
+    type: boolean
+    description: When true, performs a full sync instead of a delta sync when applicable.
+    nullable: true

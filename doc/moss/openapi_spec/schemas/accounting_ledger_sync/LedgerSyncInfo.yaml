@@ -1,0 +1,10 @@
+type: object
+description: Ledger synchronization status for all sync types.
+properties:
+  types:
+    type: array
+    description: Sync information per ledger sync type.
+    items:
+      $ref: '../../openapi.yaml#/components/schemas/LedgerTypeSyncInfo'
+required:
+  - types

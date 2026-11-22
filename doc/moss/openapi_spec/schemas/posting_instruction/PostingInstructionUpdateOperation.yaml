@@ -1,0 +1,8 @@
+type: string
+description: Whether the command sets or unsets the value.
+enum:
+  - SET
+  - UNSET
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "SET"

@@ -1,0 +1,17 @@
+type: object
+description: Another entry of the same journal. Unlike the entry itself, it can be posted without an account.
+required:
+  - id
+  - amount
+properties:
+  id:
+    $ref: './ReconciliationGeneralLedgerEntryBase.yaml#/properties/id'
+  generalLedgerAccountId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the general ledger account. Null when the entry has no account.
+    example: "3b5d64ae-7a9f-6aa7-aa29-44e2457aa047"
+  generalLedgerAccount:
+    $ref: './ReconciliationGeneralLedgerEntryBase.yaml#/properties/generalLedgerAccount'
+  amount:
+    $ref: './ReconciliationGeneralLedgerEntryBase.yaml#/properties/amount'

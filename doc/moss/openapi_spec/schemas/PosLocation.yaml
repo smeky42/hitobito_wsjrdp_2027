@@ -1,0 +1,8 @@
+type: string
+enum:
+  - ONLINE
+  - OFFLINE
+  - ANY
+  - UNKNOWN_DEFAULT_OPEN_API
+description: Point of sale location type for card usage restriction
+example: ONLINE

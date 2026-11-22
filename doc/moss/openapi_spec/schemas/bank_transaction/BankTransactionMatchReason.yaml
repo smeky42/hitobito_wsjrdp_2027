@@ -1,0 +1,21 @@
+type: object
+description: A bank transaction field that contributed to a suggested match.
+required:
+  - fieldType
+  - level
+properties:
+  fieldType:
+    type: string
+    description: Bank transaction field used for matching.
+    enum:
+      - AMOUNT
+      - BOOKING_DATE
+      - COUNTERPARTY_IBAN
+      - COUNTERPARTY_NAME
+      - PURPOSE
+      - UNKNOWN_DEFAULT_OPEN_API
+    default: UNKNOWN_DEFAULT_OPEN_API
+  level:
+    $ref: '../../openapi.yaml#/components/schemas/MatchReasonConfidenceLevel'
+  highlight:
+    $ref: '../../openapi.yaml#/components/schemas/MatchReasonHighlight'

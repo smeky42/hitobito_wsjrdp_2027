@@ -1,0 +1,9 @@
+type: string
+description: Type of accounting journal.
+enum:
+  - PURCHASE_JOURNAL
+  - PAYMENT_JOURNAL
+  - GENERAL_JOURNAL
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: PURCHASE_JOURNAL

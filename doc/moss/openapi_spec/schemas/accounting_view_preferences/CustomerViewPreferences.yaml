@@ -1,0 +1,41 @@
+type: object
+properties:
+  supplierAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  supplierFieldPreferences:
+    type: array
+    items:
+      $ref: './SupplierFieldPreference.yaml'
+  subCategoryAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  vatAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  costCarrierAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  costCenterAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  dimensionAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  dimensionItemAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  accountingPeriodAllowedOperations:
+    type: array
+    items:
+      $ref: './CustomerOperation.yaml'
+  maxAttachmentSizeMb:
+    type: integer
+    format: int32

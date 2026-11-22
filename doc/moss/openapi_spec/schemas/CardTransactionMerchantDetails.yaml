@@ -1,0 +1,32 @@
+type: object
+properties:
+  name:
+    type: [string, "null"]
+    description: Merchant name
+    example: "Coffee Shop Berlin"
+  address:
+    type: [string, "null"]
+    description: Merchant address
+    example: "123 Main Street"
+  city:
+    type: [string, "null"]
+    description: Merchant city
+    example: "Berlin"
+  state:
+    type: [string, "null"]
+    description: Merchant state/province
+    example: "BE"
+  postalCode:
+    type: [string, "null"]
+    description: Merchant postal code
+    example: "10115"
+  country:
+    type: [string, "null"]
+    description: Merchant country
+    example: "DE"
+  atm:
+    type: [boolean, "null"]
+    description: Whether this merchant is an ATM
+    example: false
+description: |
+  Merchant location and contact details for card transactions.

@@ -1,0 +1,17 @@
+type: object
+required:
+  - openItemId
+properties:
+  openItemId:
+    type: string
+    format: uuid
+    description: ID of the open item to match.
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  amount:
+    type: string
+    format: decimal
+    description: >
+      Exact amount to allocate to this open item, in the bank transaction's original currency. Must be positive
+      and must not exceed the open item's outstanding amount. When omitted, the open item is filled from what
+      is left of the bank transaction, oldest first.
+    example: "120.50"

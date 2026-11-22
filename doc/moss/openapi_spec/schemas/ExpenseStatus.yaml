@@ -1,0 +1,33 @@
+type: string
+enum:
+  - DRAFT
+  - SUBMITTED
+  - APPROVED
+  - FLAGGED
+  - REJECTED
+  - REVIEWED
+  - APPROVAL_SKIPPED
+  - VERIFIED
+  - VERIFICATION_SKIPPED
+  - COMPLETED
+  - DELETED
+  - INHERITED
+  - UNKNOWN_DEFAULT_OPEN_API
+description: |
+  Current status of the expense.
+
+  **Statuses:**
+  - `DRAFT`: Expense is being prepared (not yet submitted)
+  - `SUBMITTED`: Expense has been submitted for review 
+  - `APPROVED`: Expense has been approved by the approver
+  - `FLAGGED`: Expense has been flagged for attention (requires review or action)
+  - `REJECTED`: Expense has been rejected by the approver
+  - `REVIEWED`: Expense has been reviewed (intermediate review step)
+  - `APPROVAL_SKIPPED`: Approval was skipped for this expense (auto-approved or no approval required)
+  - `VERIFIED`: Expense has been verified (final verification step)
+  - `VERIFICATION_SKIPPED`: Verification was skipped for this expense
+  - `COMPLETED`: Expense processing has been completed (final state for successful expenses)
+  - `DELETED`: Expense has been deleted
+  - `INHERITED`: Status inherited from parent expense (specifically for line items in expenses)
+  - `UNKNOWN_DEFAULT_OPEN_API`: Unknown status value (fallback for future statuses)
+example: "DRAFT"

@@ -1,0 +1,12 @@
+type: object
+description: Character range of the matching text.
+required:
+  - start
+  - end
+properties:
+  start:
+    type: integer
+    description: Start offset of the matching text.
+  end:
+    type: integer
+    description: End offset of the matching text.

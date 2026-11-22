@@ -1,0 +1,21 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the action message.
+  message:
+    type: string
+    description: Human-readable action message.
+  code:
+    type: string
+    description: Optional machine-readable message code.
+  level:
+    $ref: './AccountingEventActionMessageLevel.yaml'
+  source:
+    $ref: './AccountingEventActionMessageSource.yaml'
+required:
+  - id
+  - message
+  - level
+  - source

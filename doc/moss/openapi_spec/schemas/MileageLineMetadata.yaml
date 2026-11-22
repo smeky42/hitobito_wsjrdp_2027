@@ -1,0 +1,63 @@
+type: object
+properties:
+  calculatedDistance:
+    type: [integer, "null"]
+    format: int64
+    description: System calculated distance in meters
+    example: 15000
+  distanceOverride:
+    type: [integer, "null"]
+    format: int64
+    description: User override of distance in meters
+    example: 16000
+  distanceInUnit:
+    type: [number, "null"]
+    format: double
+    description: Distance in specified unit (km/miles)
+    example: 15.5
+  calculatedDistanceInUnit:
+    type: [number, "null"]
+    format: double
+    description: System calculated distance in specified unit
+    example: 15.0
+  distanceOverrideInUnit:
+    type: [number, "null"]
+    format: double
+    description: User override distance in specified unit
+    example: 16.0
+  distanceUnit:
+    type: [string, "null"]
+    enum:
+      - METER
+      - MILE
+      - KILOMETER
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: Unit of distance measurement
+    example: "KILOMETER"
+  extraPassengers:
+    type: [integer, "null"]
+    description: Number of extra passengers
+    example: 2
+  mileageRateId:
+    type: [string, "null"]
+    format: uuid
+    description: Mileage rate identifier used for calculation
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  mileageRateVersionId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the mileage rate version used for calculation
+  tripType:
+    type: [string, "null"]
+    enum:
+      - BUSINESS
+      - COMMUTING
+      - UNKNOWN_DEFAULT_OPEN_API
+    description: Type of trip for mileage calculation
+    example: "BUSINESS"
+  returnTripIncluded:
+    type: boolean
+    default: false
+    description: Whether return trip is included in calculation
+description: |
+  Metadata specific to mileage line expenses, containing distance and rate information.

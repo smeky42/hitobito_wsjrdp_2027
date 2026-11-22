@@ -1,0 +1,21 @@
+type: string
+description: |
+  Compliance status value.
+  * `NOT_CHECKED` - The document hasn't been checked yet (initial status).
+  * `IN_PROGRESS` - The document compliance check is in progress.
+  * `COMPLIANT` - The document is compliant.
+  * `NON_COMPLIANT` - The document is not compliant.
+  * `NON_COMPLIANT_BUT_ACCEPTED` - The document is not compliant, but the user has acknowledged and accepted the non-compliance.
+  * `CANT_CHECK` - The document cannon be checked due to any errors.
+  * `UNKNOWN_DEFAULT_OPEN_API` - Unknown status value (fallback for future statuses).
+enum:
+  - NOT_CHECKED
+  - IN_PROGRESS
+  - COMPLIANT
+  - NON_COMPLIANT
+  - NON_COMPLIANT_BUT_ACCEPTED
+  - COMPLIANT_USER_OVERRIDDEN
+  - CANT_CHECK
+  - UNKNOWN_DEFAULT_OPEN_API
+default: UNKNOWN_DEFAULT_OPEN_API
+example: "COMPLIANT"

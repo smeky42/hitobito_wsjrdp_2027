@@ -1,0 +1,36 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the accounting period.
+    example: "b8e7c123-4567-89ab-cdef-123456789012"
+  fiscalYear:
+    type: integer
+    description: Fiscal year the accounting period belongs to.
+    example: 2026
+  name:
+    type: string
+    description: Human-readable accounting period name.
+    example: "July 2026"
+  code:
+    type: string
+    description: Accounting period code from the accounting system or manual setup.
+    example: "2026-07"
+  periodStart:
+    type: string
+    format: date
+    description: Inclusive period start date.
+    example: "2026-07-01"
+  periodEnd:
+    type: string
+    format: date
+    description: Inclusive period end date.
+    example: "2026-07-31"
+  status:
+    $ref: './AccountingPeriodStatus.yaml'
+  externalId:
+    type: [string, "null"]
+    description: External accounting-system identifier, when the period was synced.
+    example: "FY2026-P07"
+required: [id, fiscalYear, name, code, periodStart, periodEnd, status]

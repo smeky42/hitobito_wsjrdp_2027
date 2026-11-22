@@ -1,0 +1,13 @@
+type: object
+description: Entity the posting instruction references, eg entity whose adjustment it is.
+required:
+  - type
+  - id
+properties:
+  type:
+    $ref: '../../openapi.yaml#/components/schemas/PostingInstructionReferenceType'
+  id:
+    type: string
+    format: uuid
+    description: Identifier of the referenced entity.
+    example: "1e3b42ec-587d-4fe5-8807-22c0235ee825"

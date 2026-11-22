@@ -1,0 +1,22 @@
+type: object
+properties:
+  advisorOrganisationId:
+    type: string
+    format: uuid
+    description: Advisor organisation ID.
+    example: "fb832ee3-34e7-4125-8c3f-5c7e61de8cc7"
+  clientOrganisationId:
+    type: string
+    format: uuid
+    description: Client organisation ID.
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  missingReceiptsCount:
+    type: integer
+    format: int64
+    description: Number of missing receipts for the client organisation in the active accounting period.
+    example: 42
+  completedCount:
+    type: integer
+    format: int64
+    description: Number of completed card transactions for the client organisation in the active accounting period.
+    example: 12

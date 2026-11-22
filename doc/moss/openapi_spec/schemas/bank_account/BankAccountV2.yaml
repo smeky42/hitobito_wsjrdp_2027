@@ -1,0 +1,90 @@
+type: object
+required:
+  - id
+  - organisationId
+  - accountIdentifierScheme
+  - name
+  - currency
+  - status
+  - createTime
+  - updateTime
+description: |
+  A bank account connected to the organisation. The `accountIdentifierScheme` field determines which
+  identifier fields are populated, see description of particular fields.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the bank account.
+    example: "1e3b42ec-587d-4fe5-8807-22c0235ee825"
+  organisationId:
+    type: string
+    format: uuid
+    description: Unique identifier of the organisation the bank account belongs to.
+    example: "47aa12f6-acf9-455f-9f3b-400e5c7a4862"
+  bankId:
+    type: [string, "null"]
+    description: Unique internal identifier of the bank the account is held at.
+  accountIdentifierScheme:
+    $ref: '../../openapi.yaml#/components/schemas/BankAccountIdentifierScheme'
+  iban:
+    type: [string, "null"]
+    description: International Bank Account Number. Populated when `accountIdentifierScheme` is `IBAN`.
+    example: "DE89370400440532013000"
+  accountNumber:
+    type: [string, "null"]
+    description: >-
+      Account number (UK account number, US account number, etc.).
+      Populated when `accountIdentifierScheme` is `UK_SORT_CODE`, `US_ACH`, `CH_BCN`,
+      `SE_CLEARING`, `NO_BANK_ACCOUNT`, or `DK_REG_ACCOUNT`.
+  sortCode:
+    type: [string, "null"]
+    description: Sort code. Populated when `accountIdentifierScheme` is `UK_SORT_CODE`.
+    example: "200000"
+  routingNumber:
+    type: [string, "null"]
+    description: Routing number. Populated when `accountIdentifierScheme` is `US_ACH`.
+    example: "021000021"
+  clearingNumber:
+    type: [string, "null"]
+    description: >-
+      Clearing number.
+      Populated when `accountIdentifierScheme` is `CH_BCN` or `SE_CLEARING`.
+  registrationNumber:
+    type: [string, "null"]
+    description: Registration number. Populated when `accountIdentifierScheme` is `DK_REG_ACCOUNT`.
+  accountId:
+    type: [string, "null"]
+    description: >-
+      Account identifier.
+      Populated when `accountIdentifierScheme` is `AMEX`, `PAYPAL`, or `MOSS`.
+  name:
+    type: string
+    description: Display name of the bank account.
+  alias:
+    type: [string, "null"]
+    description: Optional user-defined alias/display name override for the bank account.
+  expenseAccountId:
+    type: [string, "null"]
+    format: uuid
+    description: Unique identifier of the expense account this bank account is mapped to.
+    example: "123e4567-e89b-12d3-a456-426614174001"
+  currency:
+    type: string
+    description: ISO 4217 currency code for the currency of the bank account.
+    example: "EUR"
+  status:
+    $ref: '../../openapi.yaml#/components/schemas/BankAccountV2Status'
+  earliestClosingBalance:
+    $ref: '../../openapi.yaml#/components/schemas/BankBalance'
+    description: Earliest known closing balance for the bank account, if one has been recorded.
+  createTime:
+    type: string
+    format: date-time
+    description: Timestamp when the bank account was created.
+    example: "2021-01-30T12:01:02.345678Z"
+  updateTime:
+    type: string
+    format: date-time
+    description: Timestamp when the bank account was last updated.
+    example: "2021-01-30T12:01:02.345678Z"
