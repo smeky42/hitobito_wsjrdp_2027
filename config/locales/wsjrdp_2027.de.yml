@@ -2441,6 +2441,16 @@ de:
       no_original_candidates: "Keine passende Buchung in den %{days} Tagen davor."
       came_back: "Zurückgekommen"
       debit_changes: Änderungen
+      debit_mailings:
+        title: Versand
+        log: Log
+        status:
+          prepared: nicht verschickt (abgebrochen)
+          sent: verschickt
+          failed: nicht verschickt (Fehler)
+          no_recipients: nicht verschickt (keine Empfänger)
+        error: Fehler
+        refused: Vom Mailserver abgelehnt
       debit_help:
         try_skip: "Wichtig: \"Einzug aussetzen\" hat keine Auswirkung, wenn die SEPA XML Datei für die Übermittlung zur Bank bereits erzeugt wurde."
         comment: "Nur sichtbar für Personen mit Buchhaltungs-Rechten"
@@ -2964,6 +2974,8 @@ de:
       deregistration_form: Abmelde-Formular verschickt
       deregistration_confirmation: Bestätigung der Abmeldung verschickt
     wsjrdp_detail: '%{label}: %{value}'
+    wsjrdp_data:
+      pre_notification_id: Pre-Notification
     wsjrdp_generic: 'Eintrag <i>%{event}</i>'
     finance_group_ids:
       attr: "Finanzzugriff auf Gruppe <i>%{group}</i>"

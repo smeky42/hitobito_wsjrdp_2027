@@ -189,6 +189,53 @@ module Fin::PaymentDetailsHelper
       event: "update").reorder(created_at: :desc, id: :desc)
   end
 
+  # The log entries of the debit's mails, newest first
+  # (doc/wsjrdp/log_entries.md).
+  def debit_mailing_versions(debit)
+    PaperTrail::Version.where(item_type: WsjrdpDirectDebitPreNotification.sti_name, item_id: debit.id,
+      event: Wsjrdp::LogEvents::NOTE)
+      .where("wsjrdp_data @> ?", {category: "pre_notification"}.to_json)
+      .reorder(created_at: :desc, id: :desc)
+  end
+
+  def debit_mailing_status(data)
+    status = data["email_status"].to_s
+    t("fin.payments.debit_mailings.status")[status.to_sym] || status.presence || "–"
+  end
+
+  # When the mail was sent, else when its entry was written.
+  def debit_mailing_time(version, data)
+    sent_at = begin
+      Time.zone.iso8601(data["email_sent_at"].to_s)
+    rescue ArgumentError
+      nil
+    end
+    payment_time(fin_date_time(sent_at || version.created_at))
+  end
+
+  # Mailto links of a list of addresses. Unlike payment_mail_list, does not
+  # split at commas: a name may contain one.
+  def debit_mailing_addresses(addresses)
+    links = Array.wrap(addresses).map(&:to_s).compact_blank
+      .map { |entry| mail_to(entry[/<([^<>]+)>\z/, 1] || entry, entry) }
+    safe_join(links, ", ") if links.any?
+  end
+
+  # "a@x.de (550 No such user), ..."
+  def debit_mailing_refused(data)
+    refused = data["email_smtp_refused"]
+    return nil unless refused.is_a?(Hash)
+
+    refused.map { |address, reply| "#{address} (#{Array.wrap(reply).join(" ")})" }.join(", ").presence
+  end
+
+  def debit_mailing_log_link(person)
+    return nil unless person.is_a?(::Person) && person.primary_group_id && can?(:log, person)
+
+    link_to(t("fin.payments.debit_mailings.log"), log_group_person_path(person.primary_group_id, person),
+      target: "_blank", rel: "noopener")
+  end
+
   def fin_format_wsjrdp_direct_debit_pre_notification_creditor_id(debit) = payment_mono(debit.creditor_id)
 
   def fin_format_wsjrdp_direct_debit_pre_notification_mandate_date(debit) = payment_time(fin_date(debit.mandate_date))
