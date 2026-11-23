@@ -41,7 +41,9 @@ describe "Zahlungsverkehr", type: :request do
   let!(:return_entry) do
     entry(-20_000, endtoend_id: "E2E-1", return_reason: "MD06", camt_transaction_id: returned.id)
   end
-  let!(:unassigned_return) { camt_return(-75, endtoend_id: "E2E-UNKNOWN", return_reason: "MS03") }
+  let!(:unassigned_return) do
+    camt_return(-75, endtoend_id: "E2E-UNKNOWN", return_reason: "MS03", dbtr_name: "Konto Inhaberin", cdtr_name: "Wir")
+  end
 
   def debit(endtoend_id, cents, subject: person)
     WsjrdpDirectDebitPreNotification.create!(payment_initiation: debit_order, direct_debit_payment_info: payment_info,
@@ -543,6 +545,13 @@ describe "Zahlungsverkehr", type: :request do
       expect(returned.reload).to have_attributes(return_status: "planned", comment: "Rückruf")
     end
 
+    it "names the payer as the other side on the return's page" do
+      get payment_return_path(unassigned_return)
+
+      label = html.find(:xpath, "//*[normalize-space(text())='Gegenseite']")
+      expect(label.find(:xpath, "..")).to have_text("Konto Inhaberin")
+    end
+
     it "lists the returns and marks the one that cannot be assigned" do
       get payment_returns_path
 
@@ -550,6 +559,8 @@ describe "Zahlungsverkehr", type: :request do
       expect(html).to have_css("td.prcol-debit a", text: "05.05.2026")
       expect(html).to have_css("td.prcol-debit .text-warning", text: I18n.t("fin.payments.unassigned"))
       expect(html).to have_css("td.prcol-reason span[title]", text: "MD06")
+      # A return keeps the payment's roles: the other side is the payer.
+      expect(html).to have_css("td.prcol-party", text: "Konto Inhaberin")
       expect(html).to have_css("td.prcol-entry a[href='#{accounting_entry_path(return_entry)}']")
       expect(html).to have_css("td.prcol-entry .text-warning[title='#{I18n.t("fin.payments.no_return_entry")}']")
       expect(html).to have_css("td.prcol-debit", text: I18n.t("fin.payments.return_matched_by.endtoend"))

@@ -8,24 +8,12 @@
 -#  The statement of the MOSS WALLET: the Moss transactions table of the
 -#  Transaktionen tab (fin/moss_transactions/_table), narrowed to this account.
 -#
--#  The Eröffnungs-Saldo sits OUTSIDE the table on purpose: it is no
--#  transaction, so it must not be sorted, filtered, paged or counted with them.
--#  The current balance is the page's head line (_summary).
-:css
-  /* The balance line: label left, amount right, in the table's own rhythm.
-     Only the vertical padding is set here: the line is a direct child of the
-     Bootstrap .row, whose gutter padding keeps it flush with "Zurück" and the
-     table -- overriding it would push the line into the row's negative margin. */
-  .mw-balance { display: flex; justify-content: space-between; align-items: baseline;
-    gap: 1rem; max-width: 28rem; padding-top: .25rem; padding-bottom: .25rem; }
-  .mw-balance-amount { font-variant-numeric: tabular-nums; }
-
+-#  The opening balance stands below it (_opening_balance), the current one in
+-#  the page's head line (_summary).
 #main.row
   %p
     %a{href: return_url} Zurück
 
   = render "fin/moss_transactions/table", apply_url: apply_wsjrdp_fin_account_path(fin_account)
 
-  .mw-balance.mt-2
-    %span Eröffnungs-Saldo
-    %span.mw-balance-amount= fin_money(fin_account.opening_balance_eur)
+  = render "fin/wsjrdp_fin_accounts/opening_balance"

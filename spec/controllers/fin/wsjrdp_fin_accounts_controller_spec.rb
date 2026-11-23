@@ -523,32 +523,124 @@ describe Fin::WsjrdpFinAccountsController do
     end
   end
 
-  # The other branch of the same template: a bank account keeps the plain camt
-  # table, unchanged -- no filter, no presets, no kind marking, and the info
-  # icon it has always had.
+  # A bank account: its camt transactions as an expandable table, the actions
+  # that link a person in the description cell.
   describe "GET show of a bank account" do
+    let(:target) { people(:cmt_leader) }
+
     let!(:bank) do
       WsjrdpFinAccount.create!(short_name: "Vereinskonto", account_identification: "BANK-TEST",
         opening_balance_cents: 0, opening_balance_currency: "EUR",
         opening_balance_date: Date.new(2026, 1, 1))
     end
 
-    let!(:camt) do
+    def camt_for(description, amount:, date:, **attrs)
       WsjrdpCamtTransaction.create!(fin_account: bank, camt_type: "CAMT053",
-        account_identification: bank.account_identification, account_servicer_reference: "REF-1",
-        credit_debit_indication: "DBIT", signed_base_amount: -12.34, base_currency: "EUR",
-        value_date: Date.new(2026, 4, 2), description: "Beispielbuchung")
+        account_identification: bank.account_identification, account_servicer_reference: SecureRandom.hex(4),
+        credit_debit_indication: amount.negative? ? "DBIT" : "CRDT", signed_base_amount: amount,
+        base_currency: "EUR", value_date: date, description: description, booking_date: date, **attrs)
     end
 
-    it "renders the camt statement" do
+    let!(:camt) { camt_for("Beispielbuchung", amount: -12.34, date: Date.new(2026, 4, 2), cdtr_name: "Muster GmbH") }
+    let!(:candidate) { camt_for("Beitrag CMT #{target.id}", amount: 50, date: Date.new(2026, 5, 1)) }
+
+    it "renders the transactions as a table, newest first, with the sum and the opening balance" do
       get :show, params: {id: bank.id}
+
       expect(response).to be_successful
-      expect(response.body).to include("Beispielbuchung").and include("Eröffnungs-Saldo")
-      expect(doc.at_css("details.fin-account-summary summary").text).to include("-12,34")
-      expect(doc.css("a[href='#{wsjrdp_camt_transaction_path(camt)}'] span.fa-info-circle")).to be_present
-      expect(response.body).not_to include("flt-preset")
-      expect(response.body).not_to include("moss-kind")
-      expect(doc.css("tr.exp-row")).to be_empty
+      expect(doc.css("tr.exp-row td[data-colkey='booking_date']").map { |td| td.text.strip })
+        .to eq(%w[01.05.2026 02.04.2026])
+      # The party column is hidden by default; the amount comes last.
+      expect(doc.css("tr.exp-row").first.css("td[data-colkey]").pluck("data-colkey").first(3))
+        .to eq(%w[booking_date description signed_base_amount])
+      expect(response.body).to include("2 Kontobewegungen").and include("Eröffnungs-Saldo")
+      expect(doc.at_css("details.fin-account-summary summary").text).to include("37,66")
+    end
+
+    it "shows the kind as a chip by default, the further columns on demand, and filters by them" do
+      camt_for("Retoure", amount: -3, date: Date.new(2026, 3, 2), return_reason: "MS03",
+        bank_transaction_code: "PMNT+IDDT+UPDD", bank_transaction_code_dk: "NRTI+109", status: "BOOK",
+        mandate_id: "MANDAT-1", endtoend_id: "E2E-1", dbtr_name: "Erika Beispiel", dbtr_iban: "DE02120300000000202051",
+        comment: "nachfragen")
+      get :show, params: {id: bank.id}
+      chips = doc.css("td[data-colkey='description'] .fin-row-chips").map { |c| c.text.squish }
+      expect(chips).to include("Buchungstag 02.03.2026 Rückläufer")
+      expect(doc.css("th .exp-sub-sorts a").map { |a| a.text.delete("⇅").strip }).to eq(%w[Valuta Gegenseite Art])
+
+      get :show, params: {id: bank.id, ctc: "vd,k,dsc,cmt,btc,dk,st,rr,rs,e2e,mdt,amt",
+                          ctf: "!(!(!(rk,in,direct_debit)))"}
+      row = doc.at_css("tr.exp-row")
+      cell = ->(key) { row.at_css("td[data-colkey='#{key}']").text.squish }
+      expect(%w[kind comment bank_transaction_code bank_transaction_code_dk status return_state endtoend_id mandate_id]
+        .map(&cell)).to eq(["Rückläufer", "nachfragen", "PMNT+IDDT+UPDD", "NRTI+109", "BOOK", "In Überprüfung",
+          "E2E-1", "MANDAT-1"])
+      expect(cell.call("return_reason")).to start_with("MS03")
+
+      {"!(!(!(di,ct,'DE0212')))" => 1, "!(!(!(dn,ct,Erika)))" => 1, "!(!(!(rs,in,in_review)))" => 1,
+       "!(!(!(rr,in,MS03)))" => 1, "!(!(!(mdt,ct,MANDAT)))" => 1, "!(!(!(q,ct,nachfragen)))" => 1,
+       "!(!(!(qp,ct,Muster)))" => 1, "!(!(!(btc,ct,UPDD)))" => 1}.each do |filter, count|
+        get :show, params: {id: bank.id, ctf: filter}
+        expect(doc.css("tr.exp-row").size).to eq(count), filter
+      end
+    end
+
+    it "shows the value date as a chip while hidden, where it differs from the booking day" do
+      camt_for("Spät gebucht", amount: 1, date: Date.new(2026, 3, 5), booking_date: Date.new(2026, 3, 9))
+      get :show, params: {id: bank.id}
+      chips = doc.css("td[data-colkey='description'] .fin-row-chips").map { |c| c.text.squish }
+      expect(chips.grep(/Valuta/)).to eq(["Buchungstag 09.03.2026 Valuta 05.03.2026 Bank"])
+      # The booking day's column is shown: its chip is there for a phone alone.
+      expect(doc.css(".fin-row-chips > .d-md-none").map { |c| c.text.squish }).to include("Buchungstag 09.03.2026")
+    end
+
+    it "offers the bank kinds as a quick choice and narrows the rows to them" do
+      returned = camt_for("Retoure", amount: -3, date: Date.new(2026, 3, 2), return_reason: "MS03",
+        bank_transaction_code: "PMNT+IDDT+UPDD")
+      get :show, params: {id: bank.id}
+      expect(doc.css(".flt-segment > a").map { |a| a.text.strip })
+        .to eq(["", "Bank", "Rückläufer", "Gebühren/Zinsen", "Umbuchung"])
+
+      get :show, params: {id: bank.id, ctu: "kind.bank_return"}
+      expect(doc.css("tr.exp-row td[data-colkey='description']").map { |td| td.text }.join).to include("Retoure")
+      expect(doc.css("tr.exp-row").size).to eq(1)
+      expect(response.body).to include(wsjrdp_camt_transaction_path(returned))
+    end
+
+    it "names the party in the description while its column is hidden, but not a batch's label" do
+      camt_for("Sammler", amount: -5, date: Date.new(2026, 3, 1), bank_transaction_code: "PMNT+ICDT+ESCT")
+      description = ->(text) { doc.css("tr.exp-row td[data-colkey='description']").find { |td| td.text.include?(text) }.text }
+
+      get :show, params: {id: bank.id}
+      expect(description.call("Beispielbuchung")).to include("Gegenseite:").and include("Muster GmbH")
+      expect(description.call("Sammler")).not_to include("Gegenseite:")
+
+      get :show, params: {id: bank.id, ctc: "vd,pty,dsc,amt"}
+      expect(doc.css("tr.exp-row td[data-colkey='party']").map { |td| td.text.strip }).to include("Muster GmbH")
+      expect(description.call("Beispielbuchung")).not_to include("Gegenseite:")
+    end
+
+    it "opens a row's detail lazily, with the page link as a column" do
+      get :show, params: {id: bank.id}
+
+      frame = doc.at_css("turbo-frame#bkframe-ctx-#{camt.id}")
+      expect(frame["src"]).to start_with(wsjrdp_camt_transaction_path(camt))
+      expect(doc.css("td a[href='#{wsjrdp_camt_transaction_path(camt)}']")).to be_present
+      expect(doc.at_css(".exp-detail-linkbar-aside .exp-edit-toggle")).to be_present
+    end
+
+    it "offers to link the person the description names" do
+      get :show, params: {id: bank.id}
+
+      expect(doc.css("a, button, form").filter_map { |e| e["href"] || e["action"] })
+        .to include("/fin/tx/#{candidate.id}/link_subject/#{target.id}/Person")
+    end
+
+    it "filters by the URL and applies the builder's filter back to the account" do
+      get :show, params: {id: bank.id, ctf: "!(!(!(amt,ge,0)))"}
+      expect(doc.css("tr.exp-row").size).to eq(1)
+
+      post :apply, params: {id: bank.id, filter_json: [[["amount", "gte", "0"]]].to_json}
+      expect(CGI.unescape(response.location)).to include("/fin/acc/#{bank.id}?ctf=!(!(!(amt,ge,")
     end
   end
 end

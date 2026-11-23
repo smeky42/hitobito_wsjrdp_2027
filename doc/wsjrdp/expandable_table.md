@@ -758,9 +758,16 @@ lifts: {policy: :remember}
   members do not name, and for none; it shows as "…". The attribute must
   offer `not_in` and `blank`.
 - A preset's `sets:` cannot name such a group.
+- A click turns a member on or off. Alt-click chooses it alone (again: all),
+  and a right-click or long press opens a menu: only this, all but this, all.
+  Each member's button carries those links (`only_lifts`, `except_lifts`,
+  `all_lifts`); the script in `filtering/_preset_styles` follows them.
+- The segment wraps when the line is too narrow; where a line goes on, its
+  frame fades out. On a phone a button with an icon shows the icon alone.
 
 Examples: `Fin::MossUsersFilterSchema::QUICK_FILTER`, and the Moss kinds on the
-transactions list (`Fin::MossKinds.fixed_group`).
+transactions list (`Fin::MossKinds.fixed_group`). A kind member carries the
+class `flt-kind`, which colours its icon (`shared/wsjrdp/_moss_kind_styles`).
 
 #### Presets — the filter's "Schnellauswahl"
 
@@ -1170,10 +1177,13 @@ own beside them -- narrower over its whole height, so it never runs under them
 and its field list stays aligned. Below that width the buttons are one line
 above the detail. The detail kit's "Bearbeiten" (the inline edit of
 `doc/fin/detail_partials.md`) joins the buttons: shown while the loaded detail
-has a closed inline form, whose own toggle line then goes. The Moss tables
+has a closed inline form, whose own toggle line then goes. With the page link as
+a column (`t.detail_page(column: true)`) the line still shows, for its edit
+button; only its page link follows the column. The Moss tables
 (Buchungen, Transaktionen, the expenses and bookings of a transaction or an
-expense), the DATEV Buchungen table and the Rückläufer use it -- the tables
-whose row detail has the inline edit.
+expense), the DATEV Buchungen table, the Rückläufer, a bank account's statement
+and the all-transactions page of the accounts use it -- the tables whose row
+detail has the inline edit.
 
 #### Columns in the detail
 
@@ -1402,7 +1412,17 @@ page 1 with the details collapsed.
   - t.columns columns, menu: true
 ```
 
-A right-aligned ☰ opens a picker (check to show, drag to reorder). The full
+A right-aligned ☰ opens a picker: check to show, drag to reorder, and each
+sortable column's sort arrow, so a hidden column can be sorted by too. A pin
+keeps the panel open across reloads (per viewer, in localStorage).
+
+A cell may show the values of hidden columns (`state.column_hidden?(key)`) and
+offer their sorts below its header label:
+`col.to_table_column(cell:, sub_sorts: et_sub_sorts(COLUMNS, keys))`.
+`cols: {never: [...]}` names columns a table has but never shows: out of the
+menu and the params, yet hidden for `column_hidden?`.
+
+The full
 selection is encoded into the `<prefix>c` query param (shareable / bookmarkable,
 never localStorage) using each column's `abbr`; whether it is also *remembered*
 is the controller's policy, not the form's business. The default set is

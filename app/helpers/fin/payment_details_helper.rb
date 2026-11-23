@@ -349,16 +349,6 @@ module Fin::PaymentDetailsHelper
       content_tag(:div, t("fin.payments.original_before", count: days), class: "small text-muted")])
   end
 
-  # The other party of another return (Fin::OtherReturnsColumns), its IBAN
-  # below.
-  def fin_format_wsjrdp_camt_transaction_counterparty(ret)
-    payee = %w[credit_transfer received_direct_debit].include?(ret.return_kind)
-    name, iban = payee ? [ret.cdtr_name, ret.cdtr_iban] : [ret.dbtr_name, ret.dbtr_iban]
-    return nil if name.blank? && iban.blank?
-
-    safe_join([name, (content_tag(:div, iban, class: "small text-muted font-monospace") if iban.present?)].compact)
-  end
-
   def fin_format_wsjrdp_camt_transaction_camt_transaction(ret)
     link_to(t("fin.payments.camt_link", id: ret.id), wsjrdp_camt_transaction_path(ret), data: {turbo_frame: "_top"})
   end

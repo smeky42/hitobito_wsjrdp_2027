@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The other side as a line of a description cell, for a table whose party
+-#  column is hidden (Fin::CamtParty). A label, such as a batch payment's,
+-#  names no one and is left out.
+-#
+-#  Locals: party, kind (party_kind), amount (signed)
+- if party.present? && kind != "label"
+  %div
+    %span.fw-light.muted Gegenseite:
+    %span= fin_party_cell(party, kind, amount)

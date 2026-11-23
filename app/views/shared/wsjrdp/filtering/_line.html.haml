@@ -78,16 +78,26 @@
                   -# An icon-only button (the unrestricted one's asterisk): its
                   -# label is the tooltip and the accessible name.
                   - icon_only = preset.css_class.to_s.split.include?(Wsjrdp::TableState::Filter::ICON_ONLY_CLASS)
-                  - tooltip = preset.title.presence || (preset.label if icon_only)
+                  - tooltip = preset.title.presence || (preset.label if icon_only || preset.icon.present?)
                   - segment_changes = {filter: preset.toggle_wire}
                   - segment_changes[:lifts] = preset.toggle_lifts if preset.lifting?
+                  -# A member of a fixed group also carries the links of choosing
+                  -# it alone, all but it, or all: Alt-click and the context
+                  -# menu use them (_preset_styles).
+                  - choice = preset.only_lifts && {only_href: et_url(state, {filter: preset.toggle_wire, lifts: preset.only_lifts}),
+                    except_href: et_url(state, {filter: preset.toggle_wire, lifts: preset.except_lifts}),
+                    all_href: et_url(state, {filter: preset.toggle_wire, lifts: preset.all_lifts}), label: preset.label}
+                  - tooltip = "#{tooltip || preset.label} – Klick: an/aus · Alt-Klick: nur diese · Rechtsklick: mehr" if choice
                   = link_to et_url(state, segment_changes),
                     class: ["btn btn-outline-secondary flt-preset", preset.css_class.presence].compact.join(" "),
                     role: "button", aria: {pressed: preset.active?.to_s, label: (preset.label if icon_only)},
-                    title: tooltip, data: {title: tooltip || preset.label} do
+                    title: tooltip, data: {title: tooltip || preset.label, **(choice || {})} do
                     - if preset.icon.present?
                       %i{class: "fas fa-#{preset.icon}", "aria-hidden": "true"}
-                    - unless icon_only
+                    -# With an icon the word may hide on a phone (.flt-preset-label).
+                    - if !icon_only && preset.icon.present?
+                      %span.flt-preset-label= preset.label
+                    - elsif !icon_only
                       = preset.label
             - next
           - preset = chunk.first

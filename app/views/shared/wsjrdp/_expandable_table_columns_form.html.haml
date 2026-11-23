@@ -16,8 +16,12 @@
 -#  shown where there is room), immer (a tick), nie (empty) -- named muted
 -#  after the label; a click goes on to the next state, which the cols param
 -#  carries as a token of its own (Wsjrdp::TableStatePolicy::LINKS_TOKEN).
+-#  Each sortable column also carries its sort arrow, the header's own link
+-#  (Wsjrdp::ExpandableTableSortHelper#et_sort_link): a hidden column can be
+-#  sorted by here, and the level number shows where it stands.
 -#  Locals: state (Wsjrdp::TableState), all_columns, page_links (the state's
--#  `links` for a table with a page link column, else nil).
+-#  `links` for a table with a page link column, else nil), sort_names and
+-#  multi_sort (as the header has them).
 - state = local_assigns.fetch(:state)
 - prefix = state.prefix
 - all_columns = local_assigns.fetch(:all_columns)
@@ -54,6 +58,10 @@
     .exp-cols-links-state { margin-left: auto; color: var(--bs-secondary-color, #6c757d); font-weight: 300; }
     .exp-cols-handle-none { visibility: hidden; }
     .exp-cols-pinned { background: var(--bs-tertiary-bg); }
+    .exp-cols-sort { margin-left: auto; display: inline-flex; align-items: center; gap: .25rem; }
+    .exp-cols-sort .exp-sort { padding: 0 .3rem; border-radius: .25rem; }
+    .exp-cols-sort .exp-sort:hover { background: var(--bs-tertiary-bg, #f1f3f5); }
+    .exp-cols-sort-level { font-size: .7rem; color: var(--bs-secondary-color, #6c757d); }
     .exp-cols-tristate { display: inline-flex; align-items: center; gap: .5rem; flex: 1 1 auto; border: 0;
       background: none; padding: 0; text-align: left; font: inherit; color: inherit; }
 = render "shared/wsjrdp/relaxed_query_js"
@@ -63,7 +71,7 @@
   = et_hidden_params(et_carry_params(state, except: %i[cols page]))
   = hidden_field_tag cols_param, et_encode_cols(state, states), id: "#{form_id}-input", class: "exp-cols-input",
     data: { links: (state.links_token && Wsjrdp::TableState.links_token_for(state.links)) }
-  %p.text-muted.small.mb-2 Ziehen zum Sortieren, Häkchen zum Ein-/Ausblenden.
+  %p.text-muted.small.mb-2 Ziehen zum Verschieben, Häkchen zum Ein-/Ausblenden, ⇅ zum Sortieren der Zeilen.
   -# The columns of one group (a column's `group:`) or of one merged cell (its
   -# `merge:`) are ONE draggable block under the group's or merge key's name,
   -# at the place of its first column; inside, a column is only shown or
@@ -80,7 +88,7 @@
     - units.each do |unit|
       - if unit[:group]
         .exp-cols-item.exp-cols-group{ draggable: "true" }
-          %span.exp-cols-handle{ title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
+          %span.exp-cols-handle{ title: "Ziehen zum Verschieben", "aria-hidden": "true" } ⠿
           %div
             .small.text-muted= unit[:group]
             - unit[:cols].each do |col, active|
@@ -98,7 +106,7 @@
           - next_mode = tristate_next[mode]
           - item_data = item_data.merge(mode: mode, next_mode: next_mode)
         .exp-cols-item.exp-cols-col{ **(col[:pinned] ? {} : {draggable: "true"}), class: [("col-selected" if mode != "never"), ("exp-cols-pinned" if col[:pinned])].compact, data: item_data.compact }
-          %span.exp-cols-handle{ class: ("exp-cols-handle-none" if col[:pinned]), title: "Ziehen zum Sortieren", "aria-hidden": "true" } ⠿
+          %span.exp-cols-handle{ class: ("exp-cols-handle-none" if col[:pinned]), title: "Ziehen zum Verschieben", "aria-hidden": "true" } ⠿
           - if col[:visibility] == :tristate
             %button.exp-cols-tristate{ type: "button", role: "checkbox", "aria-checked": tristate_aria[mode],
               title: "#{col[:label]}: #{tristate_words[mode]} – Klick: #{tristate_words[next_mode]}" }
@@ -107,6 +115,13 @@
             .form-check
               %input.form-check-input.exp-cols-check{ type: "checkbox", checked: active, id: "#{form_id}-chk-#{col[:key]}" }
               %label.form-check-label.small{ for: "#{form_id}-chk-#{col[:key]}" }= col[:label]
+          - if col[:sort_key] && local_assigns[:sort_names]
+            - level = et_sort_level_of_column(state, col[:key])
+            %span.exp-cols-sort
+              - if level && state.sort_list.size > 1
+                %span.exp-cols-sort-level= "#{level + 1}."
+              = et_sort_link(state, col[:sort_key], "".html_safe, first: col[:sort_first] || "asc",
+                names: sort_names, multi: local_assigns.fetch(:multi_sort, true))
   - if local_assigns[:page_links]
     - tips = {"auto" => "Links anzeigen, wenn genug Platz", "always" => "Links immer anzeigen", "never" => "Links nie anzeigen"}
     - next_links = tristate_next[page_links]

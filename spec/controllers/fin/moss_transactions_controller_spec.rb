@@ -158,6 +158,15 @@ describe Fin::MossTransactionsController do
       expect(response.body).not_to include("mtcol-description")
     end
 
+    it "shows the kind as a chip in the description while the kind column is hidden" do
+      chips = -> { Nokogiri::HTML(response.body).css("td[data-colkey='description'] .fin-row-chips .moss-kind") }
+      get :index, params: {c: "bdt,knd,dsc"}
+      expect(chips.call).to be_empty
+
+      get :index, params: {c: "bdt,~knd,dsc"}
+      expect(chips.call).to be_present
+    end
+
     # Buchungen holds a one- or two-digit count and is therefore the narrowest
     # column of the table -- with a header short enough to fit into it.
     it "gives the Buchungen column a short header and a narrow width" do
@@ -400,13 +409,13 @@ describe Fin::MossTransactionsController do
     end
 
     # The date column widens with the room the table has; its header carries
-    # the full word and "Datum" for when the word does not fit
+    # the full word and "Buchung" for when the word does not fit
     # (shared/wsjrdp/_expandable_table_short_label_js switches).
     it "gives the date header a short label" do
       get :index
       header = Nokogiri::HTML(response.body).at_css("thead th[data-colkey='booking_date']")
       expect(header.at_css(".exp-label-full").text).to eq("Buchungsdatum")
-      expect(header.at_css(".exp-label-short").text).to eq("Datum")
+      expect(header.at_css(".exp-label-short").text).to eq("Buchung")
     end
 
     it "ignores a ?kind= query param on the general tab" do

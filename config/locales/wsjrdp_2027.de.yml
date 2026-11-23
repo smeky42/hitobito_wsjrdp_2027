@@ -694,7 +694,7 @@ de:
         bank_transaction_code_dk: DK-Buchungscode
         return_kind: Rückläufer-Art
         original: Original-Buchung
-        counterparty: Gegenpartei
+        party: Gegenseite
         return_reason: Rückgabe-Grund
         return_status: Retoure-Status
         return_status_display: Retoure-Status
@@ -2292,6 +2292,10 @@ de:
       # The Moss kind tabs (Fin::MossTransactionsController::KIND_TABS): the
       # plural of fin.moss.kinds. moss_all is the sub-tab of every kind.
       moss_all: "Alle"
+      # The first tab under the accounts tab (its label and the page's title): every
+      # account's transactions.
+      all: "Alle"
+      all_transactions: "Alle Transaktionen"
       card_transactions: "Kartenzahlungen"
       invoices: "Rechnungen"
       reimbursements: "Erstattungen"
@@ -2686,6 +2690,18 @@ de:
         UNKNOWN_DEFAULT_OPEN_API: "unbekannte Rolle"
       comment_hint: "Nur der Kommentar wird in Hitobito gepflegt; alle anderen Felder kommen aus Moss."
       moss_users_hint: "Nur Person und Kommentar werden in Hitobito gepflegt; alle anderen Felder kommen aus Moss."
+    # The kinds of the all-transactions page that are not Moss kinds
+    # (Fin::AccountKinds); a Moss top-up shows as a transfer there.
+    account_kinds:
+      bank: "Bank"
+      bank_return: "Rückläufer"
+      bank_fee: "Gebühren/Zinsen"
+      transfer: "Umbuchung"
+    account_kind_hints:
+      bank: "Zahlung über ein Bankkonto."
+      bank_return: "Eine Zahlung kam zurück (Rückläufer)."
+      bank_fee: "Kontoabschluss der Bank: Entgelte, Gebühren oder Zinsen."
+      transfer: "Geld zwischen zwei eigenen Konten, auch die Aufladung der Moss-Wallet."
     moss:
       # The four kinds of a Moss transaction (the STI types of moss_transactions).
       kinds:

@@ -1,0 +1,62 @@
+-#  Copyright (c) 2025, 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The description cell of a bank account's statement: the return status,
+-#  the description, note and comment, the linked persons and contribution
+-#  bookings, and the buttons that create or link one. The buttons are the write
+-#  tier's (SubjectLinking and #create_accounting_entry authorize :update); the
+-#  read tier sees the texts alone.
+-#
+-#  Locals: tx (WsjrdpCamtTransaction), may_edit (may the viewer update camt
+-#  transactions at all), party (show the other side, for a table whose
+-#  party column is hidden: _party_line)
+- if tx.return_reason.present?
+  - return_msg = "#{Settings.return_debit_status[tx.return_status]}: Retoure mit Rückgabe-Grund #{tx.return_reason}"
+  - style = {"in_review" => "font-weight:600;color:var(--bs-danger)", "planned" => "font-weight:600;color:var(--bs-indigo)",
+      "depreciated" => "color:var(--bs-primary)", "partially_depreciated" => "color:var(--bs-primary)",
+      "paid" => "color:var(--bs-secondary)"}[tx.return_status]
+  %div{style: style}= return_msg
+%div= html_escape_multiline(tx.description)
+- if tx.comment.present?
+  %div.fw-light.fst-italic= auto_link_escaped_multiline(tx.comment)
+- if local_assigns[:party]
+  = render "fin/wsjrdp_camt_transactions/party_line", party: tx.party, kind: tx.party_kind, amount: tx.signed_base_amount
+-# Both halves are links only for whoever may see the entry's person -- see
+-# Fin::LinkedEntryHelper for the rule.
+- tx.accounting_entries.each do |ae|
+  %div
+    %span.fw-light.muted Person:
+    %span= fin_subject_link(ae.subject)
+    %span.ae-linked
+      = " • Verknüpfte Buchung: #{fin_entry_link(ae)}"
+- if (subject = tx.subject_without_accounting_entry).present?
+  %div
+    %span.fw-light.muted Person:
+    %span= fin_subject_link(subject)
+  - if may_link_subject?(WsjrdpCamtTransaction, subject)
+    %div
+      = action_button("Erzeuge Buchung", "#{wsjrdp_camt_transaction_path(tx)}/create_accounting_entry",
+                      :plus, method: :post, remote: false,
+                      data: { confirm: "Neue Buchung anlegen?", turbo_frame: "_top" })
+- if tx.accounting_entries.blank? && may_link_subject?(WsjrdpCamtTransaction, tx.subject)
+  - entries = tx.accounting_entries_for_subject_with_matching_amount
+  - if entries.size == 1
+    - entry = entries.first
+    %div
+      = action_button("Verknüpfe mit \"#{entry.link_name(length: 60)}\"",
+                      "#{wsjrdp_camt_transaction_path(tx)}/link_accounting_entry/#{entry.id}",
+                      :plus, method: :post, remote: false,
+                      data: { confirm: "Kontobewegung #{tx.id} mit Buchung \"#{entry.link_name(length: 100)}\" verknüpfen?", turbo_frame: "_top" })
+- if may_edit
+  - tx.subject_candidates.select { |candidate| may_link_subject?(WsjrdpCamtTransaction, candidate) }.each do |subject|
+    %div
+      = action_button("Verknüpfe mit #{subject.link_name}", link_subject_path(tx, subject),
+                      :plus, method: :post, remote: false,
+                      data: { confirm: "Kontobewegung #{tx.id} mit Person #{subject.link_name} verknüpfen?", turbo_frame: "_top" })
+      = action_button("Keine Verknüpfung mit #{subject.link_name}", disallow_link_subject_path(tx, subject),
+                      :trash, method: :post, remote: false,
+                      data: { confirm: "Verknüpfung von Kontobewegung #{tx.id} mit Person #{subject.link_name} nicht mehr anbieten?", turbo_frame: "_top" })

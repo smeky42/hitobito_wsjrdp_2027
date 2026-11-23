@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The look of a Moss transaction's description cell
+-#  (Fin::MossTransactionsHelper#moss_transaction_description_cell), wherever a
+-#  table shows it.
+-#
+-#  The person side of a booking.
+= render "fin/moss_bookings/styles"
+-# The description stops after six lines with "…": a wide column shows more
+-# of it, a narrow one less.
+:css
+  .moss-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6;
+    overflow: hidden; overflow-wrap: anywhere; }

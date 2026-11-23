@@ -54,6 +54,24 @@ describe Fin::WsjrdpCamtTransactionsController do
 
   def page = Nokogiri::HTML(response.body)
 
+  # The "Alle" table's rows are keyed "camt-<id>": the detail answers in that
+  # frame too, but not in one that ends in another record's id.
+  describe "a frame with a source in its key" do
+    it "answers in the frame the table asked for" do
+      request.headers["Turbo-Frame"] = "bkframe-at-camt-#{plain.id}"
+      get :show, params: {id: plain.id, expandable_table_level: 1}
+
+      expect(page.at_css("turbo-frame#bkframe-at-camt-#{plain.id}")).to be_present
+    end
+
+    it "ignores a frame of another record" do
+      request.headers["Turbo-Frame"] = "bkframe-at-camt-#{returned.id}"
+      get :show, params: {id: plain.id, expandable_table_level: 1}
+
+      expect(page.at_css("turbo-frame#bkframe-at-camt-#{returned.id}")).to be_nil
+    end
+  end
+
   def labels = page.css("#main dl.fin-detail-list dt").map { |dt| dt.text.strip }
 
   # The labels of each block, a block being one list with its rule above.
@@ -75,7 +93,7 @@ describe Fin::WsjrdpCamtTransactionsController do
       get :show, params: {id: returned.id}
 
       expect(blocks).to eq([
-        ["Konto", "Betrag in Euro", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck", "Kommentar"],
+        ["Konto", "Betrag in Euro", "Gegenseite", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck", "Kommentar"],
         ["Beteiligte Person"],
         ["Kundenreferenz", "Mandatsreferenz", "Rückgabe-Grund", "Retoure-Status"],
         ["ISO-Buchungscode", "DK-Buchungscode", "Rückläufer-Art"],
@@ -83,6 +101,13 @@ describe Fin::WsjrdpCamtTransactionsController do
         ["Kreditor Name", "Kreditor IBAN"],
         ["Debitor Name", "Debitor IBAN"]
       ])
+    end
+
+    it "names the other side: on a return the payer of the direct debit" do
+      get :show, params: {id: returned.id}
+
+      label = page.css("#main *").find { |el| el.children.one? && el.text.strip == "Gegenseite" }
+      expect(label.parent.text).to include("Erika Beispiel")
     end
 
     it "shows the signed amount and links the return's page" do
@@ -106,7 +131,7 @@ describe Fin::WsjrdpCamtTransactionsController do
       get :show, params: {id: plain.id}
 
       expect(blocks).to eq([
-        ["Konto", "Betrag in Euro", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck"],
+        ["Konto", "Betrag in Euro", "Gegenseite", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck"],
         ["Status"],
         ["Kreditor Name"]
       ])
@@ -245,7 +270,7 @@ describe Fin::WsjrdpCamtTransactionsController do
 
       expect(response).to be_successful
       expect(blocks.first(3)).to eq([
-        ["Konto", "Betrag in Euro", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck", "Kommentar"],
+        ["Konto", "Betrag in Euro", "Gegenseite", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck", "Kommentar"],
         ["Beteiligte Person"],
         ["Kundenreferenz", "Mandatsreferenz", "Rückgabe-Grund", "Retoure-Status"]
       ])
@@ -266,7 +291,7 @@ describe Fin::WsjrdpCamtTransactionsController do
       get :edit, params: {id: plain.id}
 
       expect(blocks.first(2)).to eq([
-        ["Konto", "Betrag in Euro", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck", "Kommentar"],
+        ["Konto", "Betrag in Euro", "Gegenseite", "Währung", "Valuta", "Buchungsdatum", "Verwendungszweck", "Kommentar"],
         ["Beteiligte Person"]
       ])
       expect(page.at_css("select[name='wsjrdp_camt_transaction[return_status]']")).to be_nil

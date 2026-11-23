@@ -38,6 +38,17 @@ module Wsjrdp::ExpandableTableSortHelper
     et_sort_url(state, list)
   end
 
+  # The sub-sorts of a header (ExpandableTableColumn#to_table_column): the
+  # sortable ones of `keys` among `columns`, in the order of `keys`; nil when
+  # none is left.
+  def et_sub_sorts(columns, keys)
+    subs = keys.filter_map do |key|
+      col = columns.find { |c| c.key == key.to_s }
+      {key: col.key, label: col.label, first: col.sort_first || "asc"} if col&.sortable?
+    end
+    subs.presence
+  end
+
   # The URL with the sort `list` ([[key, dir], ...]); blank when empty.
   def et_sort_url(state, list) = et_url(state, {sort: state.encode_sort_list(list)})
 

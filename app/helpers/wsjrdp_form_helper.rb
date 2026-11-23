@@ -230,7 +230,7 @@ module WsjrdpFormHelper
     # the whole page into the row. Anything else falls back to the canonical id.
     def requested_detail_frame_id(key)
       id = turbo_frame_request_id
-      id if id.present? && id.match?(/\Abkframe-[A-Za-z0-9_]+-#{Regexp.escape(key.to_s)}\z/)
+      id if id.present? && id.match?(/\Abkframe-[A-Za-z0-9_-]+-#{Regexp.escape(key.to_s)}\z/)
     end
 
     def return_url_or_fallback(fallback)

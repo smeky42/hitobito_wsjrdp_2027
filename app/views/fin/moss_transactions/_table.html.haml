@@ -19,19 +19,14 @@
 -# whose colours live in the shared kind stylesheet; that stylesheet also paints
 -# the kind rail along each row group.
 = render "shared/wsjrdp/moss_kind_styles"
--# The person side of a booking in the description cells.
-= render "fin/moss_bookings/styles"
+-# The description cells (text and the person side of the bookings).
+= render "fin/moss_transactions/description_styles"
 -# The look of a reimbursement's expense sub-rows and the one interaction they
 -# bring (revealing the expenses beyond the cap).
 = render "shared/wsjrdp/moss_expense_rows"
--# The description stops after six lines with "…": a wide column shows more
--# of it, a narrow one less (Fin::MossTransactionsHelper#moss_transaction_cell).
-:css
-  .moss-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6;
-    overflow: hidden; overflow-wrap: anywhere; }
 = wsjrdp_expandable_table do |t|
   - t.rows   transactions, id: (transactions.state.prefix.presence || "mtx")
-  - t.columns moss_transaction_table_columns, menu: true
+  - t.columns moss_transaction_table_columns(transactions.state), menu: true
   - t.row_key { |tx| tx.id }
   -# The row group: the kind's pale rail runs along every row of a
   -# transaction -- its head row, its expense rows and its detail.

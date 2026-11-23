@@ -12,6 +12,67 @@
 # A detail sits inside a turbo frame, on its own page and in a table
 # row alike, so every link here leaves it (`_top`).
 module Fin::CamtTransactionsHelper
+  # The statement table's column configs (Fin::CamtTransactionsColumns) with
+  # their cells. Hidden party, date and kind columns move into the
+  # description (the party as a line, the others as chips), their sorts into
+  # its header.
+  def camt_transaction_table_columns(may_edit:, state:)
+    hidden = %w[party kind].select { |key| state.column_hidden?(key) }
+    dates = fin_date_chip_modes(state, booking_label: "Buchungstag")
+    Fin::CamtTransactionsColumns::COLUMNS.map do |col|
+      subs = (et_sub_sorts(Fin::CamtTransactionsColumns::COLUMNS, fin_hidden_date_keys(state) + hidden) if col.key == "description")
+      col.to_table_column(cell: ->(tx) { camt_transaction_cell(tx, col.key, may_edit, hidden: hidden, dates: dates) },
+        sub_sorts: subs)
+    end
+  end
+
+  def camt_transaction_cell(tx, key, may_edit, hidden: [], dates: nil)
+    case key
+    when "value_date", "booking_date" then fin_date(tx.public_send(key))
+    when "signed_base_amount" then fin_money(tx.signed_base_amount, tx.base_currency.presence || "EUR")
+    when "party" then fin_party_cell(tx.party, tx.party_kind, tx.signed_base_amount)
+    when "kind" then account_kind_chip(tx.account_kind)
+    when "description" then camt_transaction_description_cell(tx, may_edit, hidden, dates)
+    when "comment" then (content_tag(:span, tx.comment, class: "fw-light fst-italic") if tx.comment.present?)
+    when "bank_transaction_code", "bank_transaction_code_dk"
+      content_tag(:span, tx.public_send(key), class: "font-monospace small")
+    when "return_reason" then payment_return_reasons(tx.return_reason, long: true)
+    when "return_state" then Settings.return_debit_status[tx.return_state] if tx.return_state
+    else tx.public_send(key)
+    end
+  end
+
+  # The statement's description partial, then the date chips and the kind chip
+  # while their columns are hidden.
+  def camt_transaction_description_cell(tx, may_edit, hidden, dates)
+    chips = fin_row_chips(fin_date_chips(dates, booking_date: tx.booking_date, value_date: tx.value_date) +
+      [(account_kind_chip(tx.account_kind) if hidden.include?("kind"))])
+    safe_join([render("fin/wsjrdp_camt_transactions/description", tx: tx, may_edit: may_edit,
+      party: hidden.include?("party")), chips].compact)
+  end
+
+  # The other side (Fin::CamtParty). An own account gets an arrow for the
+  # direction of the money; an account and a label are muted, so they do not
+  # read as a name from the statement.
+  def fin_party_cell(party, kind, amount)
+    case kind
+    when "account" then content_tag(:span, "#{amount.negative? ? "→" : "←"} #{party}", class: "text-muted fst-italic")
+    when "label" then content_tag(:span, party, class: "text-muted fst-italic")
+    else party
+    end
+  end
+
+  # The other side on a detail (a bank transaction's, a return's), as the
+  # tables show it, with its IBAN below. A row loaded with Fin::CamtParty's
+  # columns has it already; any other record asks the database.
+  def fin_format_wsjrdp_camt_transaction_party(tx)
+    row = tx.has_attribute?(:party) ? tx : WsjrdpCamtTransaction.select(Fin::CamtTransactionsColumns::SELECT_SQL).find(tx.id)
+    return nil if row.party.blank? && row.party_iban.blank?
+
+    iban = content_tag(:div, row.party_iban, class: "small text-muted font-monospace") if row.party_iban.present?
+    safe_join([fin_party_cell(row.party, row.party_kind, row.signed_base_amount), iban].compact)
+  end
+
   # The fields the detail lets change
   # (Fin::WsjrdpCamtTransactionsController#permitted_attrs), each with its
   # input; none where it carries no form.

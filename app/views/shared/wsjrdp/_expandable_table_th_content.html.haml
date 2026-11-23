@@ -41,3 +41,9 @@
         %span.exp-sort-chip.exp-sort-active
           = variant[:label]
           = et_sort_arrow(fixed_dir)
+- if sort_links && col[:sub_sorts]
+  -# The sorts of columns this cell shows while they are hidden, one small
+  -# line below the label, in the order the cell shows them.
+  .exp-sub-sorts
+    - col[:sub_sorts].each do |sub|
+      = et_sort_link(state, sub[:key], sub[:label], first: sub[:first], names: sort_names, multi: multi_sort, css_class: "exp-sub-sort")

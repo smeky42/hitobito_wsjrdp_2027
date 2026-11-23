@@ -12,9 +12,8 @@
 # account, and #show branches on
 # exactly one thing (WsjrdpFinAccount#transactions branches on the same marker):
 #
-#   * a BANK account (transaction_type "WsjrdpCamtTransaction"): the plain
-#     camt statement it has always been, every row rendered at once
-#     (#ordered_transactions, sorted in Ruby);
+#   * a BANK account (transaction_type "WsjrdpCamtTransaction"): its camt
+#     transactions as an expandable table (#camt_transactions);
 #   * the MOSS WALLET (transaction_type "MossBalanceMovement"): the Moss
 #     transactions table of the Transaktionen tab (Fin::MossTransactionsTable,
 #     fin/moss_transactions/_table), narrowed to this account.
@@ -32,7 +31,7 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
 
   before_action :authorize_action
 
-  helper_method :fin_account, :ordered_transactions
+  helper_method :fin_account, :camt_transactions
   helper_method :moss_wallet?
   helper_method :permitted_attrs
   helper_method :cancel_url, :return_url
@@ -57,10 +56,23 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   # spec/controllers/fin/table_policies_spec.rb resolves every policy with a bare
   # TestRequest), which simply yields one more key -- nothing here needs an id to
   # resolve.
+  # A bank account's statement: its camt transactions. The filter stays in the
+  # URL and the rest is remembered per account, as on the wallet (below). Its
+  # own prefix: a controller's tables are told apart by it.
+  CAMT_POLICY = wsjrdp_expandable_table_policy prefix: "ct",
+    columns: Fin::CamtTransactionsColumns.codec,
+    sort: {hidden: [["booking_date", "desc"]]},
+    cols: {default: Fin::CamtTransactionsColumns.default_keys},
+    per_page: {default: 50},
+    filter: {schema: Fin::CamtTransactionsFilterSchema,
+             fixed_groups: -> { [Fin::AccountKinds.fixed_group(Fin::AccountKinds::BANK_KINDS)] }},
+    pane: {default: 1},
+    store_key: -> { "#{controller_path}##{action_name}:#{params[:id]}" }
+
   WALLET_POLICY = wsjrdp_expandable_table_policy prefix: "",
     columns: Fin::MossTransactionsColumns.codec,
     sort: {hidden: [["booking_date", "desc"]]},
-    cols: {default: Fin::MossTransactionsColumns.default_keys},
+    cols: {default: Fin::MossTransactionsColumns.default_keys, labels: {"booking_date" => "Buchungstag"}},
     per_page: {default: 50},
     filter: {schema: Fin::MossTransactionsFilterSchema, fixed_groups: -> { [Fin::MossKinds.fixed_group] }},
     pane: {default: 1},
@@ -94,10 +106,6 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
     @wsjrdp_fin_account ||= fin_account
     return render(:detail_frame) if turbo_frame_request?
 
-    # Only the camt branch pre-sorts every row of the account in Ruby; the
-    # wallet's rows come from its table state (transactions), one page at a
-    # time, and are resolved by the view that actually renders them.
-    @ordered_transactions ||= ordered_transactions unless moss_wallet?
     render :show
   end
 
@@ -147,10 +155,11 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
     end
   end
 
-  # PRG target of the wallet's CNF filter builder; lands back on this account.
+  # PRG target of the statement's CNF filter builder; lands back on this account.
   def apply
     authorize!(:show, fin_account)
-    wsjrdp_apply_table_filter(transactions_table_state, redirect_to: wsjrdp_fin_account_path(fin_account))
+    state = moss_wallet? ? transactions_table_state : camt_table_state
+    wsjrdp_apply_table_filter(state, redirect_to: wsjrdp_fin_account_path(fin_account))
   end
 
   def fin_account
@@ -162,8 +171,16 @@ class Fin::WsjrdpFinAccountsController < Fin::FinController
   # same test WsjrdpFinAccount#transactions makes.
   def moss_wallet? = fin_account.transaction_type == "MossBalanceMovement"
 
-  def ordered_transactions
-    @ordered_transactions ||= fin_account.transactions.sort_by { |t| [t.value_date, t.id] }.reverse
+  def camt_table_state = wsjrdp_expandable_table_state(CAMT_POLICY)
+
+  # A bank account's statement: its camt transactions, filtered, sorted and
+  # paged -- every one of them, as the balance counts them.
+  def camt_transactions
+    @camt_transactions ||= Wsjrdp::ExpandableTableRows.new(camt_table_state,
+      camt_table_state.filter.scope(WsjrdpCamtTransaction.where(fin_account_id: fin_account.id)
+        .select(Fin::CamtTransactionsColumns::SELECT_SQL)),
+      sort: Fin::CamtTransactionsColumns.sort_expressions, sum: :signed_base_amount,
+      preload: Fin::CamtTransactionsColumns::ROW_PRELOADS, tiebreaker: "wsjrdp_camt_transactions.id DESC")
   end
 
   # The resolved state of the wallet's transactions table

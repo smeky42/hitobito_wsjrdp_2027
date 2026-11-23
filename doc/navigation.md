@@ -164,8 +164,10 @@ tab "fin.tabs.transactions", :moss_transactions_path
 - Ohne `no_alt` ist ein Tab auch auf Unterpfaden aktiv (z. B. `transactions`
   auf `/fin/moss/transactions/:id`).
 - **Eine zweite Tab-Leiste.** Ein Sheet kann unter seinen Tabs eine eigene
-  Leiste rendern, indem es `render_tabs` überschreibt (wie `Sheet::Fin::Accounts`
-  mit den Konten). Moss zeigt so auf den Transaktionsseiten die Unter-Tabs
+  Leiste rendern, indem es `render_tabs` überschreibt. `Sheet::Fin::Accounts`
+  zeigt so unter „Konten" erst „Alle" (`/fin/acc/all`, alle Transaktionen aller
+  Konten; dorthin führt „Konten"), dann die Konten selbst. Moss zeigt so auf
+  den Transaktionsseiten die Unter-Tabs
   „Alle" (`/fin/moss/transactions`) und die vier Arten (Kartenzahlungen,
   Erstattungen, Rechnungen, Einzahlungen); oben bleibt „Transaktionen" aktiv.
   Diese Unter-Tabs sind keine `tab`-Deklarationen, darum fehlen sie in den

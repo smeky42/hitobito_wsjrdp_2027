@@ -159,7 +159,7 @@ describe Wsjrdp::ExpandableTableColumns do
         merge_layouts: nil, header_align: nil, merged_cell: nil,
         numeric: true, width: nil, mobile: true, narrow: true, pinned: nil, visibility: :toggle,
         visibility_default: nil, fallback: nil, css_class: "tblcol-amount",
-        sort_key: "amount", sort_first: "asc", sort_variants: [], cell: cell
+        sort_key: "amount", sort_first: "asc", sort_variants: [], sub_sorts: nil, cell: cell
       )
     end
 

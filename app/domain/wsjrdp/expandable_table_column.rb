@@ -245,7 +245,10 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
   # column's own key whenever it declares a sort -- that is what makes the header
   # clickable and what the state resolves a click back into. `sort_variants:`
   # are the header's chips, [{key:, label:, title:, first:}].
-  def to_table_column(cell:, merged_cell: nil)
+  # `sub_sorts`: the sort links of other columns the header offers below its
+  # label ({key:, label:, first:}), for columns whose values the cell shows
+  # while they are hidden (Wsjrdp::ExpandableTableSortHelper#et_sub_sorts).
+  def to_table_column(cell:, merged_cell: nil, sub_sorts: nil)
     {key: key, abbr: abbr, label: label, condensed_label: condensed_label,
      header_label: header_label, short_label: short_label, header_tooltip: header_tooltip, group: group, grow: grow,
      target_width: target_width, target_grow: target_grow, truncate: truncate, sticky: sticky,
@@ -256,6 +259,6 @@ class Wsjrdp::ExpandableTableColumn < Data.define(:key, :abbr, :label, :condense
      visibility_default: (default.to_s if tristate?), fallback: fallback, css_class: css_class,
      sort_key: (key if sortable?), sort_first: sort_first,
      sort_variants: sort_variants.map { |v| {key: v.key, label: v.label, title: v.title, first: v.first} },
-     cell: cell}
+     sub_sorts: sub_sorts, cell: cell}
   end
 end

@@ -265,7 +265,8 @@
   - if columns_menu
     .exp-tools{ role: "group", "aria-label": "Tabelle einstellen" }
       - menu = capture do
-        = render "shared/wsjrdp/expandable_table_columns_form", state: state, all_columns: all_columns, page_links: page_links
+        = render "shared/wsjrdp/expandable_table_columns_form", state: state, all_columns: all_columns, page_links: page_links,
+          sort_names: sort_names, multi_sort: multi_sort
       = render "shared/wsjrdp/table_hamburger", id: "#{id_prefix}-colmenu", menu: menu
 
 = render "shared/wsjrdp/expandable_table_styles"
@@ -494,11 +495,13 @@
                     - fallbacks_html = et_detail_fallbacks(fallback_columns, row)
                     - links_aside = local_assigns[:detail_links_aside] && detail_src
                     - links_html = (detail_page_in_detail || detail_links.any? || fallbacks_html.present?) ? render("shared/wsjrdp/detail_links", row: row, detail_page: detail_page_in_detail, detail_links: detail_links, narrow_only: detail_page_narrow_only, fallbacks: fallbacks_html, edit_toggle: links_aside) : nil
-                    - bar_data = (fallbacks_html.present? && detail_page_in_detail.nil? && detail_links.empty?) ? { exp_if_any_hidden: "" } : {}
+                    -# A line of nothing but fallbacks shows while any of them does -- unless
+                    -# it carries the inline edit's button (detail_links_aside).
+                    - bar_data = (fallbacks_html.present? && detail_page_in_detail.nil? && detail_links.empty? && !links_aside) ? { exp_if_any_hidden: "" } : {}
                     -# A page link shown only in a narrow table (detail_page
                     -# narrow_only) and no other link: the whole header line
                     -# shows only there.
-                    - links_narrow_only = detail_page_narrow_only && detail_links.empty?
+                    - links_narrow_only = detail_page_narrow_only && detail_links.empty? && !links_aside
                     - if detail_src
                       -# The header line stays OUTSIDE the turbo frame, above it: it
                       -# is there the moment the row opens, while the frame still
@@ -507,7 +510,7 @@
                       -# direct detail's .booking-detail.p-3 gives it, so the line
                       -# sits in the same place in both modes.
                       - if links_html.present?
-                        .booking-detail.exp-detail-linkbar{ class: [("exp-narrow-only" if links_narrow_only), ("exp-detail-linkbar-float" if local_assigns[:detail_links_float]), ("exp-detail-linkbar-aside" if links_aside)].compact, data: bar_data }= links_html
+                        .booking-detail.exp-detail-linkbar{ class: [("exp-narrow-only" if links_narrow_only), ("exp-detail-linkbar-float" if local_assigns[:detail_links_float] && !links_aside), ("exp-detail-linkbar-aside" if links_aside)].compact, data: bar_data }= links_html
                       -# The detail's nesting level travels in the frame URL so the
                       -# lazily-rendered partial knows it sits inside a table row.
                       - src = detail_src.call(row)

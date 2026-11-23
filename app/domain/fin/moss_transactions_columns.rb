@@ -28,9 +28,9 @@ module Fin::MossTransactionsColumns
     # kind carries. The raw payment day is the optional "Zahlungsdatum" column
     # below -- two kinds have none at all, and a card's is a few days before the
     # row's own date. Its column widens when the table has room; while it is too
-    # narrow for the full word the header says "Datum".
-    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", short_label: "Datum",
-      width: "7rem", target_width: "9rem",
+    # narrow for the full word the header says "Buchung".
+    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", short_label: "Buchung",
+      width: "7rem", target_width: "9rem", mobile: false,
       sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true
