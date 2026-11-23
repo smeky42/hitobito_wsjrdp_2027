@@ -43,7 +43,7 @@ Nothing is checked. A script writes the same row with an `INSERT` into
 |---|---|---|
 | `wsjrdp_add_tag` | `tag_name` (text) | Tag *name* hinzugefügt |
 | `wsjrdp_remove_tag` | `tag_name` (text) | Tag *name* entfernt |
-| `wsjrdp_note` | `category` (text), `message` (text), any further keys | *Category label*: message |
+| `wsjrdp_note` | `category` (text), `message` (text), any further keys | *Category label*: message; a link for `pre_notification_id` |
 
 The tag entries also keep their old form in `object_changes`
 (`{"tag" => [old, new]}`); an entry written before `wsjrdp_data` existed has
@@ -58,6 +58,24 @@ Categories of `wsjrdp_note` with a label (`version.wsjrdp_note_categories`):
 | `primary_role_change` | Hauptgruppe/Rolle gewechselt |
 | `deregistration_form` | Abmelde-Formular verschickt |
 | `deregistration_confirmation` | Bestätigung der Abmeldung verschickt |
+
+`pre_notification` is one mail of `create_and_send_pre_notifications.py`
+(wsjrdp_scripts). `item` is the pre-notification, `main` the person. The entry
+is written before sending and updated with the result. The pre-notification's
+page lists its entries as "Versand".
+
+| Keys | Content |
+|---|---|
+| `script`, `run_started_at`, `batch_name` | the run |
+| `payment_initiation_id`, `pre_notification_id` | order and pre-notification |
+| `pre_notification_recorded` | `false`: mail without pre-notification; `item` is the person, `pre_notification_skip_reason` the reason |
+| `collection_date`, `amount`, `currency`, `dbtr_name`, `dbtr_iban`, `mandate_id`, `description`, `debit_sequence_type`, `payment_role` | the debit as announced; `amount` in euros |
+| `email_status` | `prepared`, `sent`, `failed` (`email_error`) or `no_recipients`; still `prepared` after the run: aborted before the mail was sent or its result saved |
+| `email_message_id`, `email_subject`, `email_date`, `email_from`, `email_to`, `email_cc`, `email_bcc`, `email_reply_to` | headers; addresses as lists |
+| `email_envelope_from`, `email_envelope_to` | SMTP `MAIL FROM` and `RCPT TO` |
+| `email_sent_at`, `email_smtp_refused` | if `sent`: time and refused recipients |
+| `email_imap_mailbox`, `email_imap_uid` | if `sent`: the copy in the sent folder |
+| `email_eml_name`, `email_eml_zip_name`, `email_eml_size`, `email_eml_sha256` | the EML file |
 
 `deregistration_form` is written when a script reports the mail it sent the
 Abmelde-Formular with (`Wsjrdp2027::DeregistrationFormSent`, see
@@ -111,7 +129,8 @@ definition in `Wsjrdp::LogEvents::EVENTS`:
   makes of the YAML in `object_changes`,
 - the sentence `version.<event>` with the event's `params`, each value
   escaped and formatted by its type (`:text`, `:date`, `:cents`, `:person`,
-  `:group`, `:list`, `:note_category`); a missing or empty value is "–",
+  `:group`, `:list`, `:note_category`, `:pre_notification`); a missing or
+  empty value is "–",
 - a line "Label: value" per key of the event's `details` that the data has,
 - keys the event does not define are not shown.
 

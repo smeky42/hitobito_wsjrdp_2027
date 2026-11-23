@@ -33,7 +33,8 @@ module Wsjrdp
         legacy: ->(changes) { {"tag_name" => Array(changes["tag"])[0]} }
       },
       NOTE => {
-        params: {category: :note_category, message: :text}
+        params: {category: :note_category, message: :text},
+        details: {pre_notification_id: :pre_notification}
       }
     }.freeze
 

@@ -1,0 +1,38 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The mails of a debit. Locals: debit, versions (debit_mailing_versions)
+- versions.each do |version|
+  - data = Wsjrdp::LogEvents.data(version)
+  .debit-mailing.small.mb-2.text-break
+    .text-muted
+      = debit_mailing_time(version, data)
+      = "·"
+      = debit_mailing_status(data)
+      - if data["email_eml_size"].present?
+        = "·"
+        = number_to_human_size(data["email_eml_size"])
+      - if (log_link = debit_mailing_log_link(debit.subject))
+        = "·"
+        = log_link
+    - {"error" => data["email_error"], "refused" => debit_mailing_refused(data)}.each do |label, text|
+      - if text.present?
+        %div
+          %span.text-muted= "#{t("fin.payments.debit_mailings.#{label}")}:"
+          = text
+    - {"SMTP MAIL FROM" => "envelope_from", "From" => "from", "To" => "to", "Cc" => "cc", "Bcc" => "bcc", "Reply-To" => "reply_to"}.each do |label, key|
+      - if (list = debit_mailing_addresses(data["email_#{key}"]))
+        %div
+          - if key == "envelope_from"
+            = icon(:envelope, class: "text-muted")
+          %span.text-muted= "#{label}:"
+          = list
+    - {"Subject" => "subject", "Message-ID" => "message_id"}.each do |label, key|
+      - if data["email_#{key}"].present?
+        %div
+          %span.text-muted= "#{label}:"
+          = data["email_#{key}"]

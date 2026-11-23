@@ -11,9 +11,10 @@
 -#  warning where its amount differs -- and the debit's other page, purpose
 -#  and reference, the edit-side fields (skip, comment), the mails, the
 -#  mandate with the creditor id, debtor and creditor, and the payment role
--#  with the timestamps at the end. Shown on the debit's two pages -- in the
--#  Zahlungsverkehr area and under its person (Fin::DebitPages) -- and inside
--#  the Einzüge tables' rows; `ctx` says whether it is a page or a row.
+-#  with the timestamps; on a page also its mailings and changes.
+-#  Shown on the debit's two pages -- in the Zahlungsverkehr area and under
+-#  its person (Fin::DebitPages) -- and inside the Einzüge tables' rows;
+-#  `ctx` says whether it is a page or a row.
 -#  Its label says "Vorabankündigung Einzug" while it is only announced
 -#  (Fin::PaymentsHelper#payment_debit_label). The values come from
 -#  Fin::PaymentDetailsHelper, the labels from
@@ -61,6 +62,10 @@
       **edit.call(:dbtr_name, :dbtr_iban, :dbtr_bic, :dbtr_address)
   - d.attrs :cdtr_name, :cdtr_iban, :cdtr_bic, :cdtr_address
   - d.attrs :payment_role, :created_at, :updated_at
+  - mailings = editing.nil? ? [] : debit_mailing_versions(debit).to_a
+  - if mailings.any?
+    - d.custom key: :mailings, title: t("fin.payments.debit_mailings.title") do
+      = render "fin/direct_debits/mailings", debit: debit, versions: mailings
   - if !editing.nil? && debit_change_versions(debit).any?
     - d.custom key: :changes, title: t("fin.payments.debit_changes") do
       = render "fin/direct_debits/changes", debit: debit

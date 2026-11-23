@@ -37,7 +37,8 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     return super unless item_class <= ::WsjrdpDirectDebitPreNotification
 
     text = I18n.t("version.association_change.wsjrdp_direct_debit_pre_notification.#{model.event}",
-      model: safe_join([item_class.model_name.human, " ", debit_link]),
+      model: safe_join([item_class.model_name.human, " ",
+        pre_notification_link(model.item_id, model.item)]),
       changeset: (model.event == "update") ? changeset_list : nil)
     h.sanitize(text, tags: %w[i a], attributes: %w[href target rel])
   end
@@ -83,10 +84,10 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
       .map { |line| ERB::Util.html_escape(line) }
   end
 
-  def debit_link
-    debit = model.item
-    h.link_to_if(debit && can?(:log, debit), "##{model.item_id}",
-      h.wsjrdp_direct_debit_pre_notification_path(model.item_id), target: "_blank", rel: "noopener")
+  # "#<id>", linked where the viewer may open it.
+  def pre_notification_link(id, debit)
+    h.link_to_if(debit && can?(:log, debit), "##{id}",
+      h.wsjrdp_direct_debit_pre_notification_path(id), target: "_blank", rel: "noopener")
   end
 
   # What a value of a log entry shows when it is missing or empty.
@@ -130,8 +131,8 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
 
   # A value of a log entry by its type, escaped: :text (on one line), :date
   # (an ISO date), :cents (EUR), :person and :group (by id, "#<id>" for none),
-  # :list (of texts), :note_category (its label, else as stored). A value its
-  # type cannot read is shown as stored.
+  # :list (of texts), :note_category (its label, else as stored),
+  # :pre_notification (by id). A value its type cannot read is shown as stored.
   def wsjrdp_value(type, value)
     return WSJRDP_MISSING_VALUE if value.nil? || value == "" || value == []
 
@@ -148,6 +149,8 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
     when :group then wsjrdp_record_label(::Group.with_deleted, value)
     when :list then Array(value).map { |element| element.to_s.squish }.join(", ")
     when :note_category then wsjrdp_note_category_label(value.to_s)
+    when :pre_notification
+      pre_notification_link(Integer(value), ::WsjrdpDirectDebitPreNotification.find_by(id: Integer(value)))
     else value.to_s.squish
     end
   end
