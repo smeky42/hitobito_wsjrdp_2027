@@ -5,27 +5,13 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The statement of the MOSS WALLET: one row per MossBooking, on the shared
--#  expandable table (doc/wsjrdp/expandable_table.md) with the generic CNF filter
--#  above it and a quick-select preset per Moss kind. The kind is marked twice in
--#  every row -- the chip in "Art" and the coloured rail on the row's first cell
--#  (shared/wsjrdp/_moss_kind_styles paints both).
+-#  The statement of the MOSS WALLET: the Moss transactions table of the
+-#  Transaktionen tab (fin/moss_transactions/_table), narrowed to this account.
 -#
--#  The Eröffnungs-Saldo sits OUTSIDE the table on purpose: it is no booking, so
--#  it must not be sorted, filtered, paged or counted with them. The current
--#  balance is the page's head line (_summary).
--#
--#  A row has no detail of its own -- it already shows everything the booking's
--#  page would repeat -- so opening it reveals nothing but the header line of
--#  links: the booking's page and the transaction's record in Moss. A top-up has
--#  no such record page (MossTopUp#moss_record_url), so its line is "Detailseite"
--#  alone.
+-#  The Eröffnungs-Saldo sits OUTSIDE the table on purpose: it is no
+-#  transaction, so it must not be sorted, filtered, paged or counted with them.
+-#  The current balance is the page's head line (_summary).
 :css
-  /* Line 1 of the description: the payment's name, a touch heavier than the
-     party and the Buchungstext next to it. Bootstrap < 5.3 has no .fw-medium. */
-  .mw-name { font-weight: 500; }
-  /* The green of a linked contribution booking, as on the camt statement. */
-  .ae-linked { color: #00a030; }
   /* The balance line: label left, amount right, in the table's own rhythm.
      Only the vertical padding is set here: the line is a direct child of the
      Bootstrap .row, whose gutter padding keeps it flush with "Zurück" and the
@@ -34,30 +20,11 @@
     gap: 1rem; max-width: 28rem; padding-top: .25rem; padding-bottom: .25rem; }
   .mw-balance-amount { font-variant-numeric: tabular-nums; }
 
-= render "shared/wsjrdp/moss_kind_styles"
--# The `replace_all` / `reload_frames` answers of the person-linking buttons
--# (Fin::MossBookingsController#respond_after_subject_link) need the stream
--# actions show.html.haml loads.
 #main.row
   %p
     %a{href: return_url} Zurück
 
-  = wsjrdp_expandable_table do |t|
-    - t.rows    wallet_bookings, id: "wallet"
-    - t.columns moss_wallet_table_columns, menu: true
-    - t.row_key { |booking| booking.id }
-    -# The coloured rail: the row carries its kind's class, the stylesheet paints
-    -# the 3px line inside the first cell.
-    - t.row_class { |booking| moss_kind_css_class(booking.moss_transaction.type) }
-    - t.detail_page { |booking| url_for(booking) }
-    -# The transaction is preloaded with the page (the controller's
-    -# wallet_bookings). A top-up answers nil here and gets no "In Moss" group.
-    - moss_url = ->(booking) { booking.moss_transaction&.moss_record_url }
-    - t.detail_link label: "In Moss", icon: :wallet, title: "Transaktion in Moss öffnen",
-        title_new_tab: "Transaktion in Moss in neuem Tab öffnen", &moss_url
-    - t.paging
-    - t.filter  apply_url: apply_wsjrdp_fin_account_path(fin_account)
-    - t.summary "#{wallet_bookings.total_count} Buchungen"
+  = render "fin/moss_transactions/table", apply_url: apply_wsjrdp_fin_account_path(fin_account)
 
   .mw-balance.mt-2
     %span Eröffnungs-Saldo

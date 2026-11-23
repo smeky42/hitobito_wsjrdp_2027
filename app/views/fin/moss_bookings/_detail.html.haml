@@ -1,0 +1,37 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of one Moss booking, built on the finance detail kit
+-#  (doc/fin/detail_partials.md): the reading page (show), the edit page (edit)
+-#  and the row detail of the Buchungen list are this one list of fields. The
+-#  values come from Fin::MossBookingsHelper, the labels from
+-#  de.activerecord.attributes.moss_booking.
+-#
+-#  Locals: booking (MossBooking)
+-#          ctx (Fin::AttrFormatContext)
+-#          editing:    false the reading page (default), true the edit page
+-#          form_url:   the PATCH target; its presence makes comment and person
+-#                      editable
+-#          edit_url, cancel_url: as the detail kit takes them
+-#          return_path: the page the reader came from; the header leads back
+= render "shared/wsjrdp/moss_kind_styles"
+- edit = fin_moss_booking_edit_options(local_assigns[:form_url].present?)
+= fin_detail(booking, ctx, editing: local_assigns.fetch(:editing, false), form_url: local_assigns[:form_url],
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
+  - d.header label: "Moss Buchung ##{booking.id}", title: booking.booking_posting_text.presence,
+      back: local_assigns[:return_path], back_label: t("global.button.back")
+  -# The booking is L3: its transaction and its expense carry the context, the
+  -# booking itself the split dimensions. Its amount first.
+  - d.attrs :amount_with_currency, :original_amount_with_currency, :kind, :moss_transaction,
+      :merchant_name, :top_up_sender, :invoice_status, :moss_expense, :fin_account, blank: :hide
+  - d.attrs :booking_date, :submitted_date, :approval_date, blank: :hide
+  - d.attrs :account_number, :cost_center_number, :sphere_number
+  - d.attrs :text_lines, :parent_comments, :comment, parent_comments: {blank: :hide},
+      comment: {blank: :hide}.merge(edit.fetch(:comment, {}))
+  - d.attrs :contribution_subject, :accounting_entries, **edit.slice(:contribution_subject)
+  - d.raw_data do
+    - d.raw_entries :other_moss_columns, title: "Moss Rohdaten"

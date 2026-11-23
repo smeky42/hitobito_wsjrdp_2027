@@ -263,4 +263,85 @@ module Fin::MossTransactionsHelper
   def moss_kind_tab_label_with_icon(kind)
     safe_join([moss_kind_icon(kind), " ", moss_kind_tab_label(kind)])
   end
+
+  # --- shared by the Moss details (transaction, expense, booking) -------------
+
+  # A link that leaves the turbo frame a detail stands in (`_top`), followed by
+  # its new-tab twin.
+  def moss_double_link(label, url)
+    safe_join([link_to(label, url, data: {turbo_frame: "_top"}), wsjrdp_newtab_link(url)])
+  end
+
+  def moss_fin_account_link(account) = account && moss_double_link(account.to_s, wsjrdp_fin_account_path(account))
+
+  # Comments of the levels above, one line each: the level muted, then the
+  # comment ([[level name, text], ...]).
+  def moss_level_comment_lines(comments)
+    safe_join(comments.map do |level, text|
+      content_tag(:div, safe_join([content_tag(:span, "#{level}: ", class: "fw-light muted"),
+        content_tag(:span, auto_link_escaped_multiline(text), class: "fw-light fst-italic")]))
+    end)
+  end
+
+  # --- the transaction's detail (fin/moss_transactions/_detail) -------------
+  #
+  # The formatters of the finance detail kit (doc/fin/detail_partials.md), one
+  # per field the detail lists.
+
+  def fin_format_moss_transaction_type(tx) = moss_kind_chip(tx.type)
+
+  # The Moss workflow states: the transaction's and, for an invoice, the
+  # invoice's.
+  def fin_format_moss_transaction_moss_status(tx)
+    [tx.moss_transaction_state, tx.invoice_status].compact_blank.join(" · ")
+  end
+
+  def fin_format_moss_transaction_signed_total_base_amount(tx)
+    moss_amount_display(tx.signed_total_base_amount, tx.currency.presence || "EUR")
+  end
+
+  # The amount in the payment's own currency, only on a foreign-currency one.
+  def fin_format_moss_transaction_original_amount(tx)
+    moss_amount_display(tx.signed_total_transaction_amount, tx.currency_original) if tx.foreign_currency?
+  end
+
+  def fin_format_moss_transaction_exchange_rate(tx)
+    return nil unless tx.foreign_currency? && tx.exchange_rate
+
+    number_with_precision(tx.exchange_rate, precision: 6, strip_insignificant_zeros: true, separator: ",", delimiter: ".")
+  end
+
+  # Name and party: the label says what the value is for the kind.
+  def fin_format_moss_transaction_display_name(tx) = {label: moss_transaction_name_label(tx), value: tx.display_name}
+
+  def fin_format_moss_transaction_display_text(tx) = tx.display_text
+
+  def fin_format_moss_transaction_party(tx) = {label: moss_transaction_party_label(tx), value: moss_transaction_party(tx)}
+
+  def fin_format_moss_transaction_supplier_account_number(tx)
+    moss_code_name_cell([tx.supplier_account_number], moss_account_names)
+  end
+
+  # The payment's record in Moss -- none for a top-up (MossTopUp#moss_record_url).
+  def fin_format_moss_transaction_moss_record(tx)
+    url = tx.moss_record_url
+    url && moss_double_link("In Moss öffnen", url)
+  end
+
+  def fin_format_moss_transaction_clearing_datev_booking(tx)
+    id = tx.clearing_datev_booking_id
+    id && link_to("Buchung ##{id}", booking_path(id), data: {turbo_frame: "_top"})
+  end
+
+  def fin_format_moss_transaction_fin_account(tx) = moss_fin_account_link(tx.fin_account)
+
+  def fin_format_moss_transaction_comment(tx)
+    auto_link_escaped_multiline(tx.comment) if tx.comment.present?
+  end
+
+  # What the edit page of a transaction or an expense lets a writer change:
+  # the comment.
+  def moss_comment_edit_options(editable)
+    editable ? {comment: {editable: true, input: :textarea}} : {}
+  end
 end

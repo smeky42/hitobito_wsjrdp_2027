@@ -25,8 +25,12 @@
 -#  each marked data-exp-if-hidden, so it shows while its column does not)
 -#  stand left of the links.
 -#
+-#  With edit_toggle (t.detail_links_aside) the line ends in the detail kit's
+-#  "Bearbeiten": it opens the inline form of the detail loaded below, and shows
+-#  only while that detail has a closed one (shared/wsjrdp/_expandable_table_styles).
+-#
 -#  Locals: row, detail_page (->(row){ path } or nil), narrow_only, fallbacks, detail_links
--#    ([{label:, icon:, title:, title_new_tab:, url: ->(row){ url }}]).
+-#    ([{label:, icon:, title:, title_new_tab:, url: ->(row){ url }}]), edit_toggle.
 - groups = Array(detail_links).filter_map do |cfg|
   - url = cfg[:url].call(row)
   - cfg.merge(url: url) if url.present?
@@ -34,7 +38,8 @@
   - groups += [{label: "Detailseite", icon: :eye, title: "Detailseite öffnen",
       title_new_tab: "Detailseite in neuem Tab öffnen", url: page_url, narrow_only: local_assigns[:narrow_only]}]
 - fallbacks = local_assigns[:fallbacks]
-- if groups.any? || fallbacks.present?
+- edit_toggle = local_assigns[:edit_toggle]
+- if groups.any? || fallbacks.present? || edit_toggle
   .exp-detail-links.d-flex.flex-wrap.justify-content-end.align-items-center.gap-2
     = fallbacks
     - groups.each do |group|
@@ -46,3 +51,7 @@
         = link_to group[:url], class: "btn btn-outline-primary", target: "_blank",
           rel: "noopener", title: group[:title_new_tab], "aria-label": group[:title_new_tab] do
           = icon(:"external-link-alt")
+    - if edit_toggle
+      %button.btn.btn-sm.btn-outline-primary.exp-edit-toggle{ type: "button",
+        onclick: "this.closest('.exp-detail').querySelector(':scope > turbo-frame > .bk-item-detail > [data-fin-editing]').dataset.finEditing='true'" }
+        Bearbeiten

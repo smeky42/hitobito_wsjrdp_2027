@@ -1,0 +1,13 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of a Moss expense: the same detail (_detail) in the kit's
+-#  :edit mode, with an input for the comment.
+= wsjrdp_detail_frame(Fin::MossExpensesController::FRAME_PREFIX, @moss_expense.id) do
+  = render "detail", expense: @moss_expense, ctx: @ctx, editing: true, return_path: return_path,
+    form_url: moss_expense_path(@moss_expense, return_url: return_path),
+    cancel_url: moss_expense_path(@moss_expense, return_url: return_path)

@@ -135,6 +135,13 @@ describe Wsjrdp::ExpandableTableBuilder do
     end
   end
 
+  describe "#detail_links_aside" do
+    it "puts the header line beside a lazy detail" do
+      builder.detail_links_aside
+      expect(builder.to_locals).to include(detail_links_aside: true)
+    end
+  end
+
   describe "#detail_page with a column" do
     it "takes the column's default, auto unless given" do
       builder.detail_page(column: true) { |row| row }

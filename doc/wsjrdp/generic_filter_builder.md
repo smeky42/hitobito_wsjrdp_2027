@@ -1631,7 +1631,7 @@ Driven by the reconciliation page but landing mostly in shared code:
   | Kreditoren | Saldo | `booking_balance` (`bb`) | `booking_balance_abs` (`bba`) |
   | Moss-Transaktionen | Betrag (Transaktion) | `amount` (`amt`) | `amount_abs` (`amta`) |
   | Moss-Transaktionen | Betrag (alle Ebenen) | `amount_any` (`ama`) | `amount_any_abs` (`amaa`) |
-  | Moss-Wallet | Betrag | `amount` (`amt`) | `amount_abs` (`amta`) |
+  | Moss-Buchungen | Betrag | `amount` (`amt`) | `amount_abs` (`amta`) |
 
   The absolute member is an `ABS(...)` column (an Arel `NamedFunction` in the
   attribute's `column:` lambda) — for "Betrag (alle Ebenen)" all three of them,
@@ -1647,7 +1647,7 @@ Driven by the reconciliation page but landing mostly in shared code:
   exactly two members, one `:signed` and one `:absolute`.
 - **Operator lists per numeric field**, first entry = the operator a fresh
   condition starts on:
-  - Buchungen `Betrag`, both Moss `Betrag`s and the wallet `Betrag`:
+  - Buchungen `Betrag`, both Moss `Betrag`s and the Moss bookings' `Betrag`:
     `im Bereich`, `≤`, `≥`, `<`, `>`, `=` — a range is what an amount is
     usually asked for.
   - Kreditoren `Saldo` and `Buchungen` (the count): `≠ 0`, `im Bereich`, `≤`,
@@ -1727,7 +1727,7 @@ Driven by the reconciliation page but landing mostly in shared code:
   are all pinned shows nothing.
 - **Specs**: `spec/domain/wsjrdp/filter_chips_spec.rb` (standalone: the wording
   and the preset rule) and the line's markup in the host controller specs of the
-  Kreditoren, the Moss wallet and the Moss transactions.
+  Kreditoren, the Moss bookings and the Moss transactions.
 
 ## Filtering arrays
 

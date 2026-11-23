@@ -5,25 +5,25 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  The "Beschreibung" cell of ONE wallet row (Fin::MossWalletHelper's
+-#  The "Beschreibung" cell of ONE booking row (Fin::MossBookingsHelper's
 -#  description cell renders this partial). Top to bottom:
 -#
 -#    1. the headline -- the payment's name, the kind's party, the status tags
--#       (Fin::MossWalletHelper#moss_wallet_headline);
+-#       (Fin::MossBookingsHelper#moss_bookings_headline);
 -#    2. the Buchungstext of the row's levels, the transaction level without its
--#       prefix (#moss_wallet_text_lines);
+-#       prefix (#moss_bookings_text_lines);
 -#    3. the parent levels' comments and the booking's own comment;
 -#    4. the person side -- the linked Beitragsbuchungen and the buttons that
 -#       create or propose such a link -- as the shared
 -#       fin/moss_bookings/_subject_links block. Those are the actions this page
 -#       exists for; they stay in the row rather than moving into a detail. The
 -#       linking actions of Fin::MossBookingsController replace exactly that
--#       block (Turbo Stream), so the rest of the wallet -- open details, scroll
+-#       block (Turbo Stream), so the rest of the list -- open details, scroll
 -#       position, filters -- stays as it is.
 -#
 -#  Locals: booking (a MossBooking).
-%div= moss_wallet_headline(booking)
-= moss_wallet_text_lines(booking)
+%div= moss_bookings_headline(booking)
+= moss_bookings_text_lines(booking)
 - booking.parent_comments.each do |level, text|
   %div
     %div.fw-light.fst-italic= safe_join([content_tag(:span, "#{level}: ", class: "fw-light muted"), auto_link_escaped_multiline(text)])

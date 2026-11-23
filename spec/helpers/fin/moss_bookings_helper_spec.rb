@@ -9,14 +9,14 @@
 
 require "spec_helper"
 
-# The cells of ONE Moss wallet row (Fin::MossWalletHelper): the party of line 1,
+# The cells of ONE Moss bookings row (Fin::MossBookingsHelper): the party of line 1,
 # the status tags, the signed amount and the Buchungstext lines. Every method
 # takes a booking or a transaction and nothing else, so the rows below are
 # BUILT, not fixtures -- only the invoice's creditor is saved, because its
 # standing-data row is reached through a generated column.
 #
 # All names, numbers and amounts here are invented.
-describe Fin::MossWalletHelper do
+describe Fin::MossBookingsHelper do
   # A booking of `type` with the transaction attributes the cell under test
   # reads. `amount` is the split's signed EUR share, the transaction total the
   # same figure -- one split per payment is the shape of every kind but a
@@ -28,11 +28,11 @@ describe Fin::MossWalletHelper do
       signed_base_amount: amount, booking_posting_text: text)
   end
 
-  def tags(booking) = helper.moss_wallet_tags(booking)
+  def tags(booking) = helper.moss_bookings_tags(booking)
 
-  def party(booking) = helper.moss_wallet_party(booking.moss_transaction)
+  def party(booking) = helper.moss_bookings_party(booking.moss_transaction)
 
-  def text_lines(booking) = Nokogiri::HTML.fragment(helper.moss_wallet_text_lines(booking))
+  def text_lines(booking) = Nokogiri::HTML.fragment(helper.moss_bookings_text_lines(booking))
 
   describe "the foreign-currency tag" do
     # What Moss actually moved, in the currency it moved it in, plus the rate
@@ -118,8 +118,8 @@ describe Fin::MossWalletHelper do
       transaction = MossInvoice.create!(moss_transaction_uuid: SecureRandom.uuid,
         signed_total_base_amount: -100, currency: "EUR",
         supplier_account_number: "700027", supplier_account_kind: "CREDITOR").reload
-      expect(helper.moss_wallet_party(transaction)).to eq("Beispiel GmbH · Kreditor 700027")
-      expect(helper.moss_wallet_supplier(transaction)).to eq("Beispiel GmbH · Kreditor 700027")
+      expect(helper.moss_bookings_party(transaction)).to eq("Beispiel GmbH · Kreditor 700027")
+      expect(helper.moss_bookings_supplier(transaction)).to eq("Beispiel GmbH · Kreditor 700027")
     end
 
     it "falls back to the creditor number alone when the standing data is missing" do
@@ -141,7 +141,7 @@ describe Fin::MossWalletHelper do
     it "puts the payment's name in front of the party and the tags behind it" do
       row = booking("MossCardTransaction", amount: 25, merchant_name: "Muster Markt",
         card_holder_name: "Vorname Nachname")
-      headline = Nokogiri::HTML.fragment(helper.moss_wallet_headline(row))
+      headline = Nokogiri::HTML.fragment(helper.moss_bookings_headline(row))
       expect(headline.at_css("span.mw-name").text).to eq("Muster Markt")
       expect(headline.css("span.moss-tag").map(&:text)).to eq(["Gutschrift"])
       expect(headline.text).to start_with("Muster Markt · Vorname Nachname")
@@ -151,12 +151,12 @@ describe Fin::MossWalletHelper do
   describe "the Betrag cell" do
     # The sign is the cue, the colour only reinforces it.
     it "gives money coming in a plus and the green class" do
-      cell = Nokogiri::HTML.fragment(helper.moss_wallet_amount_cell(booking("MossTopUp", amount: 500)))
+      cell = Nokogiri::HTML.fragment(helper.moss_bookings_amount_cell(booking("MossTopUp", amount: 500)))
       expect(cell.at_css("span.moss-amount-in").text.squish).to eq("+500,00 €")
     end
 
     it "leaves a negative amount with its own sign and the default colour" do
-      expect(helper.moss_wallet_amount_cell(booking("MossCardTransaction", amount: -23.35)).squish)
+      expect(helper.moss_bookings_amount_cell(booking("MossCardTransaction", amount: -23.35)).squish)
         .to eq("-23,35 €")
     end
   end
@@ -188,11 +188,11 @@ describe Fin::MossWalletHelper do
       expect(text_lines(row).css("div").map { |div| div.text.strip }).to eq(["Buchung: Split eins"])
     end
 
-    # #moss_wallet_text_line is the per-line rule the levels above go through.
+    # #moss_bookings_text_line is the per-line rule the levels above go through.
     it "keeps the shared rendering for the expense and booking levels" do
-      expect(helper.moss_wallet_text_line(:expense, "Bahnticket", "Hinfahrt"))
+      expect(helper.moss_bookings_text_line(:expense, "Bahnticket", "Hinfahrt"))
         .to eq(helper.moss_text_line(:expense, "Bahnticket", "Hinfahrt"))
-      expect(helper.moss_wallet_text_line(:transaction, "Name", nil)).to be_nil
+      expect(helper.moss_bookings_text_line(:transaction, "Name", nil)).to be_nil
     end
   end
 end

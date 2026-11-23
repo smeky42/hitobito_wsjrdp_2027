@@ -19,7 +19,7 @@ class BadPresetGroupController < Fin::WsjrdpFinAccountsController
   # caller overrides.
   def self.kind_group_policy(prefix, **wrong)
     wsjrdp_expandable_table_policy prefix: prefix,
-      filter: {schema: Fin::MossWalletFilterSchema,
+      filter: {schema: Fin::MossBookingsFilterSchema,
                presets: [{group: "kind", attribute: "kind", operator: "in",
                           members: [{key: "card", label: "Karte",
                                      value: Fin::MossTransactionsFilterSchema::KINDS.first}]}

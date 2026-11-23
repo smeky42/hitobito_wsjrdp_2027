@@ -7,31 +7,31 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# The Moss WALLET statement for the generic CNF filter
+# The Moss BOOKINGS list for the generic CNF filter
 # (doc/wsjrdp/generic_filter_builder.md, Part 4): the dataset behind the table on
-# fin/wsjrdp_fin_accounts#show of the Moss wallet.
+# fin/moss_bookings#index.
 #
 # WHY A SCHEMA OF ITS OWN, next to Fin::MossTransactionsFilterSchema: a filter
 # schema is bound to ONE base relation, and that relation decides what a row is.
-# The Moss section lists PAYMENTS (moss_transactions, L1); the wallet lists the
+# The Moss section lists PAYMENTS (moss_transactions, L1); the bookings list lists the
 # BOOKINGS of those payments (moss_bookings, L3) -- one row per split, because
-# that is the row the wallet's statement shows, the row DATEV books and the only
+# that is the row the list shows, the row DATEV books and the only
 # one with a detail page of its own. Binding the transactions schema here would
 # therefore filter the wrong grain (and drag its expenses/bookings LEFT JOINs,
 # and with them duplicate rows, into a list that already IS at booking level).
 #
-# It stays DELIBERATELY SMALL -- four attributes for the four things a wallet
+# It stays DELIBERATELY SMALL -- four attributes for the four things a bookings list
 # statement is scanned for. The one that matters, `kind`, reuses
 # Fin::MossTransactionsFilterSchema::KIND_OPTIONS, so the values and the words
 # are literally the Moss section's: what "Rechnung" means in the filter of
 # /fin/moss/transactions it means here, and a fifth STI subclass appears in both
-# pickers at once. The four kind PRESETS of the wallet
-# (Fin::WsjrdpFinAccountsController#wallet_presets) are built on this attribute.
+# pickers at once. The kinds' fixed group of the list
+# (Fin::MossKinds.fixed_group) is built on this attribute.
 #
 # The base joins the transaction, so the transaction-level attributes compile;
 # Wsjrdp::Filtering::FilterSchema#compile merges that base into whatever
 # relation the host hands in, so the host never repeats the join.
-module Fin::MossWalletFilterSchema
+module Fin::MossBookingsFilterSchema
   extend Wsjrdp::Filtering::FilterSchema
 
   TRANSACTIONS = MossTransaction.arel_table

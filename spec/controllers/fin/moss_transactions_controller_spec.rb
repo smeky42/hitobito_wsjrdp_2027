@@ -863,6 +863,85 @@ describe Fin::MossTransactionsController do
       expect(response.body).not_to include("In Moss öffnen")
       expect(response.body).not_to include("getmoss.com")
     end
+
+    def page = Nokogiri::HTML(response.body)
+
+    # The finance detail kit's reading page: the field list, a header without
+    # a link back, and "Bearbeiten" for the write tier.
+    it "renders the standard field list with Bearbeiten and no link back" do
+      get :show, params: {id: card.id}
+
+      expect(page.at_css("#main dl.fin-detail-list")).to be_present
+      expect(page.at_css("#main h1 span.text-muted").text).to eq "Kartenzahlung ##{card.id}"
+      expect(page.at_css("#main h1 a[href='#{edit_moss_transaction_path(card)}']").text).to include("Bearbeiten")
+      expect(response.body).not_to include("Zurück zur Liste")
+      expect(page.css("#main form")).to be_empty
+    end
+
+    # With more than one expense and booking the page lists them below as
+    # expandable tables, each row opening its own detail; a single one is
+    # already said by the fields above.
+    it "lists the expenses and the bookings where there is more than one" do
+      get :show, params: {id: card.id}
+      expect(response.body).not_to include("Ausgaben (")
+      expect(response.body).not_to include("Buchungen (")
+
+      second = MossExpense.create!(moss_transaction: card, moss_expense_uuid: SecureRandom.uuid,
+        type: "MossCardTransactionExpense", expense_number: 2, signed_expense_base_amount: -3,
+        expense_name: "Zweite Ausgabe")
+      booking = MossBooking.create!(moss_transaction: card, moss_expense: second, sub_row_number: 1,
+        signed_base_amount: -3, booking_posting_text: "Split zwei")
+      get :show, params: {id: card.id}
+
+      expect(response.body).to include("Ausgaben (2)").and include("Buchungen (2)")
+      expenses = page.css("turbo-frame[data-record^='moss_expense_']")
+      expect(expenses.pluck("src").map { |src| src.split("?").first })
+        .to eq([card.expenses.first, second].map { |expense| moss_expense_path(expense) })
+      expect(page.at_css("turbo-frame[data-record='moss_booking_#{booking.id}']")["src"])
+        .to start_with(moss_booking_path(booking))
+      expect(response.body).to include("Zweite Ausgabe").and include("Split zwei")
+    end
+
+    it "gives a row's detail the inline edit form" do
+      request.headers["Turbo-Frame"] = "bkframe-mtx-#{card.id}"
+      get :show, params: {id: card.id, expandable_table_level: 1}
+
+      frame = page.at_css("turbo-frame#bkframe-mtx-#{card.id}")
+      expect(frame.at_css("h1")).to be_nil
+      expect(frame.at_css("form[action='#{moss_transaction_path(card)}'] textarea[name='moss_transaction[comment]']"))
+        .to be_present
+    end
+  end
+
+  describe "the edit page" do
+    def page = Nokogiri::HTML(response.body)
+
+    it "shows the comment as an input" do
+      get :edit, params: {id: card.id}
+
+      expect(page.at_css("form[action='#{moss_transaction_path(card)}'] textarea[name='moss_transaction[comment]']"))
+        .to be_present
+    end
+
+    it "saves the comment and returns to the reading page" do
+      patch :update, params: {id: card.id, moss_transaction: {comment: "Geprüft"}}
+
+      expect(response).to redirect_to(moss_transaction_path(card))
+      expect(card.reload.comment).to eq "Geprüft"
+    end
+
+    it "brings a save from a row back to the row's detail" do
+      request.headers["Turbo-Frame"] = "bkframe-mtx-#{card.id}"
+      patch :update, params: {id: card.id, return_url: "/fin/moss", moss_transaction: {comment: "x"}}
+
+      expect(response).to redirect_to(moss_transaction_path(card))
+    end
+
+    it "is closed to the read tier" do
+      sign_in(Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person)
+
+      expect { get :edit, params: {id: card.id} }.to raise_error(CanCan::AccessDenied)
+    end
   end
 
   # The person side of a booking (fin/moss_bookings/_subject_links): one block
@@ -885,7 +964,7 @@ describe Fin::MossTransactionsController do
       block = doc.at_css("[data-subject-links='moss_booking_#{booking.id}']")
       expect(block).to be_present
       expect(block.css("a[data-turbo-method='post']").pluck("href"))
-        .to include("/fin/moss_booking/#{booking.id}/link_subject/#{target.id}/Person")
+        .to include("/fin/moss/bookings/#{booking.id}/link_subject/#{target.id}/Person")
     end
 
     it "loads the detail lazily, its frame marked with the transaction" do
@@ -966,8 +1045,8 @@ describe Fin::MossTransactionsController do
 
       hrefs = block_doc.css("a[href*='/link_accounting_entry/']").pluck("href")
       expect(hrefs).to contain_exactly(
-        "/fin/moss_booking/#{booking.id}/link_accounting_entry/#{first.id}",
-        "/fin/moss_booking/#{booking.id}/link_accounting_entry/#{second.id}"
+        "/fin/moss/bookings/#{booking.id}/link_accounting_entry/#{first.id}",
+        "/fin/moss/bookings/#{booking.id}/link_accounting_entry/#{second.id}"
       )
     end
 

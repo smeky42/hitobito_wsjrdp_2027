@@ -5,52 +5,42 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Shared detail of one Moss transaction: rendered in the expandable table
--#  row and on /fin/moss/transactions/:id (the "Detailseite" link is the
--#  table's detail header line, shared/wsjrdp/_detail_links). The
--#  transaction's own fields as the shared key/value grid plus its links. The
--#  expense and booking levels are deliberately not shown here for now.
--#  Locals: transaction (required).
+-#  The detail of one Moss transaction, built on the finance detail kit
+-#  (doc/fin/detail_partials.md): the reading page (show), the edit page (edit),
+-#  the lazy row detail of the transactions tables and the Moss leg of an
+-#  Umbuchung are this one list of fields. The values come from
+-#  Fin::MossTransactionsHelper, the labels from
+-#  de.activerecord.attributes.moss_transaction.
+-#
+-#  Locals: transaction (MossTransaction)
+-#          ctx (Fin::AttrFormatContext; default: a table row's)
+-#          editing:    false the reading page (default), true the edit page,
+-#                      nil a table row (inline edit)
+-#          form_url:   the PATCH target; its presence makes the comment editable
+-#          edit_url, cancel_url: as the detail kit takes them
+-#          return_path: the page the reader came from; the header leads back
 - tx = transaction
-- currency = tx.currency.presence || "EUR"
-= render "shared/wsjrdp/expandable_table_styles"
--# The sub-headings are the detail kit's (Fin::DetailHelper#fin_detail_heading).
-= fin_detail_styles
-.bk-item-detail
-  - head = [["Art", moss_kind_label(tx.type)],
-      ["Status (Moss)", [tx.moss_transaction_state, tx.invoice_status].compact_blank.join(" · ")],
-      ["Betrag", moss_amount_display(tx.signed_total_base_amount, currency), 1, :end]]
-  - if tx.foreign_currency?
-    - head << ["Originalbetrag", moss_amount_display(tx.signed_total_transaction_amount, tx.currency_original), 1, :end]
-    - head << ["Wechselkurs", tx.exchange_rate && number_with_precision(tx.exchange_rate, precision: 6, strip_insignificant_zeros: true, separator: ",", delimiter: ".")]
-  - dates = %i[payment_date booking_date approval_date invoice_date delivery_date due_date submitted_on].filter_map do |attr|
-    - value = tx.public_send(attr)
-    - [MossTransaction.human_attribute_name(attr), value.strftime("%d.%m.%Y")] if value
-  - who = [[moss_transaction_name_label(tx), tx.display_name], ["Buchungstext", tx.display_text, 2]]
-  - party = [[moss_transaction_party_label(tx), moss_transaction_party(tx)],
-      ["Kreditor", moss_code_name_cell([tx.supplier_account_number], moss_account_names)],
-      ["Verwendungszweck", tx.payment_reference, 2]]
-  - party << ["Belegnummer", tx.invoice_number] if tx.invoice_number.present? && !tx.is_a?(MossInvoice)
-  - party << ["Freigeber", tx.approver_name] if tx.approver_name.present?
-  - party << ["Eingereicht von", tx.submitted_by] if tx.submitted_by.present?
-  = render "shared/wsjrdp/kv_grid", rows: [head, dates, who, party].reject(&:empty?)
-
-  -# A top-up has no record page in Moss (MossTopUp#moss_record_url), so its
-  -# "Moss" cell shows the grid's muted dash -- exactly as the two rows below do
-  -# when there is no DATEV clearing booking and no WSJRDP account.
-  - links = [["Moss", tx.moss_record_url && link_to("In Moss öffnen", tx.moss_record_url, target: "_blank", rel: "noopener")]]
-  - links << ["DATEV-Ausgleich", tx.clearing_datev_booking_id && link_to("Buchung ##{tx.clearing_datev_booking_id}", booking_path(tx.clearing_datev_booking_id))]
-  - links << ["WSJRDP-Konto", tx.fin_account && link_to(tx.fin_account.to_s, wsjrdp_fin_account_path(tx.fin_account))]
-  %div
-    = fin_detail_heading("Verknüpfungen", level: 3)
-    = render "shared/wsjrdp/kv_grid", rows: [links]
-
+- ctx = local_assigns[:ctx] || Fin::AttrFormatContext.embedded(Wsjrdp::TableContext.new(level: 1))
+- edit = moss_comment_edit_options(local_assigns[:form_url].present?)
+= render "shared/wsjrdp/moss_kind_styles"
+= fin_detail(tx, ctx, editing: local_assigns.fetch(:editing, false), form_url: local_assigns[:form_url],
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
+  - d.header label: "#{moss_kind_label(tx.type)} ##{tx.id}", title: tx.display_name.presence,
+      back: local_assigns[:return_path], back_label: t("global.button.back")
+  - d.attrs :type, :moss_status, :signed_total_base_amount, :original_amount, :exchange_rate, blank: :hide
+  - d.attrs :payment_date, :booking_date, :approval_date, :invoice_date, :delivery_date, :due_date,
+      :submitted_on, blank: :hide
+  - d.attrs :display_name, :display_text, blank: :hide
+  - d.attrs :party, :supplier_account_number, :payment_reference, :invoice_number, :approver_name,
+      :submitted_by, blank: :hide
+  - d.attrs :comment, comment: {blank: :hide}.merge(edit.fetch(:comment, {}))
+  - d.section title: "Verknüpfungen", blank: :dash do
+    - d.attrs :moss_record, :clearing_datev_booking, :fin_account
   -# The person side of every booking that has one, read-only: the buttons sit
   -# in the listing's row, and after one of them is used this detail reloads as
   -# a whole (the `reload_frames` stream action).
-  - person_bookings = tx.bookings.select { |booking| booking.accounting_entries.any? || booking.subject.present? }
-  %div
-    = fin_detail_heading("Personen", level: 3)
+  - d.custom title: "Personen", key: :persons do
+    - person_bookings = tx.bookings.select { |booking| booking.accounting_entries.any? || booking.subject.present? }
     - if person_bookings.empty?
       .small.text-muted Keine Person verknüpft.
     - person_bookings.each do |booking|
@@ -58,8 +48,21 @@
         - if tx.bookings.size > 1
           .text-muted= moss_transaction_booking_label(booking)
         = render "fin/moss_bookings/subject_links", booking: booking, actions: false
-
-  - if tx.comment.present?
-    .mt-2
-      .booking-detail-label.text-muted.mb-1 Kommentar
-      .small.text-break= tx.comment
+  -# On the page, the expenses and the bookings each as an expandable table
+  -# where there is more than one (a row's detail has the expense sub-rows
+  -# above it instead). Each row opens its own detail, lazily.
+  - expense_count = ctx.regular? ? tx.expenses.size : 0
+  - if expense_count > 1
+    - d.custom title: "Ausgaben (#{expense_count})", key: :expenses do
+      = wsjrdp_expandable_table do |t|
+        - t.rows transaction_expenses_rows(tx), id: "mte"
+        - t.columns moss_expense_table_columns, menu: true
+        - t.row_key(&:id)
+        - t.detail_page { |expense| moss_expense_path(expense) }
+        - t.detail_src { |expense| moss_expense_path(expense) }
+        - t.detail_links_aside
+  - if ctx.regular? && tx.bookings.size > 1
+    - d.custom title: "Buchungen (#{tx.bookings.size})", key: :bookings do
+      = render "fin/moss_bookings/parent_table", rows: transaction_bookings_rows(tx), id: "mtb", kind: tx.type
+  - d.raw_data do
+    - d.raw_entries :other_moss_columns, title: "Moss Rohdaten"

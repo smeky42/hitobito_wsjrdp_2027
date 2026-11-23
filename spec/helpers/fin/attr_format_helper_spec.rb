@@ -32,10 +32,10 @@ describe Fin::AttrFormatHelper do
     # The core rule (base class) plus the STI subclass in front of it, plus the
     # model-wide name for fields several models share.
     it "asks the STI subclass before the base class before the attribute" do
-      expect(helper.fin_formatter_names(MossTopUp.new, :display_name)).to eq(
-        %i[fin_format_moss_top_up_display_name
-          fin_format_moss_transaction_display_name
-          fin_format_display_name]
+      expect(helper.fin_formatter_names(MossTopUp.new, :po_number)).to eq(
+        %i[fin_format_moss_top_up_po_number
+          fin_format_moss_transaction_po_number
+          fin_format_po_number]
       )
     end
 
@@ -47,21 +47,21 @@ describe Fin::AttrFormatHelper do
 
   describe "the lookup" do
     it "takes the STI subclass's formatter when there is one" do
-      stub_helper(:fin_format_moss_top_up_display_name) { |_obj| "Top-up" }
-      stub_helper(:fin_format_moss_transaction_display_name) { |_obj| "Transaktion" }
-      stub_helper(:fin_format_display_name) { |_obj| "Irgendwas" }
-      expect(helper.fin_format_attr(MossTopUp.new, :display_name, ctx).value).to eq("Top-up")
+      stub_helper(:fin_format_moss_top_up_po_number) { |_obj| "Top-up" }
+      stub_helper(:fin_format_moss_transaction_po_number) { |_obj| "Transaktion" }
+      stub_helper(:fin_format_po_number) { |_obj| "Irgendwas" }
+      expect(helper.fin_format_attr(MossTopUp.new, :po_number, ctx).value).to eq("Top-up")
     end
 
     it "falls back to the base class's formatter" do
-      stub_helper(:fin_format_moss_transaction_display_name) { |_obj| "Transaktion" }
-      stub_helper(:fin_format_display_name) { |_obj| "Irgendwas" }
-      expect(helper.fin_format_attr(MossTopUp.new, :display_name, ctx).value).to eq("Transaktion")
+      stub_helper(:fin_format_moss_transaction_po_number) { |_obj| "Transaktion" }
+      stub_helper(:fin_format_po_number) { |_obj| "Irgendwas" }
+      expect(helper.fin_format_attr(MossTopUp.new, :po_number, ctx).value).to eq("Transaktion")
     end
 
     it "falls back to the model-wide formatter of the attribute" do
-      stub_helper(:fin_format_display_name) { |_obj| "Irgendwas" }
-      expect(helper.fin_format_attr(MossTopUp.new, :display_name, ctx).value).to eq("Irgendwas")
+      stub_helper(:fin_format_po_number) { |_obj| "Irgendwas" }
+      expect(helper.fin_format_attr(MossTopUp.new, :po_number, ctx).value).to eq("Irgendwas")
     end
 
     it "hands a one-liner the object alone" do

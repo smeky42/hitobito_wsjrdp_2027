@@ -1,0 +1,21 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The reading page of a Moss expense: its detail (_detail), with "Bearbeiten"
+-#  for whoever may change it (edit). Also the detail a transaction's expenses
+-#  table lazy-loads into a row (@ctx embedded), with the kit's inline edit.
+- may_update = can?(:update, @moss_expense)
+-# The `replace_all` / `reload_frames` answers of the person-linking buttons in
+-# the bookings table (Fin::MossBookingsController#respond_after_subject_link).
+- if @ctx.regular?
+  - content_for :head do
+    = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+= wsjrdp_detail_frame(Fin::MossExpensesController::FRAME_PREFIX, @moss_expense.id) do
+  = render "detail", expense: @moss_expense, ctx: @ctx, return_path: return_path,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && may_update ? edit_moss_expense_path(@moss_expense, return_url: return_path) : nil),
+    form_url: (!@ctx.regular? && may_update ? moss_expense_path(@moss_expense) : nil)

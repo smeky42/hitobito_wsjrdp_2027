@@ -7,34 +7,80 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+# One Moss booking -- its reading page (show, also the row detail the list
+# lazy-loads), its edit page and the person-linking actions -- and
+# "Buchungen", the Moss tab right of Transaktionen (#index): every MossBooking
+# (L3, the grain the DATEV export and the booking's page speak) on the shared
+# expandable table, filterable, sortable, paged, with the kinds as a fixed
+# group of several answers in the "Schnellauswahl", as on the transactions list.
 class Fin::MossBookingsController < Fin::FinController
   include WsjrdpFormHelper
   include SubjectLinking
+  include Wsjrdp::TableStateful
+  include Fin::DetailPages
 
-  prepend_before_action :map_id_to_moss_booking_id
-  before_action :authorize_action
+  # The prefix of the frame a direct visit gets (wsjrdp_detail_frame); the list
+  # asks under its own table id, which is the same.
+  FRAME_PREFIX = "mbk"
+
+  prepend_before_action :map_id_to_moss_booking_id, except: [:index, :apply]
+  before_action :authorize_action, except: [:index, :apply]
 
   helper_method :moss_booking
+  helper_method :bookings
   helper_method :permitted_attrs
-  helper_method :cancel_url, :return_url
-  helper_method :moss_booking_path
   helper_method :matching_accounting_entries
+
+  # The list's table (doc/wsjrdp/expandable_table.md). The filter and the
+  # kind choice are REMEMBERED, as on the transactions list: a standalone tab,
+  # whose filter is built up and then worked with across sort and page changes.
+  BOOKINGS_POLICY = wsjrdp_expandable_table_policy prefix: "",
+    columns: Fin::MossBookingsColumns.codec,
+    sort: {hidden: [["booking_date", "desc"]]},
+    cols: {default: Fin::MossBookingsColumns.default_keys},
+    per_page: {default: 50},
+    filter: {policy: :remember, schema: Fin::MossBookingsFilterSchema,
+             fixed_groups: -> { [Fin::MossKinds.fixed_group] }},
+    lifts: {policy: :remember},
+    pane: {default: 1}
+
+  def index
+    authorize!(:show, MossBooking)
+    bookings # memoized; builds the filtered/sorted/paginated page
+  end
+
+  # PRG target of the list's CNF filter builder.
+  def apply
+    authorize!(:show, MossBooking)
+    wsjrdp_apply_table_filter(bookings_table_state, redirect_to: moss_bookings_path)
+  end
+
+  def bookings_table_state = wsjrdp_expandable_table_state(BOOKINGS_POLICY)
+
+  # The filtered, sorted, paged bookings. The base joins the transaction itself,
+  # so the filter schema's own join (MossBooking.joins(:moss_transaction))
+  # merges into exactly one.
+  def bookings
+    @bookings ||= Fin::MossBookingsColumns.rows(bookings_table_state,
+      bookings_table_state.filter.scope(MossBooking.joins(:moss_transaction)), tiebreaker: "moss_bookings.id DESC")
+  end
 
   def show
     @moss_booking ||= moss_booking
+    @ctx = detail_format_context
     render :show
+  end
+
+  def edit
+    @moss_booking ||= moss_booking
+    authorize!(:update, moss_booking)
+    @ctx = Fin::AttrFormatContext.regular
   end
 
   def update
     @moss_booking ||= moss_booking
     authorize!(:update, moss_booking)
-    moss_booking.attributes = permitted_params
-    if moss_booking.save
-      flash[:notice] = "Moss Buchung #{moss_booking.id} erfolgreich aktualisiert."
-      redirect_to return_url
-    else
-      render :show, status: :bad_request
-    end
+    save_detail(moss_booking, permitted_params, notice: "Moss Buchung #{moss_booking.id} erfolgreich aktualisiert.")
   end
 
   # "Erzeuge Buchung": the Beitragsbuchung for the person already linked.
@@ -130,9 +176,11 @@ class Fin::MossBookingsController < Fin::FinController
   #     from a fresh record (fin/moss_bookings/_subject_links; replace_all, as
   #     the booking may show in more than one table), and
   #   * a `reload_frames` for every already loaded detail frame of its
-  #     transaction (the Moss lists' lazy detail shows the persons too) -- see
+  #     transaction and of the booking itself (the Moss lists' lazy details
+  #     show the persons too) -- see
   #     turbo_stream_actions.js.
-  # Without Turbo the browser goes back to the wallet as before.
+  # Without Turbo the browser goes back to the page the button stood on, else
+  # to the booking's page.
   def respond_after_subject_link(status: :ok)
     booking = MossBooking.find(moss_booking.id)
     respond_to do |format|
@@ -141,12 +189,12 @@ class Fin::MossBookingsController < Fin::FinController
           turbo_stream.replace_all(helpers.moss_booking_subject_links_selector(booking),
             partial: "fin/moss_bookings/subject_links", locals: {booking: booking}),
           turbo_stream.action_all(:reload_frames,
-            helpers.loaded_detail_frames_selector(booking.moss_transaction))
+            [booking.moss_transaction, booking].map { |record| helpers.loaded_detail_frames_selector(record) }.join(", "))
         ])
       end
       format.html do
         alert = "Keine Beitragsbuchung angelegt: die Buchung ist bereits verknüpft, oder es gibt schon eine passende." unless status == :ok
-        redirect_to booking.moss_transaction.fin_account, alert: alert
+        redirect_back_or_to moss_booking_path(booking), alert: alert
       end
     end
   end
@@ -161,18 +209,6 @@ class Fin::MossBookingsController < Fin::FinController
 
   def moss_booking
     @moss_booking ||= MossBooking.find(params[:moss_booking_id])
-  end
-
-  def moss_booking_path(entry = nil)
-    url_for(entry.nil? ? moss_booking : entry)
-  end
-
-  def return_url
-    return_url_or_fallback url_for(moss_booking)
-  end
-
-  def cancel_url
-    return_url
   end
 
   def matching_accounting_entries

@@ -315,6 +315,25 @@
   .booking-detail.exp-detail-linkbar.exp-detail-linkbar-float { float: right; position: relative; z-index: 1;
     padding: var(--exp-detail-pad-y, 1rem) 1rem 0 .75rem; background: transparent; }
   .exp-detail-links-float { float: right; margin: 0 0 .5rem .75rem; }
+  /* The header line beside a lazy detail (t.detail_links_aside). Where the
+     detail is wide enough (a container query on the detail itself -- the
+     window says nothing about a table that scrolls sideways) it is a narrow
+     column at the right, its buttons stacked; the loaded detail is a block of
+     its own beside it (flow-root), so it is narrower over its whole height
+     instead of running under the buttons -- its field list stays aligned.
+     Below that the buttons are one line above the detail. The detail kit's
+     "Bearbeiten" joins the line (.exp-edit-toggle): shown while the loaded
+     detail has a closed inline form, which then drops its own toggle line. */
+  .exp-edit-toggle { display: none; }
+  .exp-detail:has(> turbo-frame > .bk-item-detail > [data-fin-editing="false"]) .exp-edit-toggle { display: inline-block; }
+  .exp-detail:has(> .exp-detail-linkbar .exp-edit-toggle) > turbo-frame > .bk-item-detail > form > .fin-edit-toggle { display: none !important; }
+  .exp-detail:has(> .exp-detail-linkbar-aside) { container: exp-detail / inline-size; }
+  @container exp-detail (min-width: 50rem) {
+    .booking-detail.exp-detail-linkbar.exp-detail-linkbar-aside { float: right; padding: var(--exp-detail-pad-y, 1rem) 1rem .5rem .75rem; }
+    .exp-detail-linkbar-aside > .exp-detail-links { flex-direction: column; align-items: stretch !important; }
+    .exp-detail-linkbar-aside > .exp-detail-links > .btn-group > .btn:first-child { flex: 1 1 auto; text-align: start; }
+    .exp-detail-linkbar-aside + turbo-frame { display: flow-root; }
+  }
   .exp-detail-links-float > .exp-detail-links { margin-bottom: 0 !important; }
   .exp-detail::after { content: ""; display: block; clear: both; }
   /* A column's fallback in the detail's header line (fallback:): its label

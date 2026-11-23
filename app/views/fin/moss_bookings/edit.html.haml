@@ -1,0 +1,16 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The edit page of a Moss booking: the same detail (_detail) in the kit's
+-#  :edit mode, with inputs for the comment and the person. A save goes back to
+-#  the page the reader came from (`return_url`), else to the reading page;
+-#  "Abbrechen" to the reading page.
+- booking = moss_booking
+= wsjrdp_detail_frame(Fin::MossBookingsController::FRAME_PREFIX, booking.id) do
+  = render "detail", booking: booking, ctx: @ctx, editing: true, return_path: return_path,
+    form_url: moss_booking_path(booking, return_url: return_path),
+    cancel_url: moss_booking_path(booking, return_url: return_path)

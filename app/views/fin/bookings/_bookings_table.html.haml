@@ -53,6 +53,9 @@
     - t.detail { |booking, ctx| render "fin/bookings/booking_detail", booking: booking, table_context: ctx, top: detail_top, extra: detail_extra }
   - else
     - t.detail_src { |booking| detail_src.call(booking) }
+    -# The buttons, the inline edit's "Bearbeiten" included, as a column beside
+    -# the detail (t.detail_links_aside, doc/wsjrdp/expandable_table.md).
+    - t.detail_links_aside
   - t.paging
   - t.filter  local_assigns[:filter]
   -# Count, sum and the Unit-Budget share of that sum (Fin::BookingsHelper).

@@ -10,7 +10,7 @@
 module Sheet
   # "Moss" -- the third sub-item of the Finanzen main-nav section (between
   # Beiträge and Buchhaltung). Holds the Moss overview (default tab), the
-  # transactions list, then the users, teams and departments
+  # transactions list, the bookings list, then the users, teams and departments
   # (Fin::MossOrganisationController). This is also the sheet of
   # Fin::MossController (controller "fin/moss" -> Sheet::Fin::Moss), so
   # /fin/moss renders the tabs directly. See doc/navigation.md.
@@ -24,6 +24,7 @@ module Sheet
     # /fin/moss/transactions sub-paths.
     tab "fin.tabs.overview", :moss_path, no_alt: true
     tab "fin.tabs.transactions", :moss_transactions_path
+    tab "fin.tabs.bookings", :moss_bookings_path
     # The organisation in Moss (Fin::MossOrganisationController).
     # From the audit tier up (Wsjrdp2027::FinanceAccess.moss_organisation_models).
     tab "fin.tabs.moss_users", :moss_users_path, if: ->(view, *) { view.can?(:show, MossUser) }
@@ -51,9 +52,10 @@ module Sheet
 
     private
 
-    # The list and the page of one transaction (Fin::MossTransactionsController).
+    # The list and the page of one transaction (Fin::MossTransactionsController),
+    # and the page of one of its expenses (Fin::MossExpensesController).
     def transactions_page?
-      view.controller_path == "fin/moss_transactions"
+      %w[fin/moss_transactions fin/moss_expenses].include?(view.controller_path)
     end
 
     # On a kind tab the main bar's "Transaktionen" stays lit.
@@ -79,7 +81,7 @@ module Sheet
 
     # The kind of the shown list, or of the shown transaction; nil on "Alle".
     def current_kind
-      view.instance_variable_get(:@transaction)&.type || view.current_kind
+      view.instance_variable_get(:@transaction)&.type || (view.current_kind if view.respond_to?(:current_kind))
     end
   end
 end

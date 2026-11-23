@@ -492,7 +492,8 @@
                     -# column is not, join the header line; a line of nothing
                     -# but fallbacks shows while any of them does.
                     - fallbacks_html = et_detail_fallbacks(fallback_columns, row)
-                    - links_html = (detail_page_in_detail || detail_links.any? || fallbacks_html.present?) ? render("shared/wsjrdp/detail_links", row: row, detail_page: detail_page_in_detail, detail_links: detail_links, narrow_only: detail_page_narrow_only, fallbacks: fallbacks_html) : nil
+                    - links_aside = local_assigns[:detail_links_aside] && detail_src
+                    - links_html = (detail_page_in_detail || detail_links.any? || fallbacks_html.present?) ? render("shared/wsjrdp/detail_links", row: row, detail_page: detail_page_in_detail, detail_links: detail_links, narrow_only: detail_page_narrow_only, fallbacks: fallbacks_html, edit_toggle: links_aside) : nil
                     - bar_data = (fallbacks_html.present? && detail_page_in_detail.nil? && detail_links.empty?) ? { exp_if_any_hidden: "" } : {}
                     -# A page link shown only in a narrow table (detail_page
                     -# narrow_only) and no other link: the whole header line
@@ -506,7 +507,7 @@
                       -# direct detail's .booking-detail.p-3 gives it, so the line
                       -# sits in the same place in both modes.
                       - if links_html.present?
-                        .booking-detail.exp-detail-linkbar{ class: [("exp-narrow-only" if links_narrow_only), ("exp-detail-linkbar-float" if local_assigns[:detail_links_float])].compact, data: bar_data }= links_html
+                        .booking-detail.exp-detail-linkbar{ class: [("exp-narrow-only" if links_narrow_only), ("exp-detail-linkbar-float" if local_assigns[:detail_links_float]), ("exp-detail-linkbar-aside" if links_aside)].compact, data: bar_data }= links_html
                       -# The detail's nesting level travels in the frame URL so the
                       -# lazily-rendered partial knows it sits inside a table row.
                       - src = detail_src.call(row)

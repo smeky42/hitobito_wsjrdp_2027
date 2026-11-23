@@ -553,7 +553,12 @@ auto-included by the engine.
    render the partial inside `wsjrdp_detail_frame(<table id prefix>, <row key>)`
    — that helper answers in the frame the `Turbo-Frame` request header names and
    wraps a direct visit in `#main`, so the view never builds a frame id itself
-   (`doc/wsjrdp/expandable_table.md`).
+   (`doc/wsjrdp/expandable_table.md`). A record with a reading page, an edit
+   page and the inline edit of a row includes `Fin::DetailPages`: its
+   `detail_format_context` builds the context, and `save_detail(record,
+   attributes, notice:)` is the whole `update` -- where a save goes (the row,
+   "Speichern und weiter", the `return_url`) and what a failed one shows. The
+   Moss booking, transaction and expense controllers are built that way.
 5. **The specs**: a helper spec for the formatters and a controller spec with
    `render_views` covering both modes — page (`h1`, `dl.fin-detail-list`, the
    raw area open) and frame request (no `h1`, `dl.row.small`, the raw area
@@ -608,13 +613,25 @@ embedded mode with the inline edit; the level is read off the shared
 `expandable_table_level` param, the controller having no table of its own),
 both pages take a `return_url` (`Fin::ReturnPath`), and a save that fails its
 validation says why in an alert (`Fin::FinController#validation_alert`). The
+Moss booking follows the same pattern: `/fin/moss/bookings/:id` reads and
+`/fin/moss/bookings/:id/edit` changes it (comment and person), both through
+`fin/moss_bookings/_detail` with the formatters in `Fin::MossBookingsHelper`;
+the Buchungen list lazy-loads the reading page into its rows, with the inline
+edit whose save comes back to the row. The Moss transaction likewise:
+`/fin/moss/transactions/:id` and `/fin/moss/transactions/:id/edit` (the
+comment) through `fin/moss_transactions/_detail` with the formatters in
+`Fin::MossTransactionsHelper`; the transactions tables load it into their rows,
+and an Umbuchung shows its Moss leg with it, read-only. Its page lists the
+expenses and the bookings as expandable tables (where there is more than one),
+whose rows load the expense's detail (`/fin/moss/expenses/:id`,
+`fin/moss_expenses/_detail`, edit page `/fin/moss/expenses/:id/edit`) and the
+booking's. The
 other finance details render through their own partials:
 
 - **Sachkonten** through `fin/shared/_item_detail`, and the **Buchungsstapel**
   page directly, both over `shared/wsjrdp/_detail_fields` (flat
   `[label, value]` pairs from the `*_detail_fields` helpers of
   `Fin::BookkeepingHelper`, labels as German string literals).
-- the **Moss transaction** detail through `shared/wsjrdp/_kv_grid`.
 
 `doc/plans/2026-09_fin-detail-partials.md` §5 records the order in which they
 move onto the kit.
