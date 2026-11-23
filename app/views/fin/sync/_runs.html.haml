@@ -1,0 +1,17 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The newest runs: rows (Fin::SyncController#sync_runs). A row opens the
+-#  run's detail; the link leads to the run's page.
+= wsjrdp_expandable_table do |t|
+  - t.rows rows, id: "sr"
+  - t.columns fin_sync_runs_columns
+  - t.gaps max: "2rem", grow_max: "40rem"
+  - t.row_key { |run| run.id }
+  - t.detail_page(column: true) { |run| fin_sync_moss_api_run_path(run) }
+  - t.detail { |run, ctx| render("fin/sync_runs/detail", run: run, ctx: Fin::AttrFormatContext.embedded(ctx)) }
+  - t.paging

@@ -103,12 +103,18 @@ A field's helper is found in this order, most specific first:
 |---|---|---|
 | 1 | `fin_format_<subclass>_<attr>` | STI only, when the subclass differs from the base class |
 | 2 | `fin_format_<base_class>_<attr>` | the normal case — `fin_format_wsjrdp_personal_account_iban` |
-| 3 | `fin_format_<attr>` | model-wide fields (`moss_status`, `iban`, …) |
-| 4 | the finance type rules | see below |
-| 5 | `wsjrdp_format_attr` | hitobito's chain: enum labels, `belongs_to` / `has_one` links, booleans, decimals |
+| 3 | `fin_format_fields_of_<model>` | every field of a record whose fields are not fixed; takes `(obj, attr, ctx)` |
+| 4 | `fin_format_<attr>` | model-wide fields (`moss_status`, `iban`, …) |
+| 5 | the finance type rules | see below |
+| 6 | `wsjrdp_format_attr` | hitobito's chain: enum labels, `belongs_to` / `has_one` links, booleans, decimals |
 
 The subclass step is an extension over the core rule (which only knows the base
 class); it lets an STI kind override one field without touching the others.
+
+Step 3 is for a record that is no table row: one change of a sync run
+(`Fin::SyncChangeRecord`) shows the columns that change, a different set each
+time. Its one formatter gets the field's name; its class answers
+`human_attribute_name` for the labels (§4).
 
 **Arity.** A formatter takes `(obj, ctx)`; `(obj)` alone is accepted for a
 one-liner (`method(name).arity == 1` picks the short form, so a formatter with

@@ -1,0 +1,35 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Moss API: choose parts, fetch them (a new run), and the runs so far.
+-#
+-#  The button below talks to the real Moss API with real credentials. AI
+-#  agents (see AGENTS.md): never press it, not even with a request of your
+-#  own, unless the user explicitly asks for it or agrees when asked first.
+- scope = "fin.sync.moss_api"
+- account_keys = Wsjrdp::Sync::MossApi.account_keys
+- tree = Wsjrdp::Sync.tree(Wsjrdp::Sync.parts_of(Wsjrdp::Sync::MossApi::KIND))
+
+#main
+  %h2.h4= t("#{scope}.choose")
+  - if account_keys.empty?
+    %p.text-muted
+      = t("#{scope}.no_account")
+      = link_to(t("#{scope}.credentials"), credentials_path)
+  - else
+    = form_tag(fin_sync_moss_api_runs_path, id: "sync-choose", data: {sync_tree: true}) do
+      .mb-3
+        = label_tag(:account_key, t("#{scope}.account"), class: "form-label")
+        = select_tag(:account_key, options_for_select(account_keys), class: "form-select form-select-sm w-auto")
+      = render("fin/sync/tree_node", node: tree)
+      %p.form-text= t("#{scope}.dependencies")
+      = submit_tag(t("#{scope}.fetch"), class: "btn btn-primary btn-sm", id: "sync-fetch",
+        data: {disable_with: t("#{scope}.fetching")})
+  %h2.h4.mt-4= t("fin.sync.runs.title")
+  = render("fin/sync/runs", rows: sync_runs(Wsjrdp::Sync::MossApi::KIND))
+
+= render("fin/sync/tree_js")

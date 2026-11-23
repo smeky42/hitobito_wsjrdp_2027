@@ -66,6 +66,9 @@ de:
       wsjrdp_personal_account:
         one: Kreditor
         other: Kreditoren
+      wsjrdp_sync_run:
+        one: Lauf
+        other: Läufe
       moss_user:
         one: Moss-Benutzer
         other: Moss-Benutzer
@@ -954,6 +957,24 @@ de:
         cdtr_bic: Kreditor BIC
         cdtr_address: Kreditor Adresse
         creditor_id: Gläubiger-ID
+
+      # de.activerecord.attributes.wsjrdp_sync_run (a run of the Synchronisation)
+      wsjrdp_sync_run:
+        id: ID
+        source: Quelle
+        status: Status
+        selected_parts: Teile
+        credential: Zugang
+        started_at: Gestartet
+        started_by: Gestartet von
+        confirmed_at: Bestätigt
+        confirmed_by: Bestätigt von
+        warnings_confirmed_at: Warnungen bestätigt
+        warnings_confirmed_by: Warnungen bestätigt von
+        finished_at: Beendet
+        duration_ms: Dauer
+        stats: Geschrieben
+        error_message: Fehler
 
       # de.activerecord.attributes.wsjrdp_personal_account (Kreditor)
       wsjrdp_personal_account:
@@ -2225,6 +2246,7 @@ de:
       accounting: "Buchhaltung"
       reconciliation: "Abstimmung"
       controlling: "Controlling"
+      sync: "Synchronisation"
       admin: "Verwaltung"
     # One sentence per area, shown on its card on the Finanzen entry page
     # (/fin): what the area is for. The keys are Fin::OverviewHelper::AREAS,
@@ -2261,6 +2283,8 @@ de:
         purpose: "Beitragsbuchungen und DATEV-Buchungen einander zuordnen, Vorschläge prüfen, Verknüpfungen setzen."
       controlling:
         purpose: "Auswertungen und Kennzahlen."
+      sync:
+        purpose: "Daten aus Moss übernehmen, mit Vorschau vor dem Schreiben."
       admin:
         purpose: "Zahlungscodes, Finanzzugriff auf Gruppen und Kostenstellen der Gruppen."
     tabs:
@@ -2289,6 +2313,8 @@ de:
       finance_groups: "Gruppen-Finanzzugriff"
       group_cost_centers: "Gruppen-Kostenstellen"
       payment_references: "Zahlungscodes"
+      moss_api: "Moss API"
+      moss_csv: "Moss CSV"
       # The Moss kind tabs (Fin::MossTransactionsController::KIND_TABS): the
       # plural of fin.moss.kinds. moss_all is the sub-tab of every kind.
       moss_all: "Alle"
@@ -2738,6 +2764,167 @@ de:
           other: "%{count} weitere Ausgaben anzeigen"
         collapse: "einklappen"
 
+    # The Synchronisation (doc/fin/sync.md).
+    sync:
+      # The tree: one _label per node, the keys are the part keys.
+      parts:
+        moss_api:
+          _label: "Moss API"
+          organisation_structure:
+            _label: "Organisationsstruktur"
+            departments:
+              _label: "Abteilungen"
+            teams:
+              _label: "Teams"
+            users:
+              _label: "Benutzer"
+      # What a run synchronises (WsjrdpSyncRun#source).
+      sources:
+        moss_api: "Moss API"
+      states:
+        run:
+          planned: "Vorschau"
+          applying: "wird geschrieben"
+          stopped: "angehalten"
+          applied: "geschrieben"
+          partly_applied: "teilweise geschrieben"
+          unchanged: "keine Änderungen"
+          failed: "fehlgeschlagen"
+          cancelled: "abgebrochen"
+        part:
+          planned: "Vorschau"
+          applied: "geschrieben"
+          unchanged: "keine Änderungen"
+          stale: "veraltet, neue Vorschau"
+          failed: "fehlgeschlagen"
+          skipped: "übersprungen"
+      actions:
+        create: "%{count} neu"
+        update: "%{count} geändert"
+        restore: "%{count} zurück in Moss"
+        remove: "%{count} entfernt"
+      action_names:
+        create: "neu"
+        update: "geändert"
+        restore: "zurück in Moss"
+        remove: "entfernt"
+      no_changes: "keine Änderungen"
+      # What a change writes, per model (column Ziele and the detail).
+      targets:
+        created: "%{model} neu"
+        restored: "%{model} zurück in Moss"
+        removed: "%{model} entfernt"
+        unchanged: "%{model} unverändert"
+        fields_new:
+          one: "%{model}: 1 Feld neu"
+          other: "%{model}: %{count} Felder neu"
+        fields_changed:
+          one: "%{model}: 1 Feld geändert"
+          other: "%{model}: %{count} Felder geändert"
+        fields_removed:
+          one: "%{model}: 1 Feld entfernt"
+          other: "%{model}: %{count} Felder entfernt"
+        field_new: "neu"
+        field_removed: "entfernt"
+      # A notice as a short badge in a change's row.
+      notice_labels:
+        many_removed: "viele entfernt"
+        incomplete: "Liste unvollständig"
+        ambiguous_person: "mehrere Personen"
+        unknown_owner: "unbekannter Besitzer"
+        unknown_department: "unbekannte Abteilung"
+        unknown_department_archived: "unbekannte Abteilung"
+        unknown_team_lead: "unbekannte Teamleitung"
+        unknown_team: "unbekanntes Team"
+        unknown_manager: "unbekannte Führungskraft"
+        without_person: "ohne Person"
+        without_person_deactivated: "ohne Person"
+        person_without_moss_user: "ohne Moss-Benutzer"
+        person_without_moss_user_expected: "ohne Moss-Benutzer"
+        moss_user_without_contract: "Person ohne Vertrag"
+      timings:
+        title: "Ablauf"
+        run: "Lauf"
+        statuses:
+          failed: "fehlgeschlagen"
+          stale: "veraltet"
+        phases:
+          start: "Abrufen und planen"
+          fetch: "Abrufen"
+          plan: "Planen"
+          apply: "Schreiben"
+      # Rows of content tables a step wrote (Wsjrdp::Sync::Stats).
+      stats:
+        inserted: "%{count} eingefügt"
+        updated: "%{count} geändert"
+        deleted: "%{count} gelöscht"
+        soft_deleted: "%{count} als entfernt markiert"
+      runs:
+        title: "Läufe"
+      moss_api:
+        choose: "Was soll aus Moss übernommen werden?"
+        account: "Zugang"
+        no_account: "Es gibt keinen nutzbaren Moss-API-Zugang."
+        credentials: "Zu den Zugangsdaten"
+        dependencies: "Teile, von denen ein gewählter Teil abhängt, kommen automatisch mit. Abrufen schreibt noch nichts, es zeigt erst die Vorschau."
+        fetch: "Aus Moss abrufen"
+        fetching: "Rufe ab …"
+      run:
+        title: "Lauf"
+        no_part: "Kein Teil gewählt."
+        stopped: "Angehalten. „Weiter schreiben“ schreibt die übrigen Teile, veraltete mit ihrer neuen Vorschau; was von einem fehlgeschlagenen Teil abhängt, wird übersprungen."
+        changes:
+          one: "%{count} Änderung"
+          other: "%{count} Änderungen"
+        parts: "Teile"
+        files: "Dateien:"
+        files_purged: "Dateien gelöscht %{time}"
+        warnings_confirmed: "Ich habe die Warnungen gelesen."
+        apply: "In die Datenbank schreiben"
+        go_on: "Weiter schreiben"
+        apply_confirm: "Die Änderungen jetzt in die Datenbank schreiben?"
+        cancel: "Lauf abbrechen"
+        cancel_confirm: "Den Lauf abbrechen? Noch nicht geschriebene Teile werden nicht geschrieben."
+        cancelled: "Der Lauf ist abgebrochen."
+        back: "Zurück zu Moss API"
+        version: "Version %{id}"
+        newer_written: "Ein neuerer Lauf hat diesen Teil schon geschrieben; ältere Daten werden nicht mehr geschrieben."
+        after_apply:
+          applied: "Alles geschrieben."
+          partly_applied: "Fertig, aber nicht alle Teile wurden geschrieben."
+          stopped: "Angehalten: Ein Teil ist veraltet oder fehlgeschlagen."
+        refused:
+          not_open: "Dieser Lauf kann nicht mehr geschrieben werden."
+          not_confirmed: "Bitte bestätigen."
+          warnings_not_confirmed: "Bitte bestätigen, dass die Warnungen gelesen wurden."
+      overview:
+        files: "Dateien"
+        files_kept: "Die Rohdaten jedes Laufs liegen als Dateien bereit, %{days} Tage lang; Lauf und Änderungsliste bleiben."
+        purge: "Dateien älter als %{days} Tage löschen"
+        purge_confirm: "Alle Dateien von Läufen löschen, die älter als %{days} Tage sind?"
+        purged:
+          one: "%{count} Datei gelöscht."
+          other: "%{count} Dateien gelöscht."
+      # Warnings and hints of a plan (Wsjrdp::Sync::Part#warning, #hint).
+      notices:
+        many_removed: "%{table}: %{count} Datensätze fehlen in Moss und würden als entfernt markiert. Hat Moss vollständig geantwortet?"
+        incomplete: "%{table}: Moss hat %{received} von %{total} Datensätzen geliefert. Es wird nichts als entfernt markiert, die übrigen Änderungen werden geschrieben."
+        ambiguous_person: "%{count} Benutzer: Die E-Mail passt zu mehreren Personen, die Person bleibt leer."
+        unknown_owner: "%{count} Abteilungen verweisen auf einen unbekannten Besitzer."
+        unknown_department: "%{count} Teams verweisen auf eine unbekannte Abteilung."
+        unknown_department_archived: "%{count} archivierte Teams verweisen auf eine unbekannte Abteilung."
+        unknown_team_lead: "%{count} Teams verweisen auf eine unbekannte Teamleitung."
+        unknown_team: "%{count} Benutzer verweisen auf ein unbekanntes Team."
+        unknown_manager: "%{count} Benutzer verweisen auf eine unbekannte Führungskraft."
+        without_person: "%{count} Benutzer ohne Person in Hitobito."
+        without_person_deactivated: "%{count} deaktivierte Benutzer ohne Person in Hitobito."
+        person_without_moss_user:
+          one: "1 Person mit hinterlegter moss_email, zu der es keinen Moss-Benutzer gibt."
+          other: "%{count} Personen mit hinterlegter moss_email, zu denen es keinen Moss-Benutzer gibt."
+        person_without_moss_user_expected:
+          one: "1 Person mit hinterlegter moss_email ohne Moss-Benutzer, ohne Vertrag oder abgemeldet."
+          other: "%{count} Personen mit hinterlegter moss_email ohne Moss-Benutzer, ohne Vertrag oder abgemeldet."
+        moss_user_without_contract: "%{count} Benutzer gehören zu einer Person ohne Vertrag."
   contingent:
     tabs:
       overview: "Übersicht"

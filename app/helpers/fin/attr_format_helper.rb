@@ -16,6 +16,8 @@
 #
 #   fin_format_<subclass>_<attr>     STI only, when it differs from the base class
 #   fin_format_<base_class>_<attr>   the core's rule
+#   fin_format_fields_of_<model>     every field of a record whose fields vary,
+#                                    with (obj, attr, ctx) -- e.g. a sync change
 #   fin_format_<attr>                model-wide fields (moss_status, iban, ...)
 #   finance type rules               dates, arrays, *_cents / *_amount
 #   wsjrdp_format_attr               hitobito's chain (enum labels, links, ...)
@@ -30,10 +32,19 @@
 module Fin::AttrFormatHelper
   # Formats `attr` of `obj` for `ctx`; always returns a Fin::DetailValue.
   def fin_format_attr(obj, attr, ctx)
-    name = fin_formatter_names(obj, attr).find { |n| respond_to?(n) }
-    Fin::DetailValue.wrap(
-      name ? fin_call_formatter(name, obj, ctx) : fin_format_attr_by_type(obj, attr, ctx)
-    )
+    *own, model_wide = fin_formatter_names(obj, attr)
+    value = if (name = own.find { |n| respond_to?(n) }) then fin_call_formatter(name, obj, ctx)
+    elsif (fields = fin_fields_formatter_name(obj)) then send(fields, obj, attr, ctx)
+    elsif respond_to?(model_wide) then fin_call_formatter(model_wide, obj, ctx)
+    else
+      fin_format_attr_by_type(obj, attr, ctx)
+    end
+    Fin::DetailValue.wrap(value)
+  end
+
+  # The one formatter of a record whose fields vary, if it has one.
+  def fin_fields_formatter_name(obj)
+    fin_model_names(obj).map { |model| :"fin_format_fields_of_#{model}" }.find { |n| respond_to?(n) }
   end
 
   # Candidate helper names of a field, most specific first.

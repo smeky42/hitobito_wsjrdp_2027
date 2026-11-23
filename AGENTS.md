@@ -60,6 +60,9 @@ How-to guides — authoritative, follow them:
   (transfers between own accounts): the model and its legs, the detection rule
   and its 10-day window, the marks on a leg, the pages, the rights and the
   import API the scripts call with a service token.
+- [`doc/fin/sync.md`](doc/fin/sync.md) — the Synchronisation from Moss:
+  parts and their keys, a run (preview, confirmation, stops), tables and
+  the raw-data files. Read it before adding a part.
 - [`doc/fin/detail_partials.md`](doc/fin/detail_partials.md) — the kit behind a
   finance record's detail partial (`fin_detail` with `Fin::AttrFormatContext`,
   `Fin::DetailValue`, `Fin::DetailBuilder`): the formatter lookup

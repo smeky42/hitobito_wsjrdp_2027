@@ -1,0 +1,18 @@
+{
+  "_comment": "Made-up answers of GET /v1/departments, /v1/teams and /v1/users (the data arrays). Shaped like real answers (which fields come, which may be null or missing), but every id, name and address is invented.",
+  "departments": [
+    {"id": "d0000000-0000-4000-8000-000000000001", "name": "Abteilung Nord", "organisationId": "00000000-0000-4000-8000-0000000000aa", "ownerId": "b0000000-0000-4000-8000-000000000001"},
+    {"id": "d0000000-0000-4000-8000-000000000002", "name": "Abteilung Süd", "organisationId": "00000000-0000-4000-8000-0000000000aa", "ownerId": "b0000000-0000-4000-8000-000000000002"}
+  ],
+  "teams": [
+    {"departmentId": "d0000000-0000-4000-8000-000000000001", "id": "a0000000-0000-4000-8000-000000000001", "name": "Team Eins", "organisationId": "00000000-0000-4000-8000-0000000000aa", "status": "ACTIVE", "teamLeadId": "b0000000-0000-4000-8000-000000000002"},
+    {"departmentId": "d0000000-0000-4000-8000-000000000002", "id": "a0000000-0000-4000-8000-000000000002", "name": "Team Zwei", "organisationId": "00000000-0000-4000-8000-0000000000aa", "status": "ARCHIVED", "teamLeadId": null},
+    {"departmentId": null, "id": "a0000000-0000-4000-8000-000000000003", "name": "Team Drei", "organisationId": "00000000-0000-4000-8000-0000000000aa", "status": "ACTIVE", "teamLeadId": "b0000000-0000-4000-8000-000000000001"}
+  ],
+  "users": [
+    {"createTime": "2025-09-01T08:15:00.123Z", "email": "anna.beispiel@example.org", "firstName": "Anna", "id": "b0000000-0000-4000-8000-000000000001", "lastName": "Beispiel", "managerId": null, "organisationId": "00000000-0000-4000-8000-0000000000aa", "roles": ["USER", "SUPER_USER"], "status": "ACTIVE", "teamId": "a0000000-0000-4000-8000-000000000003", "updateTime": "2026-02-01T09:00:00.000Z"},
+    {"createTime": "2025-09-02T10:00:00.000Z", "email": "ben.muster@example.org", "firstName": "Ben", "id": "b0000000-0000-4000-8000-000000000002", "lastName": "Muster", "managerId": "b0000000-0000-4000-8000-000000000001", "organisationId": "00000000-0000-4000-8000-0000000000aa", "roles": ["USER", "TEAMLEAD"], "status": "ACTIVE", "teamId": "a0000000-0000-4000-8000-000000000001", "updateTime": "2026-02-02T09:00:00.000Z"},
+    {"createTime": "2025-10-01T12:00:00.000Z", "email": "eingeladen@example.org", "id": "b0000000-0000-4000-8000-000000000003", "managerId": "b0000000-0000-4000-8000-000000000002", "organisationId": "00000000-0000-4000-8000-0000000000aa", "roles": ["USER"], "status": "INVITED", "teamId": "a0000000-0000-4000-8000-000000000001", "updateTime": "2025-10-01T12:00:00.000Z"},
+    {"createTime": "2025-11-01T12:00:00.000Z", "email": "ohne.team@example.org", "firstName": "Cem", "id": "b0000000-0000-4000-8000-000000000004", "lastName": "Ohneteam", "managerId": "b0000000-0000-4000-8000-000000000099", "organisationId": "00000000-0000-4000-8000-0000000000aa", "roles": ["USER"], "status": "DEACTIVATED", "teamId": null, "updateTime": "2026-01-15T12:00:00.000Z"}
+  ]
+}

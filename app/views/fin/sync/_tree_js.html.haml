@@ -1,0 +1,43 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The tree of parts: a group checks or clears its parts, a part checks
+-#  what it needs, and a group shows whether all, some or none of its parts
+-#  are checked. The server adds what a part needs anyway.
+-#
+-#  The listener is added once; it calls window.WsjrdpSyncTree.change, which
+-#  every page load replaces, so that Turbo never keeps old code.
+:javascript
+  window.WsjrdpSyncTree = {
+    change: function (box) {
+      var form = box.closest("[data-sync-tree]");
+      if (!form) return;
+      var parts = Array.from(form.querySelectorAll("[data-sync-part]"));
+      if (box.dataset.syncGroup !== undefined) {
+        box.closest("li").querySelectorAll("[data-sync-part]").forEach(function (part) { part.checked = box.checked; });
+      }
+      parts.forEach(function (part) {
+        if (!part.checked) return;
+        (part.dataset.requires || "").split(" ").filter(Boolean).forEach(function (key) {
+          var needed = parts.find(function (candidate) { return candidate.dataset.syncPart === key; });
+          if (needed) needed.checked = true;
+        });
+      });
+      Array.from(form.querySelectorAll("[data-sync-group]")).reverse().forEach(function (group) {
+        var own = Array.from(group.closest("li").querySelectorAll("[data-sync-part]"));
+        var checked = own.filter(function (part) { return part.checked; }).length;
+        group.checked = checked === own.length;
+        group.indeterminate = checked > 0 && checked < own.length;
+      });
+    }
+  };
+  if (!window.WsjrdpSyncTreeListening) {
+    window.WsjrdpSyncTreeListening = true;
+    document.addEventListener("change", function (event) {
+      if (event.target.matches("[data-sync-tree] input[type=checkbox]")) window.WsjrdpSyncTree.change(event.target);
+    });
+  }

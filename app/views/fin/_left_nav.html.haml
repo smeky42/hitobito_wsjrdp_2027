@@ -12,8 +12,8 @@
 -#  own overview; Moss the
 -#  Moss overview / transactions; Buchhaltung the DATEV bookkeeping / bookings;
 -#  Abstimmung matches accounting entries with bookings; Controlling is still
--#  empty; Verwaltung configures the per-group finance access and the cost
--#  centers of a group.
+-#  empty; Synchronisation copies data from Moss; Verwaltung configures the
+-#  per-group finance access and the cost centers of a group.
 -#
 -#  Every entry lists ONLY its own path fragments, so no two light up at once
 -#  and none of them needs an inactive_for.
@@ -28,6 +28,9 @@
   = nav t("fin.nav.accounting"), bookkeeping_path, %w[fin/bookkeeping]
   = nav t("fin.nav.reconciliation"), reconciliation_path, %w[fin/reconciliation]
   = nav t("fin.nav.controlling"), controlling_path, %w[fin/controlling]
+  -# Writes data from Moss: Admin and the manage tier only.
+  - if can?(:configure_finance, Group)
+    = nav t("fin.nav.sync"), fin_sync_path, %w[fin/sync]
   -# The area configures the Finanzen section itself, so only Admin and the
   -# manage tier see it (Wsjrdp2027::GroupAbility -> :configure_finance) --
   -# apart from the payment codes, which the write tier sees too.

@@ -59,6 +59,18 @@ describe Fin::AttrFormatHelper do
       expect(helper.fin_format_attr(MossTopUp.new, :po_number, ctx).value).to eq("Transaktion")
     end
 
+    it "asks the record's fields formatter before the model-wide one, with the field's name" do
+      stub_helper(:fin_format_fields_of_wsjrdp_personal_account) { |_obj, attr, _ctx| "Feld #{attr}" }
+      stub_helper(:fin_format_spec_only_field) { |_obj| "Irgendwas" }
+      expect(helper.fin_format_attr(account, :spec_only_field, ctx).value).to eq("Feld spec_only_field")
+    end
+
+    it "prefers a field's own formatter to the record's fields formatter" do
+      stub_helper(:fin_format_wsjrdp_personal_account_iban) { |_obj| "Eigener" }
+      stub_helper(:fin_format_fields_of_wsjrdp_personal_account) { |_obj, _attr, _ctx| "Feld" }
+      expect(helper.fin_format_attr(account, :iban, ctx).value).to eq("Eigener")
+    end
+
     it "falls back to the model-wide formatter of the attribute" do
       stub_helper(:fin_format_po_number) { |_obj| "Irgendwas" }
       expect(helper.fin_format_attr(MossTopUp.new, :po_number, ctx).value).to eq("Irgendwas")

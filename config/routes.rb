@@ -410,6 +410,19 @@ Rails.application.routes.draw do
       get :controlling, path: "controlling", to: "controlling#index", as: "controlling"
       # Budget and DATEV actuals per cost center and year.
       get "controlling/budget", to: "budgets#index", as: "controlling_budget"
+      # "Synchronisation" section: copies data from Moss into Hitobito, part
+      # by part, with a preview before anything is written (doc/fin/sync.md).
+      get :sync, path: "sync", to: "sync#index", as: "fin_sync"
+      get "sync/moss_api", to: "sync#moss_api", as: "fin_sync_moss_api"
+      get "sync/moss_csv", to: "sync#moss_csv", as: "fin_sync_moss_csv"
+      post "sync/purge", to: "sync#purge", as: "fin_sync_purge"
+      post "sync/moss_api/runs", to: "sync_runs#create", as: "fin_sync_moss_api_runs"
+      scope "sync/moss_api/runs/:id", constraints: {id: /\d+/} do
+        get "", to: "sync_runs#show", as: "fin_sync_moss_api_run"
+        post "apply", to: "sync_runs#apply", as: "fin_sync_moss_api_run_apply"
+        post "cancel", to: "sync_runs#cancel", as: "fin_sync_moss_api_run_cancel"
+        get "files/:name", to: "sync_runs#file", as: "fin_sync_moss_api_run_file", constraints: {name: %r{[^/]+}}
+      end
       # "Verwaltung" section at /fin/admin: the configuration pages of the
       # Finanzen section, all gated on :configure_finance on Group. The area
       # has no page of its own -- /fin/admin renders its first tab, the

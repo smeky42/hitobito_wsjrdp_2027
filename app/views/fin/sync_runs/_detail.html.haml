@@ -1,0 +1,29 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  A run in full: on its page (ctx regular) and in a row of the runs table
+-#  (ctx embedded). The page has the header, the phases open, every part
+-#  open (Fin::SyncRunsController opens them) and the buttons; a row none of
+-#  these.
+-#
+-#  Locals: run (WsjrdpSyncRun), ctx (Fin::AttrFormatContext)
+- scope = "fin.sync.run"
+= render("fin/sync_runs/keep_open_js")
+= render("fin/sync_runs/fields", run: run, ctx: ctx)
+- if run.status == WsjrdpSyncRun::STOPPED
+  .alert.alert-warning= t("#{scope}.stopped")
+= render("fin/sync_runs/timings", run: run, open: ctx.regular?)
+- if run.parts.any?
+  = fin_detail_heading(t("#{scope}.parts"), ctx)
+  = wsjrdp_expandable_table do |t|
+    - t.rows part_rows(run), id: "sp#{run.id}"
+    - t.columns fin_sync_parts_columns
+    - t.gaps max: "2rem", grow_max: "40rem", except: [%w[duration_ms duration]]
+    - t.row_key { |part| part.id }
+    - t.detail { |part| render("fin/sync_runs/part_detail", part: part) }
+- if ctx.regular?
+  = render("fin/sync_runs/actions", run: run)

@@ -1,0 +1,35 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One row of a part's changes in its detail: per change (the record, then
+-#  what belongs to it, e.g. the person of a Moss user) a group of the
+-#  columns it changes, headed by model, record and table, through the detail
+-#  kit (Fin::SyncChangeRecord, fin_format_fields_of_fin_sync_change_record);
+-#  then the notices at none of the shown columns (e.g. those about the
+-#  unchanged Moss user of a person).
+-#
+-#  Locals: row (Fin::SyncChangesColumns::Row), fields (notice code => column),
+-#          people (person id => Person), records (fin_sync_plan_records),
+-#          model (the part's table or nil), ctx (Fin::AttrFormatContext)
+- unplaced = []
+- row.changes.each_with_index do |change, index|
+  - notices = index.zero? ? row.notices : []
+  - change_model = fin_sync_change_model(change, model)
+  - record = Fin::SyncChangeRecord.new(change, notices, fields, people, model: change_model)
+  - unplaced = record.notices(nil) if index.zero?
+  - heading = fin_sync_change_heading(change, change_model, records[change.key.to_s.downcase])
+  - if record.columns.any?
+    = fin_detail(record, ctx) do |d|
+      - d.attrs(*record.columns, title: heading)
+  - else
+    = fin_detail_heading(heading, ctx)
+- if fin_sync_ref_unchanged?(row)
+  %p.small.text-muted.mb-0= t("fin.sync.targets.unchanged", model: model&.name)
+- unplaced.each do |notice|
+  %p.mb-0.mt-1
+    = fin_sync_notice_badge(notice)
+    = fin_sync_notice_text(notice, row.change)

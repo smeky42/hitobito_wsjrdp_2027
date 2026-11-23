@@ -1,0 +1,26 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The buttons of a run's page while it may still write: write (a second
+-#  confirmation when there are warnings), go on after a stop, cancel. A run
+-#  that has ended -- also one that ended at once with nothing to do -- has
+-#  none.
+-#
+-#  Locals: run (WsjrdpSyncRun)
+- scope = "fin.sync.run"
+- if run.open?
+  .mt-3
+    = form_tag(fin_sync_moss_api_run_apply_path(run), id: "sync-apply", class: "mb-2") do
+      = hidden_field_tag(:confirmed, "1")
+      - if run.warnings?
+        .form-check.mb-2
+          = check_box_tag(:warnings_confirmed, "1", false, class: "form-check-input", required: true)
+          = label_tag(:warnings_confirmed, t("#{scope}.warnings_confirmed"), class: "form-check-label")
+      = submit_tag(t("#{scope}.#{run.status == WsjrdpSyncRun::STOPPED ? "go_on" : "apply"}"), class: "btn btn-primary btn-sm",
+        data: {turbo_confirm: t("#{scope}.apply_confirm")})
+    = button_to(t("#{scope}.cancel"), fin_sync_moss_api_run_cancel_path(run), class: "btn btn-outline-secondary btn-sm",
+      form: {id: "sync-cancel", data: {turbo_confirm: t("#{scope}.cancel_confirm")}})

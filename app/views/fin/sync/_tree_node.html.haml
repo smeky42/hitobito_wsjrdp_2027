@@ -1,0 +1,23 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One node of the tree of parts (Wsjrdp::Sync::Node), all checked: a part
+-#  is a checkbox with the parts it needs (data-requires), a group one that
+-#  checks its parts.
+%ul.list-unstyled{class: node.key.present? ? "ms-3" : nil}
+  - node.children.each do |child|
+    %li
+      - id = "sync-#{child.part ? "part" : "group"}-#{child.key.parameterize}"
+      .form-check
+        - if child.part
+          = check_box_tag("parts[]", child.key, true, id: id, class: "form-check-input",
+            data: {sync_part: child.key, requires: (Wsjrdp::Sync.expand([child.key]) - [child.key]).join(" ")})
+        - else
+          = check_box_tag(nil, nil, true, id: id, class: "form-check-input", data: {sync_group: true})
+        = label_tag(id, child.label, class: "form-check-label")
+      - if child.children.any?
+        = render("fin/sync/tree_node", node: child)

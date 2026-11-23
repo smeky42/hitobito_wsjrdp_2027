@@ -1,0 +1,41 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  Keeps a run's foldable areas (<details data-keep-open="key">: notices,
+-#  changes, phases) as the viewer left them when the page reloads -- after
+-#  sorting or paging a table inside, for instance. Remembered per page in
+-#  this browser tab only; another tab shows the defaults. One guarded
+-#  listener however many runs the page shows.
+:javascript
+  (function () {
+    if (window.__syncKeepOpen) return;
+    window.__syncKeepOpen = true;
+    var KEY = "wsjrdp-keep-open:";
+    function read() {
+      try { return JSON.parse(sessionStorage.getItem(KEY + location.pathname)) || {}; } catch (e) { return {}; }
+    }
+    function write(state) {
+      try { sessionStorage.setItem(KEY + location.pathname, JSON.stringify(state)); } catch (e) {}
+    }
+    document.addEventListener("toggle", function (e) {
+      var key = e.target.getAttribute && e.target.getAttribute("data-keep-open");
+      if (!key) return;
+      var state = read();
+      state[key] = e.target.open;
+      write(state);
+    }, true);
+    function restore() {
+      var state = read();
+      document.querySelectorAll("details[data-keep-open]").forEach(function (el) {
+        var open = state[el.getAttribute("data-keep-open")];
+        if (typeof open === "boolean" && el.open !== open) el.open = open;
+      });
+    }
+    document.addEventListener("turbo:load", restore);
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", restore);
+    else restore();
+  })();
