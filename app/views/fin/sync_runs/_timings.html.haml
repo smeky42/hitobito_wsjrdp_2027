@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The phases of a run and of its parts: start, end and duration.
+-#
+-#  Locals: run (WsjrdpSyncRun), open (whether it starts unfolded)
+- if run.timings.any?
+  %details.mb-3{open: open, data: {keep_open: "sync-timings-#{run.id}"}}
+    %summary= t("fin.sync.timings.title")
+    = wsjrdp_expandable_table do |t|
+      - t.rows timing_rows(run), id: "st#{run.id}"
+      - t.columns fin_sync_timings_columns(run)
+      - t.gaps max: "2rem", grow_max: "40rem", except: [%w[duration_ms duration]]
+      - t.row_key { |row| row.position }

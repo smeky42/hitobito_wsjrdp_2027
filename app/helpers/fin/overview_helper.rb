@@ -46,12 +46,13 @@ module Fin::OverviewHelper
     Sheet::Fin::Accounting => {key: :accounting, icon: "book"},
     Sheet::Fin::Reconciliation => {key: :reconciliation, icon: "check-double"},
     Sheet::Fin::Controlling => {key: :controlling, icon: "chart-line"},
+    Sheet::Fin::Sync => {key: :sync, icon: "sync"},
     Sheet::Fin::Admin => {key: :admin, icon: "sliders-h"}
   }.freeze
 
   # One card. `tabs` are [label, path] pairs, `figures` [label, value, warn?]
   # triples -- the value is already a string, warn marks the ones that stand
-  # for open work (Controlling has no figures at all).
+  # for open work (Controlling and Synchronisation have no figures yet).
   Area = Struct.new(:key, :title, :path, :icon, :purpose, :tabs, :figures, keyword_init: true)
 
   # The sheets of the Finanzen areas, in the order of the left sub-navigation.
@@ -139,7 +140,7 @@ module Fin::OverviewHelper
     when :moss then fin_moss_figures
     when :accounting then fin_accounting_figures
     when :reconciliation then fin_reconciliation_figures
-    else [] # Controlling is still empty; its card says so instead.
+    else [] # Controlling and Synchronisation: none yet; the card says so.
     end
   end
 

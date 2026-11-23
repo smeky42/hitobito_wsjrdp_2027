@@ -63,6 +63,8 @@ Das Sheet rendert links ein Partial (siehe §4). Für Finanzen ist das
   = nav t("fin.nav.accounting"), bookkeeping_path,       %w[fin/bookkeeping]
   = nav t("fin.nav.reconciliation"), reconciliation_path, %w[fin/reconciliation]
   = nav t("fin.nav.controlling"), controlling_path,      %w[fin/controlling]
+  - if can?(:configure_finance, Group)
+    = nav t("fin.nav.sync"), fin_sync_path,               %w[fin/sync]
   - if can?(:configure_finance, Group) || can?(:show, WsjrdpPaymentReference)
     = nav t("fin.nav.admin"), fin_admin_path,             %w[fin/admin]
 ```
@@ -72,9 +74,10 @@ Der Übersichts-Eintrag braucht keine Fragmente (`current_page?` matcht
 — alle Seiten seines Bereichs, nicht mehr —, deshalb kommt keiner ohne
 `inactive_for` in die Quere (§3).
 
-Die Verwaltung ist der einzige Eintrag mit einer Bedingung: Ihre Seiten
-konfigurieren den Finanzen-Bereich selbst, deshalb sehen sie nur Admins und die
-Manage-Stufe (§8).
+Zwei Einträge haben eine Bedingung, beide für Admins und die Manage-Stufe: die
+Verwaltung, weil ihre Seiten den Finanzen-Bereich selbst konfigurieren (§8),
+und die Synchronisation, weil sie Daten aus Moss in die Datenbank schreibt
+([`doc/fin/sync.md`](fin/sync.md)).
 
 Die **Reihenfolge im Partial = Reihenfolge im Menü**. „Moss" steht zwischen
 Beiträge und Buchhaltung, weil die `nav`-Zeile dort steht.
@@ -217,7 +220,7 @@ tab "fin.tabs.transactions", :moss_transactions_path
   Deshalb hat der Beiträge-Bereich ein Kind-Sheet `Sheet::Fin::Fee` mit
   `parent_sheet = Sheet::Fin::Fees`; über den `index`-Sonderfall (§4) rendert
   die Seite dann das Bereichs-Sheet mit dessen Tabs. Bereiche, deren Name schon
-  singular ist (`moss`, `bookkeeping`, `controlling`), brauchen das nicht.
+  singular ist (`moss`, `bookkeeping`, `controlling`, `sync`), brauchen das nicht.
 - Kind-Sheet muss unter `module Sheet; class Fin::Moss < Base; class Fin::MossCardTransaction …`
   verschachtelt liegen (siehe bestehende `sheet/fin/booking.rb` /
   `sheet/fin/bookkeeping.rb`).

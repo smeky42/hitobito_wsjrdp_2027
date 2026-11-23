@@ -78,10 +78,11 @@ module Wsjrdp2027::NavigationHelper
     admin = NavigationHelper::MAIN.find { |e| e[:label] == :admin }
     admin[:active_for] = admin[:active_for] | %w[country_codes credentials] if admin
     # And for the Dokumentenverwaltung, apart from the kinds of document,
-    # which belong to the main section Dokumente.
+    # which belong to the main section Dokumente. Not for /fin/sync/moss_api,
+    # although the core's fragment "api" matches it.
     if admin
       admin[:active_for] = admin[:active_for] | %w[document_management]
-      admin[:inactive_for] = Array(admin[:inactive_for]) | %w[document_kinds]
+      admin[:inactive_for] = Array(admin[:inactive_for]) | %w[document_kinds fin/sync]
     end
   end
 end

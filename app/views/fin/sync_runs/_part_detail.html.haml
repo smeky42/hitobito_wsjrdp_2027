@@ -1,0 +1,49 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  One part in its row's detail: the error, the notices (each unfolds its
+-#  records), the changes and the files.
+-#
+-#  Locals: part (WsjrdpSyncRunPart)
+- scope = "fin.sync.run"
+- plan = part.plan_object
+- records = fin_sync_plan_records(part, plan)
+- if part.error_message.present?
+  .alert.alert-danger.py-1.px-2= part.error_message
+- plan.warnings.each_with_index do |notice, index|
+  .alert.py-1.px-2{class: fin_sync_notice_class(notice)}
+    - if notice.items.any?
+      %details{data: {keep_open: "sync-notice-#{part.id}-#{index}"}}
+        %summary= notice.message
+        %ul.mb-0.mt-1
+          - notice.items.each do |key, text|
+            %li= fin_sync_notice_item(records[key.to_s.downcase], text)
+    - else
+      = notice.message
+- if plan.changes.any?
+  - part_class = fin_sync_part_class(part)
+  - fields = part_class.try(:notice_fields) || {}
+  - people = fin_sync_people(plan)
+  - model = part_class.try(:model)
+  - rows = change_rows(part)
+  %details{data: {keep_open: "sync-changes-#{part.id}"}}
+    %summary= t("#{scope}.changes", count: rows.total_count)
+    = wsjrdp_expandable_table do |t|
+      - t.rows rows, id: "sc#{part.id}"
+      - t.columns fin_sync_changes_columns(records, model)
+      - t.gaps max: "2rem", grow_max: "30rem"
+      - t.row_key { |row| row.change.key.to_s.tr(":", "-") }
+      - t.detail { |row, ctx| render("fin/sync_runs/change_detail", row: row, fields: fields, people: people,
+          records: records, model: model, ctx: Fin::AttrFormatContext.embedded(ctx)) }
+      - t.paging if rows.total_count > 25
+- if part.files.any? && part.files_purged_at.nil?
+  %p.small.mb-0
+    = t("#{scope}.files")
+    - part.files.each do |entry|
+      = link_to(entry["file"], fin_sync_moss_api_run_file_path(part.run_id, name: entry["name"]), class: "ms-2")
+- elsif part.files_purged_at
+  %p.small.text-muted.mb-0= t("#{scope}.files_purged", time: fin_sync_time(part.files_purged_at))

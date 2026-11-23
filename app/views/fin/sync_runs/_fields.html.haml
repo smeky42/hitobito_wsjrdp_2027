@@ -1,0 +1,20 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The core data of a run, on its page and in a row's detail of the runs
+-#  table. The values come from Fin::SyncHelper (fin_format_wsjrdp_sync_run_*),
+-#  the labels from de.activerecord.attributes.wsjrdp_sync_run.
+-#
+-#  Locals: run (WsjrdpSyncRun), ctx (Fin::AttrFormatContext)
+= fin_detail(run, ctx) do |d|
+  - d.header back: fin_sync_moss_api_path, back_label: t("fin.sync.run.back"),
+      label: "#{t("activerecord.models.wsjrdp_sync_run.one")} #{run.id}",
+      title: fin_format_wsjrdp_sync_run_source(run)
+  - d.attrs :id, :source, :status, :selected_parts, :credential
+  - d.attrs :started_at, :started_by, :confirmed_at, :confirmed_by, :warnings_confirmed_at,
+      :warnings_confirmed_by, :finished_at
+  - d.attrs :duration_ms, :stats, :error_message
