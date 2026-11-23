@@ -9,7 +9,7 @@
 
 require "spec_helper"
 
-# The Moss WALLET filter schema (Fin::MossWalletFilterSchema) compiled against
+# The Moss BOOKINGS filter schema (Fin::MossBookingsFilterSchema) compiled against
 # the relation it is bound to, MossBooking joined to its transaction. The grain
 # is what separates it from Fin::MossTransactionsFilterSchema: a row here is a
 # SPLIT, so `kind` and `booking_date` reach through the join while `amount` is
@@ -18,7 +18,7 @@ require "spec_helper"
 #
 # One booking per kind, all invented; their dates, amounts and texts differ so
 # each attribute selects a different subset.
-describe Fin::MossWalletFilterSchema do
+describe Fin::MossBookingsFilterSchema do
   let(:schema) { described_class.bound }
 
   # One transaction of `type` with its (shell) expense and exactly one booking.
@@ -63,7 +63,7 @@ describe Fin::MossWalletFilterSchema do
     end
 
     # The host hands in its own relation; #compile merges the base into it, so
-    # the join is never repeated (the wallet page adds only its account).
+    # the join is never repeated (the list adds nothing).
     it "merges its join into a host relation instead of asking for it twice" do
       scope = described_class.compile(nil, schema: schema, relation: MossBooking.all)
       expect(scope.to_sql.scan('INNER JOIN "moss_transactions"').size).to eq(1)
@@ -179,7 +179,7 @@ describe Fin::MossWalletFilterSchema do
     end
   end
 
-  # The wallet's "Schnellauswahl" is four host-authored slots, one per kind.
+  # The kinds' "Schnellauswahl" compiles to one slot per kind.
   # They are parsed STRICTLY, so a typo raises here instead of silently
   # widening the page to every kind.
   describe "the four kind presets" do
@@ -196,12 +196,12 @@ describe Fin::MossWalletFilterSchema do
       end
     end
 
-    # Fin::WsjrdpFinAccountsController#wallet_presets declares the kinds as ONE
-    # preset group ("kind" in <value>); every member's value is one of these
-    # slots, in the same order.
-    it "is exactly what the controller's preset group declares" do
-      group = Fin::WsjrdpFinAccountsController.new.send(:wallet_presets).sole
-      expect(group).to include(group: "kind", attribute: "kind", operator: "in")
+    # Fin::MossKinds.fixed_group declares the kinds as ONE group on the
+    # attribute "kind"; every member's value is one of these slots, in the same
+    # order.
+    it "is exactly what the kinds' fixed group declares" do
+      group = Fin::MossKinds.fixed_group
+      expect(group).to include(key: "kind", attribute: "kind", multiple: true)
       member_slots = group[:members].map { |member| [[["kind", "in", member[:value]]]] }
       expect(member_slots).to eq(preset_slots)
     end

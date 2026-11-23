@@ -14,9 +14,9 @@
 # Fin::MossTransactionsFilterSchema::KINDS.
 #
 # Why a module of its own: the same kind is marked in five places -- the chip
-# in the wallet list, the coloured rail of its row, the tiles of /fin/moss, the
+# in the lists, the coloured rail of its row, the tiles of /fin/moss, the
 # kind tabs and the kind buttons of a filter's "Schnellauswahl"
-# (#preset_group on the wallet, #fixed_group on the transactions list).
+# (#fixed_group).
 # Without a single source each view would pick its own icon, and a fifth kind
 # would have to be hunted down five times. Views never see this module
 # directly; they go through Fin::MossTransactionsHelper (moss_kind_chip and
@@ -57,36 +57,13 @@ module Fin::MossKinds
     # The kind's expense_type slug, e.g. "card_transaction".
     def slug(type) = css_class(type).delete_prefix(CSS_PREFIX)
 
-    # The "Schnellauswahl" of the Moss kinds for a table whose filter offers
-    # the Art attribute under the key `kind`: ONE declaration
-    # (doc/wsjrdp/expandable_table.md, "Presets") for the wallet statement. It
-    # words, marks and orders the kinds like #fixed_group does on the
-    # transactions list.
-    #
-    # The four are one GROUP, not four presets of their own: the kinds are
-    # alternatives of the same question, so they share ONE slot `kind in (…)`
-    # and two pressed buttons WIDEN the list to both kinds instead of ANDing
-    # two slots into nothing. The words are the chip words of the rows
-    # (fin.moss.kind_chips), so a button and an "Art" cell read alike; the key
-    # is the kind's slug, the value the STI type the filter compares.
-    #
-    # A METHOD, not a constant: the labels are I18n and must not be looked up
-    # while a class loads -- and the KINDS order is read here, when the bar is
-    # built, so the filter schema stays out of a request that only wants an
-    # icon.
-    def preset_group
-      {group: "kind", attribute: "kind", operator: "in",
-       members: Fin::MossTransactionsFilterSchema::KINDS.map do |kind|
-         {key: slug(kind), label: I18n.t("fin.moss.kind_chips.#{kind}"), value: kind,
-          icon: icon(kind), css_class: css_class(kind)}
-       end}
-    end
-
-    # The same four kinds as a fixed group of several answers
-    # (doc/wsjrdp/expandable_table.md, "Fixed groups"), for the transactions
-    # list: one segment behind an "all" asterisk, every kind chosen by default.
-    # Unlike the preset group it is a locked condition, not part of the user's
-    # own filter.
+    # The four kinds as a fixed group of several answers
+    # (doc/wsjrdp/expandable_table.md, "Fixed groups"), for a table whose
+    # filter offers the Art attribute under the key `kind` (the transactions
+    # and bookings lists, the wallet): one segment behind an "all" asterisk,
+    # every kind chosen by default. A locked condition, not part of the user's
+    # own filter. The words are the chip words of the rows, so a button and an
+    # "Art" cell read alike. A METHOD: the labels are I18n.
     def fixed_group
       members = Fin::MossTransactionsFilterSchema::KINDS.map do |kind|
         {key: slug(kind), label: I18n.t("fin.moss.kind_chips.#{kind}"), value: kind,

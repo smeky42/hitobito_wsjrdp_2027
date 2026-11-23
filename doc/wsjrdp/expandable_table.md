@@ -340,9 +340,8 @@ row links to its own page; the summary row itself carries no action icon.
 The detail is optional like everything else: a table that declares **neither**
 `detail` nor `detail_src` **nor** a link renders no detail row at all, and its
 rows are not disclosure controls (no `role="button"`, no collapse trigger, no
-pointer cursor). The Moss wallet (`fin/wsjrdp_fin_accounts/_moss_wallet`) shows
-the middle case — its rows already show everything a detail would repeat, so it
-declares only links and its detail row is the slim header-line bar.
+pointer cursor). A table may also declare only links: its detail row is then
+the slim header-line bar.
 
 `ExpandableTableColumn#to_table_column(cell:)` turns a description into the
 column Hash the widget expects (`key`, `abbr`, `label`, `condensed_label`,
@@ -801,8 +800,8 @@ Preset slots are **host-authored like fixed slots** and therefore parsed
 *reduced* schema, because they are the user part. A typo raises, and
 `spec/controllers/fin/table_policies_spec.rb` turns that into a CI failure.
 
-A **group** goes into the same list, in either place — this one is the Moss
-wallet's four kinds (`Fin::WsjrdpFinAccountsController#wallet_presets`):
+A **group** goes into the same list, in either place — for example four kind
+buttons:
 
 ```ruby
 {group: "kind", attribute: "kind", operator: "in",
@@ -944,8 +943,8 @@ filter: {policy: :url, schema: Fin::DatevBookingsFilterSchema, presets: UNIT_BUD
   **without** the `fa-` prefix, e.g. `"credit-card"`) and `css_class:` — the bar
   renders the icon as `<i class="fas fa-…">` between the tick and the label, and
   adds the class verbatim to the toggle link (next to `btn btn-sm
-  btn-outline-secondary flt-preset`), which is how the Moss wallet colours its
-  four kind buttons.
+  btn-outline-secondary flt-preset`), which is how the Moss lists colour their
+  kind buttons.
   Display only: they never touch the slots, `active?` or `toggle_wire`, both
   default to `nil`, and a preset that declares neither renders exactly as it did
   before. Any *other* key raises `ArgumentError: unknown keyword`.
@@ -1162,6 +1161,19 @@ line floats at the right of the detail's content (`float:`, true by default
 with `column:`): the content flows past it rather than starting below it. A
 float never covers text -- a line or a box that does not fit beside it moves
 on or down -- so this needs no measuring; `float: false` keeps the line.
+
+`t.detail_links_aside` puts the header line of a LAZY detail (`detail_src`)
+beside it instead: where the detail is at least 50rem wide (a container query
+on the detail, not the window -- a table may scroll sideways) the buttons are a
+narrow column at the right, stacked, and the loaded detail is a block of its
+own beside them -- narrower over its whole height, so it never runs under them
+and its field list stays aligned. Below that width the buttons are one line
+above the detail. The detail kit's "Bearbeiten" (the inline edit of
+`doc/fin/detail_partials.md`) joins the buttons: shown while the loaded detail
+has a closed inline form, whose own toggle line then goes. The Moss tables
+(Buchungen, Transaktionen, the expenses and bookings of a transaction or an
+expense), the DATEV Buchungen table and the Rückläufer use it -- the tables
+whose row detail has the inline edit.
 
 #### Columns in the detail
 

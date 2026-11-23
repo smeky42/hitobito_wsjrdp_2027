@@ -5,23 +5,19 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 -#
--#  Standalone, bookmarkable detail page of one Moss transaction, and the lazy
--#  detail the listing's rows load into their turbo frame (the frame then gets
--#  the shared _detail partial alone). Both reuse the _detail partial.
-- if turbo_frame_request?
-  = wsjrdp_detail_frame("mtx", @transaction.id) do
-    = render "fin/moss_transactions/detail", transaction: @transaction
-- else
-  #main
-    = link_to moss_transactions_path, class: "btn btn-sm btn-link px-0 mb-2" do
-      = icon(:"arrow-left")
-      Zurück zur Liste
-
-    -# Title on one line: the kind + id light + muted, then the transaction's
-    -# name in the normal heading weight.
-    %h1.mb-3
-      %span.text-muted.fw-light= "#{moss_kind_label(@transaction.type)} ##{@transaction.id}"
-      - if @transaction.display_name.present?
-        %span.ms-2= @transaction.display_name
-
-    = render "fin/moss_transactions/detail", transaction: @transaction
+-#  The reading page of a Moss transaction: its detail (_detail), with
+-#  "Bearbeiten" for whoever may change it (edit). Also the detail the
+-#  transactions tables lazy-load into a row (@ctx embedded): there it carries
+-#  the kit's inline edit, whose save comes back to the row.
+- tx = @transaction
+-# The `replace_all` / `reload_frames` answers of the person-linking buttons in
+-# the bookings table (Fin::MossBookingsController#respond_after_subject_link).
+- if @ctx.regular?
+  - content_for :head do
+    = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+- may_update = can?(:update, tx)
+= wsjrdp_detail_frame("mtx", tx.id) do
+  = render "detail", transaction: tx, ctx: @ctx, return_path: return_path,
+    editing: (@ctx.regular? ? false : nil),
+    edit_url: (@ctx.regular? && may_update ? edit_moss_transaction_path(tx, return_url: return_path) : nil),
+    form_url: (!@ctx.regular? && may_update ? moss_transaction_path(tx) : nil)

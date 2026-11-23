@@ -38,6 +38,9 @@
     - t.row_key { |entry| entry.id }
     - t.detail_page { |entry| payment_return_path(entry) }
     - t.detail_src { |entry| payment_return_path(entry) }
+    -# The buttons, the inline edit's "Bearbeiten" included, as a column beside
+    -# the detail (t.detail_links_aside, doc/wsjrdp/expandable_table.md).
+    - t.detail_links_aside
     - t.footer { |col| payment_return_footer(col, payment_return_totals) }
     - t.paging per_options: [25, 50, 100, :all]
     - t.filter apply_url: apply_payment_returns_path

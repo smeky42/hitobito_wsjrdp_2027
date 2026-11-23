@@ -1,0 +1,39 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The detail of one Moss expense (L2), built on the finance detail kit
+-#  (doc/fin/detail_partials.md): the reading page (show), the edit page (edit)
+-#  and the row detail of a transaction's expenses table. The values come from
+-#  Fin::MossExpensesHelper, the labels from de.activerecord.attributes.moss_expense.
+-#
+-#  Locals: expense (MossExpense)
+-#          ctx (Fin::AttrFormatContext)
+-#          editing:    false the reading page (default), true the edit page,
+-#                      nil a table row (inline edit)
+-#          form_url:   the PATCH target; its presence makes the comment editable
+-#          edit_url, cancel_url: as the detail kit takes them
+-#          return_path: the page the reader came from; the header leads back
+- edit = moss_comment_edit_options(local_assigns[:form_url].present?)
+= render "shared/wsjrdp/moss_kind_styles"
+= fin_detail(expense, ctx, editing: local_assigns.fetch(:editing, false), form_url: local_assigns[:form_url],
+    edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
+  - d.header label: "Moss Ausgabe ##{expense.id}", title: expense.display_name.presence,
+      back: local_assigns[:return_path], back_label: t("global.button.back")
+  - d.attrs :signed_expense_base_amount, :original_amount, :kind, :moss_transaction, blank: :hide
+  - d.attrs :expense_number, :expense_name, :moss_expense_type, :purchased_on, :expense_posting_text,
+      blank: :hide
+  - d.attrs :parent_comments, :comment, parent_comments: {blank: :hide},
+      comment: {blank: :hide}.merge(edit.fetch(:comment, {}))
+  -# On the page the bookings are a table of their own below, each row opening
+  -# the booking's detail; a row's detail lists them as links.
+  - d.attrs :bookings unless ctx.regular?
+  - if ctx.regular?
+    - d.custom title: "Buchungen (#{expense.bookings.size})", key: :bookings do
+      = render "fin/moss_bookings/parent_table", rows: expense_bookings_rows(expense), id: "meb",
+        kind: expense.moss_transaction.type
+  - d.raw_data do
+    - d.raw_entries :other_moss_columns, title: "Moss Rohdaten"

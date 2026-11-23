@@ -1,0 +1,49 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  "Buchungen" (Fin::MossBookingsController#index): one row per MossBooking,
+-#  on the shared expandable table (doc/wsjrdp/expandable_table.md) with the
+-#  generic CNF filter above it and the kinds as a fixed group in the
+-#  "Schnellauswahl". The kind is marked twice in every row -- the chip in "Art"
+-#  and the coloured rail on the row's first cell (shared/wsjrdp/_moss_kind_styles
+-#  paints both).
+-#
+-#  Opening a row loads the booking's detail (the reading page's partial, with
+-#  its inline edit) under the header line of links: the booking's page and the
+-#  transaction's record in Moss. A top-up has no such record page
+-#  (MossTopUp#moss_record_url), so its line is "Detailseite" alone.
+= render "fin/moss_bookings/styles"
+= render "shared/wsjrdp/moss_kind_styles"
+-# The `replace_all` / `reload_frames` answers of the person-linking buttons
+-# (Fin::MossBookingsController#respond_after_subject_link).
+- content_for :head do
+  = javascript_include_tag "hitobito_wsjrdp_2027/turbo_stream_actions", "data-turbo-track": true
+#main
+  %h1= t("fin.tabs.bookings")
+
+  = wsjrdp_expandable_table do |t|
+    - t.rows    bookings, id: "mbk"
+    - t.columns moss_bookings_table_columns, menu: true
+    - t.row_key(&:id)
+    -# The coloured rail: the row carries its kind's class, the stylesheet paints
+    -# the 3px line inside the first cell.
+    - t.row_class { |booking| moss_kind_css_class(booking.moss_transaction.type) }
+    - t.detail_page { |booking| moss_booking_path(booking) }
+    -# The transaction is preloaded with the page (the controller's
+    -# bookings). A top-up answers nil here and gets no "In Moss" group.
+    - moss_url = ->(booking) { booking.moss_transaction&.moss_record_url }
+    - t.detail_link label: "In Moss", icon: :wallet, title: "Transaktion in Moss öffnen",
+        title_new_tab: "Transaktion in Moss in neuem Tab öffnen", &moss_url
+    -# Lazy (a turbo frame per row): the booking's detail (fin/moss_bookings/_detail),
+    -# reloaded after a linking button in the row was used
+    -# (Fin::MossBookingsController#respond_after_subject_link).
+    - t.detail_src { |booking| moss_booking_path(booking) }
+    -# The buttons, "Bearbeiten" included, as a column beside the detail.
+    - t.detail_links_aside
+    - t.paging
+    - t.filter  apply_url: apply_moss_bookings_path
+    - t.summary "#{bookings.total_count} Buchungen"

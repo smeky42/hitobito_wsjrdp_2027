@@ -85,12 +85,13 @@ describe Fin::MossBookingsController do
         expect(booking.reload.contribution_subject).to eq target
       end
 
-      it "reloads the already loaded detail frames of the booking's transaction" do
+      it "reloads the already loaded detail frames of the booking's transaction and of the booking" do
         post :link_subject, params: link_params, format: :turbo_stream
 
         reload = streams.find { |s| s["action"] == "reload_frames" }
         expect(reload["targets"])
-          .to eq "turbo-frame[data-record='moss_transaction_#{booking.moss_transaction_id}'][complete]"
+          .to eq "turbo-frame[data-record='moss_transaction_#{booking.moss_transaction_id}'][complete], " \
+            "turbo-frame[data-record='moss_booking_#{booking.id}'][complete]"
       end
 
       it "records who linked the person, and when, and shows it next to the person" do
@@ -110,10 +111,11 @@ describe Fin::MossBookingsController do
         expect(stream.text).not_to include("Keine Verknüpfung mit")
       end
 
-      it "redirects to the wallet without Turbo" do
+      it "goes back to the page it came from without Turbo" do
+        request.env["HTTP_REFERER"] = "http://test.host/fin/moss/bookings?p=2"
         post :link_subject, params: link_params
 
-        expect(response).to redirect_to(wallet)
+        expect(response).to redirect_to("http://test.host/fin/moss/bookings?p=2")
         expect(booking.reload.contribution_subject).to eq target
       end
 
@@ -205,7 +207,7 @@ describe Fin::MossBookingsController do
         submitted_date: Date.new(2026, 5, 20), approval_date: Date.new(2026, 5, 25))
       get :show, params: {id: booking.id}
 
-      labels = page.css("#main fieldset .row").map { |r| r.element_children.first&.text&.strip }
+      labels = page.css("#main dl.fin-detail-list dt").map { |dt| dt.text.strip }
       expect(labels).to include("Buchungsdatum", "Eingereicht am", "Freigegeben am")
       expect(labels).not_to include("Zahlungsdatum", "Fälligkeitsdatum", "Verwendungszweck")
     end
@@ -219,7 +221,7 @@ describe Fin::MossBookingsController do
     it "puts the amount first" do
       get :show, params: {id: booking.id}
 
-      labels = page.css("#main fieldset .row").map { |r| r.element_children.first&.text&.strip }
+      labels = page.css("#main dl.fin-detail-list dt").map { |dt| dt.text.strip }
       expect(labels.first).to eq "Betrag"
     end
 
@@ -263,6 +265,91 @@ describe Fin::MossBookingsController do
       expect(row("Transaktion").css("a").pluck("href"))
         .not_to include("/fin/moss/transactions/#{booking.moss_transaction_id}")
       expect(row("Transaktion").text).to include("##{booking.moss_transaction_id}")
+    end
+  end
+
+  # The reading page leads to the edit page; the list's row lazy-loads the same
+  # detail in its frame.
+  describe "the reading page, the row detail and the edit page" do
+    before { sign_in(finance) }
+
+    def page = Nokogiri::HTML(response.body)
+
+    it "offers Bearbeiten on the reading page, and no form" do
+      get :show, params: {id: booking.id}
+
+      expect(page.at_css("#main h1 a[href='#{edit_moss_booking_path(booking)}']").text).to include("Bearbeiten")
+      expect(page.css("#main form")).to be_empty
+    end
+
+    it "answers a row's frame with the detail alone" do
+      request.headers["Turbo-Frame"] = "bkframe-mbk-#{booking.id}"
+      get :show, params: {id: booking.id, expandable_table_level: 1}
+
+      frame = page.at_css("turbo-frame#bkframe-mbk-#{booking.id}")
+      expect(frame).to be_present
+      expect(frame.at_css("h1")).to be_nil
+      expect(frame.text).to include("Betrag")
+    end
+
+    # The row's detail carries the kit's inline edit for whoever may write;
+    # its save comes back to the row's frame.
+    it "gives the row's detail the inline edit form" do
+      request.headers["Turbo-Frame"] = "bkframe-mbk-#{booking.id}"
+      get :show, params: {id: booking.id, expandable_table_level: 1}
+
+      form = page.at_css("turbo-frame#bkframe-mbk-#{booking.id} form[action='#{moss_booking_path(booking)}']")
+      expect(form).to be_present
+      expect(form.at_css("textarea[name='moss_booking[comment]']")).to be_present
+    end
+
+    it "leaves the inline edit out without :update on the booking" do
+      deny(:update, booking)
+      request.headers["Turbo-Frame"] = "bkframe-mbk-#{booking.id}"
+      get :show, params: {id: booking.id, expandable_table_level: 1}
+
+      expect(page.css("form")).to be_empty
+    end
+
+    it "brings a save from the row back to the row's detail" do
+      request.headers["Turbo-Frame"] = "bkframe-mbk-#{booking.id}"
+      patch :update, params: {id: booking.id, moss_booking: {comment: "Geprüft"}}
+
+      expect(response).to redirect_to(moss_booking_path(booking))
+      expect(booking.reload.comment).to eq "Geprüft"
+    end
+
+    it "shows the comment and the person as inputs on the edit page" do
+      get :edit, params: {id: booking.id}
+
+      expect(page.at_css("form[action='#{moss_booking_path(booking)}']")).to be_present
+      expect(page.at_css("textarea[name='moss_booking[comment]']")).to be_present
+      expect(page.at_css("input[name='moss_booking[contribution_subject_id]']")).to be_present
+    end
+
+    it "saves and returns to the reading page" do
+      patch :update, params: {id: booking.id, moss_booking: {comment: "Geprüft"}}
+
+      expect(response).to redirect_to(moss_booking_path(booking))
+      expect(booking.reload.comment).to eq "Geprüft"
+    end
+
+    it "stays on the edit page with 'Speichern und weiter bearbeiten'" do
+      patch :update, params: {id: booking.id, stay: "1", moss_booking: {comment: "Geprüft"}}
+
+      expect(response).to redirect_to(edit_moss_booking_path(booking))
+    end
+
+    it "returns to the page the reader came from" do
+      patch :update, params: {id: booking.id, return_url: "/fin/moss/bookings?p=2", moss_booking: {comment: "x"}}
+
+      expect(response).to redirect_to("/fin/moss/bookings?p=2")
+    end
+
+    it "refuses the edit page without :update on the booking" do
+      deny(:update, booking)
+
+      expect { get :edit, params: {id: booking.id} }.to raise_error(CanCan::AccessDenied)
     end
   end
 
@@ -335,7 +422,7 @@ describe Fin::MossBookingsController do
       entry_for(target)
       post :link_subject_and_create_accounting_entry, params: create_params
 
-      expect(response).to redirect_to(wallet)
+      expect(response).to redirect_to(moss_booking_path(booking))
       expect(flash[:alert]).to include("Keine Beitragsbuchung angelegt")
     end
 

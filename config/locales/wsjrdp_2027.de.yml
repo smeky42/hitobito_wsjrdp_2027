@@ -772,6 +772,15 @@ de:
         manually_paid: Manuell bezahlt
         manually_booked: Manuell gebucht
         comment: Kommentar
+        approver_name: Freigeber
+        # Virtual fields of the transaction's detail (Fin::MossTransactionsHelper).
+        moss_status: Status (Moss)
+        original_amount: Originalbetrag
+        display_name: Name
+        display_text: Buchungstext
+        party: Händler / Empfänger
+        moss_record: Moss
+        clearing_datev_booking: DATEV-Ausgleich
         created_at: Erstellt
         updated_at: Geändert
 
@@ -786,6 +795,13 @@ de:
         moss_expense_type: Ausgabenart
         purchased_on: Kaufdatum
         comment: Kommentar
+        signed_expense_transaction_amount: Original-Betrag
+        # Virtual fields of the expense's detail (Fin::MossExpensesHelper).
+        kind: Art
+        original_amount: Originalbetrag
+        moss_transaction: Transaktion
+        parent_comments: Weitere Kommentare
+        bookings: Buchungen
 
       # de.activerecord.attributes.moss_booking (L3: one split -- the DATEV grain)
       moss_booking:
@@ -801,6 +817,12 @@ de:
         booking_posting_text: Buchungstext
         comment: Kommentar
         contribution_subject: Beteiligte Person
+        # Virtual fields of the booking's detail (Fin::MossBookingsHelper).
+        kind: Art
+        fin_account: Konto/Wallet
+        text_lines: Buchungstext
+        parent_comments: Weitere Kommentare
+        accounting_entries: Beitragsbuchungen
         created_at: Erstellt
         updated_at: Geändert
 

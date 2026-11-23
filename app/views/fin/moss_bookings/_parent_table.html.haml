@@ -1,0 +1,22 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The bookings of ONE transaction or expense, as an expandable table on its
+-#  page: the cells of the Buchungen tab, each row opening the booking's detail
+-#  lazily with the buttons beside it.
+-#
+-#  Locals: rows (Fin::MossBookingsColumns.rows), id (the table's prefix),
+-#          kind (the transaction's STI type, for the rail).
+= render "fin/moss_bookings/styles"
+= wsjrdp_expandable_table do |t|
+  - t.rows rows, id: id
+  - t.columns moss_bookings_table_columns, menu: true
+  - t.row_key(&:id)
+  - t.row_class { moss_kind_css_class(kind) }
+  - t.detail_page { |booking| moss_booking_path(booking) }
+  - t.detail_src { |booking| moss_booking_path(booking) }
+  - t.detail_links_aside

@@ -121,6 +121,12 @@ controller.class.name.gsub("Controller", "").underscore.singularize.camelize.pre
 Also: `Fin::MossController` → `Sheet::Fin::Moss`,
 `Fin::MossTransactionsController` → `Sheet::Fin::MossTransaction`
 (**singularisiert**: `moss_transactions` → `moss_transaction`),
+`Fin::MossBookingsController` → `Sheet::Fin::MossBooking` (dessen `index` ist
+der Moss-Tab „Buchungen“ unter `/fin/moss/bookings`; die Seite einer Buchung
+`/fin/moss/bookings/:id` lässt den Tab als Unterpfad leuchten),
+`Fin::MossExpensesController` → `Sheet::Fin::MossExpense` (die Seite einer
+Ausgabe `/fin/moss/expenses/:id`; `Sheet::Fin::Moss` lässt dort
+„Transaktionen“ und den Unter-Tab der Art leuchten),
 `Fin::BookkeepingController` → `Sheet::Fin::Bookkeeping`.
 
 Weitere Sheet-Bausteine:

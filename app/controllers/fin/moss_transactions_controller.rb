@@ -27,10 +27,12 @@
 # the UI.
 class Fin::MossTransactionsController < Fin::FinController
   include Wsjrdp::TableStateful
+  include Fin::MossTransactionsTable
+  include Fin::DetailPages
 
   before_action :authorize_action
 
-  helper_method :transactions, :current_kind
+  helper_method :current_kind
 
   # STI type => route slug of the kind's tab, in tab order (= the order of the
   # overview's kind cards). config/routes.rb declares the routes from the same
@@ -105,6 +107,36 @@ class Fin::MossTransactionsController < Fin::FinController
     pane: {default: 1},
     store_key: -> { "#{controller_path}#index/#{current_kind}" if current_kind }
 
+  # The expenses and the bookings of ONE transaction, as tables on its page
+  # (fin/moss_transactions/_detail), all rows on one page and in their own order
+  # until a header is clicked. The bookings' table leaves out what every row
+  # shares with the transaction (date, kind) by default.
+  EXPENSES_POLICY = wsjrdp_expandable_table_policy prefix: "mte",
+    columns: Fin::MossExpensesColumns.codec,
+    cols: {default: Fin::MossExpensesColumns.default_keys},
+    per_page: {default: :all}
+
+  TX_BOOKINGS_POLICY = wsjrdp_expandable_table_policy prefix: "mtb",
+    columns: Fin::MossBookingsColumns.codec,
+    cols: {default: Fin::MossBookingsColumns::PARENT_DEFAULT_KEYS},
+    per_page: {default: :all}
+
+  helper_method :transaction_expenses_rows, :transaction_bookings_rows
+
+  def transaction_expenses_rows(tx)
+    Wsjrdp::ExpandableTableRows.new(wsjrdp_expandable_table_state(EXPENSES_POLICY),
+      MossExpense.where(moss_transaction_id: tx.id),
+      sort: Fin::MossExpensesColumns.sort_expressions, preload: [:bookings],
+      natural_order: ->(source) { source.order(:expense_number) }, tiebreaker: "moss_expenses.id")
+  end
+
+  def transaction_bookings_rows(tx)
+    Fin::MossBookingsColumns.rows(wsjrdp_expandable_table_state(TX_BOOKINGS_POLICY),
+      MossBooking.joins(:moss_transaction, :moss_expense).where(moss_transaction_id: tx.id),
+      natural_order: ->(source) { source.order("moss_expenses.expense_number", :sub_row_number) },
+      tiebreaker: "moss_bookings.id")
+  end
+
   # The resolved state of this page's transactions table.
   def transactions_table_state
     wsjrdp_expandable_table_state(TRANSACTIONS_POLICY)
@@ -123,30 +155,29 @@ class Fin::MossTransactionsController < Fin::FinController
     @current_kind = kind
   end
 
-  # The listing: the de-duplicated, filtered relation handed to
-  # Wsjrdp::ExpandableTableRows for sorting, pagination and the sum. Expenses and
-  # bookings are preloaded for the aggregate columns AND the expandable detail.
-  def transactions
-    @transactions ||= Wsjrdp::ExpandableTableRows.new(transactions_table_state,
-      distinct_transactions,
-      sort: Fin::MossTransactionsColumns.sort_expressions,
-      sum: :signed_total_base_amount,
-      preload: transaction_preloads,
-      tiebreaker: "moss_transactions.id")
-  end
-
   def index
     transactions # memoized; builds the filtered/sorted/paginated page
   end
 
-  # The page of one transaction, and the lazy detail the listing's rows load
-  # into their turbo frame (no layout then -- the frame is the view's own).
+  # The reading page of one transaction, and the lazy detail the listing's rows
+  # load into their turbo frame (doc/fin/detail_partials.md).
   def show
-    @transaction = MossTransaction
-      .includes(:clearing_datev_booking, :fin_account,
-        bookings: [:moss_expense, :contribution_subject, {accounting_entries: :subject}])
-      .find(params[:id])
-    render layout: false if turbo_frame_request?
+    @transaction = shown_transaction
+    @ctx = detail_format_context
+  end
+
+  # The edit page: the same detail with the comment as an input.
+  def edit
+    @transaction = shown_transaction
+    authorize!(:update, @transaction)
+    @ctx = Fin::AttrFormatContext.regular
+  end
+
+  def update
+    @transaction = shown_transaction
+    authorize!(:update, @transaction)
+    save_detail(@transaction, params.require(:moss_transaction).permit(:comment),
+      notice: "Moss Transaktion #{@transaction.id} erfolgreich aktualisiert.")
   end
 
   # PRG target of the CNF filter builder; lands on the tab it was posted from.
@@ -155,6 +186,14 @@ class Fin::MossTransactionsController < Fin::FinController
   end
 
   private
+
+  # The transaction with what its detail reads.
+  def shown_transaction
+    MossTransaction
+      .includes(:clearing_datev_booking, :fin_account,
+        bookings: [:moss_expense, :contribution_subject, {accounting_entries: :subject}])
+      .find(params[:id])
+  end
 
   # The listing path of the current tab.
   def tab_path
@@ -167,56 +206,6 @@ class Fin::MossTransactionsController < Fin::FinController
     return KIND_COLUMNS.fetch(current_kind) if current_kind
 
     {default: Fin::MossTransactionsColumns.default_keys, exclude: []}
-  end
-
-  # The columns that read a transaction's expenses and bookings
-  # (Fin::MossTransactionsHelper#moss_transaction_bookings).
-  AGGREGATE_COLUMNS = %w[cost_centers account_numbers bookings_count datev].freeze
-
-  # What the page reaches for per row: the expenses with their bookings feed the
-  # aggregate columns, the expense sub-rows of a reimbursement
-  # (Fin::MossExpenseRowsHelper) and the person side of the description cell
-  # (Fin::MossTransactionsHelper#moss_transaction_subject_links). A tab on which
-  # a reimbursement can appear therefore always preloads them -- the sub-rows
-  # read them whatever the visible columns are; on the other kind tabs they are
-  # loaded only while a column that reads them is visible, and the person side
-  # (person, contribution bookings) only with the description, so a
-  # slimmed-down column set does not load hundreds of bookings for nothing
-  # (Bullet flags both the missing and the unused preload). The detail is lazy
-  # and loads its own records (#show).
-  def transaction_preloads
-    return [] unless expense_rows_possible? || person_links_visible? ||
-      transactions_table_state.visible_column_keys.intersect?(AGGREGATE_COLUMNS)
-
-    [{expenses: {bookings: person_links_visible? ? BOOKING_LINK_PRELOADS : []}}]
-  end
-
-  # What the description cell's linking blocks read per booking
-  # (fin/moss_bookings/_subject_links).
-  BOOKING_LINK_PRELOADS = [:contribution_subject, {accounting_entries: :subject}].freeze
-
-  # The description column carries the person side of every booking.
-  def person_links_visible?
-    transactions_table_state.visible_column_keys.include?("description")
-  end
-
-  # Can a reimbursement -- the one kind that brings expense sub-rows -- be on
-  # this tab? The general tab lists every kind, the Erstattungen tab that one.
-  def expense_rows_possible?
-    current_kind.nil? || current_kind == "MossReimbursement"
-  end
-
-  # The filtered scope LEFT JOINs the expenses and their bookings (so
-  # expense- and booking-level filters can match), which would show a
-  # transaction with several matching bookings more than once. The listing
-  # therefore selects the matching transaction ids and re-queries
-  # moss_transactions by id, so the sort and the paging see one row per
-  # transaction. The joins themselves are NOT repeated here -- they belong to
-  # the schema's base relation and are merged in by
-  # Wsjrdp::Filtering::FilterSchema#compile.
-  def distinct_transactions
-    MossTransaction.where(id: transactions_table_state.filter.scope(MossTransaction.all)
-      .reselect(MossTransaction.arel_table[:id]))
   end
 
   def authorize_action

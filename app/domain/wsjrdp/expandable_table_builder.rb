@@ -129,6 +129,15 @@ class Wsjrdp::ExpandableTableBuilder
     @locals[:detail_links_float] = float
   end
 
+  # The header line of a LAZY detail (detail_src) as a narrow column at the
+  # right, the loaded detail beside it as a block of its own: narrower, so it
+  # never runs under the buttons and its field list stays aligned. The
+  # detail kit's inline-edit toggle ("Bearbeiten", doc/fin/detail_partials.md)
+  # joins the column; on a phone the buttons are one line above the detail.
+  def detail_links_aside
+    @locals[:detail_links_aside] = true
+  end
+
   # An ADDITIONAL double link in the detail's header line, left of the primary
   # one and in declaration order (callable several times). The block returns the
   # URL, or nil for a row that has no such target (no group is rendered then).
