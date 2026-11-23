@@ -52,6 +52,8 @@
 #             have, labels: {key => "..."} the names it gives some of them and
 #             widths: {key => "9rem"} the widths it gives some of them (a longer
 #             name may need more room in the header) --
+#             never: the ones it has but never shows (out of the menu and the
+#             params, yet TableState#column_hidden? says true) --
 #             a dataset is described ONCE (Wsjrdp::ExpandableTableColumns) and
 #             each table shapes that description (D2b). `only:` is the same
 #             statement from the other side: every column of the codec outside
@@ -278,6 +280,13 @@ class Wsjrdp::TableStatePolicy
     (@columns.keys - allowed).to_set | keys.to_set
   end
 
+  # The long keys of the columns THIS table never shows (`cols: {never:}`).
+  def never_columns(raw)
+    keys = Array(raw).map(&:to_s)
+    validate_column_keys!(keys, "cols: never:")
+    keys
+  end
+
   # key => the name THIS table gives that column, overriding the description's.
   def column_labels(raw)
     labels = (raw || {}).to_h { |key, label| [key.to_s, label.to_s] }
@@ -357,6 +366,7 @@ class Wsjrdp::TableStatePolicy
     options = field(:cols).options
     column_labels(options[:labels]) unless options[:labels].is_a?(Proc)
     column_widths(options[:widths]) unless options[:widths].is_a?(Proc)
+    never_columns(options[:never]) unless options[:never].is_a?(Proc)
     only = options[:only] unless options[:only].is_a?(Proc)
     exclude = options[:exclude] unless options[:exclude].is_a?(Proc)
     validate_column_keys!(Array(only).map(&:to_s), "cols: only:") unless only.nil?

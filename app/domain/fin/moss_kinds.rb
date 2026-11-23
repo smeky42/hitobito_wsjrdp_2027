@@ -35,6 +35,10 @@ module Fin::MossKinds
   # Prefix of every kind class, single-sourced so #slug can undo it.
   CSS_PREFIX = "moss-kind-"
 
+  # Marks a quick-choice button that stands for a kind, so its icon takes the
+  # kind's colour (shared/wsjrdp/_moss_kind_styles).
+  PRESET_CLASS = "flt-kind"
+
   # type => {icon: FontAwesome 5 free SOLID name, css_class:}. The keys are
   # exactly Fin::MossTransactionsFilterSchema::KINDS, in that order (asserted
   # in the spec -- naming the constant here would pull the whole filter schema
@@ -63,11 +67,12 @@ module Fin::MossKinds
     # and bookings lists, the wallet): one segment behind an "all" asterisk,
     # every kind chosen by default. A locked condition, not part of the user's
     # own filter. The words are the chip words of the rows, so a button and an
-    # "Art" cell read alike. A METHOD: the labels are I18n.
+    # "Art" cell read alike. A METHOD: the labels are I18n. The all-transactions
+    # page builds its own (Fin::AccountKinds.fixed_group).
     def fixed_group
       members = Fin::MossTransactionsFilterSchema::KINDS.map do |kind|
         {key: slug(kind), label: I18n.t("fin.moss.kind_chips.#{kind}"), value: kind,
-         icon: icon(kind), css_class: css_class(kind)}
+         icon: icon(kind), css_class: "#{PRESET_CLASS} #{css_class(kind)}"}
       end
       {key: "kind", multiple: true, attribute: "kind", default: members.pluck(:key),
        all_title: "Alle Arten wählen bzw. abwählen", members: members}

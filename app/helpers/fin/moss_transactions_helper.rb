@@ -20,13 +20,20 @@ module Fin::MossTransactionsHelper
   # row's detail. This cap only keeps the page small.
   DESCRIPTION_LENGTH = 600
 
-  def moss_transaction_table_columns
+  # Hidden booking date and kind columns move into the description as chips,
+  # their sorts into its header (Fin::RowChipsHelper).
+  def moss_transaction_table_columns(state)
+    kind_chip = state.column_hidden?("kind")
+    dates = fin_date_chip_modes(state, booking_label: "Buchungsdatum", value: nil)
+    hidden = fin_hidden_date_keys(state, %w[booking_date]) + (kind_chip ? ["kind"] : [])
     Fin::MossTransactionsColumns::COLUMNS.map do |col|
-      col.to_table_column(cell: ->(tx) { moss_transaction_cell(tx, col.key) })
+      subs = (et_sub_sorts(Fin::MossTransactionsColumns::COLUMNS, hidden) if col.key == "description")
+      col.to_table_column(cell: ->(tx) { moss_transaction_cell(tx, col.key, kind_chip: kind_chip, dates: dates) },
+        sub_sorts: subs)
     end
   end
 
-  def moss_transaction_cell(tx, key)
+  def moss_transaction_cell(tx, key, kind_chip: false, dates: nil)
     case key
     # Zahlungsdatum is the one date cell that writes the em dash itself: two of
     # the four kinds carry no payout day at all, so a blank cell would read as a
@@ -40,9 +47,8 @@ module Fin::MossTransactionsHelper
     when "signed_total_base_amount"
       moss_transaction_amount_cell(tx)
     when "description"
-      text = tx.description(length: DESCRIPTION_LENGTH)
-      safe_join([(content_tag(:span, text, class: "moss-desc") if text.present?),
-        moss_transaction_subject_links(tx)].compact)
+      chips = (dates ? fin_date_chips(dates, booking_date: tx.booking_date) : []) << (moss_kind_chip(tx.type) if kind_chip)
+      moss_transaction_description_cell(tx, chips: fin_row_chips(chips))
     when "party"
       moss_transaction_party(tx)
     when "cost_centers"
@@ -58,6 +64,15 @@ module Fin::MossTransactionsHelper
     else
       tx.public_send(key)
     end
+  end
+
+  # The description cell: the text, then `party_line` (the other side, where a
+  # table shows it there), then the person side of every booking, then `chips`
+  # (fin_row_chips: what hidden columns would show).
+  def moss_transaction_description_cell(tx, party_line: nil, chips: nil)
+    text = tx.description(length: DESCRIPTION_LENGTH)
+    safe_join([(content_tag(:span, text, class: "moss-desc") if text.present?), party_line,
+      moss_transaction_subject_links(tx), chips].compact)
   end
 
   # German label of a kind (STI type), e.g. "Kartenzahlung".

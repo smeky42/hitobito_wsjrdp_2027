@@ -19,6 +19,9 @@ module Fin::PaymentReturnsColumns
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "prcol") do |c|
     c.column key: "person", abbr: "p", label: "Person", width: "9rem", target_width: "13rem", grow: 1,
       sort: "LOWER(people.last_name || ' ' || people.first_name)", default: true
+    # The payer as the bank names them (Fin::CamtParty).
+    c.column key: "party", abbr: "pty", label: "Gegenseite", width: "9rem", target_width: "13rem",
+      sort: "LOWER(#{Fin::CamtParty.party_sql("wsjrdp_camt_transactions")})", default: true
     c.column key: "date", abbr: "d", label: "Datum", width: "6.5rem", tabular_nums: true,
       sort: "COALESCE(wsjrdp_camt_transactions.booking_date, wsjrdp_camt_transactions.value_date)",
       sort_first: "desc", default: true

@@ -14,7 +14,7 @@
 #
 #   = wsjrdp_expandable_table do |t|
 #     t.rows    transactions, id: "mtx"     # a Wsjrdp::ExpandableTableRows of the host
-#     t.columns moss_transaction_table_columns, menu: true
+#     t.columns moss_transaction_table_columns(transactions.state), menu: true
 #     t.row_key { |tx| tx.id }
 #     t.detail_page { |tx| moss_transaction_path(tx) }
 #     t.detail  { |tx, ctx| render ... }

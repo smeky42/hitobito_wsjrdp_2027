@@ -196,7 +196,7 @@ describe Fin::MossBookingsController do
   end
 
   # The booking's own Kostenstelle and Sachkonto are default columns, number
-  # plus name; the date header falls back to "Datum" when it is too narrow.
+  # plus name; the date header falls back to "Buchung" when it is too narrow.
   describe "GET index with the booking's accounting" do
     before do
       WsjrdpCostCenter.create!(number: "4711", name: "Vortreffen") unless WsjrdpCostCenter.exists?(number: "4711")
@@ -217,7 +217,7 @@ describe Fin::MossBookingsController do
       header = doc.at_css("thead th[data-colkey='booking_date']") ||
         doc.css("thead th").find { |th| th.text.include?("Buchungsdatum") }
       expect(header.at_css(".exp-label-full").text).to eq("Buchungsdatum")
-      expect(header.at_css(".exp-label-short").text).to eq("Datum")
+      expect(header.at_css(".exp-label-short").text).to eq("Buchung")
     end
   end
 
@@ -268,6 +268,19 @@ describe Fin::MossBookingsController do
       expect(rendered_kinds).to eq(%w[MossReimbursement MossCardTransaction]
         .map { |kind| Fin::MossKinds.css_class(kind) })
       expect(preset_links.pluck("aria-pressed")).to eq(%w[false true true false false])
+    end
+
+    # Alt-click and the button's menu follow these links (_preset_styles).
+    it "gives each kind the links of choosing it alone, all but it, and all" do
+      get :index, params: {u: "kind.card_transaction"}
+      card, invoice = preset_links.select { |a| a["data-only-href"] }.values_at(0, 2)
+      lifts = ->(link, key) { CGI.unescape(link["data-#{key}-href"][/[?&]u=([^&]*)/, 1].to_s) }
+
+      expect(lifts.call(invoice, "only")).to eq("kind.invoice")
+      expect(lifts.call(card, "only")).to eq("") # the only one chosen: all again
+      expect(lifts.call(card, "except")).to eq("kind.reimbursement+invoice+top_up")
+      expect(lifts.call(card, "all")).to eq("")
+      expect(card["title"]).to include("Alt-Klick: nur diese")
     end
 
     it "shows nothing when no kind is chosen, and says so" do

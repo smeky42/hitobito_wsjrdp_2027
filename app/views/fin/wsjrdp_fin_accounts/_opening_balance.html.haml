@@ -1,0 +1,18 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+-#
+-#  The opening balance below an account's statement: outside the table, as it
+-#  is no transaction and must not be sorted, filtered, paged or counted.
+:css
+  /* Label left, amount right. Only the vertical padding is set: the line sits
+     in a Bootstrap .row, whose gutter keeps it flush with the table. */
+  .mw-balance { display: flex; justify-content: space-between; align-items: baseline;
+    gap: 1rem; max-width: 28rem; padding-top: .25rem; padding-bottom: .25rem; }
+  .mw-balance-amount { font-variant-numeric: tabular-nums; }
+.mw-balance.mt-2
+  %span Eröffnungs-Saldo
+  %span.mw-balance-amount= fin_money(fin_account.opening_balance_eur)

@@ -49,3 +49,174 @@
       .flt-segment .btn[aria-pressed="true"]:hover { background: rgba(var(--bs-primary-rgb, 33, 105, 124), .2);
         color: var(--bs-btn-color); }
       .flt-segment .btn[aria-disabled="true"] { pointer-events: none; opacity: .55; }
+      /* A segment of the quick choice wraps when the line is too narrow, with a
+         small gap between its lines. Where a line goes on, the frame fades out
+         after its last button and fades in before the next line's first (the
+         script below draws that). Both fades need room the wrapping must not
+         depend on, so the segment keeps 10px free on either side; its first
+         button is pulled back, so line 1 starts where it did. */
+      .flt-group { position: relative; min-width: 0; max-width: 100%; }
+      .flt-group .flt-segment { flex-wrap: wrap; row-gap: 6px; min-width: 0; padding: 0 10px; }
+      /* Every button of a segment is at least as high as one with a line of
+         text, and at least as wide as high, so the bar keeps its height when
+         the words hide (a phone) and an icon alone makes a square. */
+      .flt-group .flt-segment > .btn { flex: 0 0 auto; justify-content: center;
+        --flt-btn-size: calc(var(--bs-btn-font-size, .875rem) * var(--bs-btn-line-height, 1.5)
+          + 2 * var(--bs-btn-padding-y, .25rem) + 2 * var(--bs-btn-border-width, 1px));
+        min-height: var(--flt-btn-size); min-width: var(--flt-btn-size); }
+      .flt-group .flt-segment > .btn:first-child { margin-left: -10px; }
+      .flt-wrap-fade { position: absolute; width: 10px; pointer-events: none; }
+      .flt-wrap-fade::before, .flt-wrap-fade::after { content: ""; position: absolute; left: 0; right: 0;
+        height: 1px; background: linear-gradient(to right, var(--flt-wrap-color), transparent); }
+      .flt-wrap-fade::before { top: 0; }
+      .flt-wrap-fade::after { bottom: 0; }
+      .flt-wrap-fade-in::before, .flt-wrap-fade-in::after {
+        background: linear-gradient(to left, var(--flt-wrap-color), transparent); }
+      /* On a phone a button with an icon shows the icon alone; the word stays
+         for screen readers and as the tooltip. */
+      /* The menu of a kind button (right-click or a long press): only this,
+         all but this, all. iOS would show its own link preview on a long
+         press instead. */
+      .flt-segment [data-only-href] { -webkit-touch-callout: none; }
+      .flt-choice-menu { position: absolute; z-index: 1050; min-width: 12rem; padding: .25rem 0;
+        background: #fff; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem;
+        box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .12); font-size: .875rem; }
+      .flt-choice-menu button { display: block; width: 100%; padding: .3rem .9rem; border: 0;
+        background: none; text-align: left; color: var(--bs-body-color, #212529); }
+      .flt-choice-menu button:hover, .flt-choice-menu button:focus { background: var(--bs-tertiary-bg, #f1f3f5); }
+      @media (max-width: 575.98px) {
+        .flt-segment .flt-preset-label { position: absolute; width: 1px; height: 1px; overflow: hidden;
+          clip: rect(0 0 0 0); white-space: nowrap; }
+      }
+  -# Draws the fades of a wrapped segment: measures which button starts and
+  -# which ends each line, and lays a fade over the segment's free edge there.
+  -# The fades are absolutely placed, so drawing them never changes where a line
+  -# breaks. A ResizeObserver redraws them whenever a segment changes size.
+  :javascript
+    (function () {
+      if (window.wsjrdpFltWrap) { window.wsjrdpFltWrap.scan(); return; }
+      var WIDTH = 10;
+      var observer = new ResizeObserver(function (entries) {
+        entries.forEach(function (entry) { draw(entry.target); });
+      });
+
+      function draw(segment) {
+        var group = segment.parentElement;
+        group.querySelectorAll(":scope > .flt-wrap-fade").forEach(function (el) { el.remove(); });
+        var lines = [];
+        Array.prototype.forEach.call(segment.children, function (button) {
+          if (!button.classList.contains("btn")) return;
+          var line = lines[lines.length - 1];
+          if (!line || Math.abs(line.top - button.offsetTop) > 3) lines.push(line = {top: button.offsetTop, buttons: []});
+          line.buttons.push(button);
+        });
+        if (lines.length < 2) return;
+        var origin = group.getBoundingClientRect();
+        lines.forEach(function (line, i) {
+          if (i < lines.length - 1) fade(group, origin, line.buttons[line.buttons.length - 1], "out");
+          if (i > 0) fade(group, origin, line.buttons[0], "in");
+        });
+      }
+
+      function fade(group, origin, button, direction) {
+        var box = button.getBoundingClientRect();
+        var el = document.createElement("span");
+        el.className = "flt-wrap-fade flt-wrap-fade-" + direction;
+        el.setAttribute("aria-hidden", "true");
+        el.style.top = (box.top - origin.top) + "px";
+        el.style.height = box.height + "px";
+        el.style.left = (direction === "out" ? box.right - origin.left - 1 : box.left - origin.left - WIDTH + 1) + "px";
+        el.style.setProperty("--flt-wrap-color", getComputedStyle(button).borderTopColor);
+        group.appendChild(el);
+      }
+
+      function scan() {
+        document.querySelectorAll(".flt-group > .flt-segment").forEach(function (segment) {
+          if (segment.dataset.fltWrap) return;
+          segment.dataset.fltWrap = "1";
+          observer.observe(segment);
+        });
+      }
+
+      // A kind button chooses its kind alone on Alt-click (the browser would
+      // download the link otherwise), and offers only / all but / all in a
+      // menu on right-click or a long press. Each leads to its own URL, which
+      // the button carries (data-only-href and friends); it is followed by
+      // clicking the button with that URL, so the table's own handling of a
+      // preset click (scroll position, Turbo) applies.
+      function follow(link, href) {
+        if (!href || link.getAttribute("aria-disabled") === "true") return;
+        link.setAttribute("href", href);
+        link.click();
+      }
+
+      function closeMenu() {
+        document.querySelectorAll(".flt-choice-menu").forEach(function (el) { el.remove(); });
+      }
+
+      function openMenu(link) {
+        closeMenu();
+        if (link.getAttribute("aria-disabled") === "true") return;
+        var menu = document.createElement("div");
+        menu.className = "flt-choice-menu";
+        menu.setAttribute("role", "menu");
+        var label = link.dataset.label;
+        [["only", "Nur „" + label + "“"], ["except", "Alle außer „" + label + "“"], ["all", "Alle"]].forEach(function (item) {
+          var button = document.createElement("button");
+          button.type = "button";
+          button.setAttribute("role", "menuitem");
+          button.textContent = item[1];
+          button.addEventListener("click", function () { closeMenu(); follow(link, link.dataset[item[0] + "Href"]); });
+          menu.appendChild(button);
+        });
+        var box = link.getBoundingClientRect();
+        menu.style.left = (box.left + window.scrollX) + "px";
+        menu.style.top = (box.bottom + window.scrollY + 4) + "px";
+        document.body.appendChild(menu);
+        menu.querySelector("button").focus();
+      }
+
+      // A long press opens the menu; the click that may follow it on the same
+      // button must not toggle the kind as well.
+      var pressTimer = null;
+      var pressStart = null;
+      var pressedLink = null;
+      document.addEventListener("click", function (e) {
+        var link = e.target.closest("a[data-only-href]");
+        var afterPress = pressedLink && link === pressedLink;
+        pressedLink = null;
+        if (afterPress) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+        if (!e.target.closest(".flt-choice-menu")) closeMenu();
+        if (!link || !e.altKey) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        follow(link, link.dataset.onlyHref);
+      }, true);
+      document.addEventListener("contextmenu", function (e) {
+        var link = e.target.closest("a[data-only-href]");
+        if (!link) return;
+        e.preventDefault();
+        openMenu(link);
+      });
+      document.addEventListener("pointerdown", function (e) {
+        var link = e.target.closest("a[data-only-href]");
+        pressedLink = null;
+        if (!link || e.pointerType === "mouse") return;
+        pressStart = {x: e.clientX, y: e.clientY};
+        pressTimer = setTimeout(function () { pressedLink = link; openMenu(link); }, 500);
+      });
+      ["pointerup", "pointercancel"].forEach(function (name) {
+        document.addEventListener(name, function () { clearTimeout(pressTimer); });
+      });
+      document.addEventListener("pointermove", function (e) {
+        if (pressStart && Math.abs(e.clientX - pressStart.x) + Math.abs(e.clientY - pressStart.y) > 10) clearTimeout(pressTimer);
+      });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+      document.addEventListener("turbo:before-render", closeMenu);
+
+      window.wsjrdpFltWrap = {scan: scan};
+      ["DOMContentLoaded", "turbo:load", "turbo:render", "turbo:frame-load"].forEach(function (name) {
+        document.addEventListener(name, scan);
+      });
+      setTimeout(scan, 0);
+    })();

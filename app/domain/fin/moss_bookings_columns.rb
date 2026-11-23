@@ -28,7 +28,7 @@ module Fin::MossBookingsColumns
     # Buchungsdatum is the day the payment was booked in the wallet -- the
     # booking has no date of its own, so cell and ORDER BY alike read the
     # transaction's column (MossBooking#value_date is the same day).
-    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", short_label: "Datum",
+    c.column key: "booking_date", abbr: "bdt", label: "Buchungsdatum", short_label: "Buchung",
       width: "7rem", target_width: "9rem", sort: "moss_transactions.booking_date", default: true
     c.column key: "kind", abbr: "knd", label: "Art", width: "7rem",
       sort: "moss_transactions.type", default: true

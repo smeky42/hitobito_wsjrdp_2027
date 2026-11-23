@@ -28,7 +28,7 @@
     edit_url: local_assigns[:edit_url], cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
   - d.header label: t("fin.payments.camt_link", id: tx.id),
       back: return_path, back_label: t("global.button.back")
-  - d.attrs :fin_account, :amount_eur, :base_currency, :value_date, :booking_date, :description, :comment,
+  - d.attrs :fin_account, :amount_eur, :party, :base_currency, :value_date, :booking_date, :description, :comment,
       **edit.slice(:comment)
   - d.attrs :subject, :accounting_entries, **edit.slice(:subject)
   -# A return's status belongs to a return: nothing without a return reason.

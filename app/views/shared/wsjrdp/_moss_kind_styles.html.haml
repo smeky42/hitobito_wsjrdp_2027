@@ -32,6 +32,13 @@
   .moss-kind-invoice          { --moss-kind-fg: #a66a0c; --moss-kind-bg: #fbecd2; }
   .moss-kind-reimbursement    { --moss-kind-fg: #6b4aa6; --moss-kind-bg: #ebe4f7; }
   .moss-kind-top_up           { --moss-kind-fg: #166f5c; --moss-kind-bg: #dcefe8; }
+  /* Not Moss kinds: the bank kinds where they stand among them (the
+     all-transactions page, Fin::AccountKinds). A payment in neutral grey, a
+     fee or interest in warm grey, a return in the red of returns. A transfer
+     takes the top-up's colour. */
+  .moss-kind-bank             { --moss-kind-fg: #495057; --moss-kind-bg: #dee2e6; }
+  .moss-kind-bank_fee         { --moss-kind-fg: #6b5b4b; --moss-kind-bg: #e9e2d8; }
+  .moss-kind-bank_return      { --moss-kind-fg: #a12a2a; --moss-kind-bg: #f8dcdc; }
 
   /* The chip: a small pill of icon + word. The gap keeps the two apart, the
      transparent border keeps the height stable in forced-colors mode (where the
@@ -44,6 +51,23 @@
     color: var(--moss-kind-fg); background: var(--moss-kind-bg);
   }
   .moss-kind .fas { font-size: .85em; }
+
+  /* An account as a chip (Fin::RowChipsHelper#account_chip): an
+     outlined pill, so it does not read as a kind. The chips line of a
+     description cell holds it next to the kind chip. */
+  .fin-account-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .08rem .5rem .08rem .4rem; border: 1px solid var(--bs-border-color, #ced4da);
+    border-radius: 999px; white-space: nowrap; font-size: .76rem; line-height: 1.5;
+    color: #495057; background: #fff;
+  }
+  .fin-account-chip .fas { font-size: .85em; color: #868e96; }
+  .fin-row-chips { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .3rem; }
+  /* A line whose chips all show on a phone alone (a date whose column is
+     shown there) is no line on a wider screen either. */
+  @media (min-width: 768px) {
+    .fin-row-chips:not(:has(> :not(.d-md-none))) { display: none; }
+  }
 
   /* The rail: a 3px line inside the row's first cell, so the kind stays
      readable while scrolling even when the chip has scrolled out of view. It
@@ -65,6 +89,9 @@
   tr.moss-kind-invoice > td:first-child,
   tr.moss-kind-reimbursement > td:first-child,
   tr.moss-kind-top_up > td:first-child,
+  tr.moss-kind-bank > td:first-child,
+  tr.moss-kind-bank_fee > td:first-child,
+  tr.moss-kind-bank_return > td:first-child,
   tbody.moss-kind-card_transaction > tr > td:first-child,
   tbody.moss-kind-invoice > tr > td:first-child,
   tbody.moss-kind-reimbursement > tr > td:first-child,
@@ -100,26 +127,14 @@
      sign is rendered next to it -- again, colour is never the only cue. */
   .moss-amount-in { color: #1e7b3d; }
 
-  /* A filter preset that stands for one kind (Wsjrdp::TableState::FilterPreset
-     with icon + css_class): the toggle link keeps its plain button shape, only
-     its icon is tinted, and switching it on fills it with the kind's pale
-     background. The :hover variants are spelled out because the builder's own
-     [aria-pressed="true"]:hover rule has the same specificity as the plain one
-     here and would otherwise win by source order. */
-  .flt-preset.moss-kind-card_transaction .fas,
-  .flt-preset.moss-kind-invoice .fas,
-  .flt-preset.moss-kind-reimbursement .fas,
-  .flt-preset.moss-kind-top_up .fas { color: var(--moss-kind-fg); }
+  /* A quick-choice button that stands for a kind (Fin::MossKinds::PRESET_CLASS):
+     its icon in the kind's colour. Switched on it looks like any pressed
+     button; switched off its text turns grey and its icon pale. The frame of
+     a segment of kinds stays the same either way. */
+  .flt-preset.flt-kind .fas { color: var(--moss-kind-fg); }
   /* ... except the on/off tick, which is a filled dot with a white check of its
      own. Same specificity as the rule above, so it has to come after it. */
   .flt-preset .flt-preset-tick .fas { color: inherit; }
-  .flt-preset.moss-kind-card_transaction[aria-pressed="true"],
-  .flt-preset.moss-kind-invoice[aria-pressed="true"],
-  .flt-preset.moss-kind-reimbursement[aria-pressed="true"],
-  .flt-preset.moss-kind-top_up[aria-pressed="true"],
-  .flt-preset.moss-kind-card_transaction[aria-pressed="true"]:hover,
-  .flt-preset.moss-kind-invoice[aria-pressed="true"]:hover,
-  .flt-preset.moss-kind-reimbursement[aria-pressed="true"]:hover,
-  .flt-preset.moss-kind-top_up[aria-pressed="true"]:hover {
-    background: var(--moss-kind-bg); border-color: var(--moss-kind-fg);
-  }
+  .flt-preset.flt-kind[aria-pressed="false"] { color: var(--bs-secondary-color, #6c757d); }
+  .flt-preset.flt-kind[aria-pressed="false"] .fas { color: color-mix(in srgb, var(--moss-kind-fg) 45%, white); }
+  .flt-segment:has(.flt-kind) > .btn { border-color: var(--bs-primary, #21697c); }

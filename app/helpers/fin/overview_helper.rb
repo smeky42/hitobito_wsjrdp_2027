@@ -117,13 +117,10 @@ module Fin::OverviewHelper
     @fin_tab_accounts ||= WsjrdpFinAccount.tab_visible.to_a
   end
 
-  # Target of the "Konten" tab (Sheet::Fin::Accounts): the first account with a
-  # tab of its own, the Übersicht when there is none. The splat takes the
-  # sheet's path arguments, which this path does not need.
-  def fin_accounts_tab_path(*)
-    first = fin_tab_accounts.first
-    first ? wsjrdp_fin_account_path(first) : wsjrdp_fin_accounts_path
-  end
+  # Target of the accounts tab (Sheet::Fin::Accounts): every account's
+  # transactions. The splat takes the sheet's path arguments, which this path
+  # does not need.
+  def fin_accounts_tab_path(*) = fin_account_transactions_path
 
   private
 

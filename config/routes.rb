@@ -309,6 +309,10 @@ Rails.application.routes.draw do
       resources :wsjrdp_camt_transactions, path: "tx", only: [:show, :edit, :update] do
         concerns :tx_actions, controller: "wsjrdp_camt_transactions"
       end
+      # "Alle": every account's transactions (Fin::AccountTransactionsController).
+      # Declared before the accounts so "acc/all" is not read as an id.
+      get "acc/all", to: "account_transactions#index", as: "fin_account_transactions"
+      post "acc/all/apply", to: "account_transactions#apply", as: "apply_fin_account_transactions"
       # Umbuchungen (transfers between own accounts), a tab of Konten & Wallets.
       # Declared before the accounts so "acc/internal_transfers" is not read as an id.
       # The shared transaction picker's results (shared/wsjrdp/_transaction_picker).

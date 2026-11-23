@@ -101,6 +101,10 @@
   /* A column's sort variants: one chip per measure under the label. */
   .exp-sort-chips { display: flex; flex-wrap: wrap; gap: .15rem; margin-top: .15rem; font-weight: 400; }
   .text-end > .exp-sort-chips { justify-content: flex-end; }
+  /* The sub-sorts of a header (to_table_column sub_sorts:): a small line of
+     sort links of the columns the cell shows while they are hidden. */
+  .exp-sub-sorts { display: flex; flex-wrap: wrap; gap: .1rem .75rem; margin-top: .1rem; font-size: .8em;
+    font-weight: 400; }
   .exp-sort-chip { padding: 0 .25rem; font-size: .75em; line-height: 1.5;
     border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 1rem; }
   .exp-sort-chip.exp-sort-active { background: var(--bs-secondary-bg, #e9ecef); }

@@ -329,6 +329,7 @@ describe "finance read tier (Buchhaltung / Abstimmung)" do
       Nokogiri::HTML(response.body).css("form")
         .reject { |form| form["method"].to_s.casecmp?("get") }
         .flat_map { |form| form.css("button[type=submit], input[type=submit]") }
+        .reject { |button| button["class"].to_s.include?("flt-apply-btn") } # a table's filter, not a save
     end
 
     describe ::Fin::WsjrdpFinAccountsController, type: :controller do

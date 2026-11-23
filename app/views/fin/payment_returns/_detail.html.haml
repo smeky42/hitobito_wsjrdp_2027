@@ -26,7 +26,7 @@
 = fin_detail(entry, ctx, editing: editing, form_url: local_assigns[:form_url], edit_url: local_assigns[:edit_url],
     cancel_url: local_assigns[:cancel_url], sticky_actions: true) do |d|
   - d.header label: t("fin.payments.return_label", id: entry.id), title: entry.subject&.short_full_name_with_nickname
-  - d.attrs :subject, :return_date, :amount_cents, :return_reason, :return_status, :comment,
+  - d.attrs :subject, :party, :return_date, :amount_cents, :return_reason, :return_status, :comment,
       **{comment: {blank: :dash}}.deep_merge(payment_return_edit_options(local_assigns[:form_url].present?))
   - d.attrs :debit, :payment_info, :payment_order
   - d.attrs :endtoend_id, :mandate_id, :description

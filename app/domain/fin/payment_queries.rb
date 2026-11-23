@@ -316,7 +316,7 @@ module Fin::PaymentQueries
         "notice.id AS notice_id", "notice.collection_date AS notice_collection_date",
         "notice.matched_by AS notice_matched_by", "#{RETURN_ORDER_SQL} AS order_id",
         "COALESCE(notice.info_id, wsjrdp_camt_transactions.direct_debit_payment_info_id) AS info_id",
-        "entry.id AS return_entry_id")
+        "entry.id AS return_entry_id", Fin::CamtParty.select_sql("wsjrdp_camt_transactions"))
       .joins(RETURN_NOTICE_JOIN).joins(RETURN_ENTRY_JOIN).joins(RETURN_PERSON_JOIN)
   end
 
@@ -324,7 +324,8 @@ module Fin::PaymentQueries
   # amount in cents.
   def other_returns
     WsjrdpCamtTransaction.where(Arel.sql(other_return_condition("wsjrdp_camt_transactions")))
-      .select("wsjrdp_camt_transactions.*", "#{return_cents("wsjrdp_camt_transactions")} AS amount_cents")
+      .select("wsjrdp_camt_transactions.*", "#{return_cents("wsjrdp_camt_transactions")} AS amount_cents",
+        Fin::CamtParty.select_sql("wsjrdp_camt_transactions"))
   end
 
   def return_totals(returns)

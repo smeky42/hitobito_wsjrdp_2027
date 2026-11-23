@@ -12,10 +12,8 @@
 # that came back (Fin::PaymentQueries.other_returns), one bank transaction per
 # row, with what came back (return_kind) and from whom.
 module Fin::OtherReturnsColumns
-  # The other party: the payee of a credit transfer we sent or of a direct debit
-  # we were charged, else the payer.
-  COUNTERPARTY_SQL = "CASE WHEN wsjrdp_camt_transactions.return_kind IN ('credit_transfer', 'received_direct_debit') " \
-    "THEN wsjrdp_camt_transactions.cdtr_name ELSE wsjrdp_camt_transactions.dbtr_name END"
+  # The other side, as on the account's statement (Fin::CamtParty).
+  COUNTERPARTY_SQL = Fin::CamtParty.party_sql("wsjrdp_camt_transactions")
 
   COLUMNS = Wsjrdp::ExpandableTableColumns.define(css_prefix: "orcol") do |c|
     c.column key: "date", abbr: "d", label: "Datum", width: "6.5rem", tabular_nums: true,
@@ -25,7 +23,7 @@ module Fin::OtherReturnsColumns
       sort: "wsjrdp_camt_transactions.return_kind", default: true
     c.column key: "amount", abbr: "a", label: "Betrag", numeric: true, width: "7rem", tabular_nums: true,
       sort: "wsjrdp_camt_transactions.signed_base_amount", default: true
-    c.column key: "counterparty", abbr: "cp", label: "Gegenpartei", width: "10rem", target_width: "16rem", grow: 1,
+    c.column key: "counterparty", abbr: "cp", label: "Gegenseite", width: "10rem", target_width: "16rem", grow: 1,
       sort: "LOWER(#{COUNTERPARTY_SQL})", default: true
     c.column key: "reason", abbr: "rs", label: "Grund", width: "10rem", target_width: "24rem", grow: 2,
       sort: "wsjrdp_camt_transactions.return_reason", default: true

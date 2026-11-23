@@ -100,6 +100,7 @@ module Fin::PaymentsHelper
   def payment_return_table_columns
     cells = {
       "person" => ->(ret) { payment_person(ret.subject) },
+      "party" => ->(ret) { fin_party_cell(ret.party, ret.party_kind, ret.signed_base_amount) },
       "date" => ->(ret) { fin_date(ret.booking_date || ret.value_date) },
       "amount" => ->(ret) { payment_cents(ret.amount_cents) },
       "reason" => ->(ret) { payment_return_reasons(ret.return_reason, long: true) },
@@ -247,9 +248,7 @@ module Fin::PaymentsHelper
       "date" => ->(ret) { fin_date(ret.booking_date || ret.value_date) },
       "kind" => ->(ret) { t("fin.payments.return_kinds.#{ret.return_kind}") },
       "amount" => ->(ret) { payment_cents(ret.amount_cents) },
-      "counterparty" => ->(ret) {
-        %w[credit_transfer received_direct_debit].include?(ret.return_kind) ? ret.cdtr_name : ret.dbtr_name
-      },
+      "counterparty" => ->(ret) { fin_party_cell(ret.party, ret.party_kind, ret.signed_base_amount) },
       "reason" => ->(ret) { payment_return_reasons(ret.return_reason, long: true) },
       "code" => ->(ret) {
         content_tag(:span, [[ret.bank_transaction_family, ret.bank_transaction_sub_family].compact.join("+").presence,

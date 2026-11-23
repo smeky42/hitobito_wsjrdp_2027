@@ -100,15 +100,20 @@ class Wsjrdp::TableState
   # "Presets".
   FilterPreset = Data.define(:key, :label, :slots, :active, :toggle_wire, :icon, :css_class,
     :group, :attribute, :value, :group_values, :exclusive, :lifts, :pins, :toggle_lifts, :group_label,
-    :segmented, :title) do
+    :segmented, :title, :only_lifts, :except_lifts, :all_lifts) do
     # Data has no per-member defaults; this override gives the display members
     # and the group ones theirs, so a slot preset is constructed by naming
     # neither. `lifts` are the liftable fixed keys a preset lifts, `pins` the
     # optional ones it switches on, `toggle_lifts` the lifts param its toggle
-    # leads to (nil: the toggle leaves it alone).
+    # leads to (nil: the toggle leaves it alone). A member of a fixed group of
+    # several answers also knows the lifts param of choosing it alone
+    # (`only_lifts`; all members again when it is the only one chosen) and of
+    # choosing every member but it (`except_lifts`) or all of them
+    # (`all_lifts`).
     def initialize(key:, label:, slots:, active:, toggle_wire:, icon: nil, css_class: nil,
       group: nil, attribute: nil, value: nil, group_values: nil, exclusive: false, lifts: nil, pins: nil,
-      toggle_lifts: nil, group_label: nil, segmented: false, title: nil)
+      toggle_lifts: nil, group_label: nil, segmented: false, title: nil, only_lifts: nil, except_lifts: nil,
+      all_lifts: nil)
       super
     end
 
@@ -476,7 +481,9 @@ class Wsjrdp::TableState
           icon: member[:others] ? OTHERS_ICON : member[:icon],
           css_class: member[:others] ? ICON_ONLY_CLASS : member[:css_class],
           group: "fixed-#{group[:key]}", group_label: group[:label],
-          toggle_lifts: lifts_for.call(pressed ? chosen - [member[:key]] : chosen + [member[:key]]))
+          toggle_lifts: lifts_for.call(pressed ? chosen - [member[:key]] : chosen + [member[:key]]),
+          only_lifts: lifts_for.call((chosen == [member[:key]]) ? all_keys : [member[:key]]),
+          except_lifts: lifts_for.call(all_keys - [member[:key]]), all_lifts: lifts_for.call(all_keys))
       end
     end
 
@@ -700,9 +707,14 @@ class Wsjrdp::TableState
   class ColumnSet
     attr_reader :keys, :excluded, :labels, :widths
 
-    def initialize(policy, excluded:, labels:, widths: {})
+    # `never`: columns the table has but never shows (`cols: {never:}`): out of
+    # the menu and the params like an excluded one, yet they count as hidden
+    # (TableState#column_hidden?), so a cell that shows a hidden column's value
+    # shows theirs.
+    def initialize(policy, excluded:, labels:, widths: {}, never: [])
       @policy = policy
-      @excluded = excluded.freeze
+      @never = never.to_set.freeze
+      @excluded = (excluded.to_set | @never).freeze
       @labels = labels.freeze
       @widths = widths.freeze
       @keys = policy.column_keys.reject { |key| @excluded.include?(key) }.freeze
@@ -719,6 +731,8 @@ class Wsjrdp::TableState
     def key?(key) = @keys.include?(key.to_s)
 
     def excluded?(key) = @excluded.include?(key.to_s)
+
+    def never?(key) = @never.include?(key.to_s)
 
     # A wire token of the ?s= param -> the long sort key (a column or a sort
     # variant) of a column this table HAS, or nil: a variant goes with its
@@ -795,6 +809,16 @@ class Wsjrdp::TableState
   def default_columns? = @default_columns
 
   def visible_column_keys = @column_states.filter_map { |key, active| key if active }
+
+  # Does this table have the column, switched off -- or never shown
+  # (`cols: {never:}`)? An excluded column is not hidden, the table has none;
+  # an auto column counts as shown.
+  def column_hidden?(key)
+    column_never?(key) || @column_states.any? { |k, active| k == key.to_s && active == false }
+  end
+
+  # Does the table never show the column (`cols: {never:}`)?
+  def column_never?(key) = @columns.never?(key)
 
   # The order the rows are in: the chosen (or preselected) sort, else the
   # policy's hidden one. #sort_list stays what the header and the "Sortiert
@@ -995,7 +1019,8 @@ class Wsjrdp::TableState
         excluded: @policy.excluded_columns(@policy.evaluate(options[:exclude], @controller),
           @policy.evaluate(options[:only], @controller)),
         labels: @policy.column_labels(@policy.evaluate(options[:labels], @controller)),
-        widths: @policy.column_widths(@policy.evaluate(options[:widths], @controller)))
+        widths: @policy.column_widths(@policy.evaluate(options[:widths], @controller)),
+        never: @policy.never_columns(@policy.evaluate(options[:never], @controller)))
     end
 
     def build(values)

@@ -13,8 +13,8 @@ require "spec_helper"
 # and the tab quick links -- are derived from the Sheet::Fin::* sheets
 # (Fin::OverviewHelper#fin_areas), so a tab declared on a sheet appears here
 # without any change to the page; its numbers come from Fin::OverviewFigures.
-# Under the "Konten" heading (no link of its own) the accounts themselves are
-# listed with their balance, and every quick link carries the small new-tab
+# Under "Konten" (a link to every account's transactions) the accounts
+# themselves are listed with their balance, and every quick link carries the small new-tab
 # companion icon. The Konten & Wallets card shows the total balance.
 # All rows this spec builds carry invented values.
 describe Fin::OverviewController do
@@ -219,13 +219,14 @@ describe Fin::OverviewController do
         .to all(eq("In neuem Tab öffnen"))
     end
 
-    # "Konten" is a plain heading over the accounts, not a link.
-    it "shows Konten as a heading without a link" do
+    # "Konten" leads to every account's transactions ("Alle"), the accounts
+    # below it to their own pages.
+    it "links Konten to every account's transactions" do
       get :index
 
       heading = card("accounts").at_css("ul.fin-area-links > li")
-      expect(heading.text.strip).to start_with(I18n.t("fin.tabs.accounts"))
-      expect(heading.css("> a")).to be_empty
+      expect(heading.at_css("> a").text.strip).to eq(I18n.t("fin.tabs.accounts"))
+      expect(heading.at_css("> a")["href"]).to eq(fin_account_transactions_path)
     end
 
     # The card's single figure is the total of the balances it lists.

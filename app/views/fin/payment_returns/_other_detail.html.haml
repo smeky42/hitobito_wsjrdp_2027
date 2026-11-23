@@ -26,7 +26,7 @@
   - d.header label: t("fin.payments.return_label", id: entry.id),
       title: t("fin.payments.return_kinds.#{entry.return_kind}")
   - d.attrs :return_kind, :return_date, :amount_cents, :return_reason, :return_status, :comment,
-      :counterparty, :description, **{comment: {blank: :dash}}.deep_merge(payment_return_edit_options(local_assigns[:form_url].present?))
+      :party, :description, **{comment: {blank: :dash}}.deep_merge(payment_return_edit_options(local_assigns[:form_url].present?))
   -# The original: on the edit page the candidates to choose from
   -# (fin/payment_returns/_original_candidates).
   - original_input = editing ? {editable: true, input: :helper, options: :payment_return_original_input} : {}
