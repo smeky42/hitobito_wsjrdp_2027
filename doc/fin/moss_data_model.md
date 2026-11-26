@@ -50,7 +50,8 @@ into this wagon's Hitobito bookkeeping? This document collects
 > the Moss API — no `POST /oauth2/token`, no `/v1/...` requests, no live access
 > to `public-api.getmoss.com`, not even read-only or for testing. API access uses
 > **real production credentials** against real financial data. (The same rule is
-> in [`AGENTS.md`](../../AGENTS.md).)
+> in [`AGENTS.md`](../../AGENTS.md).) This rule does not cover the Moss MCP
+> server, which is a separate thing; its tools may be used.
 
 Permitted sources of information — in this order:
 
