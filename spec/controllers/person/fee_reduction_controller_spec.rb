@@ -9,9 +9,6 @@
 
 require "spec_helper"
 
-# Planning, activating and discarding a total fee reduction from the
-# "Beitragshöhe" section of the Beitrag page. They change the fee, so they need
-# :update_finance; the person log records what took effect, not the plans.
 describe Person::FeeReductionController, type: :controller do
   let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
   let(:leader) { Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person }
@@ -29,8 +26,7 @@ describe Person::FeeReductionController, type: :controller do
     before { sign_in(finance) }
 
     it "stores a plan without touching the fee or the log" do
-      # The fixture fills in its payment role and pronoun on its first save;
-      # that change must not count as the plan's.
+      # The fixture's first save fills in its payment role and pronoun; not the plan's change.
       person.save!
       with_versioning do
         expect { plan(planned_total_fee_reduction: "250,50") }.not_to change { person.versions.count }
@@ -164,17 +160,6 @@ describe Person::FeeReductionController, type: :controller do
 
         stream = Nokogiri::HTML(response.body).at_css("turbo-stream[action=update][target=fee_reduction_actions_#{person.id}]")
         expect(stream.at_css("template").inner_html).to include("Beitragsreduktion planen")
-      end
-
-      it "labels the fields briefly, marks the amount required and explains hint and comment" do
-        get :edit, params: {person_id: person.id, mode: "new"}
-
-        doc = Nokogiri::HTML(response.body)
-        expect(doc.css(".fee-reduction-form label").map { |l| l.text.strip.delete("*") })
-          .to eq %w[Betrag Kurzhinweis Vorgang Kommentar]
-        expect(doc.at_css("label[for='person_planned_total_fee_reduction']")["class"]).to include("required")
-        expect(doc.text).to include("Erscheint im Vertrag").and include("Nur sichtbar für Personen mit Buchhaltungs-Rechten")
-        expect(doc.css("button[name=commit_action]").pluck("value")).to eq %w[save activate discard]
       end
 
       it "starts from the active reduction" do

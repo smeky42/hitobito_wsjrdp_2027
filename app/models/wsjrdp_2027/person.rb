@@ -847,7 +847,7 @@ module Wsjrdp2027::Person
         else
           ensure_payment_role
           WsjrdpPaymentPlan.kept.find_by(wsjrdp_role: wsjrdp_role, single_payment: early_payer || false,
-            payment_method: Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD).yme_list
+            payment_method: Wsjrdp2027::ParticipationFee::DEFAULT_PAYMENT_METHOD)&.yme_list || []
         end
       end
 

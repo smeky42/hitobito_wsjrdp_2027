@@ -7,21 +7,13 @@
 #  file at the top-level directory or at
 #  https://github.com/smeky42/hitobito_wsjrdp_2027
 
-# The individual installment plan of a person, maintained from the
-# "Ratenplan" section of the person's Beitrag page (person/fee/_installments),
-# also shown in a row of the Individuelle Ratenpläne list: a plan is planned
-# first (the planned fee rule) and takes effect when activated
-# (Wsjrdp2027::ParticipationFee#activate_installments!). Planning, activating
-# and discarding change how the fee is paid, so they need :update_finance;
-# seeing the section does not. Who created, changed, activated or discarded a
-# plan is recorded on the fee rule.
+# A plan is planned first and takes effect when activated.
 class Person::InstallmentsController < ApplicationController
   include ContractHelper
   include PersonInPrimaryGroup
   include WsjrdpFormHelper
 
-  # What the form starts from: a blank plan, the active plan, the standard
-  # plan of the role, or the stored plan.
+  # What the form starts from: blank, active, standard or stored plan.
   MODES = %w[new from_active from_standard edit].freeze
 
   PLANNED_ATTRS = %i[
@@ -41,11 +33,14 @@ class Person::InstallmentsController < ApplicationController
     case mode
     when "new" then person.participation_fee.clear_planned_installments
     when "from_active" then person.participation_fee.plan_installments_from_active
-    when "from_standard" then person.participation_fee.plan_installments_from_standard
+    when "from_standard"
+      person.participation_fee.plan_installments_from_standard
+      # The fee rule's cents cannot hold a fraction of a cent: the text takes the
+      # standard plan's own, unrounded, which saving then refuses.
+      @plan_text = person.participation_fee.standard_payment_plan&.installment_plan&.text
     end
   end
 
-  # Abbrechen in the form: the section's buttons, back in their place.
   def buttons
     respond_to do |format|
       format.turbo_stream
@@ -53,10 +48,11 @@ class Person::InstallmentsController < ApplicationController
     end
   end
 
-  # The form's three buttons: save the plan, save and activate it, or drop
-  # the plan altogether (commit_action "save", "activate", "discard"). A
-  # refused plan comes back into the form's place with its errors; anything
-  # else refreshes the page, which shows the new state (#leave_form).
+  def preview
+    render partial: "person/installments/preview",
+      locals: {person: person, plan_text: params[:plan].to_s, details_open: params[:open] == "1"}
+  end
+
   def update
     return leave_form(discard_plan) if params[:commit_action] == "discard"
 
@@ -95,12 +91,8 @@ class Person::InstallmentsController < ApplicationController
     MODES.include?(params[:mode]) ? params[:mode] : "edit"
   end
 
-  # The plan in the form: as typed after a refused save, else the planned
-  # plan as Wsj27RdpFeeRule writes it.
   def plan_text = @plan_text || person.planned_custom_installments_string
 
-  # The planned fee rule with the typed plan and its authors, saved with the
-  # person.
   def save_plan
     person.planned_custom_installments_string = @plan_text
     rule = person.ensure_planned_fee_rule
@@ -109,13 +101,11 @@ class Person::InstallmentsController < ApplicationController
     person.save
   end
 
-  # The plan takes effect (Wsjrdp2027::ParticipationFee). Answers the notice.
   def activate_plan
     person.participation_fee.activate_installments!(by: current_user)
     "Ratenplan aktiviert."
   end
 
-  # Answers the notice.
   def discard_plan
     if person.participation_fee.discard_installments!(by: current_user)
       "Geplanter Ratenplan verworfen."
@@ -124,12 +114,8 @@ class Person::InstallmentsController < ApplicationController
     end
   end
 
-  # Back to the page the change was made on. On the person's Beitrag page a
-  # page refresh, which the page morphs keeping the scroll position. On the
-  # Individuelle Ratenpläne list (context "fin") a full reload that keeps the
-  # scroll position: a change there moves the row (the list sorts by
-  # activation), and a morph matches the rows by position. Without Turbo a
-  # redirect back. The notice shows in the section of this person only.
+  # The fin list reloads instead of morphing: a change re-sorts its rows,
+  # and a morph matches rows by position.
   def leave_form(notice)
     flash[:installments_notice] = {"person_id" => person.id, "text" => notice}
     respond_to do |format|
@@ -140,17 +126,14 @@ class Person::InstallmentsController < ApplicationController
     end
   end
 
-  # Where the section is shown: "person" (the Beitrag page) or "fin" (a row of
-  # the Individuelle Ratenpläne list); the buttons and the form pass it on.
   def context = (params[:context] == "fin") ? "fin" : "person"
 
-  # A plan is required, written as Wsj27RdpFeeRule takes it.
   def plan_string_valid?(value)
-    return true if value.to_s.match?(Wsj27RdpFeeRule::CUSTOM_INSTALLMENTS_STRING_FORMAT)
-
+    Wsjrdp2027::InstallmentPlan.from_text(value)
+    true
+  rescue Wsjrdp2027::InstallmentPlan::Invalid => e
     # On :base, so the message reads with the form's short label.
-    person.errors.add(:base, value.blank? ? "Ratenplan muss ausgefüllt werden" :
-      "Ratenplan hat nicht die Form „Jahr: Betrag; Betrag; …“")
+    person.errors.add(:base, e.message)
     false
   end
 end

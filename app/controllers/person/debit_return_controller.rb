@@ -69,7 +69,7 @@ class Person::DebitReturnController < ApplicationController
     end
     respond_to do |format|
       format.html { redirect_back_or_to return_url }
-      format.turbo_stream { render turbo_stream: turbo_stream.action(:location_reload, "") }
+      format.turbo_stream { render turbo_stream: turbo_stream.action(:refresh, nil) }
     end
   end
 end

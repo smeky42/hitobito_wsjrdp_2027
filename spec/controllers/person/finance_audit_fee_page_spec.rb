@@ -9,10 +9,6 @@
 
 require "spec_helper"
 
-# The finance audit tier reads a person's Beitrag page (:show_finance) -- with
-# the privileged view of a person with :log, comments included, and without
-# anything that changes something -- but no other page of the person. The
-# read tier reads none of them.
 describe "the Beitrag page for the finance audit tier" do
   let(:yp) { people(:yp_a_1) }
   let(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
@@ -52,7 +48,7 @@ describe "the Beitrag page for the finance audit tier" do
       expect(response).to be_successful
       installments = doc.at_css("section.installments")
       expect(installments.text).to include("HELP-11").and include("Vereinbarung aktiv")
-      expect(installments.text).to include("Geplant:").and include("Änderungen am Ratenplan")
+      expect(installments.text).to include("HELP-12")
       reduction = doc.at_css("section.fee-reduction")
       expect(reduction.text).to include("Härtefall").and include("Nachweis liegt vor")
       expect(response.body).to include("Nullbuchung")
@@ -66,6 +62,7 @@ describe "the Beitrag page for the finance audit tier" do
       expect(response.body).not_to include("Neue Buchung")
       expect(response.body).not_to include("Finanzstatus ändern")
       expect(response.body).not_to include(edit_person_installments_path(yp))
+      expect(response.body).not_to include(edit_person_debit_return_path(yp))
     end
 
     it "shows the auditor the Finanzen and Beiträge tabs, and no tab of a page it may not open" do

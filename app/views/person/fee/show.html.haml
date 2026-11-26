@@ -7,8 +7,6 @@
 
 - content_for :head do
   = javascript_include_tag 'hitobito_wsjrdp_2027/turbo_stream_actions', 'data-turbo-track': true
--# Page refreshes (the "Beitragshöhe" section answers with one) morph the page
--# and keep the scroll position.
 - turbo_refreshes_with(method: :morph, scroll: :preserve)
 
 :css
@@ -35,18 +33,17 @@
                       :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
       = action_button("Rücklastschriften", @edit_debit_return_path,
                       :edit, remote: false, data: {turbo_frame: extra_entry_turbo_frame})
-      = turbo_frame_tag(extra_entry_turbo_frame) do
+      = turbo_frame_tag(extra_entry_turbo_frame, data: {wsjrdp_keep_on_refresh: true}) do
         %span
 
   = standard_form(@new_accounting_entry, {as: :accounting_entry, url: person_accounting_path(@person), method: :post }) do |f|
     = f.error_messages
     = render 'amount_paid_and_total_fee'
     = render 'journal_entries', entries: @journal_entries
-    -# The same entries to file or hand on, in a tab of their own.
     = action_button("Beitragszahlungen als PDF", statement_person_fee_path(@person),
                     :"file-pdf", target: "_blank")
 
-  -# Outside the form above: the sections carry buttons of their own.
+  -# Outside the form: the sections have their own buttons.
   = render 'installments', person: @person
   = render 'bank_account', person: @person
   - if fee_page_privileged?(@person)

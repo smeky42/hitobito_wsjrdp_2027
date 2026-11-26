@@ -189,7 +189,7 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # additional_info["cost_center_numbers"] on a group an Array of cost-center
   # numbers. Each is rendered per element instead. The person's active
   # installment plan (wsjrdp_raw_installments_eur, an Array of decimals) is
-  # written out like everywhere else (installments_text), its payment method
+  # written out as text, its payment method
   # by its label, and an i18n_enum attribute by its labels. An answer of
   # "Daten für den Veranstalter" as stored, with its label (jamboree_change).
   def attribute_change(attr, from, to)
@@ -302,11 +302,10 @@ module Wsjrdp2027::PaperTrail::VersionDecorator
   # The stored plan [starting year, euros per month from January] written
   # out; nil for none, "keine Raten" for a plan of zeros only.
   def raw_installments_eur_text(value)
-    year, *eur = Array(value)
-    return nil if year.nil?
+    plan = Wsjrdp2027::InstallmentPlan.from_raw_eur(Array(value))
+    return nil if plan.nil?
 
-    h.installments_text(Wsjrdp2027::PaymentPlanConversionHelper.year_and_eur_a_to_yme_list(year.to_i, eur)) ||
-      "keine Raten"
+    h.installments_text(plan.yme_list) || "keine Raten"
   end
 
   # Until migration 20261115000100 a person's deregistration lived in one key

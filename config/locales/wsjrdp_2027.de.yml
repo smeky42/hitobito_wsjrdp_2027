@@ -244,6 +244,7 @@ de:
         support_cmt_mail_addresses: E-Mail Adressen Support-CMT
         support_cmt_mail_addresses_string: E-Mail Adressen Support-CMT
       wsjrdp_payment_plan:
+        installments_string: Ratenplan
         payment_method: Zahlungsart
         payment_method_display: Zahlungsart
       person:
@@ -1303,8 +1304,8 @@ de:
       from_active_note: Vorbelegt mit dem aktiven Ratenplan – gespeichert wird ein neuer Plan.
       from_standard_note: Vorbelegt mit dem Standard-Ratenplan der Rolle – gespeichert wird ein neuer Plan.
       string_help: >-
-        Jahr, Doppelpunkt, dann die Euro je Monat ab Januar, getrennt durch Semikolon,
-        z. B. „2026: 0; 0; 500; 500“.
+        Monat oder Jahr mit Doppelpunkt, dann Euro; jeder weitere Betrag nach „;“ gilt
+        für den nächsten Monat, z. B. „2026-03: 500; 500“ oder „2026: 100; 2026-06: 200“.
       comment_help: Nur sichtbar für Personen mit Buchhaltungs-Rechten
       discard_confirm: Planung verwerfen? Ein gespeicherter geplanter Ratenplan wird gelöscht.
       status_link: Ratenplan auf der Beitrags-Seite

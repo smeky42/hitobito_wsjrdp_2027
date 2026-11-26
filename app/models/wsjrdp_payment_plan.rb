@@ -39,7 +39,7 @@ class WsjrdpPaymentPlan < ActiveRecord::Base
       if installments.is_a?(String)
         plan.installments_string = installments
       else
-        plan.raw_installments_eur = Wsjrdp2027::PaymentPlanConversionHelper.installments_to_raw_installments_eur(installments)
+        plan.raw_installments_eur = Wsjrdp2027::InstallmentPlan.from_year_month_cents(installments)&.to_raw_eur
       end
       plan.readonly! if readonly
     end
@@ -47,22 +47,30 @@ class WsjrdpPaymentPlan < ActiveRecord::Base
 
   def payment_method_display = Wsjrdp2027::ParticipationFee.payment_method_label(payment_method)
 
-  def yme_list
-    return [] if raw_installments_eur.blank? || raw_installments_eur.empty?
-    Wsjrdp2027::PaymentPlanConversionHelper.year_and_eur_a_to_yme_list(raw_installments_eur[0].to_i, raw_installments_eur[1..])
-  end
+  # nil without installments.
+  def installment_plan = Wsjrdp2027::InstallmentPlan.from_raw_eur(raw_installments_eur)
 
-  def to_ymc_list
-    return [] if raw_installments_eur.blank? || raw_installments_eur.empty?
-    Wsjrdp2027::PaymentPlanConversionHelper.year_and_eur_a_to_installments_ymc(raw_installments_eur[0].to_i, raw_installments_eur[1..])
-  end
+  def yme_list = installment_plan&.yme_list || []
 
+  validate { errors.add(:base, @installments_string_error) if @installments_string_error }
+
+  # A refused text is kept, so the form shows what was typed.
   def installments_string
-    Wsjrdp2027::PaymentPlanConversionHelper.raw_installments_eur_to_installments_string(raw_installments_eur)
+    return @installments_string_typed if @installments_string_error
+
+    installment_plan&.text || ""
   end
 
   def installments_string=(value)
-    self.raw_installments_eur = Wsjrdp2027::PaymentPlanConversionHelper.installments_string_to_raw_installments_eur(value)
+    @installments_string_error = nil
+    self.raw_installments_eur = if value.blank? || value == "keine"
+      nil
+    else
+      Wsjrdp2027::InstallmentPlan.from_text(value).to_raw_eur
+    end
+  rescue Wsjrdp2027::InstallmentPlan::Invalid => e
+    @installments_string_error = e.message
+    @installments_string_typed = value
   end
 
   def total_eur

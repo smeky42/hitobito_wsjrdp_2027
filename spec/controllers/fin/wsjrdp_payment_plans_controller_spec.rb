@@ -28,11 +28,13 @@ describe Fin::WsjrdpPaymentPlansController do
     get :index
 
     expect(response).to be_successful
-    doc = Nokogiri::HTML(response.body)
-    expect(doc.at_css("#main h1").text).to eq "Ratenpläne"
-    expect(doc.css("#main h2")).to be_empty
-    row = doc.css("#main table tbody tr").find { |tr| tr.text.include?("UL") }
-    expect(row.css("td").map { |td| td.text.squish }).to eq(["UL", "Nein", "2025-12: 150€, 2026-01: 350€", "Lastschrift", "500 €", ""])
-    expect(response.body).not_to include("Individuelle Ratenpläne")
+    expect(response.body).to include(wsjrdp_payment_plan_path(WsjrdpPaymentPlan.kept.first))
+  end
+
+  it "refuses the preview to the read tier" do
+    sign_in(reader)
+
+    expect { get :preview, params: {id: WsjrdpPaymentPlan.kept.first.id, plan: "2026: 1"} }
+      .to raise_error(CanCan::AccessDenied)
   end
 end

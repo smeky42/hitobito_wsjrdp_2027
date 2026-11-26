@@ -54,17 +54,17 @@ module FeeReductionHelper
     gap = fee_reduction_installments_gap_cents(person, fee_cents)
     return if gap.zero?
 
-    sum = fee_reduction_prose_cents(fee_cents + gap)
+    sum = cents_in_prose(fee_cents + gap)
     if gap.positive?
       tag.div(class: "alert alert-warning py-1 px-2 mt-2 mb-0") do
-        "Der Ratenplan bringt #{fee_reduction_prose_cents(gap)} mehr ein als der Beitrag " \
-          "(Summe der Raten #{sum}, Beitrag #{fee_reduction_prose_cents(fee_cents)})."
+        "Der Ratenplan bringt #{cents_in_prose(gap)} mehr ein als der Beitrag " \
+          "(Summe der Raten #{sum}, Beitrag #{cents_in_prose(fee_cents)})."
       end
     else
       tag.div(class: "alert alert-danger py-1 px-2 mt-2 mb-0 fw-semibold") do
-        safe_join([fee_reduction_warning_icon,
-          "Der Ratenplan deckt den Beitrag nicht: es fehlen #{fee_reduction_prose_cents(-gap)} " \
-          "(Summe der Raten #{sum}, Beitrag #{fee_reduction_prose_cents(fee_cents)})."])
+        safe_join([warning_triangle_icon,
+          "Der Ratenplan deckt den Beitrag nicht: es fehlen #{cents_in_prose(-gap)} " \
+          "(Summe der Raten #{sum}, Beitrag #{cents_in_prose(fee_cents)})."])
       end
     end
   end
@@ -76,24 +76,13 @@ module FeeReductionHelper
     return if gap.zero?
 
     if gap.positive?
-      tag.div("Nach Aktivierung bringt der Ratenplan #{fee_reduction_prose_cents(gap)} mehr ein als der Beitrag.",
+      tag.div("Nach Aktivierung bringt der Ratenplan #{cents_in_prose(gap)} mehr ein als der Beitrag.",
         class: "small mt-1")
     else
-      tag.div(safe_join([fee_reduction_warning_icon,
-        "Nach Aktivierung deckt der Ratenplan den Beitrag nicht: es fehlen #{fee_reduction_prose_cents(-gap)}."]),
+      tag.div(safe_join([warning_triangle_icon,
+        "Nach Aktivierung deckt der Ratenplan den Beitrag nicht: es fehlen #{cents_in_prose(-gap)}."]),
         class: "small mt-1 fw-semibold text-danger")
     end
-  end
-
-  # The warning triangle in front of a red message: the installments do not
-  # bring in the fee.
-  def fee_reduction_warning_icon
-    tag.i(class: "fas fa-exclamation-triangle me-1", "aria-hidden": "true")
-  end
-
-  # An amount within a sentence: "1.700€", "123,45€".
-  def fee_reduction_prose_cents(cents)
-    format_cents_de(cents, space: "", zero_cents: "")
   end
 
   # "Wann · Wer" of a version, the author linked where the viewer may see them.
