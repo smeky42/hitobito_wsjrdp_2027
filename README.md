@@ -5,40 +5,94 @@ This hitobito wagon is the registration for the [German Contingent](https://www.
 It is basically the [hitobito dev setup](https://github.com/hitobito/development/blob/master/doc/setup.md).
 And in addition the [wagon creation for hitobito](https://github.com/puzzle/wagons).
 
-```bash
-# create hitobito development environment
-mkdir WSJ2027Anmeldung
-cd WSJ2027Anmeldung
-git clone https://github.com/hitobito/development.git
+### Pinned versions
 
-# clone hitobito core and wsjrdp_2027 wagon
+The wagon only works with matching versions of the hitobito core and the
+development environment. Do **not** use their latest `master`. Use this
+known-good combination:
+
+| Repository | Path | Checked-out state |
+| --- | --- | --- |
+| [hitobito/development](https://github.com/hitobito/development) | `WSJ2027Anmeldung/development` | commit `da1f3e09964bf9775f2fc533f97adeb2a9a50381` |
+| [hitobito/hitobito](https://github.com/hitobito/hitobito) | `WSJ2027Anmeldung/development/app/hitobito` | tag `2.5.7` |
+| [smeky42/hitobito_wsjrdp_2027](https://github.com/smeky42/hitobito_wsjrdp_2027) | `WSJ2027Anmeldung/development/app/hitobito_wsjrdp_2027` | `main` |
+| [smeky42/wsjrdp_scripts](https://github.com/smeky42/wsjrdp_scripts) (optional) | `wsjrdp_scripts` | `main` |
+
+Resulting directory layout:
+
+```text
+Worldscoutjamboree/
+├── WSJ2027Anmeldung/
+│   └── development/            # hitobito/development @ da1f3e0 (branch wsjrdp)
+│       └── app/
+│           ├── hitobito/               # hitobito core @ 2.5.7
+│           └── hitobito_wsjrdp_2027/   # this wagon @ main
+└── wsjrdp_scripts/             # helper scripts @ main
+```
+
+### Prerequisites (macOS)
+
+```bash
+brew install --cask orbstack   # Docker runtime (Docker Desktop works too, see below)
+brew install uv                # only needed for wsjrdp_scripts
+brew install postgresql@16     # pg_dump / pg_restore, matching the postgres:16 dev container
+echo 'export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"' >> ~/.zshrc
+```
+
+### Clone and start
+
+```bash
+
+# hitobito development environment, pinned
+mkdir WSJ2027Anmeldung && cd WSJ2027Anmeldung
+git clone https://github.com/hitobito/development.git
+git -C development switch -c wsjrdp da1f3e09964bf9775f2fc533f97adeb2a9a50381
+
+# hitobito core (pinned to 2.5.7) and the wsjrdp_2027 wagon
 cd development/app
-git clone https://github.com/hitobito/hitobito.git
+git clone --branch 2.5.7 https://github.com/hitobito/hitobito.git
 git clone git@github.com:smeky42/hitobito_wsjrdp_2027.git
 cd ..
 
-# OR create a new wagon if you want to start bare
+# docker volumes
+docker volume create hitobito_bundle
+docker volume create hitobito_yarn_cache
+
+# start the hit environment (from WSJ2027Anmeldung/development)
+RAILS_UID=$(id -u) ./bin/dev-env.sh
+> hit up
+```
+
+The app runs at **http://localhost:3000**. It is served over plain HTTP, so
+`https://` does not work. Mailcatcher runs at http://localhost:1080.
+
+Optionally, activate the [local dev overrides](#local-dev-overrides-dev-only-overrides)
+(e.g. login bypass, macOS file watcher):
+
+```bash
+cd app/hitobito_wsjrdp_2027 && ./dev-only-overrides/create_symlinks.sh
+```
+
+To create a new bare wagon instead of cloning this one:
+
+```bash
 cd development/app/hitobito
 rails generate wagon wsjrdp_2027
 mkdir ../hitobito_wsjrdp_2027
 mv vendor/wagons/wsjrdp_2027/* ../hitobito_wsjrdp_2027
-cd ../..
-
-# add docker volumes
-docker volume create hitobito_bundle
-docker volume create hitobito_yarn_cache
-
-# start docker in hit environment
-./bin/dev-env.sh
-> hit up
 ```
 
-If needed (as it was in my MacOS env)
-    - add `export RAILS_UID=$(id -u)` to `.bashrc`
-    - [install new ruby version](https://mac.install.guide/faq/change-ruby-version/) and [configure your shell env](https://mac.install.guide/ruby/13)
-    - install `brew install postgresql` and run `brew services start postgresql@14`  postgress
+### Load the production database into dev (optional)
 
-On an ARM macOS with Docker desktop you might need to set
+```bash
+cd Worldscoutjamboree
+git clone git@github.com:smeky42/wsjrdp_scripts.git
+cd wsjrdp_scripts
+# put the (gitignored) config-prod.yml into wsjrdp_scripts/ (ask the team for it)
+WSJRDP_SCRIPTS_CONFIG=config-prod.yml uv run tools/db_dump_and_restore_into_dev.py
+```
+
+On an ARM macOS with Docker Desktop you might need to set
 `DOCKER_DEFAULT_PLATFORM`, e.g., you might need to start `dev-env.sh`
 like so:
 ```sh
