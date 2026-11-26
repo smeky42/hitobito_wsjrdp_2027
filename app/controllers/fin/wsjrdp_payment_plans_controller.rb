@@ -39,6 +39,12 @@ class Fin::WsjrdpPaymentPlansController < ApplicationController
     authorize!(:show, @wsjrdp_payment_plan)
   end
 
+  def preview
+    authorize!(:update, wsjrdp_payment_plan)
+    render partial: "shared/installments/preview", locals: {frame_id: helpers.installments_preview_plan_frame_id(wsjrdp_payment_plan),
+                                                            plan_text: params[:plan].to_s, details_open: params[:open] == "1"}
+  end
+
   def update
     @wsjrdp_payment_plan ||= wsjrdp_payment_plan
     authorize!(:update, @wsjrdp_payment_plan)

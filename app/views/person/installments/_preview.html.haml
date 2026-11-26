@@ -1,0 +1,10 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Locals: person, plan_text, details_open
+= render "shared/installments/preview", frame_id: installments_preview_id(person), plan_text: plan_text,
+  details_open: local_assigns.fetch(:details_open, false), fees: installments_preview_fees(person)

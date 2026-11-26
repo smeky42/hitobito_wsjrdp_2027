@@ -1,0 +1,50 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Locals: frame_id, plan_text, details_open,
+-#   fees: [{label:, cents:}], the first one in colour, the others muted
+- plan = installments_preview_plan(plan_text)
+- fees = local_assigns.fetch(:fees, [])
+= turbo_frame_tag frame_id, class: "d-block" do
+  - if plan_text.blank?
+    -# Nothing to show yet.
+  - elsif plan[:error]
+    .installments-preview.bg-white.border.border-danger.rounded.px-2.py-1.mt-2.small.text-danger.fw-semibold
+      = warning_triangle_icon
+      = plan[:error]
+  - else
+    - sum = plan[:sum_cents]
+    .installments-preview.bg-white.border.rounded.px-2.py-1.mt-2.small
+      .mb-1= installments_chips(plan[:items])
+      - if fees.empty?
+        %div Summe der Raten #{cents_in_prose(sum)}
+      - fees.each_with_index do |fee, index|
+        - gap = sum - fee[:cents]
+        - tone = gap.zero? ? "text-success" : gap.positive? ? "installments-preview-more" : "text-danger fw-semibold"
+        .d-flex.justify-content-between.flex-wrap.column-gap-3{class: index.zero? ? tone : "text-muted"}
+          %span
+            - if index.zero?
+              = gap.zero? ? icon(:check) : warning_triangle_icon
+              Summe der Raten #{cents_in_prose(sum)} · #{fee[:label]} #{cents_in_prose(fee[:cents])}
+            - else
+              #{fee[:label]} #{cents_in_prose(fee[:cents])}
+          %span= installments_preview_gap_text(sum, fee[:cents])
+      - if plan[:items].any?
+        %details.mt-1{open: details_open}
+          %summary.text-muted Als Tabelle anzeigen
+          %table.table.table-sm.mb-0.mt-1{style: "font-variant-numeric: tabular-nums"}
+            %thead
+              %tr
+                %th Monat
+                %th.text-end Betrag
+                %th.text-end Soll Kontostand
+            %tbody
+              - installments_table_entries(plan[:items]).each do |entry|
+                %tr
+                  %td= entry[:date]
+                  %td.text-end= entry[:amount]
+                  %td.text-end= entry[:total]

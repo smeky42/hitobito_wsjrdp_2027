@@ -1,0 +1,36 @@
+-#  Copyright (c) 2026 German Contingent for the World Scout Jamboree 2027.
+-#
+-#  This file is part of hitobito_wsjrdp_2027 and licensed under the
+-#  Affero General Public License version 3 or later.
+-#  See the COPYING file at the top-level directory or at
+-#  https://github.com/smeky42/hitobito_wsjrdp_2027
+
+-# Rendered inside the element with data-installments-preview-url, which holds
+-# the input marked data-installments-preview-input and the preview frame.
+-# The colour of .text-warning-emphasis, missing in Bootstrap 5.2.
+:css
+  .installments-preview-more { color: #997404; }
+  .installments-preview summary { cursor: pointer; }
+:javascript
+  (function() {
+    const box = document.currentScript.closest("[data-installments-preview-url]");
+    const field = box && box.querySelector("[data-installments-preview-input]");
+    if (!field) return;
+    function reload() {
+      const frame = box.querySelector("turbo-frame[id^='installments_preview_']");
+      if (!frame) return;
+      // Kept on the box: an unreadable plan renders no details.
+      const details = frame.querySelector("details");
+      if (details) box.dataset.previewOpen = details.open ? "1" : "0";
+      const query = new URLSearchParams({plan: field.value, open: box.dataset.previewOpen || "0"});
+      const url = new URL(box.dataset.installmentsPreviewUrl + "?" + query.toString(), location.href).href;
+      if (frame.src === url) frame.reload(); else frame.src = url;
+    }
+    let timer;
+    field.addEventListener("input", function() {
+      clearTimeout(timer);
+      timer = setTimeout(reload, 300);
+    });
+    // After a refresh the fee may have changed.
+    box.addEventListener("wsjrdp:kept", reload);
+  })();

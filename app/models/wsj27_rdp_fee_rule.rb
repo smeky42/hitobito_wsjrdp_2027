@@ -43,48 +43,31 @@ class Wsj27RdpFeeRule < ActiveRecord::Base
     save!
   end
 
-  # The plan written as "starting year: amount; amount; ..." from January --
-  # what the plan's form takes (custom_installments_string=): the year, a
-  # colon, then the euros of each month, separated by semicolons; "," or "."
-  # before the cents.
-  CUSTOM_INSTALLMENTS_STRING_FORMAT = /\A\s*\d{4}\s*:\s*\d+([.,]\d{1,2})?(\s*;\s*\d+([.,]\d{1,2})?)*\s*\z/
-
   # A plan of its own: a starting year and the monthly amounts.
   def custom_installments_plan?
     !custom_installments_starting_year.nil? && !custom_installments_cents.nil?
   end
 
-  def custom_installments_string
-    year = custom_installments_starting_year
-    cents_list = custom_installments_cents
-    if year.nil? || cents_list.nil?
-      ""
-    else
-      cents_str = cents_list.map { |c| (c.to_f / 100).to_s.sub(/[.]0$/, "") }.join("; ")
-      "#{year}: #{cents_str}"
-    end
+  # nil without a plan of its own.
+  def installment_plan
+    Wsjrdp2027::InstallmentPlan.from_cents(custom_installments_starting_year, custom_installments_cents)
   end
+
+  def custom_installments_string = installment_plan&.text || ""
 
   def custom_installments_string=(value)
     if value.blank? || value == "keine"
       self.custom_installments_starting_year = nil
       self.custom_installments_cents = nil
     else
-      year_str, cents_list_str = value.split(":", 2)
-      year = year_str.to_i
-      cents_list = cents_list_str.split(";").map { |s| (BigDecimal(s.strip.tr(",", ".")) * 100).round.to_i }
-      self.custom_installments_starting_year = year
-      self.custom_installments_cents = cents_list
+      plan = Wsjrdp2027::InstallmentPlan.from_text(value)
+      self.custom_installments_starting_year = plan.starting_year
+      self.custom_installments_cents = plan.cents
     end
   end
 
-  ##
-  # Return installments as YearMonthEur objects if this fee rule contains installment data.
-  #
-  # Returns nil if this fee ruls does not contain installment data.
-  def yme_list
-    Wsjrdp2027::PaymentPlanConversionHelper.year_and_cents_a_to_yme_list(custom_installments_starting_year, custom_installments_cents)
-  end
+  # nil without a plan of its own.
+  def yme_list = installment_plan&.yme_list
 
   private
 

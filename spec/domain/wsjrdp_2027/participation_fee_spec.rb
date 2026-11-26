@@ -18,10 +18,7 @@ describe Wsjrdp2027::ParticipationFee do
       custom_installments_issue: "HELP-1", custom_installments_comment: "Vereinbarung", **attrs)
   end
 
-  def person_yme_list(person)
-    year, *eur = person.wsjrdp_raw_installments_eur
-    Wsjrdp2027::PaymentPlanConversionHelper.year_and_eur_a_to_yme_list(year.to_i, eur)
-  end
+  def person_yme_list(person) = Wsjrdp2027::InstallmentPlan.from_raw_eur(person.wsjrdp_raw_installments_eur)&.yme_list
 
   describe "Person#participation_fee" do
     it "is one object per loaded person, dropped on reload" do

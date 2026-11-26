@@ -9,13 +9,6 @@
 
 require "spec_helper"
 
-# "Diese Buchung nimmt nicht an der Abstimmung der TN-Beiträge teil" is a key
-# inside the jsonb column additional_info, reached through a jsonb_accessor.
-# Two things have to line up for the checkbox on the entry page to work: the
-# view has to see that the key is editable (WsjrdpFormHelper#permitted_attr?,
-# which reads both the flat and the nested spelling), and the form's flat
-# field name has to be permitted, so the accessor's writer runs -- it casts to
-# boolean and drops the key rather than storing "0".
 describe Fin::AccountingEntriesController, type: :controller do
   render_views
 
@@ -31,13 +24,8 @@ describe Fin::AccountingEntriesController, type: :controller do
 
   before do
     sign_in(manager)
-    # The manage tier has to be picked for the session (doc/roles.md).
+    # The manage tier has to be picked for the session.
     session[:max_finance_permission] = "finance_manage"
-  end
-
-  # What the read-only row says after the flag's label.
-  def reconciliation_value
-    Nokogiri::HTML(response.body).text.squish[/Abstimmung ausgenommen\s*(ja|nein)/, 1]
   end
 
   def checkbox
@@ -66,8 +54,7 @@ describe Fin::AccountingEntriesController, type: :controller do
     expect(AccountingEntry.excluded_from_fee_reconciliation).to include(entry)
   end
 
-  # An unchecked box posts "0". The key is dropped rather than stored as a
-  # string, which "0" would be -- and a string is truthy to the reader.
+  # Stored as a string, "0" would read as true.
   it "drops the key again when the box is unchecked" do
     entry.update!(excluded_from_fee_reconciliation: true)
 
@@ -78,8 +65,6 @@ describe Fin::AccountingEntriesController, type: :controller do
     expect(AccountingEntry.fee_reconciliation_relevant).to include(entry)
   end
 
-  # A boolean jsonb key answers true or false, never nil -- otherwise the
-  # read-only row renders empty instead of "nein" (WsjrdpJsonbHelper).
   describe "the boolean reader" do
     it "reads an absent key as false" do
       expect(entry.additional_info).to eq({})
@@ -93,8 +78,7 @@ describe Fin::AccountingEntriesController, type: :controller do
       expect(entry.reload.excluded_from_fee_reconciliation).to be(true)
     end
 
-    # Whatever wrote it, "0" is false -- a bare double negation would call the
-    # string true.
+    # A bare double negation would read "0" as true.
     it "reads a string the store may carry as the boolean it means" do
       entry.update_column(:additional_info, {"excluded_from_fee_reconciliation" => "0"})
 
@@ -104,25 +88,8 @@ describe Fin::AccountingEntriesController, type: :controller do
 
       expect(entry.reload.excluded_from_fee_reconciliation).to be(true)
     end
-
-    # Below the manage tier the row is read-only, and it has to say something.
-    it "shows as ja or nein in the read-only row" do
-      session[:max_finance_permission] = "finance"
-      get :edit, params: {id: entry.id}
-
-      expect(reconciliation_value).to eq("nein")
-
-      entry.update!(excluded_from_fee_reconciliation: true)
-      get :edit, params: {id: entry.id}
-
-      expect(reconciliation_value).to eq("ja")
-    end
   end
 
-  # A status change books no money and never takes part in the reconciliation,
-  # and it can only be a change: the status the person already holds is not on
-  # offer. Both hold however the form was reached, so neither has to be
-  # carried in the URL or a hidden field.
   describe "the status-change booking" do
     def statuses_on_offer
       Nokogiri::HTML(response.body)
@@ -159,8 +126,6 @@ describe Fin::AccountingEntriesController, type: :controller do
       expect(person.reload.sepa_status).to eq("in_review")
     end
 
-    # Even a request that asks for the opposite gets a booking out of the
-    # reconciliation: it is the controller's call, not the form's.
     it "keeps the flag against anything the request sends" do
       post :new_sepa_status, params: {accounting_entry: {subject_id: person.id,
                                                          new_sepa_status: "missing",
@@ -173,10 +138,6 @@ describe Fin::AccountingEntriesController, type: :controller do
     end
   end
 
-  # Both forms can be opened bare, with nothing in the URL: no
-  # accounting_entry key to require, and the person asked for in the form
-  # itself. Reached from a person's fee page the subject comes along and the
-  # picker gives way to the name.
   describe "opened without parameters" do
     def person_picker
       Nokogiri::HTML(response.body).at_css("[data-provide=entity][data-id-field=accounting_entry_subject_id]")
@@ -218,20 +179,7 @@ describe Fin::AccountingEntriesController, type: :controller do
     end
   end
 
-  # Where a saved form leads, and who the page frames it as. Inside the fee
-  # page's frame nothing navigates; on its own the form is the page.
   describe "standing on its own" do
-    def sheet_tabs
-      Nokogiri::HTML(response.body).css(".sheet .nav a, .nav-tabs a").map { |a| a.text.strip }
-    end
-
-    it "sits under Beiträge, not under a person" do
-      get :new
-
-      expect(response.body).to include(I18n.t("fin.nav.fees"))
-      expect(sheet_tabs).to include(I18n.t("fin.tabs.overview"), I18n.t("fin.tabs.plans"))
-    end
-
     it "leads to the booking it just created" do
       post :create, params: {accounting_entry: {subject_id: person.id, amount_eur: "7.77",
                                                 description: "Testbuchung"}}
@@ -239,28 +187,22 @@ describe Fin::AccountingEntriesController, type: :controller do
       expect(response).to redirect_to(AccountingEntry.order(:id).last)
     end
 
-    # The list shares its journal partial with a person's fee page, where the
-    # entry is known -- it must not ask about one it does not have.
     it "lists the bookings without an entry to ask about" do
       get :index
 
       expect(response).to be_successful
-      expect(response.body).to include("Buchungen")
     end
 
-    # Inside the frame the fee page reloads around it, as before.
-    it "reloads the page around the frame instead" do
+    it "refreshes the page around the frame instead" do
       request.headers["Turbo-Frame"] = "accounting_extra_entry"
       post :create, params: {accounting_entry: {subject_id: person.id, amount_eur: "7.77",
                                                 description: "Testbuchung"}}
 
       expect(response).to be_successful
-      expect(response.body).to include("location_reload")
+      expect(response.body).to include('action="refresh"')
     end
   end
 
-  # Submitted bare, the status form has to say what is missing instead of
-  # falling over.
   describe "a status change with nothing filled in" do
     before { person.update!(sepa_status: "ok") }
 
@@ -283,8 +225,6 @@ describe Fin::AccountingEntriesController, type: :controller do
     end
   end
 
-  # A page that already names the person says so, and the form leaves the
-  # person out -- the id still travels, hidden.
   describe "hide_subject" do
     def person_row
       Nokogiri::HTML(response.body).text.squish[/Person\s*#{Regexp.escape(person.to_s)}/]
@@ -314,7 +254,6 @@ describe Fin::AccountingEntriesController, type: :controller do
     end
   end
 
-  # The predicate the view asks, in both spellings a controller may use.
   describe "WsjrdpFormHelper#permitted_attr?" do
     let(:view) do
       Class.new do

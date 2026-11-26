@@ -23,11 +23,11 @@ class Fin::ListedPaymentPlan < Data.define(:kind, :yme_list, :payment_method, :i
 
   # The person's active plan; nil without one.
   def self.active_of(person)
-    raw = person.wsjrdp_raw_installments_eur
-    return if raw.blank?
+    plan = Wsjrdp2027::InstallmentPlan.from_raw_eur(person.wsjrdp_raw_installments_eur)
+    return if plan.nil?
 
     new(kind: :active,
-      yme_list: Wsjrdp2027::PaymentPlanConversionHelper.year_and_eur_a_to_yme_list(raw[0].to_i, raw[1..]),
+      yme_list: plan.yme_list,
       payment_method: person.wsjrdp_installments_payment_method,
       issue: person.wsjrdp_installments_issue, comment: person.wsjrdp_installments_comment)
   end
@@ -54,7 +54,7 @@ class Fin::ListedPaymentPlan < Data.define(:kind, :yme_list, :payment_method, :i
   def standard? = kind == :standard
 
   # The months that carry an installment, in order.
-  def installments = yme_list.reject { |installment| installment.cents.zero? }
+  def installments = yme_list
 
   def count = installments.size
 

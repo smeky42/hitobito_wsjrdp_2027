@@ -9,9 +9,6 @@
 
 require "spec_helper"
 
-# Planning, activating and discarding an individual installment plan from the
-# "Ratenplan" section of the Beitrag page. They change how the fee is paid, so
-# they need :update_finance; the fee rule records who did what.
 describe Person::InstallmentsController, type: :controller do
   let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
   let(:leader) { Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person }
@@ -63,7 +60,7 @@ describe Person::InstallmentsController, type: :controller do
     end
 
     it "refuses a missing or malformed plan, keeping what was typed" do
-      ["", "100; 200", "2026: 100;", "2026: abc"].each do |text|
+      ["", "100; 200", "2026: 100; 2026-01: 5", "2026: abc"].each do |text|
         plan(planned_custom_installments_string: text)
 
         expect(response).to have_http_status(422)
@@ -127,9 +124,9 @@ describe Person::InstallmentsController, type: :controller do
           payment_method: "direct_debit") { |standard| standard.raw_installments_eur = [2025, 0, 300] }
         standard = WsjrdpPaymentPlan.kept.find_by(wsjrdp_role: person.wsjrdp_role, single_payment: false)
 
-        expect(form_for("new")).not_to include("2026: 0; 200")
-        expect(form_for("from_active")).to include("2026: 0; 200")
-        expect(form_for("from_standard")).to include(standard.installments_string.split(";").first)
+        expect(form_for("new")).not_to include("2026-02: 200")
+        expect(form_for("from_active")).to include("2026-02: 200")
+        expect(form_for("from_standard")).to include(Wsjrdp2027::InstallmentPlan.from_raw_eur(standard.raw_installments_eur).text)
       end
     end
   end
@@ -142,6 +139,7 @@ describe Person::InstallmentsController, type: :controller do
     expect { post :activate, params: {person_id: person.id} }.to raise_error(CanCan::AccessDenied)
     expect { post :discard, params: {person_id: person.id} }.to raise_error(CanCan::AccessDenied)
     expect { get :edit, params: {person_id: person.id} }.to raise_error(CanCan::AccessDenied)
+    expect { get :preview, params: {person_id: person.id, plan: "2026: 1"} }.to raise_error(CanCan::AccessDenied)
     expect(planned_rule).to be_present
   end
 end

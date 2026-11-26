@@ -40,18 +40,15 @@ describe Person::StatusController, type: :controller do
     expect(contract.at_css("span.fin-status-confirmed")).to be_present
   end
 
-  it "shows the plan in effect in two lines with a link, on the page and in the form, nothing to plan" do
+  it "links the plan in effect to the Beitrag page, on the page and in the form, nothing to plan" do
     rule("planned", custom_installments_cents: [0, 0, 5_000])
 
     %i[show edit].each do |action|
       get action, params: {group_id: person.primary_group_id, id: person.id}
 
-      lines = Nokogiri::HTML(response.body).css("dt").find { |dt| dt.text.strip == "Ratenplan" }.next_element
-      expect(lines.text).to include("2026-02: 100€").and include("Überweisung")
-      expect(lines.at_css("a[href='#{person_fee_path(person, anchor: "payment_plan_#{person.id}")}']")).to be_present
-      # The planned plan, its fields and buttons live on the Beitrag page.
+      line = Nokogiri::HTML(response.body).css("dt").find { |dt| dt.text.strip == "Ratenplan" }.next_element
+      expect(line.at_css("a[href='#{person_fee_path(person, anchor: "payment_plan_#{person.id}")}']")).to be_present
       expect(response.body).not_to include("planned_custom_installments")
-      expect(response.body).not_to include("2026-03: 50€")
     end
   end
 

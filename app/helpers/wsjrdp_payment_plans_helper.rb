@@ -18,16 +18,11 @@ module WsjrdpPaymentPlansHelper
     format_eur_de(di.total_eur, zero_cents: "")
   end
 
-  def format_wsjrdp_payment_plan_yme_list(di)
-    installments_text(di.yme_list) || content_tag(:span, "(keine)", class: "muted")
-  end
+  def format_wsjrdp_payment_plan_yme_list(di) = installments_chips(di.yme_list)
 
-  # An installment plan written out, each month as ISO year-month, e.g.
-  # "2025-12: 300€, 2026-01: 500€, 2026-02: 312,50€"; months without an
-  # installment are left out. nil without any installment.
-  # The one place a plan is written this way: the payment plans list, the
-  # Ratenplan line of the status page, the Ratenplan section of the Beitrag
-  # page, the person log.
+  def format_wsjrdp_payment_plan_installments_string(di) = installments_chips(di.yme_list)
+
+  # "2025-12: 300€, 2026-01: 500€"; nil without any installment.
   def installments_text(yme_list)
     return nil if yme_list.blank?
 
@@ -35,5 +30,46 @@ module WsjrdpPaymentPlansHelper
       year_month = format("%04d-%02d", installment.year, installment.month)
       "#{year_month}: #{format_eur_de(installment.eur, zero_cents: "", space: "")}"
     end.join(", ")
+  end
+
+  def installments_table_entries(yme_list)
+    total_eur = BigDecimal(0)
+    yme_list.to_a.map do |item|
+      total_eur += item.eur
+      {date: I18n.l(item.to_time_with_zone(day: 5), format: "%b %Y"),
+       amount: format_eur_de(item.eur),
+       total: format_eur_de(total_eur)}
+    end
+  end
+
+  def installments_preview_plan_frame_id(plan) = "installments_preview_plan_#{plan.id}"
+
+  def installments_chips(yme_list)
+    return tag.span("keine Raten") if yme_list.blank?
+
+    tag.span(class: "d-inline-flex flex-wrap gap-1 align-middle") do
+      safe_join(yme_list.map do |item|
+        tag.span("#{I18n.l(item.to_time_with_zone(day: 5), format: "%b %Y")} · #{format_eur_de(item.eur, zero_cents: "")}",
+          class: "badge bg-white text-body border fw-normal", style: "font-variant-numeric: tabular-nums")
+      end)
+    end
+  end
+
+  def installments_preview_plan(plan_text)
+    plan = Wsjrdp2027::InstallmentPlan.from_text(plan_text)
+    {items: plan.yme_list, sum_cents: plan.sum_cents}
+  rescue Wsjrdp2027::InstallmentPlan::Invalid => e
+    {error: e.message}
+  end
+
+  def installments_preview_gap_text(sum_cents, fee_cents)
+    gap = sum_cents - fee_cents
+    if gap.zero?
+      "deckt den Beitrag"
+    elsif gap.positive?
+      "#{cents_in_prose(gap)} mehr als der Beitrag"
+    else
+      "es fehlen #{cents_in_prose(-gap)}"
+    end
   end
 end

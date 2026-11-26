@@ -42,16 +42,6 @@ module WsjrdpInstallmentsHelper
     Wsjrdp2027::YearMonthCents.new([2027, 2], 30000),
     Wsjrdp2027::YearMonthCents.new([2027, 5], 30000)
   ].freeze
-  BMT_REGULAR_PAYER_INSTALLMENTS = [
-    Wsjrdp2027::YearMonthCents.new([2025, 12], 20000),
-    Wsjrdp2027::YearMonthCents.new([2026, 1], 40000),
-    Wsjrdp2027::YearMonthCents.new([2026, 2], 40000),
-    Wsjrdp2027::YearMonthCents.new([2026, 3], 40000),
-    Wsjrdp2027::YearMonthCents.new([2026, 8], 30000),
-    Wsjrdp2027::YearMonthCents.new([2026, 11], 30000),
-    Wsjrdp2027::YearMonthCents.new([2027, 2], 30000),
-    Wsjrdp2027::YearMonthCents.new([2027, 5], 30000)
-  ].freeze
   CMT_REGULAR_PAYER_INSTALLMENTS = [
     Wsjrdp2027::YearMonthCents.new([2025, 12], 5000),
     Wsjrdp2027::YearMonthCents.new([2026, 1], 25000),
@@ -62,7 +52,6 @@ module WsjrdpInstallmentsHelper
     Wsjrdp2027::YearMonthCents.new([2027, 2], 20000),
     Wsjrdp2027::YearMonthCents.new([2027, 5], 20000)
   ].freeze
-  EXT_REGULAR_PAYER_INSTALLMENTS = [].freeze
 
   YP_EARLY_PAYER_INSTALLMENTS = [Wsjrdp2027::YearMonthCents.new([2025, 8], 340000)].freeze
   UL_EARLY_PAYER_INSTALLMENTS = [Wsjrdp2027::YearMonthCents.new([2025, 8], 240000)].freeze
@@ -75,7 +64,7 @@ module WsjrdpInstallmentsHelper
     "CMT" => CMT_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
     "EXT" => EXT_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
     "IST" => IST_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
-    "BMT" => IST_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
+    "BMT" => BMT_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
     "UL" => UL_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
     "YP" => YP_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,
     "EarlyPayer::Group::Extern::Member" => EXT_EARLY_PAYER_INSTALLMENTS[0]&.cents || 0,

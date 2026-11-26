@@ -5,23 +5,33 @@
 -#  See the COPYING file at the top-level directory or at
 -#  https://github.com/smeky42/hitobito_wsjrdp_2027
 
+= render "fin/shared/sticky_form_actions"
 #main.row
   = standard_form(@wsjrdp_payment_plan, {url: wsjrdp_payment_plan_path, method: :put, data: {turbo: false}}) do |f|
     = hidden_field_tag("return_url", return_url)
     = f.error_messages
-    = form_buttons_if_editable(f, cancel_url: cancel_url)
+    - if permitted_attrs.present?
+      .fin-account-form-actions
+        = form_buttons_if_editable(f, cancel_url: cancel_url)
 
-    .mt-3
-      = field_set_tag do
-        %div.border-top.py-2
-          = input_or_render_attrs(f, :wsjrdp_role)
-          = input_or_render_attrs(f, :single_payment)
+    = field_set_tag do
+      %div.py-2
+        = input_or_render_attrs(f, :wsjrdp_role)
+        = input_or_render_attrs(f, :single_payment)
+        - if permitted_attrs.include?(:installments_string)
+          %div{data: {installments_preview_url: preview_wsjrdp_payment_plan_path(@wsjrdp_payment_plan)}}
+            = wsjrdp_labeled_input_field(f, :installments_string, placeholder: "2026-03: 500; 500",
+                help: t("people.installments.string_help"), data: {installments_preview_input: true})
+            .row.mb-2
+              .offset-md-3.offset-xl-2.col-md-9.col-xl-8
+                = render "shared/installments/preview", frame_id: installments_preview_plan_frame_id(@wsjrdp_payment_plan),
+                  plan_text: f.object.installments_string, details_open: false
+            = render "shared/installments/preview_script"
+        - else
           = input_or_render_attrs(f, :installments_string)
-          - if permitted_attrs.include?(:payment_method)
-            = f.labeled_collection_select(:payment_method, Wsjrdp2027::ParticipationFee.payment_method_options, :first, :last, {}, class: "span2")
-          - else
-            = input_or_render_attrs(f, :payment_method)
-          = input_or_render_attrs(f, :comment)
-          = input_or_render_attrs(f, :status)
-
-    = form_buttons_if_editable(f, cancel_url: cancel_url)
+        - if permitted_attrs.include?(:payment_method)
+          = f.labeled_collection_select(:payment_method, Wsjrdp2027::ParticipationFee.payment_method_options, :first, :last, {}, class: "span2")
+        - else
+          = input_or_render_attrs(f, :payment_method)
+        = input_or_render_attrs(f, :comment)
+        = input_or_render_attrs(f, :status)

@@ -75,13 +75,7 @@ module Wsjrdp2027
        wsjrdp_installments_payment_method: raw && (rule.custom_installments_payment_method || DEFAULT_PAYMENT_METHOD)}
     end
 
-    def self.raw_installments_eur(rule)
-      year = rule&.custom_installments_starting_year
-      cents = rule&.custom_installments_cents
-      return nil if year.nil? || cents.nil?
-
-      [BigDecimal(year), *cents.map { |c| BigDecimal(c.to_i) / 100 }]
-    end
+    def self.raw_installments_eur(rule) = rule&.installment_plan&.to_raw_eur
 
     # Activates the person's planned fee rule. Answers the activated rule, nil
     # without a plan. by: the person who activates it.
@@ -129,9 +123,8 @@ module Wsjrdp2027
     # (the plan Person#yme_list falls back to), not saved; no issue, no
     # comment.
     def plan_installments_from_standard
-      raw = standard_payment_plan&.raw_installments_eur
-      plan_installments(year: raw.presence && raw[0].to_i,
-        cents: raw.presence && raw[1..].map { |eur| (BigDecimal(eur.to_s) * 100).round.to_i },
+      plan = standard_payment_plan&.installment_plan
+      plan_installments(year: plan&.starting_year, cents: plan&.cents,
         issue: nil, comment: nil, payment_method: standard_payment_plan&.payment_method)
     end
 

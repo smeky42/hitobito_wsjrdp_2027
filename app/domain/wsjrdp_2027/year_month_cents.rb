@@ -37,10 +37,6 @@ module Wsjrdp2027
       (cents.to_d / BigDecimal(100))
     end
 
-    def to_year_month_eur
-      YearMonthEuros.new(year_month, eur)
-    end
-
     delegate :year, :month, :year_month_i, :distance_in_months_to, :to_time_with_zone, to: :year_month
   end
 end
