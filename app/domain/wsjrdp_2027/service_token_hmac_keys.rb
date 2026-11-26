@@ -180,7 +180,7 @@ module Wsjrdp2027
       if keys.empty?
         "#{ENV_NAME}: no key for stage #{stage}; HMAC service tokens cannot be made"
       else
-        "#{ENV_NAME}: stage #{stage}, active #{active.fingerprint}, accepted #{keys.map(&:fingerprint).join(", ")}"
+        "#{ENV_NAME}: stage #{stage}, active key fingerprint #{active.fingerprint}, accepted key fingerprints #{keys.map(&:fingerprint).join(", ")}"
       end
     end
 

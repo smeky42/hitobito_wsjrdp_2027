@@ -242,7 +242,7 @@ describe Wsjrdp::Credentials::Keys do
 
       expect(output.string).to match(/ERROR.*entry 2/)
       expect(output.string).to match(/WARN.*entry 3/)
-      expect(output.string).to match(/INFO.*active #{Regexp.escape(fingerprint(secret_a))}/)
+      expect(output.string).to match(/INFO.*active key fingerprint #{Regexp.escape(fingerprint(secret_a))}/)
     end
   end
 

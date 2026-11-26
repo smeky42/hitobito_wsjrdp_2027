@@ -107,6 +107,13 @@ describe Wsjrdp2027::ServiceTokenHmacKeys do
     expect(shown).not_to include(secret_c)
   end
 
+  it "labels the fingerprints in the summary" do
+    keys = keys("development:#{secret_a},development:#{secret_b}", stage: "development")
+
+    expect(keys.summary).to include("active key fingerprint #{fingerprint(secret_a)}, " \
+      "accepted key fingerprints #{fingerprint(secret_a)}, #{fingerprint(secret_b)}")
+  end
+
   describe "in production" do
     it "starts without the variable, with no active key" do
       keys = keys(nil, stage: "production")

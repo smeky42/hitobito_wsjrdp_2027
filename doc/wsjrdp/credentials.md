@@ -96,8 +96,9 @@ the boot log and written into every version a deposit or a re-key makes.
 ### The fingerprint
 
 The SHA-256 of the secret, lower-cased, as 64 lower-case hex digits (the
-HMAC keys of the API keys use Base64 instead). The boot log names the
-active and accepted keys by fingerprint. To compute one:
+HMAC keys of the API keys use Base64 instead). It has the form of a key,
+so the boot log says what it is: "active key fingerprint …", "accepted key
+fingerprints …". To compute one:
 
 ```bash
 printf %s "$SECRET" | tr 'A-F' 'a-f' | sha256sum    # macOS: shasum -a 256

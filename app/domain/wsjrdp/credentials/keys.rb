@@ -177,7 +177,7 @@ module Wsjrdp::Credentials
       if keys.empty?
         "#{source}: no key for stage #{shown_stage}; credentials cannot be sealed or opened here"
       else
-        text = "#{source}: stage #{shown_stage}, active #{active.fingerprint}, accepted #{keys.map(&:fingerprint).join(", ")}"
+        text = "#{source}: stage #{shown_stage}, active key fingerprint #{active.fingerprint}, accepted key fingerprints #{keys.map(&:fingerprint).join(", ")}"
         label ? "#{text}, label #{label}" : text
       end
     end
