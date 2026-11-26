@@ -3,6 +3,85 @@
 Guidance for AI coding agents (Cursor, Codex, Claude Code, …) working in this
 Hitobito wagon. Claude Code also reads `CLAUDE.md`; keep cross-tool rules here.
 
+# Code Comments and documenting code
+
+Comments in code mostly age poorly. Please use the following framework
+to decide how to document changes:
+1. First and foremost, **make the code speak for itself**. Methods,
+   variables and specs MUST be split and named to be self-explanatory.
+2. Add documentation to the dedicated places: `doc/` in the wagon.
+3. Prefer commit messages to code comments, because a git blame is
+   more telling and easier to research than figuring out the
+   cross-repo code state back when a comment was written. Match the
+   style and length of other, human-made commits (the ones without a
+   `Co-Authored-By` to an agent). No figures of speech, just objective
+   facts in short form. AVOID more than 1 commit line + 3 lines of
+   commit message. In many cases only 1 commit line.
+4. Only if the information is directly about the class / method being
+   commented, only if it can't be expressed through the above means of
+   documentation adequately, and only if it is relevant every single
+   time a piece of code is read, forever: Only then create a
+   comment. Even then, only include the information that isn't covered
+   in the other docs locations, and don't mention the other docs
+   locations either. If a decision is detailed in an issue, it will
+   already be referenced in the commit message, so no need for
+   rephrasing or linking.
+
+**Guiding Principles** for writing documentation and especially the
+rare comments:
+- NEVER reference comments, method names or implementation locations
+  from other files. These will be outdated very quickly.
+- NEVER narrate, retell or even mention earlier versions or decisions
+  from previous iterations in the conversation history, or how it used
+  to be implemented. Any documentation must be written as if this was
+  the first ever implementation, and understandable by anyone without
+  any history, context or memories.
+- When there are other comments in the touched files already, any new
+  comments MUST be shorter and rarer than the existing ones. MAXIMUM
+  BREVITY.
+
+# Writing tests (specs)
+
+The whole suite must stay fast. Write few specs, and cheap ones. Measured
+cost per example: standalone ~2 ms, model/domain/helper ~5–10 ms,
+controller without views ~7 ms, controller with `render_views` ~70 ms,
+request spec ~300 ms (one request alone ~140 ms).
+
+- **Logic goes where it is cheap to test.** Put business rules in a model
+  or PORO and spec them there, standalone where possible. Spec a
+  formatter in a helper spec, not through a rendered page.
+- **Pages: controller specs without views.** Check status, redirect,
+  assigns and what was saved. Use `render_views` only when the view
+  itself decides something, and then check that decision, not the
+  markup.
+- **Request specs only for the stack:** routing, middleware, sign-in by
+  token, JSON APIs. Never for a page a controller spec can cover.
+- **One request per example.** Do not walk list, detail, update and
+  reload in one example.
+- **No layout or wording checks:** no CSS classes, headings, exact texts
+  or translations. Do not spec plain Rails behavior (presence,
+  associations) or private methods.
+- **One example per rule or branch**, not per input variant. Checks on
+  the same setup share one example with `aggregate_failures`.
+- **Cheap setup.** Fixtures before `Fabricate`/`create`; `build`/`new`
+  when the database adds nothing. Use `let`, not `let!`, unless every
+  example needs the record. Logic blocks do not live in a page spec's
+  file, under its setup. Share unchanged costly setup per group with
+  `let_it_be`/`before_all` (test-prof).
+- **Small comparison tests.** A brute-force or random cross-check keeps
+  its sizes small enough to run well under 0.1 s.
+- **Measure.** Run touched spec files with `--profile 10`. Rework every
+  example above 0.25 s.
+- **Clean up touched files.** When you edit a spec file anyway, also
+  turn its page checks into controller specs without views or into unit
+  specs, merge duplicates, drop layout checks, and delete examples a
+  unit spec already covers. Keep permission specs, the credentials
+  golden-vector spec and the URL-encoding specs. Mention the deletions
+  in one line of the commit message.
+
+
+# Project overview
+
 ## Documentation
 
 How-to guides — authoritative, follow them:
@@ -103,6 +182,9 @@ See [`README.md`](README.md) for the dev-environment setup.
   `POST /oauth2/token`, no `/v1/...` calls, no live requests to
   `public-api.getmoss.com`) — not even read-only ones, and not for testing.
   API access uses real production credentials against real financial data.
+- **The Moss MCP server is not the Moss API.** The rules in this section
+  cover only direct requests to the Moss API. Tools of a connected Moss MCP
+  server may be used.
 - **Do** read the **local OpenAPI spec** at
   [`doc/moss/openapi_spec/`](doc/moss/openapi_spec/)
   as the authoritative source for endpoints and field schemas.
@@ -147,7 +229,7 @@ Notes for AI agents (non-interactive shells do not load direnv on their own):
   derived from the container lock (see `development/bin/hit/test/env`,
   which re-adds the `arm64-darwin` platform after copying it).
 
-## Running tests (specs)
+# Running tests (specs)
 
 **DANGER — read before any `rspec` run:** the test database resolves as
 `RAILS_TEST_DB_NAME || RAILS_DB_NAME || "hitobito_test"`. In the dev container
@@ -284,7 +366,7 @@ Gotchas:
   associations: `left_joins(:foo)` is a symbol, so a renamed association only
   blows up at runtime. Run the specs after renaming associations.
 
-## Before committing
+# Before committing
 
 Run RuboCop with safe autocorrect from the wagon root and make sure it
 passes:
