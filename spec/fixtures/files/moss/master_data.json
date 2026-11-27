@@ -1,0 +1,74 @@
+{
+  "_comment": "Made-up Moss master data for the Synchronisation specs; keys are the API paths without v1/.",
+  "dimensions": [
+    {"id": "00000000-0000-0000-0000-000000000001", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "name": "Cost Center", "erpName": null, "erpId": null, "status": "ACTIVE",
+     "createTime": "1970-01-01T00:00:00Z", "updateTime": "1970-01-01T00:00:00Z", "deleteTime": null},
+    {"id": "00000000-0000-0000-0000-000000000002", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "name": "Cost Carrier", "erpName": null, "erpId": null, "status": "ACTIVE",
+     "createTime": "1970-01-01T00:00:00Z", "updateTime": "1970-01-01T00:00:00Z", "deleteTime": null},
+    {"id": "c0000000-0000-4000-8000-000000000003", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "name": "Sphäre", "erpName": "Sphäre", "erpId": "Sphäre", "status": "DELETED",
+     "createTime": "2026-02-26T00:17:58Z", "updateTime": "2026-02-26T00:18:25Z", "deleteTime": "2026-02-26T00:18:25Z"}
+  ],
+  "dimensions/00000000-0000-0000-0000-000000000001/items": [
+    {"id": "e1000000-0000-4000-8000-000000000001", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "dimensionId": "00000000-0000-0000-0000-000000000001", "name": "Foodhouse", "code": "3300", "status": "ACTIVE",
+     "createTime": "2026-02-23T08:27:38Z", "updateTime": "2026-10-02T11:56:34Z"},
+    {"id": "e1000000-0000-4000-8000-000000000002", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "dimensionId": "00000000-0000-0000-0000-000000000001", "name": "UL-Team-Treffen", "code": "3800", "status": "ACTIVE",
+     "createTime": "2026-02-23T08:27:38Z", "updateTime": "2026-10-02T11:56:34Z"}
+  ],
+  "dimensions/00000000-0000-0000-0000-000000000002/items": [
+    {"id": "e2000000-0000-4000-8000-000000000003", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "dimensionId": "00000000-0000-0000-0000-000000000002", "name": "Zweckbetrieb", "code": "3", "status": "ACTIVE",
+     "createTime": "2026-03-16T12:24:47Z", "updateTime": "2026-03-16T12:24:47Z"}
+  ],
+  "expense-accounts": [
+    {"id": "ea000000-0000-4000-8000-000000001000", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "DEACTIVATED", "name": "Konzessionen, Rechte", "code": "1000",
+     "createTime": "2026-03-05T09:35:42Z", "updateTime": "2026-03-05T09:35:42Z"},
+    {"id": "ea000000-0000-4000-8000-000000041030", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "ACTIVE", "name": "Teilnehmendenbeiträge ", "code": "41030",
+     "createTime": "2026-03-06T11:46:41Z", "updateTime": "2026-03-06T17:46:12Z"},
+    {"id": "ea000000-0000-4000-8000-000000066600", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "ACTIVE", "name": "Reisekosten Übernachtungsaufwand", "code": "66600",
+     "createTime": "2026-03-06T11:46:41Z", "updateTime": "2026-03-06T17:46:12Z"}
+  ],
+  "payment-terms": [
+    {"id": "f1000000-0000-4000-8000-000000000001", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "description": "14 Tage, 2 % Skonto in 7 Tagen", "code": "14", "netDueDays": 14, "monthEndAdvances": 0,
+     "status": "ACTIVE", "dueDateCalculationType": "STANDARD",
+     "lines": [{"earlyPaymentDeadlineDays": 7, "discountPercentage": 2.0, "discountLineNumber": 1}]}
+  ],
+  "tax-rates": [
+    {"id": "f2000000-0000-4000-8000-000000000019", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "type": "VAT", "country": "DE", "name": "Vorsteuer 19 %", "rate": 19.0, "code": "9", "reverseCharge": false,
+     "status": "ACTIVE", "createTime": "2026-01-01T00:00:00Z", "updateTime": "2026-01-01T00:00:00Z"}
+  ],
+  "suppliers": [
+    {"id": "5a000000-0000-4000-8000-000000700043", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "ACTIVE", "name": "Verein Stuttgart", "code": "700043", "currency": "EUR", "vatIdNo": "DE123456789",
+     "iban": "DE02120300000000202051", "bic": "BYLADEM1001", "defaultPaymentMethod": "SEPA",
+     "address": {"streetAddress": "Burgenlandstr. 15", "city": "Stuttgart", "postCode": "70469", "country": "DE"},
+     "defaultExpenseAccountId": "ea000000-0000-4000-8000-000000066600",
+     "defaultCostCarrierId": "e2000000-0000-4000-8000-000000000003",
+     "createTime": "2026-05-05T08:01:22Z", "updateTime": "2026-11-25T18:33:03Z"},
+    {"id": "5a000000-0000-4000-8000-000000700131", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "ACTIVE", "name": "Hostel Gdańsk", "code": "700131", "currency": "PLN", "defaultPaymentMethod": "SEPA",
+     "address": {}, "defaultExpenseAccountId": "ea000000-0000-4000-8000-000000066600",
+     "defaultCostCenterId": "e1000000-0000-4000-8000-000000000001",
+     "defaultCostCarrierId": "e2000000-0000-4000-8000-000000000003",
+     "defaultTeamId": "a0000000-0000-4000-8000-000000000001",
+     "paymentTermId": "f1000000-0000-4000-8000-000000000001",
+     "defaultVatRateId": "f2000000-0000-4000-8000-000000000019",
+     "createTime": "2026-11-24T21:09:08Z", "updateTime": "2026-11-25T21:58:03Z"},
+    {"id": "5a000000-0000-4000-8000-000000700050", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "ACTIVE", "name": "Konflikt GmbH", "code": "700050", "currency": "EUR", "defaultPaymentMethod": "SEPA",
+     "address": {}, "createTime": "2026-05-05T08:01:22Z", "updateTime": "2026-05-05T08:01:22Z"},
+    {"id": "5a000000-0000-4000-8000-0000000000ab", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "status": "ACTIVE", "name": "Ohne Nummer", "code": "AB12", "currency": "EUR", "defaultPaymentMethod": "SEPA",
+     "address": {}, "defaultExpenseAccountId": "ea000000-0000-4000-8000-0000000000ff",
+     "createTime": "2026-05-05T08:01:22Z", "updateTime": "2026-05-05T08:01:22Z"}
+  ]
+}

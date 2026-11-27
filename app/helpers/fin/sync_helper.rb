@@ -247,15 +247,24 @@ module Fin::SyncHelper
   # in its table is missing.
   def fin_sync_records(part, keys)
     part_class = fin_sync_part_class(part)
-    return {} unless part_class.respond_to?(:model) && keys.any?
+    return {} unless part_class.respond_to?(:records_for) && keys.any?
 
     person_key = Wsjrdp::Sync::MossApi::ListPart::PERSON_KEY
-    person_keys, uuids = keys.map { |key| key.to_s.downcase }.uniq.partition { |key| key.start_with?(person_key) }
-    uuid_column = part_class.uuid_column
-    records = part_class.model.where(uuid_column => uuids).index_by { |record| record[uuid_column].to_s.downcase }
+    person_keys, own = keys.map { |key| key.to_s.downcase }.uniq.partition { |key| key.start_with?(person_key) }
+    records = part_class.records_for(own)
     ids = person_keys.map { |key| key.delete_prefix(person_key).to_i }
     Person.where(id: ids).find_each { |person| records["#{person_key}#{person.id}"] = person } if ids.any?
     records
+  end
+
+  # The page of a record, nil when it has none.
+  def fin_sync_record_path(record)
+    case record
+    when WsjrdpLedgerAccount then ledger_account_path(record.number)
+    when WsjrdpCostCenter then cost_center_path(record.number)
+    when WsjrdpPersonalAccount then personal_account_path(record.number)
+    when Person, MossUser, MossTeam, MossDepartment then polymorphic_path(record)
+    end
   end
 
   # One record of a notice: when it is in its table, its name as a link
@@ -263,9 +272,9 @@ module Fin::SyncHelper
   # "E-Mail: …", then what the notice says of it ("→ <reference>"); else the
   # notice's own text.
   def fin_sync_notice_item(record, text)
-    return text unless record
+    path = record && fin_sync_record_path(record)
+    return text unless path
 
-    path = polymorphic_path(record)
     return fin_sync_notice_person(record, path, text) if record.is_a?(Person)
 
     name = record.to_s
@@ -334,9 +343,9 @@ module Fin::SyncHelper
 
   # The label of a change, linked to its record when there is one.
   def fin_sync_change_record_link(change, record)
-    return change.label unless record
+    path = record && fin_sync_record_path(record)
+    return change.label unless path
 
-    path = polymorphic_path(record)
     safe_join([link_to(change.label, path, data: {turbo_frame: "_top"}), wsjrdp_newtab_link(path)])
   end
 

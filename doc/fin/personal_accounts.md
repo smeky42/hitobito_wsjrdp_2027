@@ -85,7 +85,7 @@ dedicated database column.
 |---|---|---|---|---|
 | `Type` = `COMPANY` | `Adressattyp` = `2` | Same meaning. DATEV codes (doc 1003221 field 7, there spelled "Adressatentyp"): `0` = keine Angabe, `1` = natürliche Person, `2` = Unternehmen (default). All 88 rows carry `2`. Note this says *company vs. natural person*, it does not say Kreditor. Moss API enum: only supplier objects, always companies here. | `moss_type` (enum verbatim) | `other_datev_columns["Adressattyp"]` |
 | `Payment Method` = `SEPA` | `Zahlungsträger` = `7` | DATEV codes (field 136): blank/`0` = per master data, `7` = SEPA-Überweisung mit einer Rechnung, `8` = SEPA-Überweisung mit mehreren Rechnungen, `9` = keine Überweisungen, Schecks. 79 of 88 rows carry `7`; 9 rows have no Zahlungsträger despite Moss `SEPA`. | `moss_default_payment_method` (value verbatim) | `other_datev_columns["Zahlungsträger"]` |
-| *(Moss API `id`, a UUID)* | `Nummer Fremdsystem` | **The sync's foreign key**: first 15 characters of the Moss supplier UUID (field 220 is `Text 15`). Populated on 77/88 rows — the remainder were presumably created before the sync or manually in DATEV. | `moss_uuid` — currently always empty, the CSV export does not carry the UUID | `datev_nummer_fremdsystem` |
+| *(Moss API `id`, a UUID)* | `Nummer Fremdsystem` | **The sync's foreign key**: first 15 characters of the Moss supplier UUID (field 220 is `Text 15`). Populated on 77/88 rows — the remainder were presumably created before the sync or manually in DATEV. | `moss_uuid` — written by the Moss API sync; the CSV export does not carry the UUID | `datev_nummer_fremdsystem` |
 
 
 ## Derived / redundant DATEV fields
@@ -142,8 +142,8 @@ branch):
 | `Cost Center Name`/`Cost Center Number` | default cost center (API `defaultCostCenterId`) | `moss_default_cost_center_number` (the name goes to `other_moss_columns`) |
 | `Cost Carrier Name`/`Cost Carrier Number` | default cost carrier = our tax sphere (API `defaultCostCarrierId`) | `moss_default_sphere_number` (the name goes to `other_moss_columns`) |
 | `Team Name` | default team (API `defaultTeamId`) — Moss concept, absent in DATEV | `moss_default_team_name` |
-| `VAT Code`/`VAT Rate`/`VAT Name` | default VAT rate (API `defaultVatRateId`, resolved) | `other_moss_columns` |
-| `Payment term - Number`/`- Description` | default payment terms (API `paymentTermId`, resolved) | `other_moss_columns` |
+| `VAT Code`/`VAT Rate`/`VAT Name` | default VAT rate (API `defaultVatRateId`, resolved) | `other_moss_columns`; the API sync stores the UUID in `default_moss_vat_rate_uuid` (`moss_tax_rates`) |
+| `Payment term - Number`/`- Description` | default payment terms (API `paymentTermId`, resolved) | `other_moss_columns`; the API sync stores the UUID in `default_moss_payment_term_uuid` (`moss_payment_terms`) |
 | `Account Holder Name` | bank account holder if it differs from the supplier name. DATEV has per-bank equivalents (`Abw. Kontoinhaber 1..10`), unpopulated here, so there is nothing to reconcile — hence the `moss_` prefix. | `moss_account_holder_name` |
 | `Currency` | Supplier default currency (API `currency`, ISO 4217): EUR on 78, PLN on 2, empty on 8 of 88. Worth keeping: the two PLN suppliers are **exactly** the creditors of our four foreign-currency bookings, so the field predicts where `transaction_currency ≠ base_currency` occurs. DATEV has no counterpart — its DebKred field `Währungssteuerung` is unused in our data. | `moss_default_currency` |
 
@@ -174,6 +174,9 @@ fields (`name`, `street`, `address_second_line`, `city`):
   record for suppliers, so a differing value simply wins. Because the two
   systems are kept in sync, a difference is also a signal: the import logs it
   as suspected sync drift before applying it.
+* **Moss API sync** (`/fin/sync`, see [sync.md](sync.md)) — like the Moss
+  import, but it never writes `moss_account_holder_name`, `moss_type`,
+  `address_second_line` or `other_moss_columns`: the API has no such fields.
 * **DATEV import — transliteration-aware.** A DATEV export is CP1252 and
   cannot carry characters outside that charset, so `Gdańsk` arrives as
   `Gdansk`. Details about this issue and the handling are described in
@@ -191,8 +194,8 @@ fields (`name`, `street`, `address_second_line`, `city`):
   `moss_type`, `moss_vat_id`, `moss_default_currency`,
   `moss_default_payment_method`, `moss_account_holder_name`, `moss_default_*` on
   the one side, `datev_short_name` and `datev_nummer_fremdsystem` on the
-  other. `moss_uuid` is reserved for the full supplier UUID once the Moss API is
-  used; the CSV export does not contain it.
+  other. `moss_uuid` and the `default_moss_*_uuid` references come from the
+  Moss API sync only.
 * Unmapped extra fields land in `other_moss_columns` / `other_datev_columns`
   keyed by the original header, so nothing an export ships is silently dropped.
 * The DATEV bank slots 2–5 need no model of their own: in the current data they

@@ -2789,6 +2789,22 @@ de:
               _label: "Teams"
             users:
               _label: "Benutzer"
+          master_data:
+            _label: "Stammdaten"
+            dimensions:
+              _label: "Dimensionen"
+            cost_centers:
+              _label: "Kostenstellen"
+            spheres:
+              _label: "Sphären (Kostenträger)"
+            ledger_accounts:
+              _label: "Sachkonten"
+            payment_terms:
+              _label: "Zahlungsbedingungen"
+            tax_rates:
+              _label: "Steuersätze"
+            suppliers:
+              _label: "Lieferanten (Kreditoren)"
       # What a run synchronises (WsjrdpSyncRun#source).
       sources:
         moss_api: "Moss API"
@@ -2840,6 +2856,7 @@ de:
       # A notice as a short badge in a change's row.
       notice_labels:
         many_removed: "viele entfernt"
+        many_cleared: "viele nicht mehr in Moss"
         incomplete: "Liste unvollständig"
         ambiguous_person: "mehrere Personen"
         unknown_owner: "unbekannter Besitzer"
@@ -2853,6 +2870,15 @@ de:
         person_without_moss_user: "ohne Moss-Benutzer"
         person_without_moss_user_expected: "ohne Moss-Benutzer"
         moss_user_without_contract: "Person ohne Vertrag"
+        invalid_number: "Nummer passt nicht"
+        number_conflict: "Nummer/UUID-Konflikt"
+        name_changed: "Name geändert"
+        unknown_reference: "unbekannter Verweis"
+      # Why a Moss record does not fit its row (number_conflict).
+      conflicts:
+        duplicate_number: "Nummer zweimal in Moss"
+        uuid_other_number: "UUID gehört in Hitobito zu einer anderen Nummer"
+        number_other_uuid: "Nummer hat in Hitobito eine andere UUID"
       timings:
         title: "Ablauf"
         run: "Lauf"
@@ -2918,7 +2944,12 @@ de:
           other: "%{count} Dateien gelöscht."
       # Warnings and hints of a plan (Wsjrdp::Sync::Part#warning, #hint).
       notices:
-        many_removed: "%{table}: %{count} Datensätze fehlen in Moss und würden als entfernt markiert. Hat Moss vollständig geantwortet?"
+        many_removed:
+          one: "%{table}: 1 Datensatz fehlt in Moss und würde als entfernt markiert. Hat Moss vollständig geantwortet?"
+          other: "%{table}: %{count} Datensätze fehlen in Moss und würden als entfernt markiert. Hat Moss vollständig geantwortet?"
+        many_cleared:
+          one: "%{table}: 1 Datensatz fehlt in Moss; sein Moss-Status würde geleert. Hat Moss vollständig geantwortet?"
+          other: "%{table}: %{count} Datensätze fehlen in Moss; ihr Moss-Status würde geleert. Hat Moss vollständig geantwortet?"
         incomplete: "%{table}: Moss hat %{received} von %{total} Datensätzen geliefert. Es wird nichts als entfernt markiert, die übrigen Änderungen werden geschrieben."
         ambiguous_person: "%{count} Benutzer: Die E-Mail passt zu mehreren Personen, die Person bleibt leer."
         unknown_owner: "%{count} Abteilungen verweisen auf einen unbekannten Besitzer."
@@ -2936,6 +2967,18 @@ de:
           one: "1 Person mit hinterlegter moss_email ohne Moss-Benutzer, ohne Vertrag oder abgemeldet."
           other: "%{count} Personen mit hinterlegter moss_email ohne Moss-Benutzer, ohne Vertrag oder abgemeldet."
         moss_user_without_contract: "%{count} Benutzer gehören zu einer Person ohne Vertrag."
+        invalid_number:
+          one: "%{table}: 1 Datensatz hat eine Nummer, die nicht zu dieser Tabelle passt. Er wird nicht übernommen."
+          other: "%{table}: %{count} Datensätze haben eine Nummer, die nicht zu dieser Tabelle passt. Sie werden nicht übernommen."
+        number_conflict:
+          one: "%{table}: 1 Datensatz passt über UUID und Nummer nicht eindeutig zu Hitobito. Er wird NICHT übernommen; bitte in Moss oder Hitobito klären."
+          other: "%{table}: %{count} Datensätze passen über UUID und Nummer nicht eindeutig zu Hitobito. Sie werden NICHT übernommen; bitte in Moss oder Hitobito klären."
+        name_changed:
+          one: "%{table}: 1 Datensatz bekommt aus Moss einen anderen Namen."
+          other: "%{table}: %{count} Datensätze bekommen aus Moss einen anderen Namen."
+        unknown_reference:
+          one: "1 Lieferant verweist auf etwas, das in keiner Moss-Liste steht."
+          other: "%{count} Lieferanten verweisen auf etwas, das in keiner Moss-Liste steht."
   contingent:
     tabs:
       overview: "Übersicht"

@@ -33,7 +33,8 @@ describe Fin::SyncRunsController do
 
     run = WsjrdpSyncRun.last
     expect(response).to redirect_to(fin_sync_moss_api_run_path(run))
-    expect(run.parts.map(&:part_key)).to eq(Wsjrdp::Sync.parts.map(&:key))
+    expect(run.parts.map(&:part_key)).to eq(Wsjrdp::Sync.expand([users_key]))
+    expect(run.parts.size).to eq(3)
     expect(MossUser.count).to eq(0)
   end
 
@@ -114,6 +115,21 @@ describe Fin::SyncRunsController do
       expect(page.at_css("#sync-apply")).to be_present
       users = run.parts.find_by!(part_key: users_key)
       expect(page.css("tr.exp-row[aria-controls^='sc#{users.id}-']").size).to eq(4)
+    end
+
+    it "shows the master data, a supplier linked to its account" do
+      WsjrdpPersonalAccount.create!(number: "700043", name: "Verein Stuttgart", moss_status: "active")
+      run = run_with([Wsjrdp::Sync::MossApi::Suppliers.key])
+
+      get :show, params: {id: run.id}
+
+      expect(response).to be_successful
+      expect(Nokogiri::HTML(response.body).css("a[href='#{personal_account_path("700043")}']")).to be_present
+
+      Wsjrdp::Sync::Apply.new(run.reload, actor: admin, confirmed: true, warnings_confirmed: true).call
+      get :show, params: {id: run.id}
+
+      expect(Nokogiri::HTML(response.body).css("a[href='#{personal_account_path("700043")}']")).to be_present
     end
 
     it "still shows a part no longer in the registry" do

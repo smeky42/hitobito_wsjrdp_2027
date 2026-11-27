@@ -50,8 +50,6 @@ module Wsjrdp::Sync::MossApi
     # Sorted: Moss's order carries no meaning and may change.
     def roles(record) = Array(record["roles"]).sort
 
-    def instant(text) = text.presence && Wsjrdp::InstantInput.parse(text)
-
     def person_id(record) = current_people[record["id"].to_s.downcase] || match(record)
 
     # The one person with the user's Moss e-mail, or nil.
@@ -90,12 +88,6 @@ module Wsjrdp::Sync::MossApi
     def person_fields(record)
       {"moss_status" => record["status"].presence, "moss_team" => team_names[record["teamId"]],
        "moss_roles" => roles(record).presence}
-    end
-
-    # {team UUID => name}: what this run fetched, else the table.
-    def team_names
-      @team_names ||= context.data_of(Teams.key)&.dig(Teams.data_name)&.to_h { |team| [team["id"], team["name"].presence] } ||
-        MossTeam.in_moss.pluck(:moss_team_uuid, :name).to_h
     end
 
     # One statement for all people, one insert for their versions.

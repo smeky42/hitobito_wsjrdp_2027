@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_22_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_27_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -1032,6 +1032,46 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_22_000100) do
     t.index ["moss_transaction_id"], name: "index_moss_expenses_transaction"
     t.index ["type"], name: "index_moss_expenses_type"
     t.unique_constraint ["moss_transaction_id", "expense_number"], deferrable: :deferred, name: "unq_moss_expenses_transaction_expense_number"
+  end
+
+  create_table "moss_payment_terms", comment: "Moss payment terms (API /v1/payment-terms)", force: :cascade do |t|
+    t.uuid "moss_payment_term_uuid", null: false, comment: "API field `id`"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "API field `organisationId`"
+    t.string "description", comment: "API field `description`"
+    t.string "code", comment: "API field `code`: the reference in the accounting system"
+    t.integer "net_due_days", comment: "API field `netDueDays`"
+    t.integer "month_end_advances", comment: "API field `monthEndAdvances`"
+    t.string "due_date_calculation_type", comment: "API field `dueDateCalculationType`"
+    t.string "status", comment: "API field `status`"
+    t.jsonb "lines", default: [], null: false, comment: "API field `lines`: the early-payment discount tiers"
+    t.datetime "last_seen_at", comment: "Last sync that returned the row"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the row; cleared when it comes back"
+    t.text "comment", default: "", null: false, comment: "Hitobito's own note on the row"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moss_payment_term_uuid"], name: "index_moss_payment_terms_on_moss_payment_term_uuid", unique: true
+  end
+
+  create_table "moss_tax_rates", comment: "Moss tax rates (API /v1/tax-rates)", force: :cascade do |t|
+    t.uuid "moss_tax_rate_uuid", null: false, comment: "API field `id`"
+    t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "API field `organisationId`"
+    t.string "tax_type", comment: "API field `type`: VAT, ..."
+    t.string "country", comment: "API field `country` (ISO 3166-1 alpha-2)"
+    t.string "name", comment: "API field `name`"
+    t.decimal "rate", precision: 9, scale: 4, comment: "API field `rate`, in percent"
+    t.string "code", comment: "API field `code`: the tax code in the accounting system"
+    t.boolean "reverse_charge", comment: "API field `reverseCharge`"
+    t.string "status", comment: "API field `status`: ACTIVE, INACTIVE, ..."
+    t.datetime "moss_created_at", comment: "API field `createTime`"
+    t.datetime "moss_updated_at", comment: "API field `updateTime`"
+    t.datetime "last_seen_at", comment: "Last sync that returned the row"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the row; cleared when it comes back"
+    t.text "comment", default: "", null: false, comment: "Hitobito's own note on the row"
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moss_tax_rate_uuid"], name: "index_moss_tax_rates_on_moss_tax_rate_uuid", unique: true
   end
 
   create_table "moss_teams", comment: "Moss teams (API /v1/teams)", force: :cascade do |t|
@@ -2374,10 +2414,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_22_000100) do
     t.datetime "moss_created_at", comment: "Moss supplier field `createTime`"
     t.datetime "moss_updated_at", comment: "Moss supplier field `updateTime`"
     t.uuid "moss_organisation_uuid", default: "ee55d234-7890-4bd2-8617-5f2f4c1d605a", comment: "Moss organisation (API field `organisationId`)"
+    t.uuid "default_moss_payment_term_uuid", comment: "Moss supplier API field `paymentTermId`"
+    t.uuid "default_moss_vat_rate_uuid", comment: "Moss supplier API field `defaultVatRateId`"
     t.index ["default_moss_cost_carrier_uuid"], name: "index_personal_accounts_on_default_moss_cost_carrier_uuid", where: "(default_moss_cost_carrier_uuid IS NOT NULL)"
     t.index ["default_moss_cost_center_uuid"], name: "index_personal_accounts_on_default_moss_cost_center_uuid", where: "(default_moss_cost_center_uuid IS NOT NULL)"
     t.index ["default_moss_expense_account_uuid"], name: "index_personal_accounts_on_default_moss_expense_account_uuid", where: "(default_moss_expense_account_uuid IS NOT NULL)"
+    t.index ["default_moss_payment_term_uuid"], name: "index_personal_accounts_on_default_moss_payment_term_uuid", where: "(default_moss_payment_term_uuid IS NOT NULL)"
     t.index ["default_moss_team_uuid"], name: "index_personal_accounts_on_default_moss_team_uuid", where: "(default_moss_team_uuid IS NOT NULL)"
+    t.index ["default_moss_vat_rate_uuid"], name: "index_personal_accounts_on_default_moss_vat_rate_uuid", where: "(default_moss_vat_rate_uuid IS NOT NULL)"
     t.index ["moss_uuid"], name: "index_wsjrdp_personal_accounts_on_moss_uuid", unique: true, where: "(moss_uuid IS NOT NULL)"
     t.index ["number"], name: "index_wsjrdp_personal_accounts_on_number", unique: true
     t.index ["represented_person_id"], name: "index_wsjrdp_personal_accounts_on_represented_person_id"
@@ -2436,6 +2480,58 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_22_000100) do
     t.text "user_comment", default: "", null: false, comment: "Comment visible for users"
     t.virtual "effective_total_budget", type: :decimal, precision: 20, scale: 3, comment: "Displayed total: yearly sum or explicit_total_budget, whichever is larger in absolute value; generated, not writable", as: "\nCASE\n    WHEN (COALESCE(budget_2025, budget_2026, budget_2027, budget_2028) IS NULL) THEN explicit_total_budget\n    WHEN ((explicit_total_budget IS NULL) OR (abs((((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))) > abs(explicit_total_budget))) THEN (((COALESCE(budget_2025, (0)::numeric) + COALESCE(budget_2026, (0)::numeric)) + COALESCE(budget_2027, (0)::numeric)) + COALESCE(budget_2028, (0)::numeric))\n    ELSE explicit_total_budget\nEND", stored: true
     t.index ["cost_center_number", "number"], name: "index_wsjrdp_sub_cost_centers_on_cost_center_and_number", unique: true
+  end
+
+  create_table "wsjrdp_sync_run_parts", force: :cascade do |t|
+    t.bigint "run_id", null: false
+    t.string "part_key", null: false
+    t.integer "position", null: false
+    t.string "status", null: false, comment: "planned, applied, unchanged, stale, failed, skipped"
+    t.datetime "fetch_started_at", null: false
+    t.datetime "applied_at"
+    t.jsonb "plan", default: {}, null: false
+    t.string "plan_digest"
+    t.jsonb "counts", default: {}, null: false
+    t.jsonb "files", default: [], null: false
+    t.datetime "files_purged_at"
+    t.text "error_message"
+    t.jsonb "timings", default: [], null: false
+    t.jsonb "stats", default: {}, null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["part_key", "applied_at"], name: "index_wsjrdp_sync_run_parts_on_part_key_and_applied_at"
+    t.index ["part_key", "fetch_started_at"], name: "index_wsjrdp_sync_run_parts_on_part_key_and_fetch_started_at"
+    t.index ["run_id", "position"], name: "index_wsjrdp_sync_run_parts_on_run_id_and_position", unique: true
+    t.index ["run_id"], name: "index_wsjrdp_sync_run_parts_on_run_id"
+  end
+
+  create_table "wsjrdp_sync_runs", force: :cascade do |t|
+    t.string "source", null: false
+    t.string "credential_source", comment: "DB, ENV or YAML"
+    t.string "credential_kind"
+    t.string "account_key"
+    t.bigint "credential_id"
+    t.string "selected_parts", default: [], null: false, array: true
+    t.string "status", null: false, comment: "planned, applying, stopped, applied, partly_applied, unchanged, failed, cancelled"
+    t.datetime "started_at", null: false
+    t.bigint "started_by_id"
+    t.datetime "confirmed_at"
+    t.bigint "confirmed_by_id"
+    t.datetime "warnings_confirmed_at"
+    t.bigint "warnings_confirmed_by_id"
+    t.datetime "finished_at"
+    t.text "error_message"
+    t.jsonb "timings", default: [], null: false
+    t.jsonb "stats", default: {}, null: false
+    t.jsonb "additional_info", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["confirmed_by_id"], name: "index_wsjrdp_sync_runs_on_confirmed_by_id"
+    t.index ["credential_id"], name: "index_wsjrdp_sync_runs_on_credential_id"
+    t.index ["started_at"], name: "index_wsjrdp_sync_runs_on_started_at"
+    t.index ["started_by_id"], name: "index_wsjrdp_sync_runs_on_started_by_id"
+    t.index ["warnings_confirmed_by_id"], name: "index_wsjrdp_sync_runs_on_warnings_confirmed_by_id"
   end
 
   add_foreign_key "accounting_entries", "accounting_entries", column: "reversed_by_id"
@@ -2497,4 +2593,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_22_000100) do
   add_foreign_key "wsjrdp_payment_notices", "wsjrdp_payment_references", column: "payment_reference_id", on_delete: :restrict
   add_foreign_key "wsjrdp_personal_accounts", "people", column: "represented_person_id"
   add_foreign_key "wsjrdp_spheres", "people", column: "manager_person_id"
+  add_foreign_key "wsjrdp_sync_run_parts", "wsjrdp_sync_runs", column: "run_id", on_delete: :cascade
+  add_foreign_key "wsjrdp_sync_runs", "people", column: "confirmed_by_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_sync_runs", "people", column: "started_by_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_sync_runs", "people", column: "warnings_confirmed_by_id", on_delete: :nullify
+  add_foreign_key "wsjrdp_sync_runs", "wsjrdp_credentials", column: "credential_id", on_delete: :nullify
 end

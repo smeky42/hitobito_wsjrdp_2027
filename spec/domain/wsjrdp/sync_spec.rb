@@ -15,7 +15,7 @@ describe Wsjrdp::Sync do
   include SyncSpecHelpers
 
   let(:admin) { people(:cmt_leader) }
-  let(:organisation_keys) { described_class.parts_of(:moss_api).map(&:key) }
+  let(:organisation_keys) { [Wsjrdp::Sync::MossApi::Departments.key, teams_key, users_key] }
   let(:users_key) { Wsjrdp::Sync::MossApi::Users.key }
   let(:teams_key) { Wsjrdp::Sync::MossApi::Teams.key }
 
@@ -41,10 +41,10 @@ describe Wsjrdp::Sync do
 
     it "groups the parts by their keys under Moss API" do
       api = described_class.tree.children.sole
-      organisation = api.children.sole
+      organisation, master_data = api.children
 
-      expect([api.label, organisation.label]).to eq(["Moss API", "Organisationsstruktur"])
-      expect(organisation.children.map(&:part)).to eq(described_class.parts_of(:moss_api))
+      expect([api.label, organisation.label, master_data.label]).to eq(["Moss API", "Organisationsstruktur", "Stammdaten"])
+      expect((organisation.children + master_data.children).map(&:part)).to eq(described_class.parts_of(:moss_api))
     end
   end
 
