@@ -70,7 +70,23 @@ describe Wsjrdp::Sync do
       expect { apply(run) }.to raise_error(Wsjrdp::Sync::Apply::Refused, "not_open")
     end
 
-    it "hints at dangling references without asking twice, naming the records" do
+    it "counts the rows written and times every phase, per part and for the run" do
+      run = start
+      expect(WsjrdpSyncRunPart.last_started_at(users_key)).to eq(part(run, users_key).fetch_started_at)
+      expect(WsjrdpSyncRunPart.last_applied_at(users_key)).to be_nil
+
+      apply(run)
+
+      expect(part(run, users_key).stats)
+        .to eq("modified_rows" => {"inserted" => 4, "updated" => 0, "deleted" => 0, "soft_deleted" => 0})
+      expect(run.reload.modified_rows["inserted"]).to eq(2 + 3 + 4)
+      expect(run.timings.pluck("phase")).to eq(%w[start apply])
+      expect(part(run, users_key).timings.pluck("phase")).to eq(%w[fetch plan apply])
+      expect(run.timings.first).to include("started_at", "finished_at", "duration_ms", "status" => "succeeded")
+      expect(WsjrdpSyncRunPart.last_applied_at(users_key)).to be_present
+    end
+
+    it "hints at dangling references without asking twice, and keeps the data in files named by the start in UTC" do
       run = start
 
       expect(codes(run, users_key)).to contain_exactly("unknown_manager", "without_person", "without_person_deactivated")
@@ -78,15 +94,10 @@ describe Wsjrdp::Sync do
       manager = part(run, users_key).plan_object.warnings.find { |notice| notice.code == "unknown_manager" }
       expect(manager.items.values)
         .to eq(["Cem Ohneteam · Status: DEACTIVATED · E-Mail: ohne.team@example.org → b0000000-0000-4000-8000-000000000099"])
-    end
+      names = part(run, users_key).files.pluck("name")
 
-    it "counts the rows written, per part and for the run" do
-      run = start
-      apply(run)
-
-      expect(part(run, users_key).stats)
-        .to eq("modified_rows" => {"inserted" => 4, "updated" => 0, "deleted" => 0, "soft_deleted" => 0})
-      expect(run.reload.modified_rows["inserted"]).to eq(2 + 3 + 4)
+      expect(names).to eq(%w[data-users data-paging meta].map { |file| "20261123T142501Z_run-#{run.id}_#{users_key}.#{file}.json" })
+      expect(Wsjrdp::Sync::Files.data(part(run, users_key).files)["users"].size).to eq(4)
     end
 
     it "keeps the credential it read with" do
@@ -123,32 +134,6 @@ describe Wsjrdp::Sync do
         allow(Wsjrdp::Credentials).to receive(:lookup).and_return(double(answer: double(source: source)))
         expect(Wsjrdp::Sync::MossApi.credential_source("default")).to eq(shown)
       end
-    end
-
-    it "records start, end and duration of every phase" do
-      run = start
-      apply(run)
-
-      expect(run.reload.timings.pluck("phase")).to eq(%w[start apply])
-      expect(part(run, users_key).timings.pluck("phase")).to eq(%w[fetch plan apply])
-      expect(run.timings.first).to include("started_at", "finished_at", "duration_ms", "status" => "succeeded")
-    end
-
-    it "keeps the data in files named by the run's start in UTC" do
-      run = start
-      names = part(run, users_key).files.pluck("name")
-
-      expect(names).to eq(%w[data-users data-paging meta].map { |file| "20261123T142501Z_run-#{run.id}_#{users_key}.#{file}.json" })
-      expect(Wsjrdp::Sync::Files.data(part(run, users_key).files)["users"].size).to eq(4)
-    end
-
-    it "answers when a part was last started and last written" do
-      run = start
-      expect(WsjrdpSyncRunPart.last_started_at(users_key)).to eq(part(run, users_key).fetch_started_at)
-      expect(WsjrdpSyncRunPart.last_applied_at(users_key)).to be_nil
-
-      apply(run)
-      expect(WsjrdpSyncRunPart.last_applied_at(users_key)).to be_present
     end
   end
 

@@ -15,20 +15,23 @@ require "spec_helper"
 describe Person::StatusController, type: :controller do
   render_views
 
-  let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
-  let(:person) { people(:yp_a_1) }
+  before_all(setup_fixtures: true) {}
 
-  def rule(status, **attrs)
+  let_it_be(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  let_it_be(:person, reload: true) { people(:yp_a_1).reload }
+
+  def self.rule(person, status, **attrs)
     Wsj27RdpFeeRule.create!(people_id: person.id, status: status,
       custom_installments_starting_year: 2026, custom_installments_cents: [0, 10_000],
       custom_installments_issue: "HELP-1", custom_installments_comment: "Vereinbarung", **attrs)
   end
 
-  before do
-    sign_in(manager)
-    rule("active", activated_at: 1.day.ago, custom_installments_payment_method: "credit_transfer")
+  before_all do
+    self.class.rule(person, "active", activated_at: 1.day.ago, custom_installments_payment_method: "credit_transfer")
     person.update!(Wsjrdp2027::ParticipationFee.person_installments_attrs(person.active_fee_rule))
   end
+
+  before { sign_in(manager) }
 
   it "shows the contract with its date and as stored" do
     person.update_columns(contract_status: "confirmed", contract_confirmed_at: Time.zone.local(2025, 10, 12, 9))
@@ -41,7 +44,7 @@ describe Person::StatusController, type: :controller do
   end
 
   it "links the plan in effect to the Beitrag page, on the page and in the form, nothing to plan" do
-    rule("planned", custom_installments_cents: [0, 0, 5_000])
+    self.class.rule(person, "planned", custom_installments_cents: [0, 0, 5_000])
 
     %i[show edit].each do |action|
       get action, params: {group_id: person.primary_group_id, id: person.id}
@@ -89,7 +92,7 @@ describe Person::StatusController, type: :controller do
   end
 
   describe "total fee reduction" do
-    before { person.update!(wsjrdp_total_fee_reduction: 500, wsjrdp_total_fee_reduction_hint: "Härtefall") }
+    before_all { person.update!(wsjrdp_total_fee_reduction: 500, wsjrdp_total_fee_reduction_hint: "Härtefall") }
 
     it "names it and links to the Beitrag page, on the page and in the form" do
       %i[show edit].each do |action|

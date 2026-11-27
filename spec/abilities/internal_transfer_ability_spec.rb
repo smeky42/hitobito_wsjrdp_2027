@@ -13,10 +13,13 @@ require "spec_helper"
 # the read tiers see it, the write tier may do everything the manage tier may,
 # destroying one included. A CMT admin gets that through its :finance permission.
 describe "internal transfer abilities" do
-  let(:transfer) { WsjrdpInternalTransfer.new }
-  let(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
+  before_all(setup_fixtures: true) {}
 
-  subject(:ability) { Ability.new(person.reload) }
+  let(:transfer) { WsjrdpInternalTransfer.new }
+
+  let_it_be(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
+
+  subject { ability }
 
   shared_examples "full rights" do
     it "may do everything with an Umbuchung" do
@@ -28,7 +31,8 @@ describe "internal transfer abilities" do
   end
 
   context "with Group::Root::FinanceReader role (read tier)" do
-    let(:person) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may only show" do
       is_expected.to be_able_to(:show, transfer)
@@ -37,7 +41,8 @@ describe "internal transfer abilities" do
   end
 
   context "with Group::Extern::FinanceAuditor role (audit tier)" do
-    let(:person) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
+    let_it_be(:person) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may show and log, nothing more" do
       is_expected.to be_able_to(:show, transfer)
@@ -47,25 +52,29 @@ describe "internal transfer abilities" do
   end
 
   context "with Group::Root::Finance role (write tier)" do
-    let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "full rights"
   end
 
   context "with Group::Extern::FinanceAccountant role (write tier, extern layer)" do
-    let(:person) { Fabricate(Group::Extern::FinanceAccountant.name.to_sym, group: extern).person }
+    let_it_be(:person) { Fabricate(Group::Extern::FinanceAccountant.name.to_sym, group: extern).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "full rights"
   end
 
   context "with Group::Root::FinanceManager role (manage tier)" do
-    let(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "full rights"
   end
 
   context "with Group::Root::Admin role (carries :finance)" do
-    let(:person) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "full rights"
 
@@ -77,7 +86,8 @@ describe "internal transfer abilities" do
   end
 
   context "without a finance permission" do
-    let(:person) { people(:cmt_leader) }
+    let_it_be(:person) { people(:cmt_leader) }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may not even show" do
       is_expected.not_to be_able_to(:show, transfer)

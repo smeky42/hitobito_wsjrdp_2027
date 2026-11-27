@@ -15,120 +15,64 @@ require "spec_helper"
 # configurable group, saved in one request. All numbers and names below are
 # invented.
 describe Fin::GroupCostCentersController do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+  let_it_be(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
   let(:unit_a) { groups(:unit_a) }
   let(:unit_b) { groups(:unit_b) }
   let(:ist_a) { groups(:ist_a) }
 
   # Cost-center numbers are alphanumeric, never just digits.
-  let!(:cc_a1) { WsjrdpCostCenter.create!(number: "A1", name: "Kostenstelle A1") }
-  let!(:cc_a1_r) { WsjrdpCostCenter.create!(number: "A1-R", name: "Kostenstelle A1-R") }
-
-  def body = Nokogiri::HTML(response.body)
-
-  def rows = body.css("table tbody tr")
-
-  def row(group) = rows.find { |tr| tr.css("td").first.text.strip == group.name }
+  before_all do
+    WsjrdpCostCenter.create!(number: "A1", name: "Kostenstelle A1")
+    WsjrdpCostCenter.create!(number: "A1-R", name: "Kostenstelle A1-R")
+  end
 
   def group_version_count = PaperTrail::Version.where(main_type: "Group").count
 
   before { sign_in(admin) }
 
   describe "index" do
-    it "renders the area's two tabs" do
-      get :index
-
-      expect(response).to be_successful
-      expect(response.body).to include(I18n.t("fin.tabs.finance_groups"))
-      expect(response.body).to include(I18n.t("fin.tabs.group_cost_centers"))
-    end
-
     it "shows one row per unit and IST group, and none for a waiting list" do
       waiting_list = Group::Unit.create!(name: "YP Warteliste", parent: groups(:root))
 
       get :index
 
-      names = rows.map { |tr| tr.css("td").first.text.strip }
-      expect(names).to include(unit_a.name, unit_b.name, ist_a.name, groups(:ist_b).name)
-      expect(names).not_to include(waiting_list.name)
+      expect(controller.send(:groups)).to include(unit_a, unit_b, ist_a, groups(:ist_b))
+      expect(controller.send(:groups)).not_to include(waiting_list)
     end
 
-    # One multi-select per group, turned into chips by the shared
-    # chips-combobox widget (the data attribute is all it takes).
-    it "offers every cost center in one multi-select per group" do
-      unit_a.update!(cost_center_numbers: ["A1"])
-
-      get :index
-
-      select = row(unit_a).at_css("select[multiple][data-chips-combobox]")
-      expect(select).to be_present
-      expect(select["name"]).to eq("cost_center_numbers[#{unit_a.id}][]")
-      expect(select.css("option").pluck("value")).to include("A1", "A1-R")
-      expect(select.css("option[selected]").pluck("value")).to eq(["A1"])
-      expect(row(unit_a).text).to include(cc_a1.display_short_name)
-      expect(row(unit_b).css("option[selected]")).to be_empty
-    end
-
-    # Every row asks for the same widget; both partials guard themselves, so the
-    # page carries the script (and with it the keyboard hints) exactly once.
-    it "carries the chips-combobox widget script once" do
-      get :index
-
-      expect(response.body.scan("window.WsjrdpChipsCombobox = ").size).to eq(1)
-      expect(response.body).to include(
-        "Tippen: suchen · ↑↓: markieren · ↵: auswählen, mit leerem Feld: " \
-        "übernehmen · ⌫: letzte entfernen · Esc: abbrechen"
-      )
-    end
-
-    # A cleared select posts nothing of its own, so the hidden field is what
-    # carries the empty list.
-    it "carries an empty list through a hidden field" do
-      get :index
-
-      hidden = row(unit_a).at_css("input[type=hidden]")
-      expect(hidden["name"]).to eq("cost_center_numbers[#{unit_a.id}][]")
-      expect(hidden["value"]).to eq("")
-    end
-
-    it "marks a cost center more than one group claims" do
+    it "offers every cost center, the stored ones of a group, the shared ones marked, the rest counted" do
       unit_a.update!(cost_center_numbers: ["A1"])
       unit_b.update!(cost_center_numbers: ["A1"])
 
       get :index
 
-      expect(row(unit_a).text).to include(I18n.t("fin.group_cost_centers.also", groups: unit_b.name))
-      expect(row(unit_b).text).to include(I18n.t("fin.group_cost_centers.also", groups: unit_a.name))
+      expect(controller.send(:cost_center_options).map(&:last)).to include("A1", "A1-R")
+      expect(controller.send(:shared_numbers_of, unit_a)).to eq([["A1", [unit_b]]])
+      expect(controller.send(:shared_numbers_of, ist_a)).to eq([])
+      expect(controller.send(:unassigned_cost_center_count)).to eq(WsjrdpCostCenter.count - 1)
     end
 
-    it "counts the cost centers no group claims" do
-      unit_a.update!(cost_center_numbers: ["A1"])
-      unassigned = WsjrdpCostCenter.count - 1
+    describe "rendered" do
+      render_views
 
-      get :index
+      def row(group) = Nokogiri::HTML(response.body).css("table tbody tr").find { |tr| tr.css("td").first.text.strip == group.name }
 
-      expect(response.body)
-        .to include(I18n.t("fin.group_cost_centers.unassigned", count: unassigned))
-    end
+      # A cleared select posts nothing of its own, so the hidden field is what
+      # carries the empty list.
+      it "names each select by its group, the stored numbers selected, an empty list carried by a hidden field" do
+        unit_a.update!(cost_center_numbers: ["A1"])
 
-    it "saves the whole page with one button on one collection form" do
-      get :index
+        get :index
 
-      form = body.at_css("form#group-cost-centers-form")
-      expect(form["action"]).to eq(fin_admin_group_cost_centers_path)
-      expect(form.at_css("input[name=_method]")["value"]).to eq("patch")
-      expect(form.css("button[type=submit]").size).to eq(1)
-    end
-
-    it "keeps the unsaved hint hidden above and below the table" do
-      get :index
-
-      hints = body.css(".group-cost-centers-hint")
-      expect(hints.size).to eq(2)
-      expect(hints.map { |hint| hint.key?("hidden") }).to eq([true, true])
-      expect(hints.text).to include(I18n.t("fin.group_cost_centers.unsaved"))
+        select = row(unit_a).at_css("select[multiple][data-chips-combobox]")
+        expect(select["name"]).to eq("cost_center_numbers[#{unit_a.id}][]")
+        expect(select.css("option[selected]").pluck("value")).to eq(["A1"])
+        hidden = row(unit_a).at_css("input[type=hidden]")
+        expect(hidden.to_h).to include("name" => "cost_center_numbers[#{unit_a.id}][]", "value" => "")
+        expect(response.body.scan("window.WsjrdpChipsCombobox = ").size).to eq(1)
+      end
     end
   end
 

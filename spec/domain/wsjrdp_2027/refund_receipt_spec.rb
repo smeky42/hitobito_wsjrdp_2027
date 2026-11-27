@@ -17,11 +17,11 @@ describe Wsjrdp2027::RefundReceipt do
   let(:person) { people(:yp_a_1) }
   let(:receipt) { described_class.new(person.reload) }
 
-  before do
-    AccountingEntry.create!(subject: person, author: people(:admin), amount_cents: 40_000,
+  before_all(setup_fixtures: true) do
+    AccountingEntry.create!(subject: people(:yp_a_1), author: people(:admin), amount_cents: 40_000,
       amount_currency: "EUR", description: "Teilnahmebeitrag",
       value_date: Date.new(2026, 2, 1), booking_date: Date.new(2026, 2, 1))
-    person.update!(deregistration_issue: "HELP-1",
+    people(:yp_a_1).update!(deregistration_issue: "HELP-1",
       deregistration_requested_date: Date.new(2026, 9, 30),
       deregistration_effective_date: Date.new(2026, 10, 31),
       deregistration_actual_compensation_cents: 0,

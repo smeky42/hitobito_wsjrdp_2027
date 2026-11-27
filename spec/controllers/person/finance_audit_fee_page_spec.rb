@@ -10,21 +10,27 @@
 require "spec_helper"
 
 describe "the Beitrag page for the finance audit tier" do
-  let(:yp) { people(:yp_a_1) }
-  let(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
-  let(:auditor) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
-  let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
-  let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-
-  before do
+  before_all(setup_fixtures: true) do
+    yp = people(:yp_a_1)
     WsjrdpPaymentPlan.kept.find_or_create_by!(wsjrdp_role: yp.wsjrdp_role, single_payment: false,
       payment_method: "direct_debit") { |plan| plan.raw_installments_eur = [2026, 100, 100] }
   end
 
+  let(:yp) { people(:yp_a_1) }
+
+  let_it_be(:auditor) do
+    extern = Group::Extern.create!(name: "Extern", parent: groups(:root))
+    Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person
+  end
+  let_it_be(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+
   describe Person::FeeController, type: :controller do
     render_views
 
-    before do
+    let_it_be(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+
+    before_all do
+      yp = people(:yp_a_1)
       active = Wsj27RdpFeeRule.create!(people_id: yp.id, status: "active", activated_at: 1.day.ago,
         custom_installments_starting_year: 2026, custom_installments_cents: [0, 10_000],
         custom_installments_issue: "HELP-11", custom_installments_comment: "Vereinbarung aktiv",
@@ -41,33 +47,19 @@ describe "the Beitrag page for the finance audit tier" do
 
     def doc = Nokogiri::HTML(response.body)
 
-    it "shows the auditor the page with the privileged view, comments included" do
+    it "shows the auditor the privileged view with comments, the Finanzen and Beiträge tabs, and nothing that changes anything" do
       sign_in(auditor)
       get :show, params: {person_id: yp.id}
 
       expect(response).to be_successful
       installments = doc.at_css("section.installments")
-      expect(installments.text).to include("HELP-11").and include("Vereinbarung aktiv")
-      expect(installments.text).to include("HELP-12")
-      reduction = doc.at_css("section.fee-reduction")
-      expect(reduction.text).to include("Härtefall").and include("Nachweis liegt vor")
+      expect(installments.text).to include("HELP-11", "Vereinbarung aktiv", "HELP-12")
+      expect(doc.at_css("section.fee-reduction").text).to include("Härtefall", "Nachweis liegt vor")
       expect(response.body).to include("Nullbuchung")
-    end
-
-    it "offers the auditor nothing that changes anything" do
-      sign_in(auditor)
-      get :show, params: {person_id: yp.id}
 
       expect(doc.css("[id^='installments_actions_'], [id^='fee_reduction_actions_']")).to be_empty
-      expect(response.body).not_to include("Neue Buchung")
-      expect(response.body).not_to include("Finanzstatus ändern")
-      expect(response.body).not_to include(edit_person_installments_path(yp))
-      expect(response.body).not_to include(edit_person_debit_return_path(yp))
-    end
-
-    it "shows the auditor the Finanzen and Beiträge tabs, and no tab of a page it may not open" do
-      sign_in(auditor)
-      get :show, params: {person_id: yp.id}
+      expect(response.body).not_to include("#{new_accounting_entry_path}?", "#{new_sepa_status_path}?",
+        edit_person_installments_path(yp), edit_person_debit_return_path(yp))
 
       tabs = doc.css("a[data-turbo-submits-with]").map { |link| link.text.strip }
       expect(tabs).to include("Finanzen", "Beiträge")

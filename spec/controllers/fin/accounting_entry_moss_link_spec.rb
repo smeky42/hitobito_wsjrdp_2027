@@ -13,10 +13,9 @@ require "spec_helper"
 # number of the Moss booking, "Verknüpfung lösen", the stored link as the
 # field's help, and the provenance written for a change. Values are invented.
 describe Fin::AccountingEntriesController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
-  let(:person) { people(:yp_a_1) }
+  let_it_be(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
 
   def moss_booking(text)
     uuid = SecureRandom.uuid
@@ -28,11 +27,11 @@ describe Fin::AccountingEntriesController, type: :controller do
       signed_base_amount: -100, booking_posting_text: text)
   end
 
-  let!(:linked) { moss_booking("Rechnung eins") }
-  let!(:other) { moss_booking("Rechnung zwei") }
+  let_it_be(:linked) { moss_booking("Rechnung eins") }
+  let_it_be(:other) { moss_booking("Rechnung zwei") }
 
-  let!(:entry) do
-    AccountingEntry.create!(subject: person, author: manager, amount_cents: -10_000,
+  let_it_be(:entry, reload: true) do
+    AccountingEntry.create!(subject: people(:yp_a_1), author: manager, amount_cents: -10_000,
       description: "Rechnung", value_date: Date.new(2026, 3, 2), booking_date: Date.new(2026, 3, 2),
       moss_booking: linked,
       moss_booking_link_meta: {"created_at" => "2026-03-05T10:00:00+01:00", "author_id" => manager.id,
@@ -49,6 +48,8 @@ describe Fin::AccountingEntriesController, type: :controller do
   def field = doc.at_css("input[name='accounting_entry[moss_booking_id]']")
 
   describe "GET edit" do
+    render_views
+
     it "offers the number field and the unlink box, with the stored link as help" do
       get :edit, params: {id: entry.id}
 
@@ -106,14 +107,18 @@ describe Fin::AccountingEntriesController, type: :controller do
       expect(entry.comment).to eq "geprüft"
     end
 
-    it "refuses an unknown number and keeps the stored link in the help" do
-      update(moss_booking_id: "999999999")
+    context "with views" do
+      render_views
 
-      expect(response).to have_http_status(400)
-      expect(doc.text).to include("Moss-Buchung #999999999 gibt es nicht")
-      expect(doc.text).not_to include("Moss-Buchung Moss-Buchung")
-      expect(field.ancestors(".row, .mb-2").first.text).to include("[#{linked.id}]")
-      expect(entry.reload.moss_booking_id).to eq linked.id
+      it "refuses an unknown number and keeps the stored link in the help" do
+        update(moss_booking_id: "999999999")
+
+        expect(response).to have_http_status(400)
+        expect(doc.text).to include("Moss-Buchung #999999999 gibt es nicht")
+        expect(doc.text).not_to include("Moss-Buchung Moss-Buchung")
+        expect(field.ancestors(".row, .mb-2").first.text).to include("[#{linked.id}]")
+        expect(entry.reload.moss_booking_id).to eq linked.id
+      end
     end
 
     it "ignores the link below the manage tier" do

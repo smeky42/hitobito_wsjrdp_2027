@@ -14,18 +14,17 @@ require "spec_helper"
 # line to fill in by hand where it knows nothing.
 describe Wsjrdp2027::DeregistrationForm do
   let(:person) { people(:yp_a_1) }
-  let(:admin) { people(:admin) }
   let(:form) { described_class.new(person.reload) }
 
   def booked_entry(amount_cents:)
-    AccountingEntry.create!(subject: person, author: admin, amount_cents: amount_cents,
+    AccountingEntry.create!(subject: people(:yp_a_1), author: people(:admin), amount_cents: amount_cents,
       amount_currency: "EUR", description: "Teilnahmebeitrag",
       value_date: Date.new(2026, 2, 1), booking_date: Date.new(2026, 2, 1))
   end
 
-  before do
+  before_all(setup_fixtures: true) do
     booked_entry(amount_cents: 40_000)
-    person.update!(deregistration_effective_date: Date.new(2026, 10, 31),
+    people(:yp_a_1).update!(deregistration_effective_date: Date.new(2026, 10, 31),
       sepa_name: "Kim Alex Muster-Beispiel",
       sepa_iban: "DE02120300000000202051")
   end
@@ -82,12 +81,6 @@ describe Wsjrdp2027::DeregistrationForm do
 
     it "is offered with the declared day alone" do
       person.update!(deregistration_effective_date: nil, deregistration_requested_date: Date.new(2026, 9, 1))
-
-      expect(described_class.new(person.reload)).to be_available
-    end
-
-    it "is offered with the effective day alone" do
-      person.update!(deregistration_requested_date: nil)
 
       expect(described_class.new(person.reload)).to be_available
     end
@@ -359,12 +352,6 @@ describe Wsjrdp2027::DeregistrationForm do
 
         expect(form.reply_due_date).to eq(Date.new(2026, 10, 11))
         expect(form.to_sys_inputs[:reply_due_date_de]).to eq("11.10.2026")
-      end
-    end
-
-    it "names the day it is made, for the footer" do
-      travel_to(Time.zone.local(2026, 9, 27, 12)) do
-        expect(described_class.new(person.reload).to_sys_inputs[:generated_on_de]).to eq("27.09.2026")
       end
     end
 

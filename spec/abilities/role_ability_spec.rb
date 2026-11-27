@@ -11,10 +11,13 @@ require "spec_helper"
 # general(:destroy).not_permission_giving). Ordinary roles stay manageable by
 # everyone with the usual layer/group permissions.
 describe RoleAbility do
+  before_all(setup_fixtures: true) {}
+
   let(:root) { groups(:root) }
-  let(:extern) { Group::Extern.create!(name: "Extern", parent: root) }
-  let(:admin_role) { Fabricate(Group::Root::Admin.name.to_sym, group: root) }
-  let(:finance_role) { Fabricate(Group::Root::Finance.name.to_sym, group: root) }
+
+  let_it_be(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
+  let_it_be(:admin_role) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)) }
+  let_it_be(:finance_role) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)) }
 
   # Every role type that grants a finance tier -- none of them may be handed
   # out by a non-admin, to anybody INCLUDING themselves.
@@ -79,7 +82,7 @@ describe RoleAbility do
   end
 
   context "as Group::Root::Finance" do
-    let(:own_role) { Fabricate(Group::Root::Finance.name.to_sym, group: root) }
+    let_it_be(:own_role) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)) }
     let(:person) { own_role.person }
 
     it "may not create admin-only roles" do
@@ -109,7 +112,7 @@ describe RoleAbility do
   end
 
   context "as Group::Root::Admin" do
-    let(:own_role) { Fabricate(Group::Root::Admin.name.to_sym, group: root) }
+    let_it_be(:own_role) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)) }
     let(:person) { own_role.person }
 
     it "may create admin-only roles" do

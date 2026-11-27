@@ -20,8 +20,9 @@ require "spec_helper"
 # other half of the same contract, covered in bookings_controller_spec.
 describe Fin::BookingBatchesController do
   render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
 
   # Invented header coordinates. The identity index spans consultant/client
   # number, both period dates and the label, so the two batches differ in label.
@@ -32,12 +33,12 @@ describe Fin::BookingBatchesController do
       primanota_number: primanota_number, import_export: "import")
   end
 
-  let!(:batch) { create_batch("Teststapel Alpha", "01-2026/0001", Date.new(2026, 1, 31)) }
-  let!(:other_batch) { create_batch("Teststapel Beta", "02-2026/0001", Date.new(2026, 2, 28)) }
+  let_it_be(:batch) { create_batch("Teststapel Alpha", "01-2026/0001", Date.new(2026, 1, 31)) }
+  let_it_be(:other_batch) { create_batch("Teststapel Beta", "02-2026/0001", Date.new(2026, 2, 28)) }
 
   # The Konto is a BANK account, so signed_base_amount is +amount for "D"
   # (see doc/fin/money_conventions.md).
-  let!(:booking) do
+  let_it_be(:booking) do
     DatevBooking.create!(batch: batch, buchungs_guid: SecureRandom.uuid,
       account_number: "1200", account_kind: "BANK",
       offsetting_account_number: "66500", offsetting_account_kind: "EXPENSE",
@@ -76,24 +77,18 @@ describe Fin::BookingBatchesController do
   describe "GET show" do
     let(:canonical) { "bkframe-batch-#{batch.id}" }
 
-    it "renders the full detail page, its frame wrapped in #main" do
-      get :show, params: {id: batch.id}
-
-      expect(response).to be_successful
-      expect(response.body).to include("<html")
-      expect(response.body).to include(%(<turbo-frame id="#{canonical}"))
-      expect(outer_frame_id).to eq(canonical)
-      expect(doc.at_css("turbo-frame##{canonical}").parent["id"]).to eq("main")
-      expect(response.body).to include("Teststapel Alpha").and include("Testbuchung Alpha")
-    end
-
     # The embedded bookings table is where the "b"-prefixed frame requests
     # against Fin::BookingsController#show come from: its rows name their detail
     # frames "bkframe-b-<booking id>".
-    it "embeds the batch's bookings, each under the 'b' prefix" do
+    it "renders the full detail page, its frame wrapped in #main, the bookings under the 'b' prefix" do
       get :show, params: {id: batch.id}
 
-      expect(frame_ids).to eq([canonical, "bkframe-b-#{booking.id}"])
+      aggregate_failures do
+        expect(response).to be_successful
+        expect(response.body).to include("<html")
+        expect(doc.at_css("turbo-frame##{canonical}").parent["id"]).to eq("main")
+        expect(frame_ids).to eq([canonical, "bkframe-b-#{booking.id}"])
+      end
     end
 
     # Lazily loaded out of the Buchungsstapel list: the frame it named comes

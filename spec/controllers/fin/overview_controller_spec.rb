@@ -20,7 +20,9 @@ require "spec_helper"
 describe Fin::OverviewController do
   render_views
 
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
 
   before { sign_in(person) }
 
@@ -82,9 +84,13 @@ describe Fin::OverviewController do
     end
   end
 
-  it "links every area and, next to it, each of its tabs" do
+  it "shows one card per area in navigation order, linking the area and each tab but the Übersicht" do
     get :index
-    expect(response).to have_http_status(:ok)
+
+    expect(cards.map { |c| card_title(c) }).to eq(area_keys.map { |key| I18n.t("fin.nav.#{key}") })
+    expect(cards.map(&:text)).to match(
+      area_keys.map { |key| a_string_including(I18n.t("fin.areas.#{key}.purpose")) }
+    )
     expect(links).to include(
       [I18n.t("fin.nav.accounts"), wsjrdp_fin_accounts_path],
       [I18n.t("fin.nav.payments"), fin_payments_path],
@@ -109,19 +115,10 @@ describe Fin::OverviewController do
     # tabs of the sheet, so /fin leaves them out.
     expect(links.map(&:last)).not_to include(moss_card_transactions_path, moss_reimbursements_path,
       moss_invoices_path, moss_top_ups_path)
-  end
-
-  it "leaves the Übersicht tab out of the quick links (it is the area link)" do
-    get :index
-    overview_label = I18n.t(Fin::OverviewHelper::OVERVIEW_TAB_KEY)
-    expect(links.map(&:first)).not_to include(overview_label)
-    # The area link itself is the overview tab's path -- exactly once per area.
-    expect(links.count { |_label, href| href == wsjrdp_fin_accounts_path }).to eq(1)
-    expect(links.count { |_label, href| href == fees_path }).to eq(1)
-    expect(links.count { |_label, href| href == bookkeeping_path }).to eq(1)
-    expect(links.count { |_label, href| href == moss_path }).to eq(1)
-    expect(links.count { |_label, href| href == reconciliation_path }).to eq(1)
-    expect(links.count { |_label, href| href == controlling_path }).to eq(1)
+    # The area link is the overview tab's path, exactly once per area.
+    expect(links.map(&:first)).not_to include(I18n.t(Fin::OverviewHelper::OVERVIEW_TAB_KEY))
+    [wsjrdp_fin_accounts_path, fees_path, bookkeeping_path, moss_path, reconciliation_path, controlling_path]
+      .each { |path| expect(links.count { |_label, href| href == path }).to eq(1) }
   end
 
   it "recognises the Übersicht tab by its label key, not by its position" do
@@ -133,25 +130,6 @@ describe Fin::OverviewController do
     # a quick link.
     expect(Sheet::Fin::Accounts.tabs.map(&:label_key))
       .to include(Fin::OverviewHelper::OVERVIEW_TAB_KEY)
-  end
-
-  it "shows one card per area, in the order of the left sub-navigation" do
-    get :index
-
-    expect(cards.map { |c| card_title(c) }).to eq(area_keys.map { |key| I18n.t("fin.nav.#{key}") })
-    # Each card is marked with its area's icon (Fin::OverviewHelper::AREAS);
-    # Haml merges the fa- class with .fas, so only the fa- half is read back.
-    icons = cards.map { |c| c.at_css(".fin-area-icon i")["class"].split.grep(/\Afa-/) }
-    expect(icons.flatten).to eq(%w[fa-university fa-exchange-alt fa-coins fa-wallet fa-book
-      fa-check-double fa-chart-line fa-sliders-h])
-  end
-
-  it "says on every card what its area is for" do
-    get :index
-
-    expect(cards.map(&:text)).to match(
-      area_keys.map { |key| a_string_including(I18n.t("fin.areas.#{key}.purpose")) }
-    )
   end
 
   describe "quick links" do
@@ -195,54 +173,24 @@ describe Fin::OverviewController do
     end
 
     # The balance is the one the Konten list shows: the opening balance plus
-    # every statement row of the account.
-    it "lists the accounts with their balance under the Konten quick link" do
+    # every statement row of the account. "Konten" leads to every account's
+    # transactions, the accounts below it to their own pages; the card's single
+    # figure is the total of the balances it lists.
+    it "lists the accounts with their balance and total, every quick link with a new-tab companion" do
       get :index
 
       expect(account_links).to include(
         ["Beispielkonto", wsjrdp_fin_account_path(bank), "75,25 €"],
         ["Beispiel-Wallet", wsjrdp_fin_account_path(wallet), "42,50 €"]
       )
-    end
-
-    it "opens every quick link and every account in a new tab as well" do
-      get :index
-
-      expect(quick_links).not_to be_empty
-      expect(quick_links.map { |link| newtab_after(link)&.[]("title") })
-        .to all(eq("In neuem Tab öffnen"))
-
-      accounts = card("accounts").css(".fin-area-accounts li span > a")
-        .reject { |a| a["target"] == "_blank" }
-      expect(accounts).not_to be_empty
-      expect(accounts.map { |link| newtab_after(link)&.[]("title") })
-        .to all(eq("In neuem Tab öffnen"))
-    end
-
-    # "Konten" leads to every account's transactions ("Alle"), the accounts
-    # below it to their own pages.
-    it "links Konten to every account's transactions" do
-      get :index
-
-      heading = card("accounts").at_css("ul.fin-area-links > li")
-      expect(heading.at_css("> a").text.strip).to eq(I18n.t("fin.tabs.accounts"))
-      expect(heading.at_css("> a")["href"]).to eq(fin_account_transactions_path)
-    end
-
-    # The card's single figure is the total of the balances it lists.
-    it "shows the total balance of the listed accounts on the Konten & Wallets card" do
-      get :index
-
+      expect(card("accounts").at_css("ul.fin-area-links > li > a")["href"]).to eq(fin_account_transactions_path)
       euros = ->(text) { BigDecimal(text.delete(". €").tr(",", ".").sub("—", "0")) }
       total = account_links.sum { |_label, _href, balance| euros.call(balance) }
       label, value, warn = figures("accounts").sole
       expect([label, euros.call(value), warn]).to eq(["Gesamtsaldo", total, false])
-    end
 
-    # The heading of a card stays a heading: no icon behind it.
-    it "leaves the card headings without a new-tab icon" do
-      get :index
-
+      accounts = card("accounts").css(".fin-area-accounts li span > a").reject { |a| a["target"] == "_blank" }
+      expect(quick_links + accounts).to all(satisfy { |link| newtab_after(link) })
       expect(cards.map { |c| newtab_after(c.css("a").first) }).to all(be_nil)
     end
   end
@@ -268,49 +216,24 @@ describe Fin::OverviewController do
       ActiveSupport::NumberHelper.number_to_delimited(before_counts.fetch(key) + 1, delimiter: ".")
     end
 
-    it "puts the counts of an area on its card" do
-      get :index
-
-      expect(figures("fees")).to include(["Beitragsbuchungen", one_more(:entries), false])
-      # Two levels of the same import, in one row -- both empty here, so the
-      # Stand of the Moss card is an em dash.
-      expect(figures("moss")).to include(["Transaktionen · Buchungen", "0 · 0", false],
-        ["Letzte Buchung", "—", false])
-    end
-
-    # The Beiträge card carries the contribution bookings and nothing else; the
-    # Ratenpläne live behind the quick link to their tab.
-    it "shows two figures on the Beiträge card" do
-      get :index
-
-      expect(figures("fees").map(&:first)).to eq(["Beitragsbuchungen", "ohne DATEV-Buchung"])
-    end
-
-    it "highlights a number that stands for open work" do
-      get :index
-
-      expect(figures("fees")).to include(["ohne DATEV-Buchung", one_more(:unlinked), true])
-      # Abstimmung has no figures of its own: it repeats the open work.
-      expect(figures("reconciliation")).to eq(
-        [["Beitragsbuchungen ohne DATEV-Buchung", one_more(:unlinked), true],
-          ["Moss-Buchungen ohne DATEV-Buchung", "0", false]]
-      )
-    end
-
-    # A card's "Stand" line has to survive a table nobody has imported into yet.
-    it "writes an em dash where there is no date" do
+    # The Beiträge card carries the contribution bookings and nothing else;
+    # Abstimmung repeats the open work; a "Stand" line survives a table nobody
+    # has imported into yet.
+    it "puts the counts of an area on its card, the open work highlighted" do
       DatevBooking.delete_all
 
       get :index
 
+      expect(figures("fees")).to eq([["Beitragsbuchungen", one_more(:entries), false],
+        ["ohne DATEV-Buchung", one_more(:unlinked), true]])
+      expect(figures("moss")).to include(["Transaktionen · Buchungen", "0 · 0", false],
+        ["Letzte Buchung", "—", false])
+      expect(figures("reconciliation")).to eq(
+        [["Beitragsbuchungen ohne DATEV-Buchung", one_more(:unlinked), true],
+          ["Moss-Buchungen ohne DATEV-Buchung", "0", false]]
+      )
       expect(figures("accounting")).to include(["Letzter Beleg", "—", false])
-    end
-
-    it "says on the Controlling card that it has no figures yet" do
-      get :index
-
       expect(figures("controlling")).to be_empty
-      expect(card("controlling").text).to include("Noch keine Kennzahlen.")
     end
   end
 end

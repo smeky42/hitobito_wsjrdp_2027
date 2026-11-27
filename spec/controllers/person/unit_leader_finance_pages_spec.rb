@@ -16,48 +16,47 @@ require "spec_helper"
 # :update_finance reach, and no finance page at all of a person outside the
 # unit.
 describe "finance pages for a unit leader" do
-  let(:unit_leader) { people(:ul_a_1) }
-  let(:yp) { people(:yp_a_1) }
-  let(:unit_manager) { Fabricate(Group::Unit::Manager.name.to_sym, group: groups(:unit_a)).person }
-  let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-
-  before do
-    [yp, people(:yp_b_1)].each do |person|
+  before_all(setup_fixtures: true) do
+    [people(:yp_a_1), people(:yp_b_1)].each do |person|
       WsjrdpPaymentPlan.kept.find_or_create_by!(wsjrdp_role: person.wsjrdp_role, single_payment: false,
         payment_method: "direct_debit") { |plan| plan.raw_installments_eur = [2026, 100, 100] }
     end
   end
 
+  let(:unit_leader) { people(:ul_a_1) }
+  let(:yp) { people(:yp_a_1) }
+
+  let_it_be(:unit_manager) { Fabricate(Group::Unit::Manager.name.to_sym, group: groups(:unit_a)).person }
+  let_it_be(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+
   describe Person::FeeController, type: :controller do
-    render_views
+    context "rendered" do
+      render_views
 
-    it "shows a unit leader the Beitrag page of a person of the unit, without the privileged view or buttons" do
-      yp.update!(wsjrdp_total_fee_reduction: 100, wsjrdp_total_fee_reduction_issue: "HELP-77")
-      sign_in(unit_leader)
-      get :show, params: {person_id: yp.id}
+      it "shows a unit leader the Beitrag page of a person of the unit with the Finanzen and Beiträge tabs, " \
+         "without the privileged view, buttons or the Ausgaben tab" do
+        yp.update!(wsjrdp_total_fee_reduction: 100, wsjrdp_total_fee_reduction_issue: "HELP-77")
+        sign_in(unit_leader)
+        get :show, params: {person_id: yp.id}
 
-      expect(response).to be_successful
-      expect(response.body).not_to include("HELP-77")
-      doc = Nokogiri::HTML(response.body)
-      expect(doc.at_css("section.fee-reduction")).to be_nil
-      expect(doc.css("[id^='installments_actions_'], [id^='fee_reduction_actions_']")).to be_empty
+        expect(response).to be_successful
+        expect(response.body).not_to include("HELP-77")
+        doc = Nokogiri::HTML(response.body)
+        expect(doc.at_css("section.fee-reduction")).to be_nil
+        expect(doc.css("[id^='installments_actions_'], [id^='fee_reduction_actions_']")).to be_empty
+        tabs = doc.css("a[data-turbo-submits-with]").map { |link| link.text.strip }
+        expect(tabs).to include("Finanzen", "Beiträge")
+        expect(tabs).not_to include("Ausgaben (Moss)", "Abmeldung")
+        expect(response.body).not_to include(person_spend_path(yp))
+      end
     end
 
-    it "shows a unit leader the Finanzen and Beiträge tabs" do
-      sign_in(unit_leader)
-      get :show, params: {person_id: yp.id}
-
-      tabs = Nokogiri::HTML(response.body).css("a[data-turbo-submits-with]").map { |link| link.text.strip }
-      expect(tabs).to include("Finanzen", "Beiträge")
-      expect(tabs).not_to include("Ausgaben (Moss)", "Abmeldung")
-    end
-
-    it "offers the Ausgaben tab to the person themselves, a unit manager and finance, not to a unit leader" do
-      {yp => true, unit_manager => true, finance => true, unit_leader => false}.each do |viewer, shown|
+    it "offers the Ausgaben tab to the person themselves, a unit manager and finance" do
+      [yp, unit_manager, finance].each do |viewer|
         sign_in(viewer)
         get :show, params: {person_id: yp.id}
 
-        expect(response.body.include?(person_spend_path(yp))).to eq(shown), "#{viewer}: tab shown #{!shown}"
+        expect(controller.view_context.person_spend_visible?(yp)).to be(true), viewer.to_s
       end
     end
   end

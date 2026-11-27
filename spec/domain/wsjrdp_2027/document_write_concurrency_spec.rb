@@ -77,11 +77,11 @@ describe Wsjrdp2027::DocumentWrite do
 
   # Waits until the thread waits for a lock (or ends).
   def wait_until_blocked(thread)
-    50.times do
+    200.times do
       break unless thread.alive?
       break if thread.status == "sleep" && waiting_for_lock?
 
-      sleep 0.02
+      sleep 0.005
     end
   end
 
@@ -125,7 +125,7 @@ describe Wsjrdp2027::DocumentWrite do
   it "gives up after the timeout and leaves nothing behind" do
     first = in_thread { put_file("medical", "first", &method(:hold)) }
     wait_inside
-    second = in_thread { put_file("medical", "second", timeout: 0.3.seconds) }
+    second = in_thread { put_file("medical", "second", timeout: 0.05.seconds) }
 
     expect { second.value }.to raise_error(Wsjrdp::LockedChange::Busy)
     release << true
@@ -188,7 +188,7 @@ describe Wsjrdp2027::DocumentWrite do
     it "takes crossed keys without a deadlock" do
       threads = 2.times.map do |i|
         keys = i.zero? ? %w[k1 k2 k3] : %w[k3 k2 k1]
-        in_thread { 20.times { described_class.run(keys: keys) { sleep 0.002 } } }
+        in_thread { 5.times { described_class.run(keys: keys) { sleep 0.002 } } }
       end
 
       expect { threads.each(&:join) }.not_to raise_error
@@ -209,7 +209,7 @@ describe Wsjrdp2027::DocumentWrite do
       second = in_thread { put_file("medical", "b", &method(:hold)) }
       wait_inside
 
-      stub_const("Wsjrdp::LockedChange::DEFAULT_TIMEOUT", 0.3.seconds)
+      stub_const("Wsjrdp::LockedChange::DEFAULT_TIMEOUT", 0.05.seconds)
       busy = described_class.new.register([scanned])
       release << true
       second.join

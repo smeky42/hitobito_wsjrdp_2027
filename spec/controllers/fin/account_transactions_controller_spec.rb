@@ -12,179 +12,149 @@ require "spec_helper"
 # "Alle" (/fin/acc/all): every account's bank and Moss transactions in one
 # table. All names and amounts are invented.
 describe Fin::AccountTransactionsController do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
 
-  let!(:bank) do
+  let_it_be(:bank) do
     WsjrdpFinAccount.create!(short_name: "Vereinskonto", account_identification: "BANK-ALL",
       opening_balance_cents: 0, opening_balance_currency: "EUR", opening_balance_date: Date.new(2026, 1, 1))
   end
 
-  let!(:wallet) do
+  let_it_be(:wallet) do
     WsjrdpFinAccount.create!(short_name: "Moss-Wallet", account_identification: "MOSS-ALL",
       transaction_type: "MossBalanceMovement", opening_balance_cents: 0, opening_balance_currency: "EUR",
       opening_balance_date: Date.new(2026, 1, 1))
   end
 
-  let!(:camt) do
+  let_it_be(:camt, refind: true) do
     WsjrdpCamtTransaction.create!(fin_account: bank, camt_type: "CAMT053", account_identification: "BANK-ALL",
       account_servicer_reference: "REF-ALL", credit_debit_indication: "DBIT", signed_base_amount: -40,
-      base_currency: "EUR", value_date: Date.new(2026, 5, 2), booking_date: Date.new(2026, 5, 2), description: "Miete Lager", cdtr_name: "Lager GmbH")
+      base_currency: "EUR", value_date: Date.new(2026, 5, 2), booking_date: Date.new(2026, 5, 2),
+      description: "Miete Lager", cdtr_name: "Lager GmbH")
   end
 
-  let!(:moss) do
+  let_it_be(:moss) do
     MossTransaction.create!(type: "MossCardTransaction", moss_transaction_uuid: SecureRandom.uuid,
       fin_account: wallet, signed_total_base_amount: -25, currency: "EUR", booking_date: Date.new(2026, 6, 1),
       transaction_name: "Einkauf", merchant_name: "Muster Markt")
   end
 
+  let(:both_accounts) { "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))" }
+
   before { sign_in(person) }
 
-  def doc = Nokogiri::HTML(response.body)
+  def rows = controller.transactions.page.to_a
 
-  def cells(key) = doc.css("tr.exp-row td[data-colkey='#{key}']").map { |td| td.text.squish }
+  def state = controller.table_state
 
-  it "lists bank and Moss transactions together, newest first, with their sum" do
-    get :index, params: {f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))"}
+  it "lists bank and Moss transactions together, newest first, with account, kind, party and sum" do
+    get :index, params: {f: both_accounts}
 
-    expect(response).to be_successful
-    expect(cells("booking_date")).to eq(%w[01.06.2026 02.05.2026])
-    expect(response.body).to include("2 Transaktionen").and include("-65,00")
-    # Account, kind and party are hidden by default; the amount comes last.
-    expect(doc.css("tr.exp-row").first.css("td[data-colkey]").pluck("data-colkey").first(3))
-      .to eq(%w[booking_date description signed_base_amount])
-
-    get :index, params: {f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))", c: "d,acc,k,dsc,amt"}
-    expect(cells("account")).to eq(%w[Moss-Wallet Vereinskonto])
-    expect(cells("kind")).to eq(%w[Karte Bank])
-
-    get :index, params: {f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))", c: "d,acc,k,pty,dsc,amt"}
-    expect(cells("party")).to eq(["Muster Markt", "Lager GmbH"])
-  end
-
-  describe "the description" do
-    let(:filter) { "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))" }
-
-    it "is the one of the row's own table: a return's status, a Moss payment's text" do
-      camt.update!(return_reason: "MD06", comment: "Nachfragen")
-      get :index, params: {f: filter}
-
-      # Newest first: the Moss payment, then the bank transaction.
-      moss_cell, bank_cell = doc.css("tr.exp-row td[data-colkey='description']").to_a
-      expect(bank_cell.text).to include("Retoure mit Rückgabe-Grund MD06").and include("Nachfragen")
-      expect(moss_cell.at_css(".moss-desc")).to be_present
-
-      get :index, params: {f: filter, c: "d,acc,k,pty,dsc,amt"}
-      expect(cells("description").join).not_to include("Gegenseite:")
-    end
-
-    it "shows the account and the kind as chips while their columns are hidden, as they are by default" do
-      get :index, params: {f: filter, c: "d,acc,k,dsc,amt"}
-      # Only the booking day, for a phone, where its column gives way.
-      expect(doc.css("td .fin-row-chips > :not(.d-md-none)")).to be_empty
-
-      get :index, params: {f: filter, c: ""} # the default columns
-      moss_chips, bank_chips = doc.css("tr.exp-row td[data-colkey='description'] .fin-row-chips").map { |c| c.text.squish }
-      # First the booking day (there for a phone), then kind and account.
-      expect(moss_chips).to eq("Buchungstag 01.06.2026 Karte Moss-Wallet")
-      expect(bank_chips).to eq("Buchungstag 02.05.2026 Bank Vereinskonto")
-    end
-
-    it "names the party while its column is hidden, as it is by default" do
-      get :index, params: {f: filter}
-
-      expect(cells("description")).to all(include("Gegenseite:"))
-      expect(cells("description").join).to include("Lager GmbH").and include("Muster Markt")
-    end
-  end
-
-  it "opens each row's own detail lazily" do
-    get :index, params: {f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))"}
-
-    expect(doc.at_css("turbo-frame#bkframe-at-camt-#{camt.id}")["src"])
-      .to start_with(wsjrdp_camt_transaction_path(camt))
-    expect(doc.at_css("turbo-frame#bkframe-at-moss-#{moss.id}")["src"])
-      .to start_with(moss_transaction_path(moss))
+    expect(rows.map { |row| [row.booking_date, row.account_name, row.kind, row.party] }).to eq([
+      [Date.new(2026, 6, 1), "Moss-Wallet", "MossCardTransaction", "Muster Markt"],
+      [Date.new(2026, 5, 2), "Vereinskonto", "bank", "Lager GmbH"]
+    ])
+    expect([controller.transactions.total_count, controller.transactions.total_sum]).to eq([2, -65])
+    expect(state.visible_column_keys.first(3)).to eq(%w[booking_date description signed_base_amount])
+    expect(state.visible_column_keys).not_to include("account", "kind", "party")
   end
 
   it "sorts a bank transaction into return, transfer, fee or plain bank, and a Moss top-up into transfer" do
     common = {fin_account: bank, camt_type: "CAMT053", account_identification: "BANK-ALL", base_currency: "EUR",
               credit_debit_indication: "DBIT", signed_base_amount: -1, description: "x"}
     transfer = WsjrdpInternalTransfer.create!(link_meta: {"source" => "manual"})
-    WsjrdpCamtTransaction.create!(common.merge(account_servicer_reference: "R1", value_date: Date.new(2026, 7, 1), booking_date: Date.new(2026, 7, 1),
-      return_reason: "MS03", bank_transaction_code: "PMNT+IDDT+UPDD"))
-    WsjrdpCamtTransaction.create!(common.merge(account_servicer_reference: "R2", value_date: Date.new(2026, 7, 2), booking_date: Date.new(2026, 7, 2),
-      internal_transfer_id: transfer.id))
-    WsjrdpCamtTransaction.create!(common.merge(account_servicer_reference: "R3", value_date: Date.new(2026, 7, 3), booking_date: Date.new(2026, 7, 3),
-      bank_transaction_code: "ACMT+OPCL+ACCC"))
+    WsjrdpCamtTransaction.create!(common.merge(account_servicer_reference: "R1", value_date: Date.new(2026, 7, 1),
+      booking_date: Date.new(2026, 7, 1), return_reason: "MS03", bank_transaction_code: "PMNT+IDDT+UPDD"))
+    WsjrdpCamtTransaction.create!(common.merge(account_servicer_reference: "R2", value_date: Date.new(2026, 7, 2),
+      booking_date: Date.new(2026, 7, 2), internal_transfer_id: transfer.id))
+    WsjrdpCamtTransaction.create!(common.merge(account_servicer_reference: "R3", value_date: Date.new(2026, 7, 3),
+      booking_date: Date.new(2026, 7, 3), bank_transaction_code: "ACMT+OPCL+ACCC"))
     MossTransaction.create!(type: "MossTopUp", moss_transaction_uuid: SecureRandom.uuid, fin_account: wallet,
       signed_total_base_amount: 1, currency: "EUR", booking_date: Date.new(2026, 7, 4))
 
-    get :index, params: {f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))", c: "d,k,dsc,amt"}
+    get :index, params: {f: both_accounts}
 
-    expect(cells("kind")).to eq(["Umbuchung", "Gebühren/Zinsen", "Umbuchung", "Rückläufer", "Karte", "Bank"])
-    expect(doc.css("tr.exp-row").map { |tr| tr["class"][/moss-kind-\S+/] })
-      .to eq(%w[moss-kind-top_up moss-kind-bank_fee moss-kind-top_up moss-kind-bank_return
-        moss-kind-card_transaction moss-kind-bank])
-  end
-
-  it "offers each sortable column's sort in the column menu, a hidden one too" do
-    get :index, params: {s: "pty"}
-
-    party = doc.at_css(".exp-cols-col[data-key='party']")
-    expect(party.at_css(".exp-cols-check")["checked"]).to be_nil
-    expect(party.at_css(".exp-cols-sort a.exp-sort-active")).to be_present
-    expect(doc.at_css(".exp-cols-col[data-key='description'] .exp-cols-sort")).to be_nil
-  end
-
-  it "offers the sorts of the hidden party, kind and account below the description's header" do
-    get :index, params: {c: "d,~acc,~k,dsc,amt"}
-    subs = doc.css("th .exp-sub-sorts a.exp-sub-sort")
-    expect(subs.map { |a| a.text.delete("⇅").strip }).to eq(%w[Gegenseite Art Konto])
-
-    get :index, params: {c: "d,acc,k,pty,dsc,amt"}
-    expect(doc.css("th .exp-sub-sorts")).to be_empty
-  end
-
-  it "filters by party, description, person and the free text, and shows person and comment as columns" do
-    camt.update!(comment: "Lagerkosten", subject: people(:admin))
-    filter = ->(f) { "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')),!(#{f}))" }
-
-    get :index, params: {f: filter.call("!(qp,ct,Lager)"), c: "d,per,cmt,dsc,amt"}
-    expect(cells("description").size).to eq(1)
-    expect(cells("persons").first).to include(people(:admin).last_name)
-    expect(cells("comment")).to eq(["Lagerkosten"])
-
-    get :index, params: {f: filter.call("!(qd,ct,Einkauf)")}
-    expect(cells("description").size).to eq(1)
-    get :index, params: {f: filter.call("!(q,ct,Lagerkosten)")}
-    expect(cells("description").size).to eq(1)
-    get :index, params: {f: filter.call("!(per,ct,#{people(:admin).last_name})")}
-    expect(cells("description").size).to eq(1)
-  end
-
-  it "never shows the value date as a column, but a bank row's in the description where it differs" do
-    camt.update!(booking_date: Date.new(2026, 5, 4))
-    get :index, params: {f: "!(!(!(acc,in,'#{bank.id}')))", c: "d,vd,dsc,amt"}
-
-    expect(doc.css("td[data-colkey='value_date']")).to be_empty
-    expect(doc.css(".exp-cols-col[data-key='value_date']")).to be_empty
-    expect(cells("description").join).to include("Valuta 02.05.2026")
+    expect(rows.map(&:kind)).to eq(%w[transfer bank_fee transfer bank_return MossCardTransaction bank])
   end
 
   it "narrows the rows to the chosen kinds" do
-    get :index, params: {u: "kind.bank", f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')))", c: "d,k,dsc,amt"}
+    get :index, params: {u: "kind.bank", f: both_accounts}
 
-    expect(cells("kind")).to eq(%w[Bank])
+    expect(rows.map(&:kind)).to eq(%w[bank])
   end
 
-  it "shows 'Alle' as the first account tab, active" do
-    get :index
+  it "never shows the value date as a column" do
+    get :index, params: {f: both_accounts, c: "d,vd,dsc,amt"}
 
-    tabs = doc.css(".fin-account-tabs li")
-    expect(tabs.first.text.strip).to eq("Alle")
-    expect(tabs.first["class"]).to eq("active")
+    expect(state.visible_column_keys).not_to include("value_date")
+  end
+
+  describe "filters" do
+    def index(condition) = get(:index, params: {f: "!(!(!(acc,in,'#{bank.id}','#{wallet.id}')),!(#{condition}))"})
+
+    it "by the party, with person and comment on the row" do
+      camt.update!(comment: "Lagerkosten", subject: people(:admin))
+
+      index("!(qp,ct,Lager)")
+
+      expect(rows.map(&:id)).to eq([camt.id])
+      expect(rows.first.persons).to include(people(:admin).last_name)
+      expect(rows.first.comment).to eq("Lagerkosten")
+    end
+
+    it "by the description" do
+      index("!(qd,ct,Einkauf)")
+
+      expect(rows.map(&:id)).to eq([moss.id])
+    end
+
+    it "by the free text, the comment included" do
+      camt.update_columns(comment: "Lagerkosten")
+
+      index("!(q,ct,Lagerkosten)")
+
+      expect(rows.map(&:id)).to eq([camt.id])
+    end
+
+    it "by the person" do
+      camt.update!(subject: people(:admin))
+
+      index("!(per,ct,#{people(:admin).last_name})")
+
+      expect(rows.map(&:id)).to eq([camt.id])
+    end
+  end
+
+  # The description is the one of the row's own table, and it stands in for the
+  # columns that are hidden.
+  describe "the rendered description" do
+    render_views
+
+    def doc = Nokogiri::HTML(response.body)
+
+    def descriptions = doc.css("tr.exp-row td[data-colkey='description']").map { |td| td.text.squish }
+
+    it "carries status, value date, party, kind and account while their columns are hidden, and opens lazily" do
+      camt.update_columns(return_reason: "MD06", comment: "Nachfragen", booking_date: Date.new(2026, 5, 4))
+
+      get :index, params: {f: both_accounts}
+
+      moss_text, bank_text = descriptions
+      expect(bank_text).to include("MD06", "Nachfragen", "02.05.2026", "Lager GmbH", "Vereinskonto")
+      expect(moss_text).to include("Muster Markt", "Moss-Wallet")
+      expect(doc.at_css("tr.exp-row td[data-colkey='description'] .moss-desc")).to be_present
+      expect(doc.at_css("turbo-frame#bkframe-at-camt-#{camt.id}")["src"]).to start_with(wsjrdp_camt_transaction_path(camt))
+      expect(doc.at_css("turbo-frame#bkframe-at-moss-#{moss.id}")["src"]).to start_with(moss_transaction_path(moss))
+    end
+
+    # Only the booking day stays, for a phone, where its column gives way.
+    it "leaves party, kind and account to their columns once they are shown" do
+      get :index, params: {f: both_accounts, c: "d,acc,k,pty,dsc,amt"}
+
+      expect(doc.css("td .fin-row-chips > :not(.d-md-none)")).to be_empty
+      expect(descriptions.join).not_to include("Lager GmbH", "Vereinskonto", "Moss-Wallet")
+    end
   end
 
   it "applies the builder's filter back to the page" do

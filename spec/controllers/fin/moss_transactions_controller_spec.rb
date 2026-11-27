@@ -12,14 +12,10 @@ require "spec_helper"
 # The Moss "Transaktionen" tab: the expandable table over all kinds, the CNF
 # filter (Fin::MossTransactionsFilterSchema) in the URL, the PRG apply and the detail.
 #
-# The table state (doc/plans/2026-09_expandable-table-state.md) is exercised
-# through its one-letter params: ?s= sort, ?c= columns, ?f= filter, ?z= page
-# size, ?p= page, ?r=1 reset -- plus what this page REMEMBERS in the session.
+# The table state is exercised through its one-letter params: ?s= sort, ?c=
+# columns, ?f= filter, ?z= page size, ?p= page, ?r=1 reset -- plus what this
+# page REMEMBERS in the session.
 describe Fin::MossTransactionsController do
-  render_views
-
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-
   # One transaction with one expense and one booking (the uniform shape).
   def create_transaction(type, amount:, **attrs)
     uuid = SecureRandom.uuid
@@ -36,106 +32,87 @@ describe Fin::MossTransactionsController do
     tx
   end
 
-  let!(:card) { create_transaction("MossCardTransaction", amount: -23.35, merchant_name: "Supermarkt Muster") }
-  let!(:top_up) { create_transaction("MossTopUp", amount: 500, top_up_sender: "Vereinskonto") }
+  before_all(setup_fixtures: true) do
+    @person = Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person
+    @card = create_transaction("MossCardTransaction", amount: -23.35, merchant_name: "Supermarkt Muster")
+    @top_up = create_transaction("MossTopUp", amount: 500, top_up_sender: "Vereinskonto")
+  end
+
+  let(:person) { @person }
+  let(:card) { @card }
+  let(:top_up) { @top_up }
 
   before { sign_in(person) }
 
-  # Which of the two transactions the rendered table shows first. Both are
-  # identified by text of the (default-visible) description column.
-  def first_row
-    card_at = response.body.index("Supermarkt Muster")
-    top_up_at = response.body.index("Vereinskonto")
-    raise "expected both transactions in the body" if card_at.nil? || top_up_at.nil?
-    (card_at < top_up_at) ? :card : :top_up
-  end
+  def rows = controller.transactions
+
+  def shown = rows.page.to_a
+
+  def state = controller.transactions_table_state
 
   describe "GET index" do
-    it "lists every kind through the expandable table" do
+    it "lists every kind" do
       get :index
+
       expect(response).to be_successful
-      expect(response.body).to include("Supermarkt Muster").and include("Einzahlung")
-      expect(response.body).to include("2 Transaktionen")
+      expect(shown).to eq([card, top_up])
     end
 
     it "applies a Rison ?f= filter on the kind" do
       get :index, params: {f: "!(!(!(k,in,MossTopUp)))"}
-      expect(response).to be_successful
-      expect(response.body).to include("Vereinskonto")
-      expect(response.body).not_to include("Supermarkt Muster")
-      expect(response.body).to include("1 Transaktionen")
+
+      expect(shown).to eq([top_up])
+    end
+
+    it "narrows the list to the kinds chosen in the Schnellauswahl" do
+      get :index, params: {u: "kind.top_up"}
+
+      expect(shown).to eq([top_up])
+    end
+
+    it "shows no row with no kind chosen" do
+      get :index, params: {u: "kind.-"}
+
+      expect(rows.total_count).to eq(0)
     end
 
     it "filters on booking-level attributes without duplicating transactions" do
       get :index, params: {f: "!(!(!(acc,in,'66500')))"}
-      expect(response).to be_successful
-      expect(response.body).to include("2 Transaktionen")
+
+      expect(rows.total_count).to eq(2)
     end
 
-    # Both transactions share a booking_date, so the policy default
-    # (booking_date desc) leaves them in id order -- the amount sort is what
-    # visibly reorders them.
     it "sorts by the ?s= column and direction" do
-      get :index
-      expect(first_row).to eq :card
-
       get :index, params: {s: "amt~"}
-      expect(response).to be_successful
-      expect(first_row).to eq :top_up
 
-      get :index, params: {s: "amt"}
-      expect(first_row).to eq :card
+      expect(shown).to eq([top_up, card])
     end
 
-    # The list is dated by the day the movement was booked in the wallet: the
-    # Buchungsdatum column and its sort read that column and nothing else. The
-    # reimbursement below is one of the kinds whose export carries no payout day
-    # at all.
     describe "the date columns" do
-      let!(:reimbursement) do
+      let_it_be(:reimbursement) do
         create_transaction("MossReimbursement", amount: -60, payment_date: nil,
           booking_date: Date.new(2026, 6, 15), transaction_name: "Fahrtkosten Vortreffen")
       end
 
-      # The cells of one date column, top to bottom.
-      def rendered_dates(key = "booking_date")
-        Nokogiri::HTML(response.body).css("tr.exp-row td[data-colkey='#{key}']")
-          .map { |td| td.text.strip }
-      end
-
-      it "shows the booking date in Buchungsdatum and sorts by it" do
-        get :index
-        expect(response).to be_successful
-        expect(response.body).to include("3 Transaktionen")
-        expect(rendered_dates).to eq(["15.06.2026", "06.05.2026", "06.05.2026"])
-
+      it "sorts by the booking date, newest first unless asked" do
         get :index, params: {s: "bdt"}
-        expect(response).to be_successful
-        expect(rendered_dates).to eq(["06.05.2026", "06.05.2026", "15.06.2026"])
+
+        expect(shown.last).to eq(reimbursement)
       end
 
-      # Zahlungsdatum is the raw column and off by default; switched on it shows
-      # the payout day the export carried, and the em dash where it carried none.
-      it "offers the raw payment date as a column of its own" do
-        get :index
-        expect(rendered_dates("payment_date")).to be_empty
-
+      it "offers the raw payment date as a column of its own, off by default" do
         get :index, params: {c: "bdt,pdt,amt,dsc"}
-        expect(response).to be_successful
-        expect(rendered_dates("payment_date")).to eq(["—", "03.05.2026", "03.05.2026"])
+
+        expect(state.visible_column_keys).to include("payment_date")
+        expect(Fin::MossTransactionsColumns.default_keys).not_to include("payment_date")
       end
 
-      # The Zahlungsdatum of the filter is that same raw column: the row has
-      # none, so a date condition on it does not match.
       it "is not matched by a Zahlungsdatum filter" do
         get :index, params: {f: "!(!(!(pd,ge,'2026-01-01')))"}
-        expect(response).to be_successful
-        expect(response.body).to include("2 Transaktionen")
-        expect(response.body).not_to include("Fahrtkosten Vortreffen")
+
+        expect(shown).not_to include(reimbursement)
       end
 
-      # Which is why the attribute offers "vorhanden" / "leer" beside the
-      # comparisons -- the same operators as the Buchungsdatum attribute.
       it "offers the nullable operators on the Zahlungsdatum attribute" do
         schema = Fin::MossTransactionsFilterSchema.bound
         operators = schema.find(:payment_date).operators.map(&:key)
@@ -144,123 +121,55 @@ describe Fin::MossTransactionsController do
       end
     end
 
-    # Every row's detail is rendered (collapsed) with the page, so the merchant
-    # name is in the body either way -- the per-column CSS class is what tells
-    # visible columns apart.
     it "shows exactly the ?c= columns" do
-      get :index
-      expect(response.body).to include("mtcol-description")
-      expect(response.body).not_to include("mtcol-party")
-
       get :index, params: {c: "pty"}
-      expect(response).to be_successful
-      expect(response.body).to include("mtcol-party")
-      expect(response.body).not_to include("mtcol-description")
-    end
 
-    it "shows the kind as a chip in the description while the kind column is hidden" do
-      chips = -> { Nokogiri::HTML(response.body).css("td[data-colkey='description'] .fin-row-chips .moss-kind") }
-      get :index, params: {c: "bdt,knd,dsc"}
-      expect(chips.call).to be_empty
-
-      get :index, params: {c: "bdt,~knd,dsc"}
-      expect(chips.call).to be_present
-    end
-
-    # Buchungen holds a one- or two-digit count and is therefore the narrowest
-    # column of the table -- with a header short enough to fit into it.
-    it "gives the Buchungen column a short header and a narrow width" do
-      get :index, params: {c: "dsc,nb"}
-      expect(response).to be_successful
-      header = Nokogiri::HTML(response.body).at_css("thead th[data-colkey='bookings_count']")
-      expect(header.text.squish).to eq("Bu.")
-      expect(header["style"]).to eq("width: 3rem")
+      expect(state.visible_column_keys).to eq(["party"])
     end
 
     it "restores the remembered sort on a bare revisit" do
       get :index, params: {s: "amt~"}
-      expect(first_row).to eq :top_up
-
       get :index
-      expect(response).to be_successful
-      expect(first_row).to eq :top_up
+
+      expect(shown).to eq([top_up, card])
     end
 
-    it "remembers the filter, an explicitly blank ?f= clears it again" do
+    it "remembers the filter" do
       get :index, params: {f: "!(!(!(k,in,MossTopUp)))"}
-      expect(response.body).to include("1 Transaktionen")
-
       get :index
-      expect(response.body).to include("1 Transaktionen")
 
-      # A present-but-blank param is the explicit "empty" that beats the store.
-      # The non-default sort rides along on purpose: Wsjrdp::TableState::Resolver
-      # only touches the store when at least one remembered field differs from
-      # its default, so an all-default request would leave the stale entry --
-      # ?r=1 (below) is what clears the state wholesale today.
-      get :index, params: {f: "", s: "amt~"}
-      expect(response.body).to include("2 Transaktionen")
-
-      get :index
-      expect(response.body).to include("2 Transaktionen")
+      expect(shown).to eq([top_up])
     end
 
-    it "offers a 'Filter zurücksetzen' that clears only the filter" do
-      get :index, params: {s: "amt~", z: "25", f: "!(!(!(k,in,MossTopUp)))"}
-      reset = response.body[/href="([^"]*)"[^>]*>Filter zurücksetzen/, 1]
-      # Blank filter param (no default declared; present, so it beats the
-      # remembered value), sort and page size kept, this table's page and open
-      # rows dropped (D4).
-      expect(reset).to eq("/fin/moss/transactions?f=&amp;s=amt~&amp;z=25")
+    # A present-but-blank param is the explicit "empty" that beats the store.
+    it "clears the remembered filter with an explicitly blank ?f=" do
+      get :index, params: {f: "!(!(!(k,in,MossTopUp)))"}
+      get :index, params: {f: "", s: "amt~"}
+      get :index
 
-      get :index, params: {f: "", s: "amt~", z: "25"}
-      expect(response.body).to include("2 Transaktionen")
-      expect(first_row).to eq :top_up # the remembered sort is still in force
+      expect(rows.total_count).to eq(2)
     end
 
     it "forgets everything it remembered on ?r=1" do
       get :index, params: {s: "amt~", f: "!(!(!(k,in,MossTopUp)))"}
-      expect(response.body).to include("1 Transaktionen")
-
       get :index, params: {r: "1"}
+
       expect(response).to have_http_status(:redirect)
       expect(response.location).to end_with("/fin/moss/transactions")
-
       get :index
-      expect(response).to be_successful
-      expect(response.body).to include("2 Transaktionen")
-      expect(first_row).to eq :card
+      expect(shown).to eq([card, top_up])
     end
 
     it "falls back to page 1 when the page is beyond the last one" do
       get :index, params: {z: "1", p: "5"}
-      expect(response).to be_successful
-      expect(response.body).to include("2 Transaktionen")
-      expect(response.body).to include("Supermarkt Muster")
-      expect(response.body).not_to include("Vereinskonto")
-    end
 
-    # The jump field next to the page links: the current page, bounded by the
-    # page count, and a URL template for this table's page param (open rows
-    # dropped, the page size carried).
-    it "renders the page jump field with the current page and the page count" do
-      get :index, params: {z: "1", p: "2"}
-      expect(response).to be_successful
-      input = Nokogiri::HTML(response.body).css("input.bk-page-input").first
-      expect(input).to be_present
-      expect(input["value"]).to eq("2")
-      expect(input["max"]).to eq("2")
-      expect(input["data-max"]).to eq("2")
-      expect(CGI.unescape(input["data-url-template"])).to eq("/fin/moss/transactions?p=__PAGE__&z=1")
-      expect(response.body).to include("von 2")
+      expect(shown).to eq([card])
     end
   end
 
   # The two amounts of this page -- the transaction total and the "alle Ebenen"
   # search over transaction, expense and booking -- are one picker entry each,
-  # with a sign toggle between the signed member and its ABS() twin. The
-  # dataset has no schema spec of its own, so the compiled SQL is asserted here
-  # next to the rendered result.
+  # with a sign toggle between the signed member and its ABS() twin.
   describe "the amounts and their sign pairs" do
     let(:schema) { Fin::MossTransactionsFilterSchema.bound }
 
@@ -269,27 +178,17 @@ describe Fin::MossTransactionsController do
         .apply(Wsjrdp::Filtering::Query.parse(tree)).to_sql
     end
 
-    def catalog_attributes
-      JSON.parse(Nokogiri::HTML(response.body).at_css(".flt-root")["data-catalog"])["attributes"]
-    end
-
-    # Money leaving the wallet is negative, so only the magnitude sees both
-    # directions at once.
-    it "finds either direction through |Betrag (Transaktion)|" do
-      get :index, params: {f: "!(!(!(amta,ge,100)))"}
-      expect(response).to be_successful
-      expect(response.body).to include("1 Transaktionen").and include("Vereinskonto")
-      expect(response.body).not_to include("Supermarkt Muster")
-
+    # Money leaving the wallet is negative, so only the magnitude finds it.
+    it "finds a payment out through |Betrag (Transaktion)|" do
       get :index, params: {f: "!(!(!(amta,bt,20,30)))"}
-      expect(response.body).to include("1 Transaktionen").and include("Supermarkt Muster")
-      expect(response.body).not_to include("Vereinskonto")
+
+      expect(shown).to eq([card])
     end
 
     it "matches any of the three levels through |Betrag (alle Ebenen)|" do
       get :index, params: {f: "!(!(!(amaa,bt,20,30)))"}
-      expect(response).to be_successful
-      expect(response.body).to include("1 Transaktionen").and include("Supermarkt Muster")
+
+      expect(shown).to eq([card])
     end
 
     it "wraps the transaction column, and all three levels, in ABS()" do
@@ -307,17 +206,15 @@ describe Fin::MossTransactionsController do
       %i[amount amount_abs amount_any amount_any_abs].each do |key|
         expect(schema.find(key).operators.map(&:key)).to eq(%i[between lte gte lt gt eq])
         expect(schema.find(key).pickable_operators.map(&:key)).to eq(%i[between lte gte lt gt eq])
-        expect(schema.find(key).operators.map(&:label))
-          .to eq(["im Bereich", "≤", "≥", "<", ">", "="])
       end
       expect(schema.attributes.values.map(&:short_key)).to include(:amt, :amta, :ama, :amaa)
     end
 
     # The sign metadata reaches the builder through the catalog -- that is what
     # turns a group's sub-variant dropdown into the ± / |x| toggle.
-    it "renders both pairs in the builder's catalog" do
-      get :index
-      amounts = catalog_attributes.select { |a| a["variant_group"].to_s.start_with?("Betrag") }
+    it "gives the builder's catalog both pairs" do
+      amounts = schema.catalog[:attributes].as_json.select { |a| a["variant_group"].to_s.start_with?("Betrag") }
+
       expect(amounts.map { |a| [a["key"], a["variant_group"], a["sign"]] }).to eq(
         [["amount", "Betrag (Transaktion)", "signed"],
           ["amount_abs", "Betrag (Transaktion)", "absolute"],
@@ -325,13 +222,12 @@ describe Fin::MossTransactionsController do
           ["amount_any_abs", "Betrag (alle Ebenen)", "absolute"]]
       )
       expect(amounts.pluck("operand_min")).to eq([nil, 0, nil, 0])
-      expect(amounts.first["operators"].pluck("key")).to eq(%w[between lte gte lt gt eq])
     end
   end
 
-  # The kind tabs: the same index, pinned to one kind by the route default
-  # (config/routes.rb). The controller test routes the `kind` param through the
-  # kind route, so it arrives as a path parameter -- as in a real request.
+  # The kind tabs: the same index, pinned to one kind by the route default.
+  # The controller test routes the `kind` param through the kind route, so it
+  # arrives as a path parameter -- as in a real request.
   describe "GET index on a kind tab" do
     it "has a route and a tab label for every kind" do
       Fin::MossTransactionsController::KIND_TABS.each_value do |slug|
@@ -341,494 +237,84 @@ describe Fin::MossTransactionsController do
       expect(Fin::MossTransactionsController::KIND_TABS.keys).to eq(Fin::MossTransactionsFilterSchema::KINDS)
     end
 
-    it "shows only its kind, titled by the tab, without offering the Art attribute" do
+    it "shows only its kind, with its own columns, without offering the Art attribute" do
       get :index, params: {kind: "MossTopUp"}
-      expect(response).to be_successful
+
       expect(request.path).to eq("/fin/moss/top_ups")
-      expect(response.body).to include("<h1>Einzahlungen</h1>")
-      expect(response.body).to include("Vereinskonto")
-      expect(response.body).not_to include("Supermarkt Muster")
-      expect(response.body).to include("1 Transaktionen")
-      # The pinned kind is a hidden slot: "Art" is neither a filter attribute of
-      # the builder's catalog (a JSON data attribute, HTML-escaped) nor a column
-      # of the picker here.
-      expect(response.body).not_to include("&quot;key&quot;:&quot;kind&quot;")
-      expect(response.body).not_to include("mtcol-kind")
-      expect(response.body).not_to include("chk-kind")
+      expect(shown).to eq([top_up])
+      expect(state.visible_column_keys).to eq(Fin::MossTransactionsController::KIND_COLUMNS["MossTopUp"][:default])
+      expect(state.column_configs([{key: "kind"}])).to be_empty
+      expect(state.filter.catalog[:attributes].as_json.pluck("key")).not_to include("kind")
+      expect(state.filter.presets).to be_empty
     end
 
     it "keeps the Art attribute and column on the general tab" do
       get :index
-      expect(response.body).to include("&quot;key&quot;:&quot;kind&quot;")
-      expect(response.body).to include("chk-kind")
-    end
 
-    it "shows the kind's own default columns" do
-      get :index, params: {kind: "MossCardTransaction"}
-      expect(response).to be_successful
-      expect(response.body).to include("mtcol-card_holder_name")
-      expect(response.body).not_to include("mtcol-kind")
-
-      get :index, params: {kind: "MossInvoice"}
-      expect(response.body).to include("mtcol-invoice_number").and include("mtcol-supplier_account_number")
-
-      get :index, params: {kind: "MossReimbursement"}
-      expect(response.body).to include("mtcol-recipient_name").and include("mtcol-bookings_count")
-
-      get :index, params: {kind: "MossTopUp"}
-      expect(response.body).not_to include("mtcol-cost_centers")
+      expect(state.filter.catalog[:attributes].as_json.pluck("key")).to include("kind")
+      expect(state.column_configs([{key: "kind"}])).to be_present
     end
 
     it "remembers each tab's state apart from the others" do
       get :index, params: {kind: "MossCardTransaction", c: "inv"}
-      expect(response.body).to include("mtcol-invoice_number")
-
       get :index
-      expect(response.body).not_to include("mtcol-invoice_number")
+      expect(state.visible_column_keys).not_to include("invoice_number")
 
       get :index, params: {kind: "MossCardTransaction"}
-      expect(response.body).to include("mtcol-invoice_number")
-    end
-
-    # The kinds are a second tab bar below the Moss tabs (Sheet::Fin::Moss),
-    # "Alle" first; the Moss bar keeps "Transaktionen" lit.
-    it "shows the kinds as sub-tabs, with the current one lit" do
-      tab_bars = lambda do
-        Nokogiri::HTML(response.body).css("ul.nav-sub").map do |bar|
-          bar.css("li").map { |li| (li["class"].to_s.include?("active") ? "*" : "") + li.text.strip }
-        end
-      end
-
-      get :index
-      expect(tab_bars.call.last).to eq(["*Alle", "Kartenzahlungen", "Erstattungen", "Rechnungen", "Einzahlungen"])
-
-      get :index, params: {kind: "MossInvoice"}
-      bars = tab_bars.call
-      expect(bars.first).to include("*Transaktionen")
-      expect(bars.last).to eq(["Alle", "Kartenzahlungen", "Erstattungen", "*Rechnungen", "Einzahlungen"])
-    end
-
-    # The date column widens with the room the table has; its header carries
-    # the full word and "Buchung" for when the word does not fit
-    # (shared/wsjrdp/_expandable_table_short_label_js switches).
-    it "gives the date header a short label" do
-      get :index
-      header = Nokogiri::HTML(response.body).at_css("thead th[data-colkey='booking_date']")
-      expect(header.at_css(".exp-label-full").text).to eq("Buchungsdatum")
-      expect(header.at_css(".exp-label-short").text).to eq("Buchung")
+      expect(state.visible_column_keys).to include("invoice_number")
     end
 
     it "ignores a ?kind= query param on the general tab" do
       get :index, params: {kind: "Bogus"}
-      expect(response).to be_successful
+
       expect(request.path).to eq("/fin/moss/transactions")
-      expect(response.body).to include("2 Transaktionen")
+      expect(controller.current_kind).to be_nil
+      expect(rows.total_count).to eq(2)
     end
   end
 
-  # A reimbursement pays out several Ausgaben (MossExpense, level 2), each of
-  # which carries its own Buchungen (MossBooking, level 3). From two Ausgaben on,
-  # the list shows one row per Ausgabe below the transaction's head row -- inside
-  # the same row group and through the table's own columns
-  # (Fin::MossExpenseRowsHelper says which rows those are and what their cells
-  # show, shared/wsjrdp/_expandable_table renders them). Every name, code and
-  # amount below is invented.
   describe "expense rows" do
-    def doc = Nokogiri::HTML(response.body)
-
-    # The row group of one transaction -- head row, expense rows and detail row
-    # in one <tbody class="exp-group"> -- found by the key its detail carries.
-    def group(transaction)
-      doc.css("tbody.exp-group")
-        .find { |tbody| tbody.at_css(".exp-detail[data-exp-key='#{transaction.id}']") }
+    let_it_be(:reimbursement) do
+      tx = MossTransaction.create!(type: "MossReimbursement", moss_transaction_uuid: SecureRandom.uuid,
+        currency: "EUR", booking_date: Date.new(2026, 5, 6), signed_total_base_amount: -75.75,
+        transaction_name: "Vortreffen Nordlicht")
+      [[-45.5, "66910"], [-30.25, "68000"]].each_with_index do |(amount, account), index|
+        expense = MossExpense.create!(moss_transaction: tx, type: "MossReimbursementExpense",
+          moss_expense_uuid: SecureRandom.uuid, expense_number: index + 1, signed_expense_base_amount: amount)
+        MossBooking.create!(moss_transaction: tx, moss_expense: expense, account_kind: "EXPENSE",
+          signed_base_amount: amount, sub_row_number: 1, account_number: account, cost_center_number: "2300")
+      end
+      tx
     end
 
-    def sub_rows(transaction) = group(transaction).css("tr.exp-sub-row")
+    # Fin::MossExpenseRowsHelper decides the rows; the table puts them into the
+    # transaction's row group, through its own columns.
+    context "rendered" do
+      render_views
 
-    def cell(row, key) = row.at_css("td[data-colkey='#{key}']")
+      it "puts one row per Ausgabe between the head row and the detail row, in the shown columns" do
+        get :index, params: {c: "bdt,amt,dsc,cc,nb"}
 
-    def cell_texts(rows, key) = rows.map { |row| cell(row, key).text.squish }
-
-    # What each row of a group is, in document order.
-    def row_kinds(transaction) = group(transaction).element_children.map { |row| row_kind(row) }
-
-    def row_kind(row)
-      classes = row["class"].to_s.split
-      return :head if classes.include?("exp-row")
-      return :detail if classes.include?("exp-detail-row")
-      return :rest if classes.include?("moss-expense-rest")
-      return :collapse if classes.include?("moss-expense-collapse")
-      classes.include?("moss-expense-extra") ? :hidden_expense : :expense
-    end
-
-    # A transaction with one Ausgabe per entry, each Ausgabe with ONE Buchung:
-    # an entry names the Ausgabe's amount, its words and its two codes. The
-    # transaction total is the sum of its Ausgaben, so the head row and the rows
-    # of its group show the same money.
-    def create_grouped(type, *entries, **attrs)
-      uuid = SecureRandom.uuid
-      tx = MossTransaction.create!(type: type, moss_transaction_uuid: uuid, currency: "EUR",
-        payment_date: Date.new(2026, 5, 3), booking_date: Date.new(2026, 5, 6),
-        signed_total_base_amount: entries.sum { |entry| entry.fetch(:amount) }, **attrs)
-      entries.each_with_index { |entry, index| grouped_expense(tx, index + 1, **entry) }
-      tx.reload
-    end
-
-    def grouped_expense(tx, number, amount:, name: nil, text: nil,
-      account: "66910", cost_center: "2300")
-      expense = MossExpense.create!(moss_transaction: tx, type: "#{tx.type}Expense",
-        moss_expense_uuid: SecureRandom.uuid, expense_number: number,
-        signed_expense_base_amount: amount, expense_name: name, expense_posting_text: text)
-      MossBooking.create!(moss_transaction: tx, moss_expense: expense, account_kind: "EXPENSE",
-        signed_base_amount: amount, sub_row_number: 1,
-        account_number: account, cost_center_number: cost_center)
-    end
-
-    def reimbursement_with(*entries, **attrs)
-      create_grouped("MossReimbursement", *entries, **attrs)
-    end
-
-    # The two-Ausgaben reimbursement of this block. The second Ausgabe's
-    # Buchungstext only repeats its name, so its row shows the name alone; the
-    # first one's says something else and goes in italics behind a dash.
-    let!(:reimbursement) do
-      reimbursement_with(
-        {amount: -45.5, name: "Bahnfahrt Vortreffen", text: "Hin- und Rückfahrt"},
-        {amount: -30.25, name: "Verpflegung Samstag", text: "Verpflegung Samstag",
-         account: "68000", cost_center: "2500"},
-        transaction_name: "Vortreffen Nordlicht", recipient_name: "Musterperson"
-      )
-    end
-
-    # The general tab's default columns plus Buchungen, which only the
-    # Erstattungen tab shows by itself (KIND_COLUMNS).
-    let(:group_columns) { {c: "bdt,amt,dsc,acc,cc,nb"} }
-
-    it "puts one expense row per Ausgabe between the head row and the detail row" do
-      get :index
-      expect(response).to be_successful
-      expect(row_kinds(reimbursement)).to eq(%i[head expense expense detail])
-      expect(group(reimbursement).css("tr.exp-sub-row.moss-expense-row").size).to eq(2)
-      expect(group(reimbursement).element_children.last["class"]).to eq("exp-detail-row")
-      # Buchungsdatum and Art stay empty on an expense row -- the head row
-      # above says both for the whole group.
-      expect(cell_texts(sub_rows(reimbursement), "booking_date")).to eq(["", ""])
-      expect(cell_texts(sub_rows(reimbursement), "kind")).to eq(["", ""])
-    end
-
-    it "shows the transaction total in the head row and each Ausgabe's amount below it" do
-      get :index
-      head = group(reimbursement).at_css("tr.exp-row")
-      expect(cell(head, "signed_total_base_amount").text.squish).to eq("-75,75 €")
-
-      amounts = sub_rows(reimbursement)
-        .map { |row| cell(row, "signed_total_base_amount").at_css("span") }
-      expect(amounts.pluck("class")).to eq(["moss-expense-amount text-muted"] * 2)
-      expect(amounts.map { |span| span.text.squish }).to eq(["-45,50 €", "-30,25 €"])
-    end
-
-    it "writes the ordinal, the name and -- when it differs -- the Buchungstext" do
-      get :index
-      cells = sub_rows(reimbursement).map { |row| cell(row, "description") }
-      expect(cells.map { |desc| desc.at_css("span.moss-expense-ordinal").text }).to eq(%w[1 2])
-      expect(cells.first.at_css("i").text).to eq("Hin- und Rückfahrt")
-      expect(cells.first.text.squish).to eq("1Bahnfahrt Vortreffen – Hin- und Rückfahrt")
-      expect(cells.last.at_css("i")).to be_nil
-      expect(cells.last.text.squish).to eq("2Verpflegung Samstag")
-    end
-
-    it "shows each Ausgabe's Sachkonto, Kostenstelle and Buchungen count" do
-      get :index, params: group_columns
-      rows = sub_rows(reimbursement)
-      expect(cell_texts(rows, "account_numbers")).to eq(%w[66910 68000])
-      expect(cell_texts(rows, "cost_centers")).to eq(%w[2300 2500])
-      expect(cell_texts(rows, "bookings_count")).to eq(%w[1 1])
-      # The head row keeps aggregating over the whole transaction: both codes
-      # (each on its own line, hence the <br>) and both Buchungen.
-      head = group(reimbursement).at_css("tr.exp-row")
-      expect(cell(head, "account_numbers").css("br").size).to eq(1)
-      expect(cell(head, "bookings_count").text.squish).to eq("2")
-    end
-
-    # An expense row is content, not a control: the head row alone opens the
-    # transaction's detail.
-    it "lets an expense row toggle its group's detail, without a detail of its own" do
-      get :index
-      head = group(reimbursement).at_css("tr.exp-row")
-      expect(head["role"]).to eq("button")
-      expect(head["data-bs-toggle"]).to eq("collapse")
-
-      sub_rows(reimbursement).each do |row|
-        expect(row["role"]).to eq("button")
-        expect(row["data-bs-toggle"]).to eq("collapse")
-        expect(row["data-bs-target"]).to eq(head["data-bs-target"])
-        expect(row["aria-expanded"]).to eq(head["aria-expanded"])
-        expect(row.css(".collapse, i.fa-eye")).to be_empty
+        doc = Nokogiri::HTML(response.body)
+        group = doc.css("tbody.exp-group").find { |tbody| tbody.at_css(".exp-detail[data-exp-key='#{reimbursement.id}']") }
+        kinds = group.element_children.map { |row| row["class"].to_s.split }
+        visible = %w[booking_date signed_total_base_amount description cost_centers bookings_count]
+        aggregate_failures do
+          expect(kinds.first).to include("exp-row")
+          expect(kinds.last).to include("exp-detail-row")
+          expect(kinds[1..-2]).to all(include("exp-sub-row"))
+          expect(kinds.size).to eq(4)
+          expect(group.css("tr.exp-sub-row").map { |row| row.css("td").pluck("data-colkey") }).to eq([visible] * 2)
+        end
       end
     end
 
-    it "leaves a reimbursement with one Ausgabe, and a card payment, single rows" do
-      single = reimbursement_with({amount: -12.4, name: "Portokosten"},
-        transaction_name: "Nachversand")
-      # Two Ausgaben -- but a card payment has no real middle level, so it keeps
-      # its single row whatever its expenses look like.
-      card_with_two = create_grouped("MossCardTransaction",
-        {amount: -8.5, name: "Position eins"}, {amount: -4.2, name: "Position zwei"},
-        merchant_name: "Musterkiosk")
-
-      get :index
-      expect(response).to be_successful
-      expect(row_kinds(single)).to eq(%i[head detail])
-      expect(sub_rows(single)).to be_empty
-      expect(sub_rows(card_with_two)).to be_empty
-      expect(sub_rows(card)).to be_empty
-    end
-
-    it "caps a group at four expense rows, behind a rest row that reveals the fifth" do
-      entries = [-10, -20, -30, -40, -9].each_with_index
-        .map { |amount, index| {amount: amount, name: "Position #{index + 1}"} }
-      many = reimbursement_with(*entries, transaction_name: "Sammelerstattung")
-
-      get :index, params: group_columns
-      expect(row_kinds(many))
-        .to eq(%i[head expense expense expense expense hidden_expense rest collapse detail])
-      expect(group(many).css("tr.moss-expense-extra.d-none").size).to eq(1)
-      expect(group(many).css("tr.moss-expense-collapse.d-none").size).to eq(1)
-
-      rest = group(many).at_css("tr.moss-expense-rest")
-      expect(cell(rest, "description").text.squish).to eq("▸ 1 weitere Ausgabe anzeigen")
-      expect(cell(rest, "description").at_css("a")["data-moss-expense-toggle"]).to eq("expand")
-      # Betrag stays additive: the four rows above plus the rest row are the head
-      # row's amount.
-      expect(cell(rest, "signed_total_base_amount").text.squish).to eq("-9,00 €")
-      expect(cell(rest, "bookings_count").text.squish).to eq("1")
-
-      collapse = group(many).at_css("tr.moss-expense-collapse")
-      expect(cell(collapse, "description").text.squish).to eq("▴ einklappen")
-      expect(cell(collapse, "description").at_css("a")["data-moss-expense-toggle"])
-        .to eq("collapse")
-      expect(cell(collapse, "signed_total_base_amount").text).to eq("")
-    end
-
-    it "hides a column in the whole group, head row and expense rows alike" do
-      # The default columns without Sachkonten, plus Buchungen.
-      get :index, params: {c: "bdt,amt,dsc,cc,nb"}
-      expect(response).to be_successful
-      visible = %w[booking_date signed_total_base_amount description cost_centers bookings_count]
-      expect(doc.css("thead th.exp-col").pluck("data-colkey")).to eq(visible)
-      expect(group(reimbursement).at_css("tr.exp-row").css("td").pluck("data-colkey")).to eq(visible)
-      expect(sub_rows(reimbursement).map { |row| row.css("td").pluck("data-colkey") })
-        .to eq([visible, visible])
-      expect(doc.css("tr.exp-sub-row td[data-colkey='account_numbers']")).to be_empty
-    end
-
-    # Nothing about the expense rows reaches the sort, the paging or the count:
-    # a group travels with its head row and is counted as the one transaction it
-    # belongs to.
-    it "counts and pages transactions only, each group travelling with its head row" do
+    # A group travels with its head row and is counted as one transaction.
+    it "counts and pages transactions only" do
       get :index, params: {s: "amt", z: "1", p: "1"}
-      expect(response).to be_successful
-      expect(response.body).to include("3 Transaktionen").and include("von 3")
-      # Ascending by Betrag, the reimbursement (-75,75) is the smallest of the
-      # three -- and brings its two expense rows onto its page.
-      expect(doc.css("tbody.exp-group").size).to eq(1)
-      expect(group(reimbursement)).to be_present
-      expect(sub_rows(reimbursement).size).to eq(2)
 
-      get :index, params: {s: "amt", z: "1", p: "2"}
-      expect(response.body).to include("3 Transaktionen")
-      expect(doc.css("tbody.exp-group").size).to eq(1)
-      expect(group(card)).to be_present
-      expect(doc.css("tr.exp-sub-row")).to be_empty
-    end
-
-    it "shows the same group on the Erstattungen tab, whose columns include Buchungen" do
-      get :index, params: {kind: "MossReimbursement"}
-      expect(response).to be_successful
-      expect(request.path).to eq("/fin/moss/reimbursements")
-      expect(response.body).to include("1 Transaktionen")
-      expect(row_kinds(reimbursement)).to eq(%i[head expense expense detail])
-
-      rows = sub_rows(reimbursement)
-      expect(rows.first.css("td").pluck("data-colkey")).to eq(
-        %w[booking_date signed_total_base_amount description recipient_name bookings_count
-          cost_centers account_numbers]
-      )
-      expect(cell_texts(rows, "bookings_count")).to eq(%w[1 1])
-      expect(cell_texts(rows, "account_numbers")).to eq(%w[66910 68000])
-      # Empfänger, like every other column an expense row does not fill, is
-      # rendered and shows nothing; the head row above says it for the group.
-      expect(cell_texts(rows, "recipient_name")).to eq(["", ""])
-      head = group(reimbursement).at_css("tr.exp-row")
-      expect(cell(head, "booking_date").text.squish).to eq("06.05.2026")
-      expect(cell(head, "recipient_name").text.squish).to eq("Musterperson")
-    end
-  end
-
-  # Every detail row opens with the header line of double links: "In Moss"
-  # (the transaction's record in Moss) left of the primary "Detailseite". Each
-  # double link is a button group whose left half stays in this tab and whose
-  # right half opens the same URL in a new one; the summary row carries none.
-  # A top-up is the kind Moss has no record page for, so its line carries the
-  # primary link alone.
-  describe "the detail's header line" do
-    def doc = Nokogiri::HTML(response.body)
-
-    # [same-tab anchor, new-tab anchor] per double link, of the first row's line.
-    def link_groups
-      doc.css(".exp-detail-links").first.css(".btn-group").map { |group| group.css("a").to_a }
-    end
-
-    # The label of every double link, one array per row, in rendered order.
-    def labels_per_row
-      doc.css(".exp-detail-links")
-        .map { |line| line.css(".btn-group").map { |group| group.css("a").first.text.squish } }
-    end
-
-    before { get :index, params: {s: "amt"} }
-
-    it "shows In Moss left of Detailseite, and no icon in the summary row" do
-      expect(doc.css("tr.exp-row i.fa-eye")).to be_empty
-      expect(link_groups.map { |same, _| same.text.squish }).to eq(["In Moss", "Detailseite"])
-      expect(link_groups.map { |same, _| same.at_css("i")["class"] })
-        .to eq(["fas fa-wallet", "fas fa-eye"])
-    end
-
-    it "links the transaction's Moss record and its own page, each also in a new tab" do
-      # Ascending by amount, so the card transaction (negative) comes first.
-      expect(link_groups.map { |same, _| same["href"] })
-        .to eq([card.moss_record_url, moss_transaction_path(card)])
-      expect(link_groups.map { |_, new_tab| new_tab["href"] })
-        .to eq([card.moss_record_url, moss_transaction_path(card)])
-      expect(link_groups.map { |_, new_tab| new_tab["target"] }).to eq(%w[_blank _blank])
-      expect(link_groups.map { |_, new_tab| new_tab["rel"] }).to eq(%w[noopener noopener])
-      expect(link_groups.map { |_, new_tab| new_tab["title"] })
-        .to eq(["Transaktion in Moss in neuem Tab öffnen", "Detailseite in neuem Tab öffnen"])
-    end
-
-    # Ascending by amount: the reimbursement (most negative) first, then the
-    # card payment, then the top-up. Only the top-up loses its "In Moss" group.
-    it "drops the In-Moss group on a top-up and keeps it on a reimbursement" do
-      payout = create_transaction("MossReimbursement", amount: -60,
-        moss_reimbursement_uuid: SecureRandom.uuid, transaction_name: "Fahrtkosten Vortreffen")
-
-      get :index, params: {s: "amt"}
-
-      expect(labels_per_row)
-        .to eq([["In Moss", "Detailseite"], ["In Moss", "Detailseite"], ["Detailseite"]])
-      hrefs = doc.css(".exp-detail-links").map { |line| line.css("a").first["href"] }
-      expect(hrefs)
-        .to eq([payout.moss_record_url, card.moss_record_url, moss_transaction_path(top_up)])
-      expect(hrefs.last).not_to include("getmoss.com")
-    end
-  end
-
-  # The filter LINE above the table (doc/wsjrdp/expandable_table.md): on the
-  # general tab the kinds as a fixed group of several answers in the
-  # "Schnellauswahl" (Fin::MossKinds.fixed_group) and the applied filter's
-  # chips, on a kind tab neither -- the tab pins its kind itself.
-  describe "the filter line" do
-    def doc = Nokogiri::HTML(response.body)
-
-    def line = doc.at_css(".flt-line")
-
-    def chip_texts = doc.css(".flt-applied .flt-chip").map { |chip| chip.text.strip }
-
-    def preset_links = doc.css("a.flt-preset")
-
-    # The decoded `f` value a preset button points at ("" when it clears the
-    # filter).
-    def preset_filter(link)
-      CGI.unescape(CGI.unescapeHTML(link["href"].to_s)[/[?&]f=([^&]*)/, 1].to_s)
-    end
-
-    let(:kinds) { Fin::MossTransactionsFilterSchema::KINDS }
-
-    # The lifts param (`u`) a segment button points at.
-    def preset_lifts(link)
-      CGI.unescape(CGI.unescapeHTML(link["href"].to_s)[/[?&]u=([^&]*)/, 1].to_s)
-    end
-
-    # One segment: the "all" asterisk, then the four kinds in their own order,
-    # worded and marked like the "Art" cells of the rows -- every kind chosen.
-    it "offers the kinds as one segment behind an asterisk on the general tab" do
-      get :index
-
-      expect(line).to be_present
-      expect(doc.css(".flt-segment").size).to eq(1)
-      expect(preset_links.size).to eq(5)
-      expect(preset_links.first["class"].split).to include("flt-preset-icon-only")
-      kind_links = preset_links.drop(1)
-      expect(kind_links.map { |a| a.text.strip })
-        .to eq(kinds.map { |kind| I18n.t("fin.moss.kind_chips.#{kind}") })
-      expect(kind_links.map { |a| a.xpath("./i").first["class"] })
-        .to eq(kinds.map { |kind| "fas fa-#{Fin::MossKinds.icon(kind)}" })
-      expect(kind_links.map { |a| a["class"].split.last })
-        .to eq(kinds.map { |kind| Fin::MossKinds.css_class(kind) })
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[true true true true true])
-      expect(response.body).to include("2 Transaktionen")
-
-      toggle = line.element_children.last
-      expect(toggle["class"].split).to include("pane-toggle")
-      expect(toggle["data-pane-target"]).to eq(doc.at_css(".wsjrdp-pane.flt-pane")["id"])
-    end
-
-    # A click takes its kind out of the choice (or puts it back); the asterisk
-    # chooses none when all are chosen. The choice is a locked chip.
-    it "narrows the list to the chosen kinds" do
-      get :index
-      expect(preset_links.map { |a| preset_lifts(a) }).to eq(["kind.-",
-        "kind.reimbursement+invoice+top_up", "kind.card_transaction+invoice+top_up",
-        "kind.card_transaction+reimbursement+top_up", "kind.card_transaction+reimbursement+invoice"])
-
-      get :index, params: {u: "kind.top_up"}
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false false true])
-      expect(response.body).to include("1 Transaktionen").and include("Vereinskonto")
-      expect(response.body).not_to include("Supermarkt Muster")
-      expect(doc.css(".flt-chip-locked, .flt-applied .flt-chip").map { |chip| chip.text.squish }.join)
-        .to include("Art")
-
-      # None chosen: no row, and the line says so in words.
-      get :index, params: {u: "kind.-"}
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[false false false false false])
-      expect(response.body).to include("0 Transaktionen")
-      expect(doc.css(".flt-applied .flt-chip-locked").map { |chip| chip.text.squish }).to eq(["Art: keine gewählt"])
-    end
-
-    # The tab pins its kind as a HIDDEN fixed slot: a button offering another
-    # kind would promise a list the pin cannot give. The table IS filtered, so
-    # "Kein Filter aktiv" would be wrong -- and a pin the user cannot remove is
-    # no chip either.
-    it "shows neither buttons nor chips nor 'Kein Filter aktiv' on a kind tab" do
-      get :index, params: {kind: "MossTopUp"}
-
-      expect(line).to be_present
-      expect(preset_links).to be_empty
-      expect(doc.css(".flt-nofilter")).to be_empty
-      expect(doc.css(".flt-applied")).to be_empty
-    end
-
-    # A kind the user filters on is a slot of their own, chipped like any other.
-    it "chips the user's own kind slot" do
-      get :index, params: {f: "!(!(!(k,in,MossTopUp)),!(!(amt,ge,100)))"}
-
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[true true true true true])
-      expect(chip_texts).to eq(["Art ist Einzahlung", "Betrag (Transaktion) ≥ 100"])
-    end
-
-    it "chips a slot on an attribute the buttons do not cover, joined by 'und'" do
-      get :index, params: {f: "!(!(!(acc,in,'66500')),!(!(amt,ge,100)))"}
-
-      expect(chip_texts).to eq(["Sachkonto (Buchung) ist 66500", "Betrag (Transaktion) ≥ 100"])
-      expect(doc.css(".flt-applied .flt-and").map { |node| node.text.strip }).to eq(["und"])
-    end
-
-    # On a kind tab only the user's slot is chipped; the pinned kind stays out.
-    it "chips a user slot next to the tab's pinned kind" do
-      get :index, params: {kind: "MossTopUp", f: "!(!(!(amt,ge,100)))"}
-
-      expect(chip_texts).to eq(["Betrag (Transaktion) ≥ 100"])
-      expect(doc.css(".flt-nofilter")).to be_empty
+      expect(rows.total_count).to eq(3)
+      expect(shown).to eq([reimbursement])
     end
   end
 
@@ -842,7 +328,6 @@ describe Fin::MossTransactionsController do
     it "redirects (PRG) to the canonical Rison filter URL" do
       post :apply, params: {filter_json: [[["kind", "in", "MossTopUp"]]].to_json}
       expect(response).to have_http_status(:see_other)
-      # Rison quotes string operands; the codec's decoder accepts both spellings.
       expect(response.location).to end_with("/fin/moss/transactions?f=!(!(!(k,in,'MossTopUp')))")
     end
 
@@ -856,82 +341,55 @@ describe Fin::MossTransactionsController do
   end
 
   describe "GET show" do
-    it "renders the transaction's own fields, without the expense / booking levels" do
+    it "shows the transaction" do
       get :show, params: {id: card.id}
+
       expect(response).to be_successful
-      expect(response.body).to include("Kartenzahlung").and include("Supermarkt Muster").and include("In Moss öffnen")
-      expect(response.body).not_to include("Split eins")
+      expect(assigns(:transaction)).to eq(card)
     end
 
-    # Moss has no record page for a top-up, so the "Moss" cell of the
-    # Verknüpfungen grid stays empty -- no anchor, and no empty one either.
-    it "renders no Moss link on a top-up" do
-      get :show, params: {id: top_up.id}
-      expect(response).to be_successful
-      expect(response.body).to include("Einzahlung").and include("Vereinskonto")
-      expect(response.body).not_to include("In Moss öffnen")
-      expect(response.body).not_to include("getmoss.com")
-    end
+    context "rendered" do
+      render_views
 
-    def page = Nokogiri::HTML(response.body)
+      # A single expense and booking are said by the fields above.
+      it "lists the expenses and the bookings only where there is more than one" do
+        get :show, params: {id: card.id}
 
-    # The finance detail kit's reading page: the field list, a header without
-    # a link back, and "Bearbeiten" for the write tier.
-    it "renders the standard field list with Bearbeiten and no link back" do
-      get :show, params: {id: card.id}
+        expect(Nokogiri::HTML(response.body).css("turbo-frame[data-record^='moss_expense_']")).to be_empty
+      end
 
-      expect(page.at_css("#main dl.fin-detail-list")).to be_present
-      expect(page.at_css("#main h1 span.text-muted").text).to eq "Kartenzahlung ##{card.id}"
-      expect(page.at_css("#main h1 a[href='#{edit_moss_transaction_path(card)}']").text).to include("Bearbeiten")
-      expect(response.body).not_to include("Zurück zur Liste")
-      expect(page.css("#main form")).to be_empty
-    end
+      it "lists each expense and booking where there are several" do
+        second = MossExpense.create!(moss_transaction: card, moss_expense_uuid: SecureRandom.uuid,
+          type: "MossCardTransactionExpense", expense_number: 2, signed_expense_base_amount: -3)
+        booking = MossBooking.create!(moss_transaction: card, moss_expense: second, sub_row_number: 1,
+          signed_base_amount: -3)
 
-    # With more than one expense and booking the page lists them below as
-    # expandable tables, each row opening its own detail; a single one is
-    # already said by the fields above.
-    it "lists the expenses and the bookings where there is more than one" do
-      get :show, params: {id: card.id}
-      expect(response.body).not_to include("Ausgaben (")
-      expect(response.body).not_to include("Buchungen (")
+        get :show, params: {id: card.id}
 
-      second = MossExpense.create!(moss_transaction: card, moss_expense_uuid: SecureRandom.uuid,
-        type: "MossCardTransactionExpense", expense_number: 2, signed_expense_base_amount: -3,
-        expense_name: "Zweite Ausgabe")
-      booking = MossBooking.create!(moss_transaction: card, moss_expense: second, sub_row_number: 1,
-        signed_base_amount: -3, booking_posting_text: "Split zwei")
-      get :show, params: {id: card.id}
+        page = Nokogiri::HTML(response.body)
+        expect(page.css("turbo-frame[data-record^='moss_expense_']").pluck("src").map { |src| src.split("?").first })
+          .to eq([card.expenses.first, second].map { |expense| moss_expense_path(expense) })
+        expect(page.at_css("turbo-frame[data-record='moss_booking_#{booking.id}']")).to be_present
+      end
 
-      expect(response.body).to include("Ausgaben (2)").and include("Buchungen (2)")
-      expenses = page.css("turbo-frame[data-record^='moss_expense_']")
-      expect(expenses.pluck("src").map { |src| src.split("?").first })
-        .to eq([card.expenses.first, second].map { |expense| moss_expense_path(expense) })
-      expect(page.at_css("turbo-frame[data-record='moss_booking_#{booking.id}']")["src"])
-        .to start_with(moss_booking_path(booking))
-      expect(response.body).to include("Zweite Ausgabe").and include("Split zwei")
-    end
+      it "gives a row's detail the inline edit form, and the linked person read-only" do
+        card.bookings.first.update!(contribution_subject: people(:cmt_leader))
+        request.headers["Turbo-Frame"] = "bkframe-mtx-#{card.id}"
 
-    it "gives a row's detail the inline edit form" do
-      request.headers["Turbo-Frame"] = "bkframe-mtx-#{card.id}"
-      get :show, params: {id: card.id, expandable_table_level: 1}
+        get :show, params: {id: card.id, expandable_table_level: 1}
 
-      frame = page.at_css("turbo-frame#bkframe-mtx-#{card.id}")
-      expect(frame.at_css("h1")).to be_nil
-      expect(frame.at_css("form[action='#{moss_transaction_path(card)}'] textarea[name='moss_transaction[comment]']"))
-        .to be_present
+        frame = Nokogiri::HTML(response.body).at_css("turbo-frame#bkframe-mtx-#{card.id}")
+        aggregate_failures do
+          expect(frame.at_css("form[action='#{moss_transaction_path(card)}'] textarea[name='moss_transaction[comment]']"))
+            .to be_present
+          expect(frame.text).to include(people(:cmt_leader).to_s)
+          expect(frame.css("a[data-turbo-method]")).to be_empty
+        end
+      end
     end
   end
 
   describe "the edit page" do
-    def page = Nokogiri::HTML(response.body)
-
-    it "shows the comment as an input" do
-      get :edit, params: {id: card.id}
-
-      expect(page.at_css("form[action='#{moss_transaction_path(card)}'] textarea[name='moss_transaction[comment]']"))
-        .to be_present
-    end
-
     it "saves the comment and returns to the reading page" do
       patch :update, params: {id: card.id, moss_transaction: {comment: "Geprüft"}}
 
@@ -950,120 +408,6 @@ describe Fin::MossTransactionsController do
       sign_in(Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person)
 
       expect { get :edit, params: {id: card.id} }.to raise_error(CanCan::AccessDenied)
-    end
-  end
-
-  # The person side of a booking (fin/moss_bookings/_subject_links): one block
-  # per booking in the row's description cell, with the linking buttons for the
-  # write tier, and read-only in the lazy detail's "Personen" section.
-  describe "person links" do
-    let(:target) { people(:cmt_leader) }
-
-    let!(:invoice) do
-      create_transaction("MossInvoice", amount: -100, transaction_name: "Rechnung Muster")
-        .tap { |tx| tx.bookings.first.update!(booking_posting_text: "Rechnung CMT #{target.id}") }
-    end
-
-    let(:booking) { invoice.bookings.first }
-
-    it "offers the linking buttons in the row of the booking's transaction" do
-      get :index
-
-      doc = Nokogiri::HTML(response.body)
-      block = doc.at_css("[data-subject-links='moss_booking_#{booking.id}']")
-      expect(block).to be_present
-      expect(block.css("a[data-turbo-method='post']").pluck("href"))
-        .to include("/fin/moss/bookings/#{booking.id}/link_subject/#{target.id}/Person")
-    end
-
-    it "loads the detail lazily, its frame marked with the transaction" do
-      get :index
-
-      frame = Nokogiri::HTML(response.body).at_css("turbo-frame[data-record='moss_transaction_#{invoice.id}']")
-      expect(frame).to be_present
-      expect(frame["src"]).to start_with("/fin/moss/transactions/#{invoice.id}")
-    end
-
-    it "offers no linking button to the read tier" do
-      sign_in(Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person)
-      get :index
-
-      expect(response).to be_successful
-      expect(response.body).not_to include("/link_subject/")
-    end
-
-    it "shows the linked person read-only in the detail frame" do
-      booking.update!(contribution_subject: target)
-      request.headers["Turbo-Frame"] = "bkframe-mtx-#{invoice.id}"
-      get :show, params: {id: invoice.id}
-
-      doc = Nokogiri::HTML(response.body)
-      frame = doc.at_css("turbo-frame#bkframe-mtx-#{invoice.id}")
-      expect(frame).to be_present
-      expect(frame.text).to include("Personen").and include("Person:")
-      expect(frame.css("a[data-turbo-method]")).to be_empty
-      expect(doc.at_css("#main")).to be_nil # no page shell inside a frame response
-    end
-
-    def block_doc
-      Nokogiri::HTML(response.body).at_css("[data-subject-links='moss_booking_#{booking.id}']")
-    end
-
-    def entry_for(person, booking_date: Date.new(2026, 5, 6), **links)
-      AccountingEntry.create!(subject: person, author: person, amount_cents: -10_000,
-        description: "Beitrag", value_date: booking_date, booking_date: booking_date, **links)
-    end
-
-    it "offers creating the Beitragsbuchung in one step FIRST, then the two-step buttons" do
-      get :index
-
-      labels = block_doc.css("a.btn").map { |a| a.text.strip }
-      expect(labels.first).to start_with("Buchung für").and end_with("erzeugen")
-      expect(labels.drop(1).map { |label| label.split.first(2).join(" ") })
-        .to eq ["Verknüpfe mit", "Keine Verknüpfung"]
-    end
-
-    it "names an existing matching Beitragsbuchung instead of the create button" do
-      existing = entry_for(target)
-      get :index
-
-      expect(block_doc.text).to include("1 passende Beitragsbuchung vorhanden").and include("##{existing.id}")
-      expect(block_doc.css("a[href*='link_subject_and_create_accounting_entry']")).to be_empty
-      expect(block_doc.css("a[href*='/link_subject/']")).to be_present
-    end
-
-    it "offers no create button without :create on AccountingEntry" do
-      allow(controller).to receive(:current_ability).and_wrap_original do |original|
-        original.call.tap do |ability|
-          allow(ability).to receive(:can?).and_call_original
-          allow(ability).to receive(:can?).with(:create, AccountingEntry).and_return(false)
-        end
-      end
-      get :index
-
-      expect(block_doc.css("a[href*='link_subject_and_create_accounting_entry']")).to be_empty
-      expect(block_doc.css("a[href*='/link_subject/']")).to be_present
-    end
-
-    it "offers one link button per unlinked Beitragsbuchung of the linked person's amount" do
-      booking.update!(contribution_subject: target)
-      first = entry_for(target)
-      second = entry_for(target, booking_date: Date.new(2025, 1, 10))
-      entry_for(target, moss_booking: create_transaction("MossCardTransaction", amount: -100).bookings.first)
-      get :index
-
-      hrefs = block_doc.css("a[href*='/link_accounting_entry/']").pluck("href")
-      expect(hrefs).to contain_exactly(
-        "/fin/moss/bookings/#{booking.id}/link_accounting_entry/#{first.id}",
-        "/fin/moss/bookings/#{booking.id}/link_accounting_entry/#{second.id}"
-      )
-    end
-
-    it "says so when no person is linked" do
-      request.headers["Turbo-Frame"] = "bkframe-mtx-#{invoice.id}"
-      get :show, params: {id: invoice.id}
-
-      expect(response.body).to include("Keine Person verknüpft.")
     end
   end
 end

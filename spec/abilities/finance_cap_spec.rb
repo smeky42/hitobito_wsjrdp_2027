@@ -16,9 +16,11 @@ require "spec_helper"
 #   * it is scoped to the one Ability it was passed the keyword for;
 #   * without a pick the DEFAULT tier applies, which is never an elevated one.
 describe "finance cap" do
-  let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
-  let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
-  let(:writer) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  let_it_be(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+  let_it_be(:writer) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
 
   # Passing the keyword is what marks an ability as a session's. Passing nil
   # means "no pick", not "no rule".

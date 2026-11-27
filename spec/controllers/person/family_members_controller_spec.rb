@@ -13,8 +13,6 @@ require "spec_helper"
 # (/people/:person_id/family_members/edit): for the privileged view and the
 # unit leaders of the person's unit (:update_family).
 describe Person::FamilyMembersController, type: :controller do
-  render_views
-
   let(:yp) { people(:yp_a_1) }
   let(:sibling) { people(:yp_a_2) }
 
@@ -32,14 +30,6 @@ describe Person::FamilyMembersController, type: :controller do
     end
   end
 
-  it "shows the family rows of the person form to the unit leader" do
-    sign_in(people(:ul_a_1))
-    get :edit, params: {person_id: yp.id}
-
-    expect(response).to have_http_status(:ok)
-    expect(Capybara.string(response.body)).to have_css("a.add_nested_fields[data-association='family_members']")
-  end
-
   it "saves the links of the unit leader, both ways" do
     sign_in(people(:ul_a_1))
     put :update, params: {person_id: yp.id, person: link_params}
@@ -49,52 +39,15 @@ describe Person::FamilyMembersController, type: :controller do
     expect(FamilyMember.find_by(person: sibling, other: yp)).to be_present
   end
 
-  it "lets the unit leader change the kind of an existing link, without a label column" do
+  it "lets the unit leader change the kind of an existing link" do
     link = FamilyMember.create!(person: yp, other: sibling, kind: "sibling")
     sign_in(people(:ul_a_1))
-    get :edit, params: {person_id: yp.id}
-
-    page = Capybara.string(response.body)
-    expect(page).to have_no_css("label", text: "Familienmitglieder")
-    expect(page).to have_css("select[name$='[kind]'] option[selected][value='sibling']")
-    expect(page).to have_css("span.text-muted", text: sibling.wsjrdp_role)
-    expect(page).to have_css("strong a", text: sibling.short_full_name_with_nickname)
 
     put :update, params: {person_id: yp.id, person: {family_members_attributes: {
       "0" => {id: link.id, kind: "parent"}
     }}}
     expect(link.reload.kind).to eq("parent")
     expect(FamilyMember.find_by(person: sibling, other: yp).kind).to eq("child")
-  end
-
-  it "lets the unit leader change the inverse label of an existing link" do
-    link = FamilyMember.create!(person: yp, other: sibling, kind: "relative", label: "Tante", inverse_label: "Nichte")
-    sign_in(people(:ul_a_1))
-    get :edit, params: {person_id: yp.id}
-    expect(Capybara.string(response.body)).to have_css("input[name$='[inverse_label]'][value='Nichte']")
-
-    put :update, params: {person_id: yp.id, person: {family_members_attributes: {
-      "0" => {id: link.id, kind: "relative", label: "Tante", inverse_label: "Großnichte"}
-    }}}
-    expect(FamilyMember.find_by(person: sibling, other: yp).label).to eq("Großnichte")
-  end
-
-  it "asks before removing a link, naming the relation both ways, with a trash icon" do
-    yp.update_columns(gender: "w")
-    sibling.update_columns(gender: "m")
-    FamilyMember.create!(person: yp, other: sibling, kind: "sibling")
-    sign_in(people(:ul_a_1))
-    get :edit, params: {person_id: yp.id}
-
-    page = Capybara.string(response.body)
-    link = page.find("a.remove_nested_fields[data-wsjrdp-confirm]")
-    expect(link).to have_css("i.fa-trash-alt")
-    question = link["data-wsjrdp-confirm"]
-    expect(question).to include("Familienbeziehung entfernen?",
-      "#{sibling.short_full_name_with_nickname} ist Bruder von #{yp.short_full_name_with_nickname}.",
-      "#{yp.short_full_name_with_nickname} ist Schwester von #{sibling.short_full_name_with_nickname}.",
-      "Beide Richtungen werden beim Speichern gelöscht.")
-    expect(page).to have_css("a.add_nested_fields", text: "Familienmitglied hinzufügen")
   end
 
   it "shows a form error when two existing families would be linked" do
@@ -107,11 +60,53 @@ describe Person::FamilyMembersController, type: :controller do
     }}}
 
     expect(response).to have_http_status(422)
-    expect(response.body).to include("gehören schon zu verschiedenen Familien")
+    expect(assigns(:person).errors.full_messages.join).to include("gehören schon zu verschiedenen Familien")
     expect(FamilyMember.where(person: yp, other: sibling)).to be_empty
   end
 
+  describe "the edit page" do
+    render_views
+
+    it "lets the unit leader change the inverse label of an existing link" do
+      link = FamilyMember.create!(person: yp, other: sibling, kind: "relative", label: "Tante", inverse_label: "Nichte")
+      sign_in(people(:ul_a_1))
+      get :edit, params: {person_id: yp.id}
+      expect(Capybara.string(response.body)).to have_css("input[name$='[inverse_label]'][value='Nichte']")
+
+      put :update, params: {person_id: yp.id, person: {family_members_attributes: {
+        "0" => {id: link.id, kind: "relative", label: "Tante", inverse_label: "Großnichte"}
+      }}}
+      expect(FamilyMember.find_by(person: sibling, other: yp).label).to eq("Großnichte")
+    end
+
+    it "shows a link with its kind and the relative, and asks before removing it, naming the relation both ways",
+      :aggregate_failures do
+      yp.update_columns(gender: "w")
+      sibling.update_columns(gender: "m")
+      FamilyMember.create!(person: yp, other: sibling, kind: "sibling")
+      sign_in(people(:ul_a_1))
+      get :edit, params: {person_id: yp.id}
+
+      page = Capybara.string(response.body)
+      link = page.find("a.remove_nested_fields[data-wsjrdp-confirm]")
+      expect(link).to have_css("i.fa-trash-alt")
+      question = link["data-wsjrdp-confirm"]
+      expect(question).to include("Familienbeziehung entfernen?",
+        "#{sibling.short_full_name_with_nickname} ist Bruder von #{yp.short_full_name_with_nickname}.",
+        "#{yp.short_full_name_with_nickname} ist Schwester von #{sibling.short_full_name_with_nickname}.",
+        "Beide Richtungen werden beim Speichern gelöscht.")
+      expect(page).to have_css("a.add_nested_fields[data-association='family_members']",
+        text: "Familienmitglied hinzufügen")
+      expect(page).to have_no_css("label", text: "Familienmitglieder")
+      expect(page).to have_css("select[name$='[kind]'] option[selected][value='sibling']")
+      expect(page).to have_css("span.text-muted", text: sibling.wsjrdp_role)
+      expect(page).to have_css("strong a", text: sibling.short_full_name_with_nickname)
+    end
+  end
+
   describe "a link to a relative the unit leader may not see" do
+    render_views
+
     let(:relative) { people(:yp_b_1) }
     let!(:link) { FamilyMember.create!(person: yp, other: relative, kind: "sibling", label: "Cousine") }
 

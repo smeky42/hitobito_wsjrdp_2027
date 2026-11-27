@@ -120,11 +120,11 @@ describe Wsjrdp2027::PaymentCode do
 
     it "answers exactly as comparing one by one" do
       rng = Random.new(2027)
-      issued = Array.new(300) { described_class.generate_codeword }
-      issued += issued.first(60).map { |codeword| mutate(codeword, rng) }
+      issued = Array.new(30) { described_class.generate_codeword }
+      issued += issued.first(10).map { |codeword| mutate(codeword, rng) }
       index = described_class::Index.new(issued)
 
-      queries = Array.new(100) { described_class.generate_codeword } + issued.sample(60, random: rng).map { |c| mutate(c, rng) }
+      queries = Array.new(8) { described_class.generate_codeword } + issued.sample(20, random: rng).map { |c| mutate(c, rng) }
       queries.each { |query| expect(index.distances(query)).to eq(naive(query, issued)), query }
     end
 

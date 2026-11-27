@@ -11,35 +11,51 @@ require "spec_helper"
 
 # Synchronisation: three pages, for Admin and the manage tier only.
 describe Fin::SyncController do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+  let_it_be(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
 
-  def tab_links = Nokogiri::HTML(response.body).css("a").pluck("href").grep(%r{\A/fin/sync})
+  context "rendered" do
+    render_views
 
-  %i[index moss_api moss_csv].each do |action|
-    it "renders #{action} with the area's three tabs" do
-      sign_in(admin)
-      get action
+    before { sign_in(admin) }
+
+    def page = Nokogiri::HTML(response.body)
+
+    def tab_links = page.css("a").pluck("href").grep(%r{\A/fin/sync})
+
+    it "lists the runs, with what they synchronised and how long they took, under the area's tabs" do
+      WsjrdpSyncRun.create!(source: "moss_api", status: "unchanged", started_at: Time.current, selected_parts: [],
+        timings: [{"phase" => "start", "duration_ms" => 1500}])
+
+      get :index
+
+      rows = page.css("#main tr.exp-row[aria-controls^='sr-']")
+      expect(rows.size).to eq(1)
+      expect(rows.first.text).to include("Moss API", "1,5 s")
+      expect(page.at_css("#main details[open]")).to be_nil # the phases are closed in a row
+      expect(page.css("#main .bk-item-detail").text).to include("Status", "Quelle")
+      expect(tab_links).to include(fin_sync_moss_api_path, fin_sync_moss_csv_path)
+    end
+
+    it "offers the Moss API parts, all chosen, under the area's tabs" do
+      allow(Wsjrdp::Sync::MossApi).to receive(:account_keys).and_return(["default"])
+
+      get :moss_api
+
+      expect(page.css("#sync-choose [data-sync-group]").size).to eq(2) # Moss API, Organisationsstruktur
+      boxes = page.css("#sync-choose input[name='parts[]']")
+      expect(boxes.pluck("value")).to eq(Wsjrdp::Sync.parts_of(:moss_api).map(&:key))
+      expect(boxes.pluck("checked")).to all(be_present)
+      expect(tab_links).to include(fin_sync_path, fin_sync_moss_csv_path)
+    end
+
+    it "renders moss_csv with the area's tabs" do
+      get :moss_csv
 
       expect(response).to be_successful
       expect(tab_links).to include(fin_sync_moss_api_path, fin_sync_moss_csv_path)
     end
-  end
-
-  it "lists the runs, with what they synchronised and how long they took" do
-    sign_in(admin)
-    WsjrdpSyncRun.create!(source: "moss_api", status: "unchanged", started_at: Time.current, selected_parts: [],
-      timings: [{"phase" => "start", "duration_ms" => 1500}])
-
-    get :index
-
-    page = Nokogiri::HTML(response.body)
-    rows = page.css("#main tr.exp-row[aria-controls^='sr-']")
-    expect(rows.size).to eq(1)
-    expect(rows.first.text).to include("Moss API", "1,5 s")
-    expect(page.at_css("#main details[open]")).to be_nil # the phases are closed in a row
-    expect(page.css("#main .bk-item-detail").text).to include("Status", "Quelle")
   end
 
   it "opens for a finance manager once the manage tier is picked" do
@@ -59,19 +75,6 @@ describe Fin::SyncController do
 
     expect(response).to redirect_to(fin_sync_path)
     expect(Wsjrdp::Sync::Purge).to have_received(:call)
-  end
-
-  it "offers the Moss API parts, all chosen" do
-    sign_in(admin)
-    allow(Wsjrdp::Sync::MossApi).to receive(:account_keys).and_return(["default"])
-
-    get :moss_api
-
-    page = Nokogiri::HTML(response.body)
-    expect(page.css("#sync-choose [data-sync-group]").size).to eq(2) # Moss API, Organisationsstruktur
-    boxes = page.css("#sync-choose input[name='parts[]']")
-    expect(boxes.pluck("value")).to eq(Wsjrdp::Sync.parts_of(:moss_api).map(&:key))
-    expect(boxes.pluck("checked")).to all(be_present)
   end
 
   it "refuses the write tier" do

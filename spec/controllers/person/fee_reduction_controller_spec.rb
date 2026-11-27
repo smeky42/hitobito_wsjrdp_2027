@@ -10,8 +10,10 @@
 require "spec_helper"
 
 describe Person::FeeReductionController, type: :controller do
-  let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-  let(:leader) { Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person }
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:leader) { Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person }
   let(:person) { people(:yp_a_1) }
   let(:planned_keys) { %w[planned_total_fee_reduction planned_total_fee_reduction_issue planned_total_fee_reduction_hint planned_total_fee_reduction_comment] }
 
@@ -130,10 +132,15 @@ describe Person::FeeReductionController, type: :controller do
     describe "the form" do
       render_views
 
-      it "passes the list's context on to the form and its buttons" do
+      def actions_stream
+        Nokogiri::HTML(response.body).at_css("turbo-stream[action=update][target=fee_reduction_actions_#{person.id}]")
+      end
+
+      it "sends the form as a stream in place of the buttons, passing the list's context on" do
         get :edit, params: {person_id: person.id, mode: "new", context: "fin"}, format: :turbo_stream
 
-        form = Nokogiri::HTML(Nokogiri::HTML(response.body).at_css("template").inner_html)
+        form = Nokogiri::HTML(actions_stream.at_css("template").inner_html)
+        expect(form.at_css("form[action='#{person_fee_reduction_path(person)}']")).to be_present
         expect(form.at_css("input[name=context]")["value"]).to eq "fin"
         expect(form.at_css("a[href*='buttons']")["href"]).to include("context=fin")
       end
@@ -142,41 +149,35 @@ describe Person::FeeReductionController, type: :controller do
         plan(planned_total_fee_reduction: "99999,5", format: :turbo_stream)
 
         expect(response).to have_http_status(422)
-        stream = Nokogiri::HTML(response.body).at_css("turbo-stream[action=update][target=fee_reduction_actions_#{person.id}]")
-        form = Nokogiri::HTML(stream.at_css("template").inner_html)
-        expect(form.at_css(".alert-danger").text).to include("Betrag muss größer als 0")
+        form = Nokogiri::HTML(actions_stream.at_css("template").inner_html)
+        expect(form.at_css(".alert-danger")).to be_present
         expect(form.at_css("input[name='person[planned_total_fee_reduction]']")["value"]).to eq "99999,5"
       end
 
       it "brings the section's buttons back in place of the form on Abbrechen" do
         get :buttons, params: {person_id: person.id}, format: :turbo_stream
 
-        stream = Nokogiri::HTML(response.body).at_css("turbo-stream[action=update][target=fee_reduction_actions_#{person.id}]")
-        expect(stream.at_css("template").inner_html).to include("Neue Reduktion planen")
+        buttons = Nokogiri::HTML(actions_stream.at_css("template").inner_html)
+        expect(buttons.at_css("form, input")).to be_nil
+        expect(buttons.at_css("a[href*='#{edit_person_fee_reduction_path(person)}']")).to be_present
       end
+    end
 
-      it "sends the form as a stream in place of the buttons" do
-        get :edit, params: {person_id: person.id, mode: "new"}, format: :turbo_stream
+    it "starts the form from the active reduction" do
+      person.update!(wsjrdp_total_fee_reduction: 300, wsjrdp_total_fee_reduction_hint: "rdp Delegate")
 
-        stream = Nokogiri::HTML(response.body).at_css("turbo-stream[action=update][target=fee_reduction_actions_#{person.id}]")
-        expect(stream.at_css("template").inner_html).to include("Beitragsreduktion planen")
-      end
+      get :edit, params: {person_id: person.id, mode: "from_active"}
 
-      it "starts from the active reduction" do
-        person.update!(wsjrdp_total_fee_reduction: 300, wsjrdp_total_fee_reduction_hint: "rdp Delegate")
+      expect(controller.send(:amount_text)).to eq("300,00")
+      expect(controller.send(:person).planned_total_fee_reduction_hint).to eq("rdp Delegate")
+    end
 
-        get :edit, params: {person_id: person.id, mode: "from_active"}
+    it "starts the form blank for a new plan, whatever is planned" do
+      plan
 
-        expect(response.body).to include("value=\"300,00\"").and include("value=\"rdp Delegate\"")
-      end
+      get :edit, params: {person_id: person.id, mode: "new"}
 
-      it "starts blank for a new plan, whatever is planned" do
-        plan
-
-        get :edit, params: {person_id: person.id, mode: "new"}
-
-        expect(response.body).not_to include("value=\"500,00\"")
-      end
+      expect(controller.send(:amount_text)).to be_nil
     end
   end
 

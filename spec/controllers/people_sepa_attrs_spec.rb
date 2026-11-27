@@ -22,7 +22,15 @@ describe PeopleController, type: :controller do
     sign_in(people(:admin))
   end
 
-  it "shows the bank account under SEPA" do
+  # The mail's body, decoded from the link on the page.
+  def mail_query
+    href = Capybara.string(response.body).find("a.sepa-account-change")[:href]
+    address, query_string = href.delete_prefix("mailto:").split("?", 2)
+    query = query_string.split("&").to_h { |pair| pair.split("=", 2).map { |part| CGI.unescape(part.gsub("+", "%2B")) } }
+    query.merge("address" => address)
+  end
+
+  it "shows the bank account under SEPA and offers a mail to the finance team to change it", :aggregate_failures do
     yp.update_columns(sepa_mandate_date: Date.new(2025, 9, 1))
     get :show, params: {group_id: yp.primary_group_id, id: yp.id}
 
@@ -33,19 +41,6 @@ describe PeopleController, type: :controller do
       .and have_text(yp.sepa_mandate_id)
     expect(html).to have_css("dt", text: "Mandatsdatum")
     expect(html).to have_css("dd", text: "01.09.2025")
-  end
-
-  # The mail's body, decoded from the link on the page.
-  def mail_query
-    href = Capybara.string(response.body).find("a.sepa-account-change")[:href]
-    address, query_string = href.delete_prefix("mailto:").split("?", 2)
-    query = query_string.split("&").to_h { |pair| pair.split("=", 2).map { |part| CGI.unescape(part.gsub("+", "%2B")) } }
-    query.merge("address" => address)
-  end
-
-  it "offers a mail to the finance team to change the bank account" do
-    get :show, params: {group_id: yp.primary_group_id, id: yp.id}
-
     query = mail_query
     expect(query["address"]).to eq("finanzen@worldscoutjamboree.de")
     expect(query["subject"]).to eq("Änderung Kontoverbindung #{yp.role_id_name}")

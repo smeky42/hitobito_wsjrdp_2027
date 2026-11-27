@@ -67,7 +67,12 @@ request spec ~300 ms (one request alone ~140 ms).
   when the database adds nothing. Use `let`, not `let!`, unless every
   example needs the record. Logic blocks do not live in a page spec's
   file, under its setup. Share unchanged costly setup per group with
-  `let_it_be`/`before_all` (test-prof).
+  `let_it_be`/`before_all` (test-prof). Start such a group with
+  `before_all(setup_fixtures: true) {}`: otherwise the shared records
+  are wiped when fixtures load later, and fixture accessors like
+  `groups(:root)` fail inside them. A fixture object is shared by all
+  `before_all` blocks of a file and stays changed in memory after their
+  rollback: call `people(:x).reload` before changing it there.
 - **Small comparison tests.** A brute-force or random cross-check keeps
   its sizes small enough to run well under 0.1 s.
 - **Measure.** Run touched spec files with `--profile 10`. Rework every
