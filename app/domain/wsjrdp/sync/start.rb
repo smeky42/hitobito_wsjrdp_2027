@@ -37,7 +37,8 @@ module Wsjrdp::Sync
         context = Context.new(data: {}, now: @now, actor: @actor)
         records = @keys.each_with_index.map { |key, position| fetch(key, position, context) }
         records.each { |record| plan(record, context) }
-        records.all? { |record| record.counts.empty? } && mark_seen(records, context)
+        records.all? { |record| record.status == WsjrdpSyncRunPart::PLANNED && record.counts.empty? } &&
+          mark_seen(records, context)
       end
       @run.update!(status: unchanged ? WsjrdpSyncRun::UNCHANGED : WsjrdpSyncRun::PLANNED, error_message: nil,
         finished_at: (Time.current if unchanged))
@@ -77,11 +78,14 @@ module Wsjrdp::Sync
       @run
     end
 
+    # A PartError fails this part only; the others go on.
     def plan(record, context)
       @current = record
       plan = Timing.record(record, "plan") { Wsjrdp::Sync.part(record.part_key).new(context).plan(context.data_of(record.part_key)) }
       record.update!(status: WsjrdpSyncRunPart::PLANNED, error_message: nil, plan: plan.to_h, plan_digest: plan.digest,
         counts: plan.counts)
+    rescue PartError => e
+      record.update!(status: WsjrdpSyncRunPart::FAILED, error_message: e.message.truncate(1000))
     end
 
     # Nothing to change: applying the empty plans only marks the rows seen.

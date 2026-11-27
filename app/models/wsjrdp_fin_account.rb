@@ -97,6 +97,11 @@ class WsjrdpFinAccount < ActiveRecord::Base
              "(wsjrdp_fin_accounts.visibility = 'auto' AND wsjrdp_fin_accounts.status = 'active')")
   }
 
+  MOSS_WALLET_TYPE = "MossBalanceMovement"
+
+  scope :moss_wallets, -> { where(transaction_type: MOSS_WALLET_TYPE, deleted_at: nil) }
+  scope :in_moss, -> { where.not(moss_bank_account_uuid: nil).where(moss_removed_at: nil, deleted_at: nil) }
+
   eur_attribute :opening_balance_eur, cents_attr: :opening_balance_cents
   eur_attribute :closing_balance_eur, cents_attr: :closing_balance_cents
 
@@ -104,7 +109,7 @@ class WsjrdpFinAccount < ActiveRecord::Base
   # still the pre-unification class name, so it is treated as an opaque marker
   # for "this is the Moss wallet".
   def transactions
-    if transaction_type == "MossBalanceMovement"
+    if transaction_type == MOSS_WALLET_TYPE
       moss_bookings
     else
       camt_transactions

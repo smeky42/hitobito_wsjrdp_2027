@@ -107,6 +107,19 @@ describe Fin::WsjrdpFinAccountsController do
       expect(controller.detail_format_context).to be_embedded
     end
 
+    context "with views" do
+      render_views
+
+      it "shows a wallet's Moss fields once the sync has linked it" do
+        request.headers["Turbo-Frame"] = "bkframe-acc-#{wallet.id}"
+        wallet.update!(moss_bank_account_uuid: "b0000000-0000-4000-8000-000000000001", moss_balance: 12.5,
+          moss_currency: "EUR")
+        get :show, params: {id: wallet.id}
+
+        expect(Nokogiri::HTML(response.body).css("dd").map(&:text).join).to include("b0000000-0000-4000-8000-000000000001")
+      end
+    end
+
     it "shows the page's own frame as the page's detail" do
       request.headers["Turbo-Frame"] = "bkframe-accpage-#{wallet.id}"
       get :show, params: {id: wallet.id}

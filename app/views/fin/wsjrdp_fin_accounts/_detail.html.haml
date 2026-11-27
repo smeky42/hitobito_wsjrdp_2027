@@ -42,4 +42,7 @@
     - d.attrs :iban, :owner_name, :owner_address, :servicer_name, :servicer_short_name,
         :servicer_bic, :servicer_address
     - d.attrs :top_up_recipient_name, :top_up_iban, :top_up_bic, :top_up_purpose if account.top_up_applicable?
+    - if account.moss_bank_account_uuid
+      - d.attrs :moss_balance, :moss_available_balance, :moss_balance_first_seen_at, :moss_account_status, :moss_funding_type,
+          :moss_currency, :moss_bank_account_uuid, :moss_organisation_uuid, :moss_removed_at
     - d.attrs :bookkeeping_account_number, :status, :position, :created_at, :updated_at

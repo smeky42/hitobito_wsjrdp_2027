@@ -263,6 +263,7 @@ module Fin::SyncHelper
     when WsjrdpLedgerAccount then ledger_account_path(record.number)
     when WsjrdpCostCenter then cost_center_path(record.number)
     when WsjrdpPersonalAccount then personal_account_path(record.number)
+    when WsjrdpFinAccount then wsjrdp_fin_account_path(record)
     when Person, MossUser, MossTeam, MossDepartment then polymorphic_path(record)
     end
   end

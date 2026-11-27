@@ -104,6 +104,14 @@ module Fin::FinAccountsHelper
     fin_money(account.opening_balance_eur, account.opening_balance_currency)
   end
 
+  def fin_format_wsjrdp_fin_account_moss_balance(account)
+    account.moss_balance && fin_money(account.moss_balance, account.moss_currency)
+  end
+
+  def fin_format_wsjrdp_fin_account_moss_available_balance(account)
+    account.moss_available_balance && fin_money(account.moss_available_balance, account.moss_currency)
+  end
+
   def fin_format_wsjrdp_fin_account_bookkeeping_account_number(account)
     number = account.bookkeeping_account_number
     return nil if number.blank?

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_27_000100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_27_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -2208,8 +2208,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_27_000100) do
     t.string "top_up_bic"
     t.string "top_up_purpose"
     t.string "top_up_recipient_name"
+    t.uuid "moss_bank_account_uuid", comment: "Moss API bank account `id`; NULL for accounts outside Moss"
+    t.uuid "moss_organisation_uuid", comment: "Moss API field `organisationId`"
+    t.string "moss_funding_type", comment: "Moss API field `fundingType`: DEBIT or CREDIT"
+    t.string "moss_account_status", comment: "Moss API field `accountStatus`: ACTIVE or CLOSED"
+    t.string "moss_currency", comment: "Moss API field `currency` (ISO 4217)"
+    t.decimal "moss_balance", precision: 20, scale: 3, comment: "Moss API balance `balance.amount`, as last read"
+    t.decimal "moss_available_balance", precision: 20, scale: 3, comment: "Moss API balance `availableBalance.amount`, as last read"
+    t.datetime "moss_balance_first_seen_at", comment: "When the sync first read the current Moss balance"
+    t.datetime "moss_removed_at", comment: "Set when a sync no longer returned the account; cleared when it comes back"
     t.index ["account_identification"], name: "index_wsjrdp_fin_accounts_on_account_identification", unique: true, where: "(deleted_at IS NULL)"
     t.index ["bookkeeping_account_type", "bookkeeping_account_number"], name: "index_wsjrdp_fin_accounts_on_bookkeeping_account"
+    t.index ["moss_bank_account_uuid"], name: "index_wsjrdp_fin_accounts_on_moss_bank_account_uuid", unique: true, where: "(moss_bank_account_uuid IS NOT NULL)"
   end
 
   create_table "wsjrdp_internal_transfers", comment: "Linking internal transfers", force: :cascade do |t|
