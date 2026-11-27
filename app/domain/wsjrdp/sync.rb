@@ -15,8 +15,13 @@ module Wsjrdp::Sync
   # from their keys; a part's key never changes, the history relies on it.
   def self.parts
     [MossApi::Departments, MossApi::Teams, MossApi::Users, MossApi::Dimensions, MossApi::CostCenters,
-      MossApi::Spheres, MossApi::LedgerAccounts, MossApi::PaymentTerms, MossApi::TaxRates, MossApi::Suppliers]
+      MossApi::Spheres, MossApi::LedgerAccounts, MossApi::PaymentTerms, MossApi::TaxRates, MossApi::Suppliers,
+      MossApi::BankAccounts]
   end
+
+  # Fails the part that raises it while planning; the run goes on without it.
+  # Its message is for the reader of the run.
+  class PartError < StandardError; end
 
   def self.part(key) = parts.find { |part| part.key == key } || raise(KeyError, "unknown sync part #{key}")
 

@@ -1110,6 +1110,15 @@ de:
         opening_balance_eur_display: Eröffnungs-Saldo
         opening_balance_currency: Währung
         opening_balance_date: Eröffnung
+        moss_bank_account_uuid: Moss-UUID
+        moss_organisation_uuid: Moss-Organisation
+        moss_funding_type: Moss-Finanzierung
+        moss_account_status: Moss-Status
+        moss_currency: Moss-Währung
+        moss_balance: Moss-Saldo
+        moss_available_balance: Moss-Saldo verfügbar
+        moss_balance_first_seen_at: Moss-Saldo erstmals gelesen
+        moss_removed_at: Nicht mehr in Moss seit
         #
         iban: IBAN
         short_name: Name
@@ -2805,6 +2814,8 @@ de:
               _label: "Steuersätze"
             suppliers:
               _label: "Lieferanten (Kreditoren)"
+            bank_accounts:
+              _label: "Bankkonten (Wallets)"
       # What a run synchronises (WsjrdpSyncRun#source).
       sources:
         moss_api: "Moss API"
@@ -2873,6 +2884,7 @@ de:
         invalid_number: "Nummer passt nicht"
         number_conflict: "Nummer/UUID-Konflikt"
         name_changed: "Name geändert"
+        status_differs: "Status weicht ab"
         unknown_reference: "unbekannter Verweis"
       # Why a Moss record does not fit its row (number_conflict).
       conflicts:
@@ -2979,6 +2991,14 @@ de:
         unknown_reference:
           one: "1 Lieferant verweist auf etwas, das in keiner Moss-Liste steht."
           other: "%{count} Lieferanten verweisen auf etwas, das in keiner Moss-Liste steht."
+        status_differs:
+          one: "1 Konto ist in Hitobito und Moss unterschiedlich aktiv. Hitobito behält seinen Status."
+          other: "%{count} Konten sind in Hitobito und Moss unterschiedlich aktiv. Hitobito behält seinen Status."
+      bank_accounts:
+        unmatched: "Moss-Wallet ohne eindeutiges Konto in Hitobito. Dieser Teil schreibt nichts, die übrigen Teile laufen weiter. Moss: %{moss}. Hitobito-Wallets ohne Moss-UUID: %{hitobito}. Eine Moss-Wallet wird nur einem einzigen Wallet-Konto ohne Moss-UUID und mit gleicher Währung zugeordnet."
+        none: "keine"
+        deleted: "Moss-Wallet gehört in Hitobito zu einem gelöschten Konto. Dieser Teil schreibt nichts, die übrigen Teile laufen weiter. Moss-UUID → Konto: %{accounts}."
+        other_currency: "Moss-Wallet %{uuid} führt %{currency}, ihr Saldo kommt aber in %{balance}. Dieser Teil schreibt nichts, die übrigen Teile laufen weiter."
   contingent:
     tabs:
       overview: "Übersicht"

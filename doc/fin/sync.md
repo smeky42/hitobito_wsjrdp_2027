@@ -31,6 +31,7 @@ chosen at once; `source` says what a part reads (`moss_api`):
 | `moss_api.master_data.payment_terms` | `/v1/payment-terms` | `moss_payment_terms` |
 | `moss_api.master_data.tax_rates` | `/v1/tax-rates` | `moss_tax_rates` |
 | `moss_api.master_data.suppliers` | `/v1/suppliers` | `wsjrdp_personal_accounts` |
+| `moss_api.master_data.bank_accounts` | `/v1/bank-accounts` and each `/balance` | `wsjrdp_fin_accounts` |
 
 - A key never changes: the history and the file names rely on it.
 - Labels: `fin.sync.parts.<key>._label`.
@@ -127,14 +128,37 @@ come from the CSV export only; the ledger accounts' category and the cost
 centers' manager too. A new ledger account keeps `account_kind` UNKNOWN
 until DATEV sets it.
 
+### The bank accounts
+
+The Moss wallets fill the `moss_*` columns of the finance accounts:
+funding type, status, currency, and the balance and available balance.
+`moss_balance_first_seen_at` is the start of the run that first read
+these amounts. A closed wallet's balance is not read; its account keeps
+the last one.
+
+- A wallet finds its account by `moss_bank_account_uuid`. A wallet without
+  one takes the one Moss wallet account (`transaction_type`
+  `MossBalanceMovement`) without a UUID, if its currency fits.
+- Any other case -- several such wallets or accounts, none, another
+  currency, a UUID on a deleted account, a balance in another currency --
+  fails this part (`Wsjrdp::Sync::PartError`); it writes nothing, the other
+  parts go on. The sync never creates an account.
+- An account Moss no longer returns gets `moss_removed_at`; when that is
+  every account in Moss, it is a warning. Deleted accounts are left alone.
+- The account's own `status` stays; a Moss status that differs is an
+  important hint.
+- The balance is kept, not compared with the transactions.
+
 ## A run
 
 1. **Start** (`Wsjrdp::Sync::Start`), in the request: fetch every part,
    write the files, plan every part; the run is `planned`. When no part
    changes anything, the run ends at once as `unchanged` (only marking the
-   rows seen); the page has no buttons then. When anything
-   fails, the run is `failed`: the failing part keeps the error, the others
-   are `skipped`.
+   rows seen); the page has no buttons then. A part whose plan raises a
+   `Wsjrdp::Sync::PartError` is `failed` with its error, and the run goes on
+   without it; writing skips it and what depends on it, and the run ends
+   `partly_applied`. When anything else fails, the run is `failed`: the
+   failing part keeps the error, the others are `skipped`.
 2. **Write** (`Wsjrdp::Sync::Apply`): the parts in order, each in its own
    transaction, planned again first. Only the digest shown is written.
    - Another digest: the part is `stale` with the new plan, the run

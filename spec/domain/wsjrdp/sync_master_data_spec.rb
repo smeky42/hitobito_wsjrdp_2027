@@ -45,7 +45,8 @@ describe "Wsjrdp::Sync master data" do
 
   it "takes the parts a supplier refers to along, the organisation included" do
     expect(Wsjrdp::Sync.expand([suppliers_key])).to eq(Wsjrdp::Sync.parts.map(&:key) -
-      [Wsjrdp::Sync::MossApi::Users.key, Wsjrdp::Sync::MossApi::Dimensions.key])
+      [Wsjrdp::Sync::MossApi::Users.key, Wsjrdp::Sync::MossApi::Dimensions.key,
+        Wsjrdp::Sync::MossApi::BankAccounts.key])
   end
 
   it "pads a Moss account code to the Sachkontenlänge" do

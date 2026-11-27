@@ -70,5 +70,11 @@
      "status": "ACTIVE", "name": "Ohne Nummer", "code": "AB12", "currency": "EUR", "defaultPaymentMethod": "SEPA",
      "address": {}, "defaultExpenseAccountId": "ea000000-0000-4000-8000-0000000000ff",
      "createTime": "2026-05-05T08:01:22Z", "updateTime": "2026-05-05T08:01:22Z"}
-  ]
+  ],
+  "bank-accounts": [
+    {"id": "b0000000-0000-4000-8000-000000000001", "organisationId": "ee55d234-7890-4bd2-8617-5f2f4c1d605a",
+     "fundingType": "DEBIT", "accountStatus": "ACTIVE", "currency": "EUR"}
+  ],
+  "bank-accounts/b0000000-0000-4000-8000-000000000001/balance":
+    {"balance": {"amount": "1234.56", "currency": "EUR"}, "availableBalance": {"amount": "1200.5", "currency": "EUR"}}
 }
