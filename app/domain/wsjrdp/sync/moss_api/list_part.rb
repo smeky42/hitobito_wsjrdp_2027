@@ -26,16 +26,26 @@ module Wsjrdp::Sync::MossApi
     # Records per request. The organisation lists allow 1000 (OpenAPI spec),
     # so they come in one page: no offset paging, no repeated records.
     class_attribute :page_size, instance_writer: false, default: 1000
+    # The order of the first pass and of the second.
+    class_attribute :sort_orders, instance_writer: false, default: %w[name -name].freeze
+    # The warning when many rows would go.
+    class_attribute :many_removed_code, instance_writer: false, default: "many_removed"
 
     def self.data_name = path.split("/").last
 
-    # One pass may repeat a record and skip another (offset paging, sorted
-    # by name only); when records are missing, a pass in the other order fills in.
+    # {lower-case key => record} of the given change and notice keys.
+    def self.records_for(keys)
+      model.where(uuid_column => keys).index_by { |record| record[uuid_column].to_s.downcase }
+    end
+
+    # One pass may repeat a record and skip another (offset paging); when
+    # records are missing, a pass in the other order fills in.
     def fetch(client)
-      records = unique(client.all(path, {sort: "name"}, page_size: page_size))
+      first, second = sort_orders
+      records = unique(client.all(path, {sort: first}, page_size: page_size))
       total = client.total_items(path)
       again = total && records.size < total
-      records = unique(records + client.all(path, {sort: "-name"}, page_size: page_size)) if again
+      records = unique(records + client.all(path, {sort: second}, page_size: page_size)) if again
       {data_name => records, "paging" => {"total_items" => total, "received" => records.size, "passes" => again ? 2 : 1}}
     end
 
@@ -66,6 +76,11 @@ module Wsjrdp::Sync::MossApi
 
     def unique(records) = records.uniq { |record| record["id"] }
 
+    def instant(text) = text.presence && Wsjrdp::InstantInput.parse(text)
+
+    # Without spaces at either end; nil when nothing is left.
+    def text(value) = value&.to_s&.strip.presence
+
     # Whether Moss gave every record it said it has.
     def complete?(data)
       total = data.dig("paging", "total_items")
@@ -95,7 +110,7 @@ module Wsjrdp::Sync::MossApi
       many = removed.size > MANY_REMOVED_MIN && removed.size > current * MANY_REMOVED_SHARE
       return [] if removed.empty? || (removed.size != current && !many)
 
-      [warning("many_removed", removed.to_h { |change| [change.key, change.label] }, table: self.class.label)]
+      [warning(many_removed_code, removed.to_h { |change| [change.key, change.label] }, table: self.class.label)]
     end
 
     # The UUIDs of another part: what this run fetched, else its rows in
@@ -111,6 +126,12 @@ module Wsjrdp::Sync::MossApi
     def dangling(records, field, known)
       records.select { |record| record[field] && !known.include?(record[field]) }
         .to_h { |record| [record["id"], "#{item_label(record)} → #{record[field]}"] }
+    end
+
+    # {team UUID => name}: what this run fetched, else the table.
+    def team_names
+      @team_names ||= context.data_of(Teams.key)&.dig(Teams.data_name)&.to_h { |team| [team["id"], text(team["name"])] } ||
+        MossTeam.in_moss.pluck(:moss_team_uuid, :name).to_h
     end
 
     def items(records) = records.to_h { |record| [record["id"], item_label(record)] }

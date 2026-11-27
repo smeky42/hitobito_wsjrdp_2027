@@ -22,6 +22,9 @@ class MossDimension < ActiveRecord::Base
     "wsjrdp_spheres" => "WsjrdpSphere"
   }.freeze
 
+  # The table of a dimension's items, by dimension.
+  ITEMS_TABLES = {COST_CENTER_UUID => "wsjrdp_cost_centers", COST_CARRIER_UUID => "wsjrdp_spheres"}.freeze
+
   STATUS_ACTIVE = "ACTIVE"
   STATUS_DELETED = "DELETED"
 

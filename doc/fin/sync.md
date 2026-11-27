@@ -16,18 +16,27 @@ parts.
 
 `Wsjrdp::Sync.parts`, in the order a run handles them. The tree on the page
 comes from their keys, one level per segment (Moss API >
-Organisationsstruktur > the parts), so a whole branch is chosen at once;
-`source` says what a part reads (`moss_api`):
+Organisationsstruktur or Stammdaten > the parts), so a whole branch is
+chosen at once; `source` says what a part reads (`moss_api`):
 
-| Key | Table |
-| --- | --- |
-| `moss_api.organisation_structure.departments` | `moss_departments` |
-| `moss_api.organisation_structure.teams` | `moss_teams` |
-| `moss_api.organisation_structure.users` | `moss_users` |
+| Key | Moss | Table |
+| --- | --- | --- |
+| `moss_api.organisation_structure.departments` | `/v1/departments` | `moss_departments` |
+| `moss_api.organisation_structure.teams` | `/v1/teams` | `moss_teams` |
+| `moss_api.organisation_structure.users` | `/v1/users` | `moss_users` |
+| `moss_api.master_data.dimensions` | `/v1/dimensions` | `moss_dimensions` |
+| `moss_api.master_data.cost_centers` | items of dimension `…0001` | `wsjrdp_cost_centers` |
+| `moss_api.master_data.spheres` | items of dimension `…0002` | `wsjrdp_spheres` |
+| `moss_api.master_data.ledger_accounts` | `/v1/expense-accounts` | `wsjrdp_ledger_accounts` |
+| `moss_api.master_data.payment_terms` | `/v1/payment-terms` | `moss_payment_terms` |
+| `moss_api.master_data.tax_rates` | `/v1/tax-rates` | `moss_tax_rates` |
+| `moss_api.master_data.suppliers` | `/v1/suppliers` | `wsjrdp_personal_accounts` |
 
 - A key never changes: the history and the file names rely on it.
 - Labels: `fin.sync.parts.<key>._label`.
-- `depends_on` comes along automatically (Benutzer → Teams → Abteilungen).
+- `depends_on` comes along automatically (Benutzer → Teams → Abteilungen;
+  Lieferanten → Teams, Kostenstellen, Sphären, Sachkonten,
+  Zahlungsbedingungen, Steuersätze).
 
 A part (`Wsjrdp::Sync::Part`) has three steps:
 
@@ -63,11 +72,11 @@ never changes the plan of a later one.
   one update.
 - Removing every row, or more than five rows and more than a tenth, is a
   warning.
-- The organisation lists come 1000 to a page (the most Moss allows), so
-  they need one request each.
-- Moss pages by offset and sorts by name only, so a pass may repeat a
-  record and skip another. When records are missing against `totalItems`,
-  the part reads again in the other order. A list still short is a
+- The lists come 1000 to a page (the most Moss allows); the dimensions
+  come in one answer without paging.
+- Moss pages by offset, so a pass may repeat a record and skip another.
+  When records are missing against `totalItems`, the part reads again in
+  the other order. A list still short is a
   warning, and then nothing is marked removed.
 
 Hitobito's own: the `comment` of each row, and the person of a Moss user.
@@ -86,6 +95,37 @@ That person also gets `moss_status`, `moss_team` (the team's name) and
 writes them; an empty value removes the key, roles are sorted. One
 statement writes every person, with one PaperTrail version each. The phone
 comes from the CSV export only.
+
+### The master data
+
+The tables of cost centers, spheres, ledger accounts and creditors are
+keyed by number and written by the DATEV and CSV imports too:
+
+- A Moss record finds its row by `moss_uuid`, else by number; else it is
+  new. Moss is the system of record for what it returns: name, status,
+  bank details, address, the Moss columns. Text is trimmed.
+- A record whose UUID belongs to a row of another number, whose number
+  belongs to a row of another UUID, or whose number Moss returns twice is a
+  warning naming both UUIDs and numbers, and is not written.
+- A code that is no number of the table (letters in an account, a creditor
+  outside 7xxxxx–9xxxxx) is a warning, and is not written; a row it already
+  has keeps its status.
+- A row Moss no longer returns keeps everything but `moss_status`, which
+  becomes NULL. Moss's statuses are kept in lower case (`active`,
+  `deactivated`, `deleted`).
+- A changed name is an important hint.
+- Moss drops the leading zeros of an account number; they are added up to
+  `WsjrdpLedgerAccount::NUMBER_LENGTH`, DATEV's Sachkontenlänge (5 in
+  SKR 42). Another length also needs the two number CHECK constraints of
+  the ledger and personal accounts changed.
+
+A supplier keeps each Moss reference as a UUID (`default_moss_*_uuid`)
+and, next to it, what it names: the account, cost center and sphere
+number, the team name. A reference no list has is an important hint.
+Account holder, type, the second address line and `other_moss_columns`
+come from the CSV export only; the ledger accounts' category and the cost
+centers' manager too. A new ledger account keeps `account_kind` UNKNOWN
+until DATEV sets it.
 
 ## A run
 

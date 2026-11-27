@@ -20,8 +20,17 @@ class WsjrdpLedgerAccount < ActiveRecord::Base
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
   STATUS_DELETED = "deleted"
+  # DATEV's Sachkontenlänge (SKR 42); personal accounts have one digit more.
+  NUMBER_LENGTH = 5
 
   validates :number, presence: true, uniqueness: true
+
+  # Digits padded with leading zeros to NUMBER_LENGTH (Moss and Excel drop
+  # them); nil for anything else.
+  def self.number_from(code)
+    code = code.to_s.strip
+    code.rjust(NUMBER_LENGTH, "0") if code.match?(/\A\d{1,#{NUMBER_LENGTH}}\z/o)
+  end
 
   # Bookings whose Konto (account) is this account
   # rubocop:disable Rails/HasManyOrHasOneDependent -- deliberately no

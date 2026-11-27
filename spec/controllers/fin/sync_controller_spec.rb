@@ -43,7 +43,7 @@ describe Fin::SyncController do
 
       get :moss_api
 
-      expect(page.css("#sync-choose [data-sync-group]").size).to eq(2) # Moss API, Organisationsstruktur
+      expect(page.css("#sync-choose [data-sync-group]").size).to eq(3) # Moss API, Organisationsstruktur, Stammdaten
       boxes = page.css("#sync-choose input[name='parts[]']")
       expect(boxes.pluck("value")).to eq(Wsjrdp::Sync.parts_of(:moss_api).map(&:key))
       expect(boxes.pluck("checked")).to all(be_present)

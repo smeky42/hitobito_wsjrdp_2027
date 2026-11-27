@@ -15,6 +15,7 @@ class WsjrdpPersonalAccount < ActiveRecord::Base
   STATUS_ACTIVE = "active"
   STATUS_DEACTIVATED = "deactivated"
   STATUS_DELETED = "deleted"
+  CREDITOR_NUMBER = /\A[7-9]\d{#{WsjrdpLedgerAccount::NUMBER_LENGTH}}\z/
 
   validates :number, presence: true, uniqueness: true
 
@@ -31,6 +32,10 @@ class WsjrdpPersonalAccount < ActiveRecord::Base
     primary_key: :moss_uuid, foreign_key: :default_moss_cost_center_uuid, inverse_of: false
   belongs_to :default_moss_cost_carrier, class_name: "WsjrdpSphere", optional: true,
     primary_key: :moss_uuid, foreign_key: :default_moss_cost_carrier_uuid, inverse_of: false
+  belongs_to :default_moss_payment_term, class_name: "MossPaymentTerm", optional: true,
+    primary_key: :moss_payment_term_uuid, foreign_key: :default_moss_payment_term_uuid, inverse_of: :suppliers
+  belongs_to :default_moss_vat_rate, class_name: "MossTaxRate", optional: true,
+    primary_key: :moss_tax_rate_uuid, foreign_key: :default_moss_vat_rate_uuid, inverse_of: :suppliers
 
   # Bookings whose Konto (account) is this personal account
   # rubocop:disable Rails/HasManyOrHasOneDependent -- deliberately no

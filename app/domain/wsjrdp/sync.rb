@@ -13,7 +13,10 @@
 module Wsjrdp::Sync
   # Every part, in the order a run handles them. The tree of the page comes
   # from their keys; a part's key never changes, the history relies on it.
-  def self.parts = [MossApi::Departments, MossApi::Teams, MossApi::Users]
+  def self.parts
+    [MossApi::Departments, MossApi::Teams, MossApi::Users, MossApi::Dimensions, MossApi::CostCenters,
+      MossApi::Spheres, MossApi::LedgerAccounts, MossApi::PaymentTerms, MossApi::TaxRates, MossApi::Suppliers]
+  end
 
   def self.part(key) = parts.find { |part| part.key == key } || raise(KeyError, "unknown sync part #{key}")
 
