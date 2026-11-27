@@ -43,4 +43,30 @@ describe WsjrdpFinAccount do
       expect(account(status: "unknown_value").status_display).to eq("unknown_value")
     end
   end
+
+  describe "balance of the Moss wallet" do
+    def book(wallet, amounts)
+      uuid = SecureRandom.uuid
+      transaction = MossTransaction.create!(type: "MossInvoice", moss_transaction_uuid: uuid, fin_account: wallet,
+        signed_total_base_amount: amounts.sum, currency: "EUR", booking_date: Date.new(2026, 5, 1))
+      expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
+        type: "MossInvoiceExpense", expense_number: 1, signed_expense_base_amount: amounts.sum)
+      amounts.each.with_index(1) do |amount, row|
+        MossBooking.create!(moss_transaction: transaction, moss_expense: expense, sub_row_number: row,
+          signed_base_amount: amount)
+      end
+    end
+
+    it "is the opening balance plus its own Moss bookings, in the model and in the list's SQL" do
+      wallet = account(transaction_type: "MossBalanceMovement", opening_balance_cents: 100_000).tap(&:save!)
+      other = account(transaction_type: "MossBalanceMovement").tap(&:save!)
+      book(wallet, [-25, -60.5])
+      book(wallet, [500])
+      book(other, [7])
+
+      listed = WsjrdpFinAccount.select("#{Fin::FinAccountsColumns::BALANCE_SQL} AS balance_eur").find(wallet.id)
+      expect(wallet.closing_balance_cents).to eq(141_450)
+      expect(listed.balance_eur).to eq(BigDecimal("1414.5"))
+    end
+  end
 end

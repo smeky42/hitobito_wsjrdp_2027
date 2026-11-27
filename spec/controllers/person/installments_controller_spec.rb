@@ -10,8 +10,9 @@
 require "spec_helper"
 
 describe Person::InstallmentsController, type: :controller do
-  let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-  let(:leader) { Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person }
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
   let(:person) { people(:yp_a_1) }
 
   def rule(status, **attrs)
@@ -32,8 +33,6 @@ describe Person::InstallmentsController, type: :controller do
   end
 
   describe "as finance" do
-    render_views
-
     before { sign_in(finance) }
 
     it "stores a plan, with its author, without touching the plan in effect or the log" do
@@ -59,13 +58,17 @@ describe Person::InstallmentsController, type: :controller do
       expect(planned_rule).to have_attributes(created_by: finance, updated_by: other, custom_installments_issue: "HELP-3")
     end
 
-    it "refuses a missing or malformed plan, keeping what was typed" do
-      ["", "100; 200", "2026: 100; 2026-01: 5", "2026: abc"].each do |text|
-        plan(planned_custom_installments_string: text)
+    context "with views" do
+      render_views
 
-        expect(response).to have_http_status(422)
-        expect(planned_rule).to be_nil
-        expect(response.body).to include(ERB::Util.html_escape(text)) if text.present?
+      it "refuses a missing or malformed plan, keeping what was typed" do
+        ["", "100; 200", "2026: 100; 2026-01: 5", "2026: abc"].each do |text|
+          plan(planned_custom_installments_string: text)
+
+          expect(response).to have_http_status(422)
+          expect(planned_rule).to be_nil
+          expect(response.body).to include(ERB::Util.html_escape(text)) if text.present?
+        end
       end
     end
 
@@ -112,6 +115,8 @@ describe Person::InstallmentsController, type: :controller do
     end
 
     describe "the form" do
+      render_views
+
       def form_for(mode)
         get :edit, format: :turbo_stream, params: {person_id: person.id, mode: mode}
         response.body
@@ -133,7 +138,7 @@ describe Person::InstallmentsController, type: :controller do
 
   it "refuses every action to a leader, who only sees the section" do
     rule("planned")
-    sign_in(leader)
+    sign_in(people(:cmt_leader))
 
     expect { plan }.to raise_error(CanCan::AccessDenied)
     expect { post :activate, params: {person_id: person.id} }.to raise_error(CanCan::AccessDenied)

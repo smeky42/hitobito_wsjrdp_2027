@@ -55,7 +55,7 @@ module Wsjrdp2027
           .with_root(typst_dir.to_s)
           .with_font_paths([fonts_dir.to_s])
           .with_inputs(stringify(sys_inputs))
-          .compile(:pdf)
+          .compile(:pdf, ignore_system_fonts: true)
           .pages
           .first
         raise "Typst produced no PDF for #{template}" unless pdf&.start_with?("%PDF")
@@ -70,7 +70,7 @@ module Wsjrdp2027
           .with_root(typst_dir.to_s)
           .with_font_paths([fonts_dir.to_s])
           .with_inputs(stringify(sys_inputs))
-          .compile(:png, ppi: ppi)
+          .compile(:png, ppi: ppi, ignore_system_fonts: true)
           .pages
           .first
         raise "Typst produced no PNG for #{template}" unless png&.start_with?(PNG_SIGNATURE)

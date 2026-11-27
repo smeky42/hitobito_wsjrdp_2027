@@ -123,9 +123,7 @@ describe Person::PrimaryRoleController do
   end
 
   context "as the manager of the unit, who may not create roles elsewhere" do
-    let(:manager) { Fabricate(Group::Unit::Manager.name.to_sym, group: group).person }
-
-    before { sign_in(manager) }
+    before { sign_in(people(:um_a_1)) }
 
     it "offers only the groups where the manager may create a role" do
       get :show, params: params

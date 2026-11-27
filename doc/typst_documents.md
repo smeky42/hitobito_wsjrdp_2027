@@ -87,8 +87,10 @@ Wsjrdp2027::TypstDocument.compile_pdf("refund_receipt.typ", sys_inputs: {...})
 
 ## Fonts
 
-`compile_pdf` passes `app/assets/fonts` as the font path, so the output
-does not depend on what is installed on the machine that runs it. The
+`compile_pdf` passes `app/assets/fonts` as the font path and ignores the
+system fonts, so the output does not depend on what is installed on the
+machine that runs it. A character Montserrat lacks falls back to Typst's
+built-in fonts. The
 directory holds the Montserrat faces the templates use: Regular, Italic,
 Light and LightItalic (the contact footer and the window's return address
 are set light), SemiBold and SemiBoldItalic (headings, emphasised values),

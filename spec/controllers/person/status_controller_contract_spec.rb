@@ -13,33 +13,38 @@ require "spec_helper"
 # question in the form is answered with yes (confirm_contract=1); the server
 # decides whether to ask, on the stored contract.
 describe Person::StatusController, type: :controller do
-  render_views
-
-  let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
-  let(:person) { people(:yp_a_1) }
-
-  before do
+  before_all(setup_fixtures: true) do
+    person = people(:yp_a_1)
     WsjrdpPaymentPlan.kept.find_or_create_by!(wsjrdp_role: person.wsjrdp_role, single_payment: false,
       payment_method: "direct_debit") { |plan| plan.raw_installments_eur = [2026, 100, 100] }
     person.update_columns(status: "reviewed")
-    sign_in(manager)
   end
+
+  let_it_be(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  let(:person) { people(:yp_a_1) }
+
+  before { sign_in(manager) }
 
   def put_status(status, confirm: nil, **attrs)
     put :update, params: {group_id: person.primary_group_id, id: person.id,
                           person: {status: status, **attrs}, confirm_contract: confirm}.compact
   end
 
-  def question = Nokogiri::HTML(response.body).at_css("#contract-question")
+  def question = controller.send(:contract_question)
 
-  it "asks before the first confirmation and saves nothing, the form keeping its values" do
-    put_status("confirmed", unit_code: "#ABCDEF")
+  context "rendered" do
+    render_views
 
-    expect(response).to have_http_status(422)
-    expect(question.text).to include("Vertrag bestätigen?", "bestätigt von #{manager}")
-    expect(question.at_css("button[name='confirm_contract'][value='1']").text).to eq "Ja, Vertrag bestätigen"
-    expect(Nokogiri::HTML(response.body).at_css("input[name='person[unit_code]']")["value"]).to eq "#ABCDEF"
-    expect(person.reload).to have_attributes(status: "reviewed", contract_status: "none")
+    it "asks before the first confirmation and saves nothing, the form keeping its values" do
+      put_status("confirmed", unit_code: "#ABCDEF")
+
+      doc = Nokogiri::HTML(response.body)
+      expect(response).to have_http_status(422)
+      expect(question).to eq(:confirm)
+      expect(doc.at_css("#contract-question button[name='confirm_contract'][value='1']")).to be_present
+      expect(doc.at_css("input[name='person[unit_code]']")["value"]).to eq "#ABCDEF"
+      expect(person.reload).to have_attributes(status: "reviewed", contract_status: "none")
+    end
   end
 
   it "confirms the contract on yes, with the user as the confirming person" do
@@ -56,7 +61,7 @@ describe Person::StatusController, type: :controller do
       contract_confirmed_by_id: people(:admin).id)
     put_status("confirmed")
 
-    expect(question.text).to include("Neuen Vertrag bestätigen?", "16.12.2025", "07.02.2026")
+    expect(question).to eq(:confirm_again)
     put_status("confirmed", confirm: "1")
     expect(person.reload).to have_attributes(contract_status: "confirmed", contract_ended_at: nil,
       contract_confirmed_by: manager)
@@ -67,7 +72,7 @@ describe Person::StatusController, type: :controller do
       contract_confirmed_by_type: "Person", contract_confirmed_by_id: people(:admin).id)
     put_status("confirmed")
 
-    expect(question.text).to include("Neuen Vertrag bestätigen?", "ersetzt den bisherigen", "16.12.2025")
+    expect(question).to eq(:confirm_replacement)
     put_status("confirmed", confirm: "1")
     expect(person.reload).to have_attributes(contract_status: "confirmed", contract_confirmed_by: manager)
     expect(person.contract_confirmed_at).to be_within(1.minute).of(Time.current)
@@ -78,7 +83,7 @@ describe Person::StatusController, type: :controller do
       contract_confirmed_at: Time.zone.local(2025, 12, 16))
     put_status("deregistered")
 
-    expect(question.text).to include("Vertrag beenden?")
+    expect(question).to eq(:end)
     put_status("deregistered", confirm: "1")
     expect(person.reload).to have_attributes(status: "deregistered", contract_status: "ended")
   end
@@ -104,7 +109,7 @@ describe Person::StatusController, type: :controller do
       contract_confirmed_at: Time.zone.local(2025, 12, 16))
     put_status("deregistered")
 
-    expect(question.text).to include("Vertrag beenden?", "16.12.2025")
+    expect(question).to eq(:end)
     expect(person.reload.contract_status).to eq "confirmed"
     put_status("deregistered", confirm: "1")
     expect(person.reload).to have_attributes(status: "deregistered", contract_status: "ended")

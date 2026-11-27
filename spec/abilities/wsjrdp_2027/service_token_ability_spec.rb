@@ -15,6 +15,8 @@ require "spec_helper"
 # :layer_and_below_full holders the core lets manage their layer's API keys
 # get none of it.
 describe ServiceTokenAbility do
+  before_all(setup_fixtures: true) {}
+
   let(:actions) { %i[show new create edit update regenerate_token destroy] }
   let(:root) { groups(:root) }
 
@@ -25,12 +27,14 @@ describe ServiceTokenAbility do
       permission: "layer_read").tap { |token| token.update_column(:layer_group_id, group.id) }
   end
 
-  def allowed(person, token) = actions.select { |action| Ability.new(person.reload).can?(action, token) }
+  def ability(person) = (@abilities ||= {})[person.id] ||= Ability.new(person.reload)
 
-  def can_index?(person, group) = Ability.new(person.reload).can?(:index_service_tokens, group)
+  def allowed(person, token) = actions.select { |action| ability(person).can?(action, token) }
+
+  def can_index?(person, group) = ability(person).can?(:index_service_tokens, group)
 
   context "admin" do
-    let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: root).person }
+    let_it_be(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
 
     it "manages the API keys of the root group" do
       expect(can_index?(admin, root)).to be(true)
@@ -58,7 +62,7 @@ describe ServiceTokenAbility do
   # :layer_and_below_full on the root layer, without :admin.
   [Group::Root::Leader, Group::Root::Finance, Group::Root::FinanceManager].each do |role_class|
     context role_class.name do
-      let(:person) { Fabricate(role_class.name.to_sym, group: root).person }
+      let_it_be(:person) { Fabricate(role_class.name.to_sym, group: groups(:root)).person }
 
       it "manages no API key, not even of the root group" do
         expect(can_index?(person, root)).to be(false)

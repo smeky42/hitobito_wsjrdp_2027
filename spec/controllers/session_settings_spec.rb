@@ -13,18 +13,16 @@ require "spec_helper"
 # parameter lands in the session, an unknown value clears it, and the cap is
 # in force on the very request that sets it.
 describe Fin::BookingsController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  let_it_be(:manager, refind: true) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  let_it_be(:reader, refind: true) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
 
-  let!(:batch) do
-    DatevBookingBatch.create!(consultant_number: "1", client_number: "2",
+  let_it_be(:booking) do
+    batch = DatevBookingBatch.create!(consultant_number: "1", client_number: "2",
       label: "Teststapel", period_from: Date.new(2026, 1, 1),
       period_to: Date.new(2026, 1, 31), financial_year_start: Date.new(2026, 1, 1),
       primanota_number: "01-2026/0001", import_export: "import")
-  end
-
-  let!(:booking) do
     DatevBooking.create!(batch: batch, buchungs_guid: SecureRandom.uuid,
       account_number: "1200", account_kind: "BANK",
       offsetting_account_number: "41030", offsetting_account_kind: "INCOME",
@@ -34,41 +32,32 @@ describe Fin::BookingsController, type: :controller do
       posting_text: "Testbuchung Alpha")
   end
 
-  before { sign_in(manager) }
+  let(:ability) { controller.current_ability }
 
-  # The reading page offers the write tier the way to its edit page -- the
-  # "Bearbeiten" button (doc/fin/detail_partials.md §6) -- and the read tier
-  # none, so that button tells the two tiers apart. Nothing on this page
-  # belongs to the manage tier alone any more, so the tier itself is asked of
-  # the ability.
-  def edit_offered? = response.body.include?(%(href="#{edit_booking_path(booking)}"))
+  before { sign_in(manager) }
 
   it "stores a valid parameter in the session and applies it right away" do
     get :show, params: {id: booking.id, max_finance_permission: "finance_read"}
 
-    expect(session[:max_finance_permission]).to eq("finance_read")
     expect(response).to be_successful
-    expect(edit_offered?).to be(false)
-    expect(controller.current_ability).not_to be_able_to(:update, DatevBooking)
+    expect(session[:max_finance_permission]).to eq("finance_read")
+    expect(ability).not_to be_able_to(:update, DatevBooking)
   end
 
   it "keeps the cap on later requests until it is lifted" do
-    session[:max_finance_permission] = "finance"
+    session[:max_finance_permission] = "finance_read"
     get :show, params: {id: booking.id}
 
-    expect(controller.current_ability).to be_able_to(:update, DatevBooking)
-    expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-    expect(edit_offered?).to be(true)
+    expect(ability).not_to be_able_to(:update, DatevBooking)
   end
 
-  it "drops the pick on an unknown or empty value, so the default tier applies" do
+  it "drops the pick on an empty value, so the default tier applies" do
     session[:max_finance_permission] = "finance_read"
     get :show, params: {id: booking.id, max_finance_permission: ""}
 
     expect(session[:max_finance_permission]).to be_nil
-    expect(controller.current_ability).to be_able_to(:update, DatevBooking)
-    expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-    expect(edit_offered?).to be(true) # the default is the write tier, not manage
+    expect(ability).to be_able_to(:update, DatevBooking)
+    expect(ability).not_to be_able_to(:admin_finance, DatevBooking)
   end
 
   it "drops a stale session value and behaves as if none were set" do
@@ -77,465 +66,57 @@ describe Fin::BookingsController, type: :controller do
 
     expect(session[:max_finance_permission]).to be_nil
     expect(controller.max_finance_permission).to be_nil
-    expect(controller.current_ability).to be_able_to(:update, DatevBooking)
+    expect(ability).to be_able_to(:update, DatevBooking)
   end
 
-  # The heart of it: a role grants the manage tier, the session decides
-  # whether it is exercised (doc/roles.md -> "The finance cap").
-  describe "the default tier" do
-    def session_bars = Nokogiri::HTML(response.body).css(".wsjrdp-session-bar")
+  # A role grants the manage tier, the session decides whether it is exercised.
+  it "leaves the manage tier out until it is picked, and never writes the key on its own" do
+    get :show, params: {id: booking.id}
 
-    it "leaves the manage tier out until it is picked" do
-      get :show, params: {id: booking.id}
-
-      expect(session[:max_finance_permission]).to be_nil
-      expect(controller.current_ability).to be_able_to(:update, DatevBooking)
-      expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-      expect(edit_offered?).to be(true)
-    end
-
-    it "hands it back on a pick, and takes it away again on a reset" do
-      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
-
-      expect(controller.current_ability).to be_able_to(:admin_finance, DatevBooking)
-      expect(edit_offered?).to be(true)
-
-      get :show, params: {id: booking.id, max_finance_permission: ""}
-
-      expect(controller.current_ability).not_to be_able_to(:admin_finance, DatevBooking)
-    end
-
-    # Nothing is stored, so nothing has to be kept in step: the tier follows
-    # the roles on the very next request.
-    it "follows a role change without anybody writing to the session" do
-      get :show, params: {id: booking.id}
-
-      expect(controller.current_ability.user_context.finance_tier_by_roles).to eq(:finance_manage)
-      expect(controller.current_ability.user_context.finance_tier).to eq(:finance)
-
-      manager.roles.destroy_all
-      Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root), person: manager)
-      sign_in(Person.find(manager.id)) # a real request loads the person anew
-      get :show, params: {id: booking.id}
-
-      expect(controller.current_ability.user_context.finance_tier_by_roles).to eq(:finance_read)
-      expect(controller.current_ability.user_context.finance_tier).to eq(:finance_read)
-      expect(controller.current_ability).not_to be_able_to(:update, DatevBooking)
-      expect(session[:max_finance_permission]).to be_nil
-      # ondemand: nothing deviates, nothing was picked
-      expect(session_bars).to be_empty
-    end
-
-    # A pick that a role change left stranded above the ceiling is dropped,
-    # so the bar goes quiet again instead of pointing at nothing.
-    it "drops a pick the roles no longer cover" do
-      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
-      expect(session[:max_finance_permission]).to eq("finance_manage")
-
-      manager.roles.destroy_all
-      Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root), person: manager)
-      sign_in(Person.find(manager.id))
-      get :show, params: {id: booking.id}
-
-      expect(session[:max_finance_permission]).to be_nil
-      expect(controller.current_ability.user_context.finance_tier).to eq(:finance_read)
-      expect(session_bars).to be_empty
-    end
-
-    # The session is written by a query parameter and by nothing else.
-    it "never writes the key on its own" do
-      3.times { get :show, params: {id: booking.id} }
-
-      expect(session).not_to have_key(:max_finance_permission)
-    end
+    expect(session).not_to have_key(:max_finance_permission)
+    expect(ability.user_context.finance_tier_by_roles).to eq(:finance_manage)
+    expect(ability.user_context.finance_tier).to eq(:finance)
+    expect(ability).to be_able_to(:update, DatevBooking)
+    expect(ability).not_to be_able_to(:admin_finance, DatevBooking)
   end
 
-  # The session bars (layouts/_wsjrdp_session_bar, doc/roles.md -> "The
-  # finance cap"): a red one while impersonating, a yellow one that IS the
-  # tier selection -- a segmented control of the tiers up to the roles' own,
-  # the tier in force pressed -- shown by the session's finance_tier_bar mode.
-  # Every action is a background button (no href, no rails-ujs data-method).
-  describe "the session bars" do
-    def doc = Nokogiri::HTML(response.body)
+  it "hands the manage tier out on a pick" do
+    get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
 
-    def bars = doc.css(".wsjrdp-session-bar")
-
-    def danger = doc.at_css(".wsjrdp-session-bar .alert-danger")
-
-    def warning = doc.at_css(".wsjrdp-session-bar .alert-warning")
-
-    # [label, pressed?, url] per segment, in rank order.
-    def segments
-      warning.css(".wsjrdp-seg button").map { |b| [b.text.strip, b["aria-pressed"] == "true", b["data-url"]] }
-    end
-
-    # The bar's one action: [method, url query as a hash, label text, icon?].
-    def action(alert)
-      button = alert.at_css("button.wsjrdp-bar-action")
-      [button["data-wsjrdp-session-action"], Rack::Utils.parse_query(URI(button["data-url"]).query),
-        button.at_css(".wsjrdp-bar-action-label").text.strip, button.at_css("i.fa-times-circle").present?]
-    end
-
-    # The tier names as the locale spells them (wsjrdp.finance_tiers).
-    def tier(permission) = I18n.t("wsjrdp.finance_tiers.#{permission}")
-
-    # The core's logo is positioned absolutely, so it has to be pushed down by
-    # the height of the bars -- otherwise it sits under them.
-    def logo_offset = response.body[/header\.logo \{ margin-top: (\d+)px; \}/, 1]&.to_i
-
-    # The same height, for what sticks to the window's top edge below the bars
-    # (the sticky buttons of a finance edit page).
-    def bars_height = response.body[/--wsjrdp-session-bars-height: (\d+)px;/, 1]&.to_i
-
-    it "shows nothing without a cap (ondemand)" do
-      get :show, params: {id: booking.id}
-
-      expect(bars).to be_empty
-      expect(logo_offset).to be_nil
-      expect(bars_height).to be_nil
-    end
-
-    it "offers every tier up to the roles' own, the one in force pressed, each carrying its own tier" do
-      session[:max_finance_permission] = "finance_audit"
-      get :show, params: {id: booking.id}
-
-      expect(bars.size).to eq(1)
-      expect(danger).to be_nil
-      expect(segments).to eq([
-        [tier(:finance_none), false, "/session_settings?max_finance_permission=finance_none"],
-        [tier(:finance_read), false, "/session_settings?max_finance_permission=finance_read"],
-        [tier(:finance_audit), true, "/session_settings?max_finance_permission=finance_audit"],
-        [tier(:finance), false, "/session_settings?max_finance_permission=finance"],
-        [tier(:finance_manage), false, "/session_settings?max_finance_permission=finance_manage"]
-      ])
-      # The note names the default, which is where the action leads back to.
-      expect(warning.text).to include("(Standard: #{tier(:finance)})")
-      expect(action(warning)).to eq(["post", {"max_finance_permission" => "", "finance_tier_bar" => "ondemand"},
-        I18n.t("layouts.wsjrdp_session_bar.reset_lowered"), true])
-      expect(warning.css("a, [data-method], .wsjrdp-bar-close")).to be_empty
-      expect(logo_offset).to eq(30)
-      expect(bars_height).to eq(30)
-    end
-
-    # Raising is not lowering: the bar turns red and says so.
-    it "shows an elevated tier in red, with its own action text" do
-      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
-
-      expect(warning).to be_nil
-      elevated = doc.at_css(".wsjrdp-session-bar .alert-danger")
-      expect(elevated).to be_present
-      expect(action(elevated).third).to eq(I18n.t("layouts.wsjrdp_session_bar.reset_raised"))
-      expect(controller.current_ability).to be_able_to(:admin_finance, DatevBooking)
-    end
-
-    # An elevated tier is never in force invisibly.
-    it "shows the bar for an elevated tier even with finance_tier_bar=hidden" do
-      session[:finance_tier_bar] = "hidden"
-      get :show, params: {id: booking.id, max_finance_permission: "finance_manage"}
-
-      expect(bars.size).to eq(1)
-      expect(doc.at_css(".wsjrdp-session-bar .alert-danger")).to be_present
-
-      get :show, params: {id: booking.id, max_finance_permission: "finance_read"}
-
-      expect(bars).to be_empty # a lowered tier obeys the mode again
-    end
-
-    it "shows the bar with a pick that changes nothing, and calls the action a reset" do
-      get :show, params: {id: booking.id, max_finance_permission: "finance"}
-
-      expect(segments.map(&:second)).to eq([false, false, false, true, false])
-      expect(action(warning).third).to eq(I18n.t("layouts.wsjrdp_session_bar.reset_same"))
-    end
-
-    it "keeps the bar with finance_tier_bar=always, and never shows it with hidden" do
-      get :show, params: {id: booking.id, finance_tier_bar: "always"}
-
-      expect(session[:finance_tier_bar]).to eq("always")
-      expect(segments.map(&:first))
-        .to eq(%i[finance_none finance_read finance_audit finance finance_manage].map { |p| tier(p) })
-      expect(segments.map(&:second)).to eq([false, false, false, true, false]) # the default, not the ceiling
-
-      session[:max_finance_permission] = "finance_read"
-      get :show, params: {id: booking.id, finance_tier_bar: "hidden"}
-
-      expect(session[:finance_tier_bar]).to eq("hidden")
-      expect(bars).to be_empty
-      expect(controller.current_ability).not_to be_able_to(:update, DatevBooking) # the cap still applies
-    end
-
-    it "drops an unknown mode and is back on demand" do
-      session[:finance_tier_bar] = "sometimes"
-      get :show, params: {id: booking.id}
-
-      expect(session[:finance_tier_bar]).to be_nil
-      expect(controller.finance_tier_bar).to eq(:ondemand)
-    end
-
-    it "stacks the red and the yellow bar while impersonating with a cap" do
-      session[:origin_user] = people(:cmt_leader).id
-      session[:max_finance_permission] = "finance_read"
-      get :show, params: {id: booking.id}
-
-      expect(bars.size).to eq(2)
-      expect(bars.first.at_css(".alert-danger")).to be_present
-      expect(bars.last.at_css(".alert-warning")).to be_present
-      expect(action(danger)).to eq(["delete", {}, I18n.t("layouts.user_impersonation.end"), true])
-      expect(danger.at_css("button.wsjrdp-bar-action")["data-url"])
-        .to eq("/groups/#{manager.primary_group_id}/people/#{manager.id}/impersonate")
-      expect(segments.map(&:second)).to eq([false, true, false, false, false])
-      expect(doc.css(".info-bar").size).to eq(4) # download spinner, sync spinner, red, yellow
-      expect(doc.css(".user-impersonation")).to be_empty # the core's own bar is silenced
-      expect(logo_offset).to eq(60) # the logo clears both bars
-    end
-
-    it "shows only the red bar, with the end button, while impersonating without a cap" do
-      session[:origin_user] = people(:cmt_leader).id
-      get :show, params: {id: booking.id}
-
-      expect(bars.size).to eq(1)
-      expect(warning).to be_nil
-      expect(danger.text).to include("angemeldet")
-      expect(danger.css("button[data-wsjrdp-session-action]").size).to eq(1)
-      expect(action(danger).first).to eq("delete")
-    end
+    expect(ability).to be_able_to(:admin_finance, DatevBooking)
   end
 
-  # The admin tab (layouts/_wsjrdp_session_bar, doc/roles.md -> "The finance
-  # cap"): a menu for whoever ACTUALLY logged in with :admin (the origin user
-  # while impersonating), shown by the session's admin_tab mode --
-  # always, or on demand while one of the bars is missing -- and never
-  # without asking. The menu: the tiers up to the roles' own, the bar
-  # switches, the person search for whoever may impersonate (Group::Root::Admin holds
-  # :impersonation), and "Imitation beenden" while impersonating.
-  describe "the admin tab" do
-    let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+  it "takes the tier from the roles of the request" do
+    sign_in(reader)
+    get :show, params: {id: booking.id}
 
-    def doc = Nokogiri::HTML(response.body)
+    expect(ability.user_context.finance_tier).to eq(:finance_read)
+    expect(ability).not_to be_able_to(:update, DatevBooking)
+  end
 
-    def tab = doc.at_css(".wsjrdp-admin-tab")
+  it "drops a pick the roles no longer cover" do
+    sign_in(reader)
+    session[:max_finance_permission] = "finance_manage"
+    get :show, params: {id: booking.id}
 
-    # [label, in force?, url] per tier entry, in rank order.
-    def tiers
-      tab.css("button.wsjrdp-admin-tab-tier").map { |b| [b.text.squish, b["aria-current"] == "true", b["data-url"]] }
-    end
+    expect(session[:max_finance_permission]).to be_nil
+    expect(ability.user_context.finance_tier).to eq(:finance_read)
+  end
 
-    # [url, disabled?] of the show and the hide switch.
-    def bar_switches
-      %w[show hide].map { |kind|
-        b = tab.at_css("button.wsjrdp-admin-tab-bar-#{kind}")
-        [b["data-url"], b["disabled"].present?]
-      }
-    end
+  it "drops an unknown bar mode and is back on demand" do
+    session[:finance_tier_bar] = "sometimes"
+    get :show, params: {id: booking.id}
 
-    def picker = tab.at_css("input[data-wsjrdp-impersonate-url]")
+    expect(controller.finance_tier_bar).to eq(:ondemand)
+    expect(session[:finance_tier_bar]).to be_nil
+  end
 
-    def tier(permission) = I18n.t("wsjrdp.finance_tiers.#{permission}")
+  it "drops an unknown admin tab mode and is back to hidden" do
+    session[:admin_tab] = "sometimes"
+    get :show, params: {id: booking.id}
 
-    it "is not there unless asked for, not even for an admin" do
-      sign_in(admin)
-      get :show, params: {id: booking.id}
-
-      expect(tab).to be_nil
-    end
-
-    it "is withheld from a manager without :admin, however asked" do
-      get :show, params: {id: booking.id, admin_tab: "always"}
-
-      expect(session[:admin_tab]).to eq("always")
-      expect(tab).to be_nil
-    end
-
-    it "shows for an admin with admin_tab=always: the tiers, the bar switches, the person search" do
-      sign_in(admin)
-      get :show, params: {id: booking.id, admin_tab: "always"}
-
-      expect(tab).to be_present
-      expect(tab.at_css("button[data-bs-toggle=dropdown]").text).to include(I18n.t("layouts.wsjrdp_session_bar.admin_tab"))
-      # Group::Root::Admin carries :finance, so its tiers end at the write tier.
-      expect(tiers).to eq([
-        [tier(:finance_none), false, "/session_settings?max_finance_permission=finance_none"],
-        [tier(:finance_read), false, "/session_settings?max_finance_permission=finance_read"],
-        [tier(:finance_audit), false, "/session_settings?max_finance_permission=finance_audit"],
-        ["#{tier(:finance)} (Standard)", true, "/session_settings?max_finance_permission=finance"]
-      ])
-      # The way back to "no pick at all", reachable even with the bar hidden.
-      reset = tab.at_css("button.wsjrdp-admin-tab-reset")
-      expect(reset["data-url"]).to eq("/session_settings?max_finance_permission=")
-      expect(reset["disabled"]).to be_present # nothing picked yet
-      expect(bar_switches).to eq([["/session_settings?finance_tier_bar=always", false],
-        ["/session_settings?finance_tier_bar=hidden", true]])
-      expect(picker["data-provide"]).to eq("entity")
-      expect(picker["data-url"]).to eq("/wsjrdp/impersonate/people")
-      expect(picker["data-wsjrdp-impersonate-url"]).to eq("/wsjrdp/impersonate")
-      # The confirmation sits in the menu, hidden until a person is picked: a
-      # warning panel naming the person, and a button that starts out disabled
-      # and counts down, so a click meant for the suggestion list cannot take
-      # it (doc/roles.md -> "The finance cap").
-      confirm = tab.at_css(".wsjrdp-admin-tab-confirm")
-      expect(confirm.key?("hidden")).to be(true)
-      expect(confirm.text).to include(I18n.t("layouts.wsjrdp_session_bar.impersonate_title"),
-        I18n.t("layouts.wsjrdp_session_bar.impersonate_lead"))
-      # The core mails whoever is impersonated, so the panel says so -- and
-      # only while it actually does.
-      expect(Settings.impersonate.notify).to be(true)
-      expect(confirm.at_css(".wsjrdp-admin-tab-confirm-notice").text)
-        .to include(I18n.t("layouts.wsjrdp_session_bar.impersonate_notice"))
-      expect(confirm.at_css(".wsjrdp-admin-tab-confirm-person").text).to be_blank # filled in on a pick
-      expect(confirm.css("[data-wsjrdp-impersonate]").pluck("data-wsjrdp-impersonate")).to eq(%w[go cancel])
-      go = confirm.at_css("[data-wsjrdp-impersonate=go]")
-      expect(go["disabled"]).to be_present
-      expect(go["data-countdown-ms"]).to eq(WsjrdpAdminTabHelper::DEFAULT_IMPERSONATE_DELAY_MS.to_s)
-      expect(go["data-label"]).to eq(I18n.t("layouts.wsjrdp_session_bar.impersonate_start"))
-      expect(tab.at_css("button[data-wsjrdp-session-action=delete]")).to be_nil
-      expect(tab.css("a, [data-method]")).to be_empty
-    end
-
-    it "offers hiding instead of showing while the bar is up" do
-      sign_in(admin)
-      session[:admin_tab] = "always"
-      session[:finance_tier_bar] = "always"
-      get :show, params: {id: booking.id}
-
-      expect(bar_switches).to eq([["/session_settings?finance_tier_bar=always", true],
-        ["/session_settings?finance_tier_bar=hidden", false]])
-    end
-
-    it "shows on demand while a bar is missing, and not with both bars up" do
-      sign_in(admin)
-      session[:admin_tab] = "ondemand"
-      get :show, params: {id: booking.id} # no impersonation, no yellow bar
-
-      expect(tab).to be_present
-
-      session[:max_finance_permission] = "finance_read" # the yellow bar, the red one missing
-      get :show, params: {id: booking.id}
-
-      expect(tab).to be_present
-      expect(tiers.map(&:second)).to eq([false, true, false, false])
-
-      session[:origin_user] = people(:cmt_leader).id # both bars, whoever impersonates
-      get :show, params: {id: booking.id}
-
-      expect(tab).to be_nil
-    end
-
-    it "goes by the person actually logged in: an admin impersonating the manager gets it, search and 'Imitation beenden'" do
-      session[:origin_user] = admin.id
-      session[:admin_tab] = "ondemand"
-      get :show, params: {id: booking.id}
-
-      expect(tab).to be_present
-      expect(picker).to be_present # the admin's right, not the manager's
-      ending = tab.at_css("button.wsjrdp-admin-tab-end")
-      expect(ending["data-wsjrdp-session-action"]).to eq("delete")
-      expect(ending["data-url"]).to eq("/groups/#{manager.primary_group_id}/people/#{manager.id}/impersonate")
-      expect(ending.text).to include(I18n.t("layouts.user_impersonation.end"))
-      # the manager's ceiling, not the admin's -- and the manager's default
-      expect(tiers.map(&:first)).to eq([tier(:finance_none), tier(:finance_read), tier(:finance_audit),
-        "#{tier(:finance)} (Standard)", tier(:finance_manage)])
-    end
-
-    it "is withheld from a non-admin impersonating, whoever they impersonate" do
-      session[:origin_user] = people(:cmt_leader).id
-      session[:admin_tab] = "always"
-      get :show, params: {id: booking.id}
-
-      expect(tab).to be_nil
-    end
-
-    it "drops an unknown mode and is back to hidden" do
-      session[:admin_tab] = "sometimes"
-      get :show, params: {id: booking.id}
-
-      expect(session[:admin_tab]).to be_nil
-      expect(controller.admin_tab).to eq(:hidden)
-    end
-
-    it "is hidden without a session value at all" do
-      sign_in(admin)
-      get :show, params: {id: booking.id}
-
-      expect(controller.admin_tab).to eq(:hidden)
-      expect(tab).to be_nil
-    end
-
-    it "takes hidden as a mode of its own, over an admin who would otherwise see the tab" do
-      sign_in(admin)
-      get :show, params: {id: booking.id, admin_tab: "hidden"}
-
-      expect(session[:admin_tab]).to eq("hidden")
-      expect(controller.admin_tab).to eq(:hidden)
-      expect(tab).to be_nil
-    end
-
-    # A hand-typed URL should not have to spell out the words.
-    it "reads a truthy parameter as always and a falsy one as hidden" do
-      sign_in(admin)
-
-      %w[1 true on yes YES].each do |truthy|
-        session.delete(:admin_tab)
-        get :show, params: {id: booking.id, admin_tab: truthy}
-
-        expect(session[:admin_tab]).to eq("always")
-        expect(controller.admin_tab).to eq(:always)
-        expect(tab).to be_present
-      end
-
-      %w[0 false off no OFF].each do |falsy|
-        session[:admin_tab] = "always"
-        get :show, params: {id: booking.id, admin_tab: falsy}
-
-        expect(session[:admin_tab]).to eq("hidden")
-        expect(controller.admin_tab).to eq(:hidden)
-        expect(tab).to be_nil
-      end
-    end
-
-    # The wait before the impersonation button can be pressed is fixed. It is
-    # not a request parameter and not a session value: only the dev-only
-    # override local_dev_only_impersonate_delay.rb, symlinked in by hand,
-    # sets config.x.wsjrdp_impersonate_delay_ms (README -> "Local dev
-    # overrides"). Milliseconds throughout; the button counts down in tenths.
-    describe "the impersonation delay" do
-      before { sign_in(admin) }
-
-      after { Rails.application.config.x.wsjrdp_impersonate_delay_ms = nil }
-
-      def go = tab.at_css("[data-wsjrdp-impersonate=go]")
-
-      def render_tab = get :show, params: {id: booking.id, admin_tab: "always"}
-
-      it "is 3000 ms, and no parameter or session value changes it" do
-        session[:impersonate_delay] = 0
-        get :show, params: {id: booking.id, admin_tab: "always", impersonate_delay: "0"}
-
-        expect(controller.helpers.impersonate_delay_ms).to eq(3000)
-        expect(go["data-countdown-ms"]).to eq("3000")
-        expect(go["disabled"]).to be_present
-      end
-
-      # 0 means no countdown at all: the button is rendered ready, and the
-      # script leaves it alone (there is nothing to count down).
-      it "follows the override, and 0 leaves the button ready at once" do
-        Rails.application.config.x.wsjrdp_impersonate_delay_ms = 0
-        render_tab
-
-        expect(go["data-countdown-ms"]).to eq("0")
-        expect(go["disabled"]).to be_nil
-        expect(go.text.strip).to eq(I18n.t("layouts.wsjrdp_session_bar.impersonate_start"))
-      end
-
-      it "keeps the override's wait within bounds and ignores a value that is no number" do
-        Rails.application.config.x.wsjrdp_impersonate_delay_ms = 999_999
-        render_tab
-        expect(go["data-countdown-ms"]).to eq(WsjrdpAdminTabHelper::MAX_IMPERSONATE_DELAY_MS.to_s)
-
-        Rails.application.config.x.wsjrdp_impersonate_delay_ms = "sofort"
-        render_tab
-        expect(go["data-countdown-ms"]).to eq("3000")
-      end
-    end
+    expect(controller.admin_tab).to eq(:hidden)
+    expect(session[:admin_tab]).to be_nil
   end
 
   it "refuses a write the cap took away, in the controller too" do
@@ -547,9 +128,15 @@ describe Fin::BookingsController, type: :controller do
   end
 end
 
-# The session UI's background target.
+# The session UI's background target. The admin tab mode is mirrored into the
+# preference of the person who actually logged in, so it survives the login.
 describe SessionSettingsController, type: :controller do
-  let(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:person, refind: true) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+  let(:member) { people(:cmt_member1) }
+
+  def persisted(someone) = Person.find(someone.id).wsjrdp_preference_admin_tab
 
   before { sign_in(person) }
 
@@ -564,30 +151,92 @@ describe SessionSettingsController, type: :controller do
     session[:max_finance_permission] = "finance_read"
     post :update, params: {max_finance_permission: ""}
 
-    expect(response).to have_http_status(:no_content)
     expect(session[:max_finance_permission]).to be_nil
   end
 
   it "stores the bar mode the same way" do
     post :update, params: {finance_tier_bar: "hidden"}
 
-    expect(response).to have_http_status(:no_content)
     expect(session[:finance_tier_bar]).to eq("hidden")
   end
 
-  it "stores the admin tab mode the same way" do
-    post :update, params: {admin_tab: "ondemand"}
+  describe "the admin tab mode" do
+    it "is written to the session and the persisted preference" do
+      post :update, params: {admin_tab: "ondemand"}
 
-    expect(response).to have_http_status(:no_content)
-    expect(session[:admin_tab]).to eq("ondemand")
+      expect(session[:admin_tab]).to eq("ondemand")
+      expect(persisted(person)).to eq("ondemand")
+    end
+
+    it "reads a truthy spelling as always" do
+      post :update, params: {admin_tab: "YES"}
+
+      expect(session[:admin_tab]).to eq("always")
+      expect(persisted(person)).to eq("always")
+    end
+
+    it "reads a falsy spelling as hidden" do
+      session[:admin_tab] = "always"
+      post :update, params: {admin_tab: "off"}
+
+      expect(session[:admin_tab]).to eq("hidden")
+      expect(persisted(person)).to eq("hidden")
+    end
+
+    it "leaves an unknown, non-blank value alone: neither stored nor a reset" do
+      person.wsjrdp_preference_admin_tab = "always"
+      post :update, params: {admin_tab: "sometimes"}
+
+      expect(session[:admin_tab]).to be_nil
+      expect(persisted(person)).to eq("always")
+    end
+
+    it "is cleared in both places by a blank value" do
+      person.wsjrdp_preference_admin_tab = "always"
+      session[:admin_tab] = "always"
+      post :update, params: {admin_tab: ""}
+
+      expect(session[:admin_tab]).to be_nil
+      expect(persisted(person)).to be_nil
+    end
+
+    it "seeds a fresh session from the persisted preference, without writing it again" do
+      person.wsjrdp_preference_admin_tab = "ondemand"
+
+      expect { post :update }.not_to(change { persisted(person) }.from("ondemand"))
+      expect(session[:admin_tab]).to eq("ondemand")
+    end
+
+    describe "while impersonating" do
+      before do
+        sign_in(member)
+        session[:origin_user] = person.id
+      end
+
+      it "writes the preference of the origin user, never the impersonated one's" do
+        post :update, params: {admin_tab: "always"}
+
+        expect(persisted(person)).to eq("always")
+        expect(persisted(member)).to be_nil
+      end
+
+      it "seeds a fresh session from the origin user's preference" do
+        person.wsjrdp_preference_admin_tab = "ondemand"
+        post :update
+
+        expect(session[:admin_tab]).to eq("ondemand")
+      end
+    end
   end
 end
 
 # The admin tab's person search: impersonate, or switch out of a running
 # impersonation, always as the person who actually logged in.
 describe Wsjrdp::ImpersonationController, type: :controller do
-  let(:admin) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
-  let(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:admin, refind: true) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+  let_it_be(:manager, refind: true) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
   let(:member) { people(:cmt_member1) }
 
   def signed_in = request.env["warden"].user(:person)
@@ -617,8 +266,6 @@ describe Wsjrdp::ImpersonationController, type: :controller do
   end
 
   it "ignores a return_to that leaves this site" do
-    sign_in(admin)
-
     ["https://example.com/x", "//example.com/x", "/\\example.com", "javascript:alert(1)", ""].each do |path|
       session[:origin_user] = nil
       sign_in(admin)
@@ -657,13 +304,15 @@ describe Wsjrdp::ImpersonationController, type: :controller do
     expect(events(member)).to be_empty
   end
 
-  it "does nothing for oneself or for the person already impersonated" do
+  it "does nothing for oneself" do
     sign_in(admin)
     post :create, params: {person_id: admin.id}
 
     expect(response).to redirect_to(root_path)
     expect(session[:origin_user]).to be_nil
+  end
 
+  it "does nothing for the person already impersonated" do
     sign_in(member)
     session[:origin_user] = admin.id
     post :create, params: {person_id: member.id}

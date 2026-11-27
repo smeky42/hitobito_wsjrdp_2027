@@ -9,638 +9,244 @@
 
 require "spec_helper"
 
-# The statement of ONE finance account (/fin/acc/:id). The page serves TWO kinds
-# of account and branches on the one marker WsjrdpFinAccount#transactions
-# branches on:
-#
-#   * the MOSS WALLET (transaction_type "MossBalanceMovement") -> the Moss
-#     transactions table of the Transaktionen tab, narrowed to this account
-#     (the table itself is specced in moss_transactions_controller_spec.rb);
-#   * every BANK account -> the plain camt statement it has always been.
-#
-# Both branches are exercised here; all names, numbers and amounts are invented.
+# The statement of ONE finance account (/fin/acc/:id), for the Moss wallet
+# (its Moss transactions) and for a bank account (its camt transactions), and
+# the account list. All names, numbers and amounts are invented.
 describe Fin::WsjrdpFinAccountsController do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-
-  let!(:wallet) do
-    WsjrdpFinAccount.create!(short_name: "Moss-Wallet", account_identification: "MOSS-WALLET-TEST",
-      transaction_type: "MossBalanceMovement", opening_balance_cents: 100_000,
-      opening_balance_currency: "EUR", opening_balance_date: Date.new(2026, 1, 1))
+  let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:manager) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+  let_it_be(:auditor) do
+    Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
+      group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person
   end
 
-  # One transaction of `type` on the wallet, with its (shell) expense and
-  # exactly one booking -- the row the statement shows. `date` is the day the
-  # movement was booked in the wallet, which is what the statement is dated by.
-  def create_booking(type, amount:, date:, text:, **attrs)
-    uuid = SecureRandom.uuid
-    transaction = MossTransaction.create!(type: type, moss_transaction_uuid: uuid,
-      fin_account: wallet, signed_total_base_amount: amount, currency: "EUR",
-      booking_date: date, **attrs)
-    expense = MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: uuid,
-      type: "#{type}Expense", expense_number: 1, signed_expense_base_amount: amount)
-    MossBooking.create!(moss_transaction: transaction, moss_expense: expense,
-      sub_row_number: 1, signed_base_amount: amount, booking_posting_text: text)
+  def new_account(name, identification, **attrs)
+    WsjrdpFinAccount.create!(short_name: name, account_identification: identification, opening_balance_cents: 0,
+      opening_balance_currency: "EUR", opening_balance_date: Date.new(2026, 1, 1), **attrs)
   end
 
-  # One booking per kind, ordered by Buchungsdatum so the default sort (desc) is
-  # top-up, invoice, reimbursement, card. The invoice is the foreign-currency
-  # row, the top-up the one with money coming IN.
-  let!(:card) do
-    create_booking("MossCardTransaction", amount: -25, date: Date.new(2026, 5, 3),
-      text: "Split eins", merchant_name: "Muster Markt", card_holder_name: "Vorname Nachname",
-      transaction_posting_text: "Verpflegung Vortreffen")
+  let_it_be(:wallet, reload: true) do
+    new_account("Moss-Wallet", "MOSS-WALLET-TEST", transaction_type: "MossBalanceMovement",
+      opening_balance_cents: 100_000)
+  end
+  let_it_be(:bank, reload: true) do
+    new_account("Vereinskonto", "DE19100100103333333333", iban: "DE19100100103333333333",
+      opening_balance_cents: 10_000)
   end
 
-  let!(:reimbursement) do
-    create_booking("MossReimbursement", amount: -60, date: Date.new(2026, 6, 1),
-      text: "Anteil eins", transaction_name: "Fahrtkosten Vortreffen",
-      recipient_name: "Vorname Nachname")
-  end
-
-  let!(:invoice) do
-    create_booking("MossInvoice", amount: -100, date: Date.new(2026, 7, 15),
-      text: "Zeile eins", invoice_number: "RE-2026-1", supplier_account_number: "700027",
-      currency_original: "PLN", signed_total_transaction_amount: -425, exchange_rate: 4.25)
-  end
-
-  let!(:top_up) do
-    create_booking("MossTopUp", amount: 500, date: Date.new(2027, 1, 20),
-      text: "Aufladung", top_up_sender: "Vereinskonto")
-  end
-
-  before { sign_in(person) }
-
-  def doc = Nokogiri::HTML(response.body)
-
-  def preset_links = doc.css("a.flt-preset")
-
-  describe "GET show of the Moss wallet" do
-    # A transaction on another account, which the wallet must not show.
-    let!(:elsewhere) do
-      other = WsjrdpFinAccount.create!(short_name: "Anderes Wallet", account_identification: "MOSS-OTHER-TEST",
-        transaction_type: "MossBalanceMovement", opening_balance_cents: 0,
-        opening_balance_currency: "EUR", opening_balance_date: Date.new(2026, 1, 1))
-      MossTransaction.create!(type: "MossTopUp", moss_transaction_uuid: SecureRandom.uuid, fin_account: other,
-        signed_total_base_amount: 7, currency: "EUR", booking_date: Date.new(2026, 8, 1))
+  # One transaction per kind on the wallet, by Buchungsdatum, and one on
+  # another wallet; two camt transactions on the bank account, the later one
+  # incoming.
+  let_it_be(:wallet_kinds) do
+    other = new_account("Anderes Wallet", "MOSS-OTHER-TEST", transaction_type: "MossBalanceMovement")
+    MossTransaction.create!(type: "MossTopUp", moss_transaction_uuid: SecureRandom.uuid, fin_account: other,
+      signed_total_base_amount: 7, currency: "EUR", booking_date: Date.new(2026, 8, 1))
+    {"MossCardTransaction" => [-25, Date.new(2026, 5, 3)], "MossReimbursement" => [-60, Date.new(2026, 6, 1)],
+     "MossInvoice" => [-100, Date.new(2026, 7, 15)], "MossTopUp" => [500, Date.new(2027, 1, 20)]}
+      .each do |type, (amount, date)|
+      MossTransaction.create!(type: type, moss_transaction_uuid: SecureRandom.uuid, fin_account: wallet,
+        signed_total_base_amount: amount, currency: "EUR", booking_date: date)
     end
+    %w[MossTopUp MossInvoice MossReimbursement MossCardTransaction]
+  end
 
-    before { get :show, params: {id: wallet.id} }
-
-    it "renders one row per transaction of this account, newest first" do
-      expect(response).to be_successful
-      expect(doc.css("tbody.exp-group").map { |group| group["class"].to_s.split.grep(/\Amoss-kind-/).first })
-        .to eq(%w[MossTopUp MossInvoice MossReimbursement MossCardTransaction]
-          .map { |kind| Fin::MossKinds.css_class(kind) })
-      expect(response.body).to include("4 Transaktionen").and include("Summe (gefiltert): 315,00\u00A0€")
-    end
-
-    it "offers the kinds as one segment, all chosen" do
-      expect(doc.css(".flt-segment").size).to eq(1)
-      expect(preset_links.pluck("aria-pressed")).to eq(%w[true true true true true])
-    end
-
-    # A balance is no transaction, so it sits outside the table: the current
-    # one in the page's head line, the opening one below the rows.
-    it "keeps the balances outside the table" do
-      balances = doc.css(".mw-balance").map { |div| div.text.squish }
-      expect(balances.size).to eq(1)
-      expect(balances.first).to start_with("Eröffnungs-Saldo")
-      # In the money format of the lists (Fin::MoneyHelper).
-      expect(balances.first).to end_with(" €")
-      expect(doc.css("table .mw-balance")).to be_empty
+  let_it_be(:camts) do
+    [[-12.34, Date.new(2026, 4, 2), {}],
+      [-3, Date.new(2026, 3, 2), {return_reason: "MS03", bank_transaction_code: "PMNT+IDDT+UPDD"}],
+      [50, Date.new(2026, 5, 1), {}]].map do |amount, date, attrs|
+      WsjrdpCamtTransaction.create!(fin_account: bank, camt_type: "CAMT053",
+        account_identification: bank.account_identification, account_servicer_reference: SecureRandom.hex(4),
+        credit_debit_indication: amount.negative? ? "DBIT" : "CRDT", signed_base_amount: amount,
+        base_currency: "EUR", value_date: date, booking_date: date, description: "Buchung", **attrs)
     end
   end
 
-  describe "the account's head line" do
-    let!(:bank) do
-      WsjrdpFinAccount.create!(short_name: "Vereinskonto", account_identification: "DE19100100103333333333",
-        iban: "DE19100100103333333333", servicer_bic: "GENODEF1TEST", opening_balance_cents: 150_000,
-        opening_balance_currency: "EUR", opening_balance_date: Date.new(2026, 1, 1))
-    end
+  # The manage tier holds once the session picks it, not by default.
+  def sign_in_manage_tier
+    sign_in(manager)
+    session[:max_finance_permission] = "finance_manage"
+  end
 
-    def summary = doc.at_css("details.fin-account-summary")
+  def camt_rows = controller.camt_transactions.page
 
-    it "shows name, IBAN and balance, and stays closed by default" do
-      get :show, params: {id: bank.id}
+  describe "GET show" do
+    before { sign_in(person) }
 
-      expect(summary["open"]).to be_nil
-      line = summary.at_css("summary").text.squish
-      expect(line).to include("Vereinskonto", "DE19 1001 0010 3333 3333 33", "1.500,00")
-    end
-
-    it "shows the detail with its Bearbeiten link and no form on the page" do
-      get :show, params: {id: bank.id}
-
-      expect(summary.css("dl.fin-detail-list").text).to include("GENODEF1TEST", "1.500,00")
-      expect(summary.at_css("a[href='#{edit_wsjrdp_fin_account_path(bank)}']").text).to eq("Bearbeiten")
-      expect(doc.at_css("input[name='wsjrdp_fin_account[short_name]']")).to be_nil
-    end
-
-    it "does not repeat an identification equal to the IBAN" do
-      get :show, params: {id: bank.id}
-
-      labels = summary.css("dt").map { |dt| dt.text.squish }
-      expect(labels).to include("IBAN")
-      expect(labels).not_to include("Konto")
-    end
-
-    it "shows a wallet's top-up IBAN, saying what it is" do
-      wallet.update!(top_up_iban: "DE16100100101111111111")
+    it "shows the wallet's own Moss transactions, newest first" do
       get :show, params: {id: wallet.id}
 
-      expect(summary.at_css("summary").text.squish)
-        .to include("Moss-Wallet", "DE16 1001 0010 1111 1111 11 (IBAN für Einzahlungen)")
+      expect(controller.send(:transactions).page.map(&:type)).to eq(wallet_kinds)
     end
 
-    it "shows the top-up fields of an account without an IBAN" do
-      wallet.update!(top_up_recipient_name: "Verband e.V.", top_up_iban: "DE16100100101111111111",
-        top_up_bic: "TESTDEFFXXX", top_up_purpose: "M000000001")
+    it "shows a bank account's camt transactions, newest first, with their sum" do
+      get :show, params: {id: bank.id}
+
+      expect(camt_rows.map(&:booking_date)).to eq([Date.new(2026, 5, 1), Date.new(2026, 4, 2), Date.new(2026, 3, 2)])
+      expect(controller.camt_transactions.total_sum).to eq(BigDecimal("34.66"))
+    end
+
+    it "filters a bank account's transactions by the URL" do
+      get :show, params: {id: bank.id, ctf: "!(!(!(amt,ge,0)))"}
+
+      expect(camt_rows.map(&:signed_base_amount)).to eq([50])
+    end
+
+    it "narrows a bank account's transactions to the kind chosen" do
+      get :show, params: {id: bank.id, ctu: "kind.bank_return"}
+
+      expect(camt_rows.map(&:id)).to eq([camts.second.id])
+    end
+
+    it "answers a list row's frame with the detail alone" do
+      request.headers["Turbo-Frame"] = "bkframe-acc-#{wallet.id}"
       get :show, params: {id: wallet.id}
 
-      expect(summary.css("dl.fin-detail-list").text).to include("Verband e.V.", "TESTDEFFXXX", "M000000001")
+      expect(response).to render_template(:detail_frame)
+      expect(controller.detail_format_context).to be_embedded
     end
 
-    it "does not show top-up fields left on an account with an IBAN" do
-      bank.update!(top_up_bic: "TESTDEFFXXX")
-      get :show, params: {id: bank.id}
+    it "shows the page's own frame as the page's detail" do
+      request.headers["Turbo-Frame"] = "bkframe-accpage-#{wallet.id}"
+      get :show, params: {id: wallet.id}
 
-      expect(summary.css("dl.fin-detail-list").text).not_to include("TESTDEFFXXX")
-    end
-
-    it "opens the detail after a save" do
-      get :show, params: {id: bank.id, details: "open"}
-
-      expect(summary.key?("open")).to be(true)
-    end
-
-    it "offers the IBAN and the BIC for copying, without the spaces of the display" do
-      get :show, params: {id: bank.id}
-
-      expect(summary.css("a.fin-copy").pluck("data-copy-to-clipboard"))
-        .to eq(["DE19100100103333333333", "GENODEF1TEST"])
-    end
-
-    it "offers no copy icon for a value that is not there" do
-      bank.update!(servicer_bic: nil)
-      get :show, params: {id: bank.id}
-
-      expect(summary.css("a.fin-copy").pluck("data-copy-to-clipboard")).to eq(["DE19100100103333333333"])
-    end
-
-    it "links the bookkeeping account in a new tab when it exists" do
-      WsjrdpLedgerAccount.create!(number: "18100", name: "Skatbank")
-      bank.update!(bookkeeping_account_number: "18100", bookkeeping_account_type: "WsjrdpLedgerAccount")
-      get :show, params: {id: bank.id}
-
-      link = summary.at_css("a[target='_blank'][href='#{ledger_account_path("18100")}']")
-      expect(link).to be_present
-      expect(link.parent.text).to include("18100 Skatbank")
-    end
-
-    it "shows a bookkeeping account number that does not exist without a link" do
-      bank.update!(bookkeeping_account_number: "99999", bookkeeping_account_type: "WsjrdpLedgerAccount")
-      get :show, params: {id: bank.id}
-
-      expect(summary.text).to include("99999")
-      expect(summary.css("a[target='_blank']")).to be_empty
-    end
-
-    it "opens the form in the detail's frame" do
-      get :show, params: {id: bank.id}
-
-      frame = summary.at_css("turbo-frame##{"bkframe-accpage-#{bank.id}"}")
-      expect(frame.at_css("a[href='#{edit_wsjrdp_fin_account_path(bank)}']")["data-turbo-frame"]).to eq(frame["id"])
-    end
-
-    it "shows the status translated, with the stored value for the write tier" do
-      get :show, params: {id: bank.id}
-
-      status = summary.css("dd").find { |dd| dd.text.include?("aktiv") }
-      expect(status.at_css("span.text-muted.fw-light").text).to eq("active")
-    end
-
-    it "shows the read tier the translated status alone" do
-      sign_in(Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
-        group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person)
-      get :show, params: {id: bank.id}
-
-      expect(summary.css("dd").map { |dd| dd.text.squish }).to include("aktiv")
-      expect(summary.text).not_to include("active")
-    end
-
-    it "offers the read tier no Bearbeiten link" do
-      sign_in(Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
-        group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person)
-      get :show, params: {id: bank.id}
-
-      expect(response).to be_successful
-      expect(summary.at_css("dl.fin-detail-list")).to be_present
-      expect(summary.at_css("a[href='#{edit_wsjrdp_fin_account_path(bank)}']")).to be_nil
+      expect(controller.detail_format_context).to be_regular
     end
   end
 
   describe "GET index" do
-    let!(:bank) do
-      WsjrdpFinAccount.create!(short_name: "Vereinskonto", account_identification: "DE19100100103333333333",
-        iban: "DE19100100103333333333", opening_balance_cents: 10_000, opening_balance_currency: "EUR",
-        opening_balance_date: Date.new(2026, 1, 1))
-    end
-
-    let!(:closed) do
-      WsjrdpFinAccount.create!(short_name: "Altes Konto", account_identification: "ALT-1", status: "closed",
-        opening_balance_cents: 2_500, opening_balance_currency: "EUR", opening_balance_date: Date.new(2026, 1, 1))
-    end
-
-    before do
-      WsjrdpCamtTransaction.create!(fin_account: bank, camt_type: "CAMT053",
-        account_identification: bank.account_identification, account_servicer_reference: "REF-IDX",
-        credit_debit_indication: "DBIT", signed_base_amount: -12.34, base_currency: "EUR",
-        value_date: Date.new(2026, 4, 2), description: "Beispielbuchung")
-    end
-
-    def row_of(account) = doc.at_css("tr.exp-row[data-key='#{account.id}']") || doc.css("tr.exp-row").find { |tr| tr.text.include?(account.short_name) }
-
-    it "lists every account as an expandable row with the balance of its statement" do
-      get :index
-
-      expect(row_of(bank).text.squish).to include("Vereinskonto", "DE19 1001 0010 3333 3333 33", "87,66")
-      expect(row_of(bank).at_css("a[href='#{wsjrdp_fin_account_path(bank)}']").text).to eq("Vereinskonto")
-      expect(row_of(closed).text.squish).to include("Altes Konto", "geschlossen", "25,")
-      expect(row_of(closed)["class"]).to include("text-muted")
-    end
-
-    it "loads the stream actions a save from a row answers with" do
-      get :index
-
-      expect(doc.at_css("script[src*='turbo_stream_actions']")).to be_present
-    end
-
-    it "loads the account's detail into the row" do
-      get :index
-
-      expect(response.body).to include(wsjrdp_fin_account_path(bank))
-      expect(doc.css("turbo-frame[id^='bkframe-acc-']").pluck("src"))
-        .to include(wsjrdp_fin_account_path(bank, expandable_table_level: 1))
-    end
-
-    it "offers the columns menu, with Kontoart in it but not shown" do
-      get :index
-
-      expect(doc.css("thead th").map { |th| th.text.squish }.join(" ")).not_to include("Kontoart")
-      expect(response.body).to include("Kontoart")
-    end
-
-    it "shows Kontoart once picked in the columns menu" do
-      get :index, params: {ac: "lb,pr,sa"}
-
-      expect(doc.css("thead th").map { |th| th.text.squish }.join(" ")).to include("Konto", "Kontoart", "Saldo")
-    end
-
-    it "sums the balances in the footer" do
-      get :index
-
-      # The wallet of the outer let! (1.000,00 € and its four bookings: 1.315,00 €), the
-      # bank (87,66 €), the closed account (25,00 €).
-      expect(doc.css("tfoot").text.squish).to include("Summe", "1.427,66")
-    end
-
-    # Only this spec's accounts: a database built by the migrations also has
-    # the "Moss Wallet" a migration creates (balance 0).
-    it "sorts by the balance" do
+    it "lists every account with the balance of its statement, sortable by it" do
+      sign_in(person)
       get :index, params: {as: "sa~"}
 
-      ours = doc.css("tr.exp-row").map { |tr| tr.text.squish }
-        .select { |text| text.start_with?("Moss-Wallet", "Vereinskonto", "Altes Konto") }
-      expect(ours).to match([start_with("Moss-Wallet"), start_with("Vereinskonto"), start_with("Altes Konto")])
+      # The wallet's balance counts its Moss bookings, of which there are none.
+      balances = controller.accounts.page.to_h { |account| [account.id, account.balance_eur] }
+      expect(balances.values_at(wallet.id, bank.id)).to eq([BigDecimal(1000), BigDecimal("134.66")])
+      expect(balances.keys.index(wallet.id)).to be < balances.keys.index(bank.id)
     end
   end
 
-  describe "the detail in a row of the list" do
-    let(:frame_id) { "bkframe-acc-#{wallet.id}" }
+  describe "POST apply" do
+    before { sign_in(person) }
 
-    before { request.headers["Turbo-Frame"] = frame_id }
+    it "encodes the wallet's filter and redirects (PRG) back to the account" do
+      post :apply, params: {id: wallet.id, filter_json: [[["kind", "in", "MossTopUp"]]].to_json}
 
-    it "answers the row's frame with the detail and its Bearbeiten in that frame" do
-      get :show, params: {id: wallet.id}
-
-      frame = doc.at_css("turbo-frame##{frame_id}")
-      expect(frame.at_css("dl.fin-detail-list")).to be_present
-      expect(frame.at_css("a[href='#{edit_wsjrdp_fin_account_path(wallet)}']")["data-turbo-frame"]).to eq(frame_id)
-      expect(response.body).not_to include("Eröffnungs-Saldo</span>")
-      expect(doc.css("tr.exp-row")).to be_empty
+      expect(response).to have_http_status(:see_other)
+      expect(CGI.unescape(response.location)).to end_with("/fin/acc/#{wallet.id}?f=!(!(!(k,in,'MossTopUp')))")
     end
 
-    it "opens the form in the row's frame" do
-      get :edit, params: {id: wallet.id}
+    it "encodes a bank account's filter into its own param" do
+      post :apply, params: {id: bank.id, filter_json: [[["amount", "gte", "0"]]].to_json}
 
-      expect(doc.at_css("turbo-frame##{frame_id} input[name='wsjrdp_fin_account[short_name]']")).to be_present
-    end
-
-    it "answers a save by reloading the list with the row open" do
-      request.accept = "text/vnd.turbo-stream.html, text/html"
-      patch :update, params: {id: wallet.id, wsjrdp_fin_account: {short_name: "Neuer Name"}}
-
-      expect(doc.at_css("turbo-stream[action='redirect_top']")["url"]).to eq(wsjrdp_fin_accounts_path(ao: wallet.id))
-    end
-  end
-
-  describe "GET edit" do
-    it "puts Speichern and Abbrechen once, in the sticky line above the fields" do
-      get :edit, params: {id: wallet.id}
-
-      expect(doc.css("button[type=submit]").count { |b| b.ancestors("form").first&.at_css("input[name='wsjrdp_fin_account[short_name]']") }).to eq(1)
-      expect(doc.at_css(".fin-account-form-actions button[type=submit]")).to be_present
-      expect(doc.at_css(".fin-account-form-actions a.cancel")).to be_present
-    end
-
-    it "shows the account's form as a page of its own" do
-      get :edit, params: {id: wallet.id}
-
-      expect(response).to be_successful
-      expect(doc.at_css("form input[name='wsjrdp_fin_account[short_name]']")).to be_present
-      expect(doc.at_css("turbo-frame#bkframe-accpage-#{wallet.id}")).to be_nil
-      form = doc.at_css("input[name='wsjrdp_fin_account[short_name]']").ancestors("form").first
-      expect(form["data-turbo"]).to eq("false")
-    end
-
-    it "answers a frame request with the form in the frame, cancelling to the reading view" do
-      frame_id = "bkframe-accpage-#{wallet.id}"
-      request.headers["Turbo-Frame"] = frame_id
-      get :edit, params: {id: wallet.id}
-
-      frame = doc.at_css("turbo-frame##{frame_id}")
-      expect(frame.at_css("input[name='wsjrdp_fin_account[short_name]']")).to be_present
-      expect(frame.at_css("form")["data-turbo"]).to be_nil
-      expect(frame.at_css("a.cancel")["href"]).to eq(wsjrdp_fin_account_path(wallet))
-    end
-
-    context "with the top-up block" do
-      let(:bank_with_iban) do
-        WsjrdpFinAccount.create!(short_name: "Bank", account_identification: "DE02120300000000202051",
-          iban: "DE02120300000000202051", opening_balance_cents: 0, opening_balance_currency: "EUR",
-          opening_balance_date: Date.new(2026, 1, 1))
-      end
-
-      def top_up_inputs
-        %w[top_up_recipient_name top_up_iban top_up_bic top_up_purpose].map { |attr| doc.at_css("input[name='wsjrdp_fin_account[#{attr}]']") }
-      end
-
-      def sign_in_manager
-        sign_in(Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person)
-        # The manage tier only takes effect once picked for the session.
-        session[:max_finance_permission] = "finance_manage"
-      end
-
-      it "is editable for the manage tier on an account without an IBAN" do
-        sign_in_manager
-        get :edit, params: {id: wallet.id}
-
-        expect(response.body).to include(I18n.t("fin.accounts.top_up_hint"))
-        expect(top_up_inputs).to all(be_present)
-        expect(top_up_inputs.pluck("disabled")).to all(be_nil)
-      end
-
-      it "is disabled for the manage tier on an account with an IBAN" do
-        sign_in_manager
-        get :edit, params: {id: bank_with_iban.id}
-
-        expect(response.body).to include(I18n.t("fin.accounts.top_up_disabled_hint"))
-        expect(top_up_inputs.pluck("disabled")).to all(be_present)
-      end
-
-      it "is read-only below the manage tier on an account without an IBAN" do
-        get :edit, params: {id: wallet.id}
-
-        expect(response.body).to include(I18n.t("fin.accounts.top_up_hint"))
-        expect(top_up_inputs).to all(be_nil)
-      end
-
-      it "is not there below the manage tier on an account with an IBAN" do
-        get :edit, params: {id: bank_with_iban.id}
-
-        expect(response.body).not_to include(WsjrdpFinAccount.human_attribute_name(:top_up_bic))
-        expect(response.body).not_to include(I18n.t("fin.accounts.top_up_disabled_hint"))
-      end
-
-      it "saves the fields on an account without an IBAN" do
-        sign_in_manager
-        patch :update, params: {id: wallet.id, wsjrdp_fin_account: {top_up_recipient_name: "Verband e.V.",
-                                                                    top_up_iban: "DE16100100101111111111",
-                                                                    top_up_bic: "TESTDEFFXXX", top_up_purpose: "M000000001"}}
-
-        expect(wallet.reload).to have_attributes(top_up_recipient_name: "Verband e.V.",
-          top_up_iban: "DE16100100101111111111", top_up_bic: "TESTDEFFXXX", top_up_purpose: "M000000001")
-      end
-
-      it "does not save the fields on an account with an IBAN, whatever is sent" do
-        sign_in_manager
-        patch :update, params: {id: bank_with_iban.id, wsjrdp_fin_account: {short_name: "Neu", top_up_bic: "TESTDEFFXXX"}}
-
-        expect(bank_with_iban.reload).to have_attributes(short_name: "Neu", top_up_bic: nil)
-      end
-
-      it "does not save the fields when the same save sets an IBAN" do
-        sign_in_manager
-        patch :update, params: {id: wallet.id, wsjrdp_fin_account: {iban: "DE02120300000000202051", top_up_bic: "TESTDEFFXXX"}}
-
-        expect(wallet.reload).to have_attributes(iban: "DE02120300000000202051", top_up_bic: nil)
-      end
-
-      it "saves the fields when the same save clears the IBAN" do
-        sign_in_manager
-        patch :update, params: {id: bank_with_iban.id, wsjrdp_fin_account: {iban: "", top_up_bic: "TESTDEFFXXX"}}
-
-        expect(bank_with_iban.reload).to have_attributes(iban: nil, top_up_bic: "TESTDEFFXXX")
-      end
-    end
-
-    it "is closed to the read tier" do
-      sign_in(Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
-        group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person)
-
-      expect { get :edit, params: {id: wallet.id} }.to raise_error(CanCan::AccessDenied)
+      expect(CGI.unescape(response.location)).to include("/fin/acc/#{bank.id}?ctf=!(!(!(amt,ge,")
     end
   end
 
   describe "PATCH update" do
-    it "saves and returns to the reading page" do
-      patch :update, params: {id: wallet.id, wsjrdp_fin_account: {short_name: "Neuer Name"}}
+    let(:changes) { {short_name: "Neuer Name"} }
+
+    before { sign_in(person) }
+
+    it "saves and returns to the reading page with the detail open" do
+      patch :update, params: {id: wallet.id, wsjrdp_fin_account: changes}
 
       expect(response).to redirect_to(wsjrdp_fin_account_path(wallet, details: "open"))
       expect(wallet.reload.short_name).to eq("Neuer Name")
     end
 
+    it "lets the write tier change the names only" do
+      patch :update, params: {id: wallet.id, wsjrdp_fin_account: {short_name: "Neu", position: 7}}
+
+      expect(wallet.reload).to have_attributes(short_name: "Neu", position: wallet.position)
+    end
+
     it "shows the edit page again when the record is invalid" do
       allow_any_instance_of(WsjrdpFinAccount).to receive(:save).and_return(false)
-      patch :update, params: {id: wallet.id, wsjrdp_fin_account: {short_name: "Neu"}}
+      patch :update, params: {id: wallet.id, wsjrdp_fin_account: changes}
 
       expect(response).to have_http_status(:bad_request)
-      expect(doc.at_css("form input[name='wsjrdp_fin_account[short_name]']")).to be_present
+      expect(response).to render_template(:edit)
     end
 
-    context "from the detail's frame" do
-      let(:frame_id) { "bkframe-accpage-#{wallet.id}" }
+    context "from a frame" do
+      before { request.accept = "text/vnd.turbo-stream.html, text/html" }
 
-      before do
-        request.headers["Turbo-Frame"] = frame_id
-        request.accept = "text/vnd.turbo-stream.html, text/html"
+      def redirect_url = Nokogiri::HTML(response.body).at_css("turbo-stream[action='redirect_top']")["url"]
+
+      it "leaves the page's frame for the page with the detail open" do
+        request.headers["Turbo-Frame"] = "bkframe-accpage-#{wallet.id}"
+        patch :update, params: {id: wallet.id, wsjrdp_fin_account: changes}
+
+        expect(redirect_url).to eq(wsjrdp_fin_account_path(wallet, details: "open"))
       end
 
-      it "answers a save by leaving the frame for the page with the detail open" do
-        patch :update, params: {id: wallet.id, wsjrdp_fin_account: {short_name: "Neuer Name"}}
+      it "leaves a list row's frame for the list with the row open" do
+        request.headers["Turbo-Frame"] = "bkframe-acc-#{wallet.id}"
+        patch :update, params: {id: wallet.id, wsjrdp_fin_account: changes}
 
-        stream = doc.at_css("turbo-stream[action='redirect_top']")
-        expect(stream["url"]).to eq(wsjrdp_fin_account_path(wallet, details: "open"))
-        expect(wallet.reload.short_name).to eq("Neuer Name")
-      end
-
-      it "keeps a failed save in the frame, with its errors" do
-        wallet.errors.add(:base, "Kaputt")
-        allow_any_instance_of(WsjrdpFinAccount).to receive(:save).and_return(false)
-        patch :update, params: {id: wallet.id, wsjrdp_fin_account: {short_name: "Neu"}}
-
-        expect(response).to have_http_status(:bad_request)
-        frame = doc.at_css("turbo-frame##{frame_id}")
-        expect(frame.at_css("input[name='wsjrdp_fin_account[short_name]']")["value"]).to eq("Neu")
+        expect(redirect_url).to eq(wsjrdp_fin_accounts_path(ao: wallet.id))
       end
     end
   end
 
-  describe "POST apply" do
-    it "encodes the posted tree and redirects (PRG) back to this account" do
-      post :apply, params: {id: wallet.id, filter_json: [[["kind", "in", "MossTopUp"]]].to_json}
-      expect(response).to have_http_status(:see_other)
-      expect(CGI.unescape(response.location))
-        .to end_with("/fin/acc/#{wallet.id}?f=!(!(!(k,in,'MossTopUp')))")
-    end
+  it "closes the edit page to the audit tier" do
+    sign_in(auditor)
 
-    it "emits a blank filter param when every condition was removed" do
-      post :apply, params: {id: wallet.id, filter_json: "[]"}
-      expect(response).to have_http_status(:see_other)
-      expect(response.location).to end_with("/fin/acc/#{wallet.id}?f=")
-    end
+    expect { get :edit, params: {id: wallet.id} }.to raise_error(CanCan::AccessDenied)
   end
 
-  # A bank account: its camt transactions as an expandable table, the actions
-  # that link a person in the description cell.
-  describe "GET show of a bank account" do
-    let(:target) { people(:cmt_leader) }
-
-    let!(:bank) do
-      WsjrdpFinAccount.create!(short_name: "Vereinskonto", account_identification: "BANK-TEST",
-        opening_balance_cents: 0, opening_balance_currency: "EUR",
-        opening_balance_date: Date.new(2026, 1, 1))
+  describe "the top-up fields" do
+    let(:top_up) do
+      {top_up_recipient_name: "Verband e.V.", top_up_iban: "DE16100100101111111111", top_up_bic: "TESTDEFFXXX",
+       top_up_purpose: "M000000001"}
     end
 
-    def camt_for(description, amount:, date:, **attrs)
-      WsjrdpCamtTransaction.create!(fin_account: bank, camt_type: "CAMT053",
-        account_identification: bank.account_identification, account_servicer_reference: SecureRandom.hex(4),
-        credit_debit_indication: amount.negative? ? "DBIT" : "CRDT", signed_base_amount: amount,
-        base_currency: "EUR", value_date: date, description: description, booking_date: date, **attrs)
+    before { sign_in_manage_tier }
+
+    it "are saved on an account without an IBAN" do
+      patch :update, params: {id: wallet.id, wsjrdp_fin_account: top_up}
+
+      expect(wallet.reload).to have_attributes(top_up)
     end
 
-    let!(:camt) { camt_for("Beispielbuchung", amount: -12.34, date: Date.new(2026, 4, 2), cdtr_name: "Muster GmbH") }
-    let!(:candidate) { camt_for("Beitrag CMT #{target.id}", amount: 50, date: Date.new(2026, 5, 1)) }
+    it "are not saved on an account with an IBAN, whatever is sent" do
+      patch :update, params: {id: bank.id, wsjrdp_fin_account: {short_name: "Neu", top_up_bic: "TESTDEFFXXX"}}
 
-    it "renders the transactions as a table, newest first, with the sum and the opening balance" do
-      get :show, params: {id: bank.id}
-
-      expect(response).to be_successful
-      expect(doc.css("tr.exp-row td[data-colkey='booking_date']").map { |td| td.text.strip })
-        .to eq(%w[01.05.2026 02.04.2026])
-      # The party column is hidden by default; the amount comes last.
-      expect(doc.css("tr.exp-row").first.css("td[data-colkey]").pluck("data-colkey").first(3))
-        .to eq(%w[booking_date description signed_base_amount])
-      expect(response.body).to include("2 Kontobewegungen").and include("Eröffnungs-Saldo")
-      expect(doc.at_css("details.fin-account-summary summary").text).to include("37,66")
+      expect(bank.reload).to have_attributes(short_name: "Neu", top_up_bic: nil)
     end
 
-    it "shows the kind as a chip by default, the further columns on demand, and filters by them" do
-      camt_for("Retoure", amount: -3, date: Date.new(2026, 3, 2), return_reason: "MS03",
-        bank_transaction_code: "PMNT+IDDT+UPDD", bank_transaction_code_dk: "NRTI+109", status: "BOOK",
-        mandate_id: "MANDAT-1", endtoend_id: "E2E-1", dbtr_name: "Erika Beispiel", dbtr_iban: "DE02120300000000202051",
-        comment: "nachfragen")
-      get :show, params: {id: bank.id}
-      chips = doc.css("td[data-colkey='description'] .fin-row-chips").map { |c| c.text.squish }
-      expect(chips).to include("Buchungstag 02.03.2026 Rückläufer")
-      expect(doc.css("th .exp-sub-sorts a").map { |a| a.text.delete("⇅").strip }).to eq(%w[Valuta Gegenseite Art])
+    it "are not saved when the same save sets an IBAN" do
+      patch :update, params: {id: wallet.id, wsjrdp_fin_account: {iban: "DE02120300000000202051", top_up_bic: "X"}}
 
-      get :show, params: {id: bank.id, ctc: "vd,k,dsc,cmt,btc,dk,st,rr,rs,e2e,mdt,amt",
-                          ctf: "!(!(!(rk,in,direct_debit)))"}
-      row = doc.at_css("tr.exp-row")
-      cell = ->(key) { row.at_css("td[data-colkey='#{key}']").text.squish }
-      expect(%w[kind comment bank_transaction_code bank_transaction_code_dk status return_state endtoend_id mandate_id]
-        .map(&cell)).to eq(["Rückläufer", "nachfragen", "PMNT+IDDT+UPDD", "NRTI+109", "BOOK", "In Überprüfung",
-          "E2E-1", "MANDAT-1"])
-      expect(cell.call("return_reason")).to start_with("MS03")
+      expect(wallet.reload).to have_attributes(iban: "DE02120300000000202051", top_up_bic: nil)
+    end
 
-      {"!(!(!(di,ct,'DE0212')))" => 1, "!(!(!(dn,ct,Erika)))" => 1, "!(!(!(rs,in,in_review)))" => 1,
-       "!(!(!(rr,in,MS03)))" => 1, "!(!(!(mdt,ct,MANDAT)))" => 1, "!(!(!(q,ct,nachfragen)))" => 1,
-       "!(!(!(qp,ct,Muster)))" => 1, "!(!(!(btc,ct,UPDD)))" => 1}.each do |filter, count|
-        get :show, params: {id: bank.id, ctf: filter}
-        expect(doc.css("tr.exp-row").size).to eq(count), filter
+    it "are saved when the same save clears the IBAN" do
+      patch :update, params: {id: bank.id, wsjrdp_fin_account: {iban: "", top_up_bic: "TESTDEFFXXX"}}
+
+      expect(bank.reload).to have_attributes(iban: nil, top_up_bic: "TESTDEFFXXX")
+    end
+
+    context "on the edit page" do
+      render_views
+
+      def inputs = Nokogiri::HTML(response.body).css("input[name^='wsjrdp_fin_account[top_up_']")
+
+      it "are editable on an account without an IBAN" do
+        get :edit, params: {id: wallet.id}
+
+        expect(inputs.size).to eq(4)
+        expect(inputs.pluck("disabled")).to all(be_nil)
       end
-    end
 
-    it "shows the value date as a chip while hidden, where it differs from the booking day" do
-      camt_for("Spät gebucht", amount: 1, date: Date.new(2026, 3, 5), booking_date: Date.new(2026, 3, 9))
-      get :show, params: {id: bank.id}
-      chips = doc.css("td[data-colkey='description'] .fin-row-chips").map { |c| c.text.squish }
-      expect(chips.grep(/Valuta/)).to eq(["Buchungstag 09.03.2026 Valuta 05.03.2026 Bank"])
-      # The booking day's column is shown: its chip is there for a phone alone.
-      expect(doc.css(".fin-row-chips > .d-md-none").map { |c| c.text.squish }).to include("Buchungstag 09.03.2026")
-    end
+      it "are disabled on an account with an IBAN" do
+        get :edit, params: {id: bank.id}
 
-    it "offers the bank kinds as a quick choice and narrows the rows to them" do
-      returned = camt_for("Retoure", amount: -3, date: Date.new(2026, 3, 2), return_reason: "MS03",
-        bank_transaction_code: "PMNT+IDDT+UPDD")
-      get :show, params: {id: bank.id}
-      expect(doc.css(".flt-segment > a").map { |a| a.text.strip })
-        .to eq(["", "Bank", "Rückläufer", "Gebühren/Zinsen", "Umbuchung"])
-
-      get :show, params: {id: bank.id, ctu: "kind.bank_return"}
-      expect(doc.css("tr.exp-row td[data-colkey='description']").map { |td| td.text }.join).to include("Retoure")
-      expect(doc.css("tr.exp-row").size).to eq(1)
-      expect(response.body).to include(wsjrdp_camt_transaction_path(returned))
-    end
-
-    it "names the party in the description while its column is hidden, but not a batch's label" do
-      camt_for("Sammler", amount: -5, date: Date.new(2026, 3, 1), bank_transaction_code: "PMNT+ICDT+ESCT")
-      description = ->(text) { doc.css("tr.exp-row td[data-colkey='description']").find { |td| td.text.include?(text) }.text }
-
-      get :show, params: {id: bank.id}
-      expect(description.call("Beispielbuchung")).to include("Gegenseite:").and include("Muster GmbH")
-      expect(description.call("Sammler")).not_to include("Gegenseite:")
-
-      get :show, params: {id: bank.id, ctc: "vd,pty,dsc,amt"}
-      expect(doc.css("tr.exp-row td[data-colkey='party']").map { |td| td.text.strip }).to include("Muster GmbH")
-      expect(description.call("Beispielbuchung")).not_to include("Gegenseite:")
-    end
-
-    it "opens a row's detail lazily, with the page link as a column" do
-      get :show, params: {id: bank.id}
-
-      frame = doc.at_css("turbo-frame#bkframe-ctx-#{camt.id}")
-      expect(frame["src"]).to start_with(wsjrdp_camt_transaction_path(camt))
-      expect(doc.css("td a[href='#{wsjrdp_camt_transaction_path(camt)}']")).to be_present
-      expect(doc.at_css(".exp-detail-linkbar-aside .exp-edit-toggle")).to be_present
-    end
-
-    it "offers to link the person the description names" do
-      get :show, params: {id: bank.id}
-
-      expect(doc.css("a, button, form").filter_map { |e| e["href"] || e["action"] })
-        .to include("/fin/tx/#{candidate.id}/link_subject/#{target.id}/Person")
-    end
-
-    it "filters by the URL and applies the builder's filter back to the account" do
-      get :show, params: {id: bank.id, ctf: "!(!(!(amt,ge,0)))"}
-      expect(doc.css("tr.exp-row").size).to eq(1)
-
-      post :apply, params: {id: bank.id, filter_json: [[["amount", "gte", "0"]]].to_json}
-      expect(CGI.unescape(response.location)).to include("/fin/acc/#{bank.id}?ctf=!(!(!(amt,ge,")
+        expect(inputs.size).to eq(4)
+        expect(inputs.pluck("disabled")).to all(be_present)
+      end
     end
   end
 end

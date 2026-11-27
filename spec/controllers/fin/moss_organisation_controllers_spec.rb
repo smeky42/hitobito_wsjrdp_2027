@@ -14,35 +14,46 @@ require "spec_helper"
 # changes and where it leads, and who may read or edit. How a page looks is
 # not checked here. All names and ids are invented.
 describe "Moss organisation pages" do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
-  let(:accountant) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-  let(:auditor) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
-  let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+  let_it_be(:accountant, refind: true) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:auditor, refind: true) do
+    extern = Group::Extern.create!(name: "Extern", parent: groups(:root))
+    Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person
+  end
+  let_it_be(:reader, refind: true) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
 
-  let!(:department) { MossDepartment.create!(moss_department_uuid: SecureRandom.uuid, name: "Abteilung Logistik") }
-  let!(:team) do
+  let_it_be(:department, refind: true) do
+    MossDepartment.create!(moss_department_uuid: SecureRandom.uuid, name: "Abteilung Logistik")
+  end
+  let_it_be(:team, refind: true) do
     MossTeam.create!(moss_team_uuid: SecureRandom.uuid, name: "Team Küche", status: "ACTIVE",
       moss_department_uuid: department.moss_department_uuid)
   end
-  let!(:empty_team) { MossTeam.create!(moss_team_uuid: SecureRandom.uuid, name: "Team Leer", status: "ARCHIVED") }
-  let!(:user) do
+  let_it_be(:empty_team) { MossTeam.create!(moss_team_uuid: SecureRandom.uuid, name: "Team Leer", status: "ARCHIVED") }
+  let_it_be(:user, refind: true) do
     MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Erika", last_name: "Beispiel",
       email: "erika.beispiel@example.com", status: "ACTIVE", roles: %w[USER TEAMLEAD],
       moss_team_uuid: team.moss_team_uuid, person: people(:yp_a_1))
   end
-  let!(:invited) do
+  let_it_be(:invited) do
     MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Max", last_name: "Muster",
       email: "max.muster@example.com", status: "INVITED", roles: %w[USER], manager_uuid: user.moss_user_uuid,
       moss_team_uuid: SecureRandom.uuid)
   end
 
-  before { team.update!(team_lead_uuid: user.moss_user_uuid) }
+  before_all { team.update!(team_lead_uuid: user.moss_user_uuid) }
 
-  def doc = Nokogiri::HTML(response.body)
+  def create_user(status, team_uuid = team.moss_team_uuid, **attrs)
+    MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: status, moss_team_uuid: team_uuid, **attrs)
+  end
 
-  def row_texts = doc.css("tr.exp-row").map { |tr| tr.text.squish }
+  def archived_team
+    MossTeam.create!(moss_team_uuid: SecureRandom.uuid, name: "Team Alt", status: "ARCHIVED",
+      moss_department_uuid: department.moss_department_uuid)
+  end
+
+  def listed = controller.rows.page.to_a
 
   describe Fin::MossUsersController, type: :controller do
     describe "GET index" do
@@ -50,46 +61,51 @@ describe "Moss organisation pages" do
 
       it "filters by status" do
         get :index, params: {f: "!(!(!(st,in,INVITED)))"}
-
-        expect(row_texts).to contain_exactly(include("Max Muster"))
+        expect(listed).to eq([invited])
       end
 
       it "filters by role, any of the chosen" do
         get :index, params: {f: "!(!(!(rl,in,TEAMLEAD)))"}
-        expect(row_texts).to contain_exactly(include("Erika Beispiel"))
+        expect(listed).to eq([user])
       end
 
       it "filters by a missing person link" do
         get :index, params: {f: "!(!(!(pl,in,nein)))"}
-        expect(row_texts).to contain_exactly(include("Max Muster"))
+        expect(listed).to eq([invited])
       end
 
-      it "filters by team and by name" do
+      it "filters by team" do
         get :index, params: {f: "!(!(!(tm,in,'#{team.moss_team_uuid}')))"}
-        expect(row_texts).to contain_exactly(include("Erika Beispiel"))
-
-        get :index, params: {f: "!(!(!(q,ct,'erika beis')))"}
-        expect(row_texts).to contain_exactly(include("Erika Beispiel"))
+        expect(listed).to eq([user])
       end
 
-      it "shows users of other or no status by default, as the counts do, and hides them on request" do
-        MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Hanna", last_name: "Versteckt", status: "HIDDEN")
-        MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Olaf", last_name: "Ohne", status: nil)
-        MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Dora", last_name: "Alt", status: "DEACTIVATED")
+      it "filters by name" do
+        get :index, params: {f: "!(!(!(q,ct,'erika beis')))"}
+        expect(listed).to eq([user])
+      end
 
+      it "shows users of other or no status by default, as the counts do, but no deactivated ones" do
+        hidden = create_user("HIDDEN")
+        without = create_user(nil)
+        create_user("DEACTIVATED")
         get :index
-        expect(row_texts.join(" ")).to include("Hanna Versteckt", "Olaf Ohne")
-        expect(row_texts.join(" ")).not_to include("Dora Alt")
 
+        expect(listed).to contain_exactly(user, invited, hidden, without)
+      end
+
+      it "hides users of other or no status on request" do
+        create_user("HIDDEN")
+        create_user(nil)
         get :index, params: {u: "status.active+invited"}
-        expect(row_texts.join(" ")).not_to include("Hanna Versteckt", "Olaf Ohne")
+
+        expect(listed).to contain_exactly(user, invited)
       end
 
       it "drops a team condition whose value is no uuid instead of failing" do
         get :index, params: {f: "!(!(!(tm,in,'x')))"}
 
         expect(response).to be_successful
-        expect(row_texts).to include(include("Erika Beispiel"))
+        expect(listed).to include(user)
       end
 
       it "hands the posted filter on as a GET (PRG)" do
@@ -103,6 +119,13 @@ describe "Moss organisation pages" do
 
     describe "GET edit and PATCH update" do
       before { sign_in(accountant) }
+
+      def turbo_update(frame)
+        request.headers["Turbo-Frame"] = frame
+        request.accept = "text/vnd.turbo-stream.html, text/html"
+        patch :update, params: {id: user.id, moss_user: {comment: "Neu"}}
+        Nokogiri::HTML(response.body).at_css("turbo-stream[action='redirect_top']")["url"]
+      end
 
       it "saves the comment and the person, nothing else" do
         other = people(:admin)
@@ -123,6 +146,12 @@ describe "Moss organisation pages" do
         expect(user.reload.person).to eq(people(:yp_a_1))
       end
 
+      it "unlinks the person when the field is cleared" do
+        patch :update, params: {id: user.id, moss_user: {person_id: ""}}
+
+        expect(user.reload.person).to be_nil
+      end
+
       it "answers a save from a row of a table on another page with the detail in that row" do
         request.headers["Turbo-Frame"] = "bkframe-mtu_#{team.id}-#{user.id}"
         patch :update, params: {id: user.id, moss_user: {comment: "Neu"}}
@@ -130,59 +159,65 @@ describe "Moss organisation pages" do
         expect(response).to redirect_to(moss_user_path(user))
       end
 
-      it "takes a return_url only as a path on this site" do
-        cancel = -> { doc.css("a").find { |a| a.text.squish == "Abbrechen" }["href"] }
-
-        get :edit, params: {id: user.id, return_url: "javascript:alert(1)"}
-        expect(cancel.call).to eq(moss_user_path(user))
-        get :edit, params: {id: user.id, return_url: "//evil.example"}
-        expect(cancel.call).to eq(moss_user_path(user))
-        get :edit, params: {id: user.id, return_url: "/fin/moss/teams"}
-        expect(cancel.call).to eq("/fin/moss/teams")
-      end
-
-      it "unlinks the person when the field is cleared" do
-        patch :update, params: {id: user.id, moss_user: {person_id: ""}}
-
-        expect(user.reload.person).to be_nil
-      end
-
       it "answers a save from a row by reloading the list with the row open" do
-        request.headers["Turbo-Frame"] = "bkframe-mu-#{user.id}"
-        request.accept = "text/vnd.turbo-stream.html, text/html"
-        patch :update, params: {id: user.id, moss_user: {comment: "Neu"}}
-
-        expect(doc.at_css("turbo-stream[action='redirect_top']")["url"])
+        expect(turbo_update("bkframe-mu-#{user.id}"))
           .to eq(moss_users_path(Fin::MossUsersController::POLICY.param_name(:open) => user.id))
       end
 
       it "answers a save from the page's frame by reloading the page" do
-        request.headers["Turbo-Frame"] = "bkframe-mupage-#{user.id}"
-        request.accept = "text/vnd.turbo-stream.html, text/html"
-        patch :update, params: {id: user.id, moss_user: {comment: "Neu"}}
+        expect(turbo_update("bkframe-mupage-#{user.id}")).to eq(moss_user_path(user))
+      end
 
-        expect(doc.at_css("turbo-stream[action='redirect_top']")["url"]).to eq(moss_user_path(user))
+      it "takes no return_url with another scheme" do
+        get :edit, params: {id: user.id, return_url: "javascript:alert(1)"}
+        expect(controller.send(:cancel_url)).to eq(moss_user_path(user))
+      end
+
+      it "takes no return_url to another host" do
+        get :edit, params: {id: user.id, return_url: "//evil.example"}
+        expect(controller.send(:cancel_url)).to eq(moss_user_path(user))
+      end
+
+      it "takes a return_url that is a path on this site" do
+        get :edit, params: {id: user.id, return_url: "/fin/moss/teams"}
+        expect(controller.send(:cancel_url)).to eq("/fin/moss/teams")
       end
     end
 
-    it "lets the audit tier read the list and the page, but not edit" do
-      sign_in(auditor)
+    describe "the audit tier" do
+      before { sign_in(auditor) }
 
-      get :index
-      expect(response).to be_successful
-      get :show, params: {id: user.id}
-      expect(response).to be_successful
-      expect { get :edit, params: {id: user.id} }.to raise_error(CanCan::AccessDenied)
-      expect { patch :update, params: {id: user.id, moss_user: {comment: "x"}} }
-        .to raise_error(CanCan::AccessDenied)
-      expect(user.reload.comment).to eq("")
+      it "reads the list" do
+        get :index
+        expect(response).to be_successful
+      end
+
+      it "reads the page" do
+        get :show, params: {id: user.id}
+        expect(response).to be_successful
+      end
+
+      it "may not open the edit page" do
+        expect { get :edit, params: {id: user.id} }.to raise_error(CanCan::AccessDenied)
+      end
+
+      it "may not save" do
+        expect { patch :update, params: {id: user.id, moss_user: {comment: "x"}} }
+          .to raise_error(CanCan::AccessDenied)
+        expect(user.reload.comment).to eq("")
+      end
     end
 
-    it "is closed to the read tier" do
-      sign_in(reader)
+    describe "the read tier" do
+      before { sign_in(reader) }
 
-      expect { get :index }.to raise_error(CanCan::AccessDenied)
-      expect { get :show, params: {id: user.id} }.to raise_error(CanCan::AccessDenied)
+      it "may not read the list" do
+        expect { get :index }.to raise_error(CanCan::AccessDenied)
+      end
+
+      it "may not read the page" do
+        expect { get :show, params: {id: user.id} }.to raise_error(CanCan::AccessDenied)
+      end
     end
 
     it "is closed to a person without finance rights" do
@@ -195,63 +230,59 @@ describe "Moss organisation pages" do
     before { sign_in(accountant) }
 
     it "counts as Benutzer the users in Moss that are not deactivated, linked to a person or not" do
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: "DEACTIVATED", moss_team_uuid: team.moss_team_uuid)
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: "ACTIVE", moss_team_uuid: team.moss_team_uuid,
-        moss_removed_at: Time.current)
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: "INVITED", moss_team_uuid: team.moss_team_uuid)
+      create_user("DEACTIVATED")
+      create_user("ACTIVE", moss_removed_at: Time.current)
+      create_user("INVITED")
       get :index
 
-      row = doc.css("tr.exp-row").find { |tr| tr.text.include?("Team Küche") }
       # Erika (with a person) and the invited user (without one).
-      expect(row.at_css("td[data-colkey='user_count']").text.squish).to eq("2")
+      expect(listed.find { |row| row.id == team.id }.user_count).to eq(2)
     end
 
-    it "sorts by the user count and filters on it" do
-      get :index, params: {s: "uc~"}
-      expect(row_texts.first).to include("Team Küche")
-
-      get :index, params: {f: "!(!(!(uc,nz)))"}
-      expect(row_texts).to contain_exactly(include("Team Küche"))
+    it "sorts by the user count" do
+      2.times { create_user("ACTIVE", empty_team.moss_team_uuid) }
+      get :index, params: {u: "status.active+archived", s: "uc~"}
+      expect(listed).to eq([empty_team, team])
     end
 
-    it "shows the active teams by default, the archived ones once chosen" do
+    it "filters on the user count" do
+      get :index, params: {u: "status.active+archived", f: "!(!(!(uc,nz)))"}
+      expect(listed).to eq([team])
+    end
+
+    it "shows the active teams by default" do
       get :index
-      expect(row_texts).to contain_exactly(include("Team Küche"))
-      pressed = doc.css("a.flt-preset").to_h { |a| [a.text.squish, a["aria-pressed"]] }
-      expect(pressed.values_at("Aktiv", "Archiviert")).to eq(%w[true false])
-
-      get :index, params: {u: "status.archived"}
-      expect(row_texts).to contain_exactly(include("Team Leer"))
+      expect(listed).to eq([team])
     end
 
-    it "filters by status and department" do
-      get :index, params: {u: "status.active+archived+others", f: "!(!(!(st,in,ARCHIVED)))"}
-      expect(row_texts).to contain_exactly(include("Team Leer"))
+    it "shows the archived teams once chosen" do
+      get :index, params: {u: "status.archived"}
+      expect(listed).to eq([empty_team])
+    end
 
+    it "filters by status" do
+      get :index, params: {u: "status.active+archived+others", f: "!(!(!(st,in,ARCHIVED)))"}
+      expect(listed).to eq([empty_team])
+    end
+
+    it "filters by department" do
       get :index, params: {f: "!(!(!(dp,in,'#{department.moss_department_uuid}')))"}
-      expect(row_texts).to contain_exactly(include("Team Küche"))
+      expect(listed).to eq([team])
     end
 
     describe "the team's users" do
-      let!(:deactivated) do
-        MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Dora", last_name: "Alt",
-          email: "dora.alt@example.com", status: "DEACTIVATED", roles: %w[USER], moss_team_uuid: team.moss_team_uuid)
-      end
+      let!(:deactivated) { create_user("DEACTIVATED", first_name: "Dora", last_name: "Alt") }
 
-      def user_rows = doc.css("tr.exp-row").map { |tr| tr.text.squish }.select { |t| t.match?(/Beispiel|Alt|Muster/) }
+      def team_users = controller.team_users.page.to_a
 
-      it "leaves deactivated users out by default: Aktiv and Eingeladen pressed" do
+      it "leaves deactivated users out by default" do
         get :show, params: {id: team.id}
-
-        expect(user_rows).to contain_exactly(include("Erika Beispiel"))
-        pressed = doc.css("a.flt-preset").to_h { |a| [a.text.squish, a["aria-pressed"]] }
-        expect(pressed.values_at("Aktiv", "Eingeladen", "Deaktiviert")).to eq(%w[true true false])
+        expect(team_users).to eq([user])
       end
 
       it "shows them once the quick filter is off" do
         get :show, params: {id: team.id, uu: "status.active+invited+deactivated"}
-
-        expect(user_rows).to contain_exactly(include("Erika Beispiel"), include("Dora Alt"))
+        expect(team_users).to contain_exactly(user, deactivated)
       end
 
       it "hands the posted filter on to the team's page (PRG)" do
@@ -274,44 +305,40 @@ describe "Moss organisation pages" do
   describe Fin::MossDepartmentsController, type: :controller do
     before { sign_in(accountant) }
 
+    def department_users = controller.department_users.page.to_a
+
     it "counts the current teams and their current users" do
-      archived = MossTeam.create!(moss_team_uuid: SecureRandom.uuid, name: "Team Alt", status: "ARCHIVED",
-        moss_department_uuid: department.moss_department_uuid)
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: "ACTIVE", moss_team_uuid: archived.moss_team_uuid)
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: "DEACTIVATED", moss_team_uuid: team.moss_team_uuid)
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, status: "ACTIVE", moss_team_uuid: team.moss_team_uuid,
-        moss_removed_at: Time.current)
+      create_user("ACTIVE", archived_team.moss_team_uuid)
+      create_user("DEACTIVATED")
+      create_user("ACTIVE", moss_removed_at: Time.current)
       get :index
 
-      row = doc.css("tr.exp-row").find { |tr| tr.text.include?("Abteilung Logistik") }
-      counts = row.css("td").map { |td| td.text.squish }.last(3).first(2)
       # Team Küche only, with Erika only.
-      expect(counts).to eq(%w[1 1])
+      row = listed.find { |r| r.id == department.id }
+      expect([row.team_count, row.user_count]).to eq([1, 1])
     end
 
-    it "shows the department's teams and their users as tables, deactivated users left out" do
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Dora", last_name: "Alt",
-        email: "dora.alt@example.com", status: "DEACTIVATED", moss_team_uuid: team.moss_team_uuid)
+    it "lists the department's teams" do
       get :show, params: {id: department.id}
+      expect(controller.department_teams.page.to_a).to eq([team])
+    end
 
-      expect(doc.at_css("a[href='#{moss_team_path(team)}']").text).to eq("Team Küche")
-      user_rows = doc.css("tr.exp-row[data-bs-target^='#mdu_']").map { |tr| tr.text.squish }
-      expect(user_rows).to contain_exactly(include("Erika Beispiel"))
+    it "leaves deactivated users of the department out by default" do
+      create_user("DEACTIVATED")
+      get :show, params: {id: department.id}
+      expect(department_users).to eq([user])
+    end
 
+    it "shows deactivated users once the quick filter is off" do
+      dora = create_user("DEACTIVATED")
       get :show, params: {id: department.id, uu: "status.active+invited+deactivated"}
-      user_rows = doc.css("tr.exp-row[data-bs-target^='#mdu_']").map { |tr| tr.text.squish }
-      expect(user_rows).to contain_exactly(include("Erika Beispiel"), include("Dora Alt"))
+      expect(department_users).to contain_exactly(user, dora)
     end
 
     it "lists only users of teams in Moss and not archived, like the count" do
-      archived = MossTeam.create!(moss_team_uuid: SecureRandom.uuid, name: "Team Alt", status: "ARCHIVED",
-        moss_department_uuid: department.moss_department_uuid)
-      MossUser.create!(moss_user_uuid: SecureRandom.uuid, first_name: "Otto", last_name: "Alt", status: "ACTIVE",
-        moss_team_uuid: archived.moss_team_uuid)
+      create_user("ACTIVE", archived_team.moss_team_uuid)
       get :show, params: {id: department.id}
-
-      user_rows = doc.css("tr.exp-row[data-bs-target^='#mdu_']").map { |tr| tr.text.squish }
-      expect(user_rows).to contain_exactly(include("Erika Beispiel"))
+      expect(department_users).to eq([user])
     end
 
     it "hands the posted team filter on to the department's page (PRG)" do

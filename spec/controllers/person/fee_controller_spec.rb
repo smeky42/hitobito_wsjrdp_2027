@@ -10,8 +10,6 @@
 require "spec_helper"
 
 describe Person::FeeController do
-  render_views
-
   # A migrated database holds a payment plan per role, a schema-loaded one none.
   def ensure_payment_plan(person)
     WsjrdpPaymentPlan.find_or_create_by!(wsjrdp_role: person.wsjrdp_role, single_payment: false) do |plan|
@@ -19,136 +17,78 @@ describe Person::FeeController do
     end
   end
 
+  before_all(setup_fixtures: true) { ensure_payment_plan(people(:yp_a_1)) }
+
+  let_it_be(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let(:yp) { people(:yp_a_1) }
+
   # Only the person themselves may edit a person who is in no layer.
-  it "renders a person without any role in the root group" do
+  it "shows a person without any role in the root group" do
     person = Fabricate(:person)
-    expect(person.primary_group).to be_nil
     ensure_payment_plan(person)
     sign_in(person)
 
     get :show, params: {person_id: person.id}
+
     expect(response).to be_successful
     expect(assigns(:group)).to eq(Group.root)
   end
 
-  it "uses the group of the URL, without one the primary group" do
-    yp = people(:yp_a_1)
-    ensure_payment_plan(yp)
+  it "uses the group of the URL" do
     sign_in(people(:admin))
 
     get :show, params: {group_id: groups(:ist_a).id, id: yp.id}
+
     expect(assigns(:group)).to eq(groups(:ist_a))
+  end
+
+  it "uses the primary group without a group in the URL" do
+    sign_in(people(:admin))
 
     get :show, params: {person_id: yp.id}
+
     expect(assigns(:group)).to eq(yp.primary_group)
   end
 
-  describe "the bank account" do
-    let(:yp) { people(:yp_a_1) }
-    let(:auditor) do
-      Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
-        group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person
-    end
-
-    before do
-      ensure_payment_plan(yp)
-      yp.update_columns(sepa_name: "Erika Mustermann", sepa_iban: "DE02120300000000202051",
-        sepa_bic: "BYLADEM1001", status: "printed")
-    end
-
-    [:yp, :auditor].each do |viewer|
-      it "shows the account holder, IBAN, BIC and mandate to #{viewer}" do
-        sign_in(send(viewer))
-
-        get :show, params: {person_id: yp.id}
-
-        section = Capybara.string(response.body).find("section.bank-account")
-        expect(section).to have_text("Erika Mustermann")
-          .and have_text("BYLADEM1001")
-          .and have_text(yp.sepa_mandate_id)
-        expect(section.text.delete(" ")).to include("DE02120300000000202051")
-        expect(section).to have_css("a.sepa-account-change[href^='mailto:finanzen@worldscoutjamboree.de?']")
-      end
-    end
-
-    context "for the finance tier" do
-      before { sign_in(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person) }
-
-      it "offers the SEPA mandate once it can be made" do
-        yp.update_columns(birthday: Date.new(2010, 5, 1), town: "Musterstadt", sepa_address: "Musterstraße 1",
-          sepa_mandate_date: Date.new(2025, 9, 1))
-
-        get :show, params: {person_id: yp.id}
-
-        section = Capybara.string(response.body).find("section.bank-account")
-        expect(section).to have_link(href: mandate_person_bank_account_path(yp))
-        expect(section).to have_no_css(".sepa-mandate-missing")
-      end
-
-      it "disables the SEPA mandate and names what is missing" do
-        yp.update_columns(birthday: nil, town: nil, sepa_mandate_date: nil)
-
-        get :show, params: {person_id: yp.id}
-
-        section = Capybara.string(response.body).find("section.bank-account")
-        expect(section).to have_no_link(href: mandate_person_bank_account_path(yp))
-        expect(section).to have_css("a.disabled", text: I18n.t("people.sepa_account.mandate_view"))
-        expect(section.find(".sepa-mandate-missing")).to have_text(Person.human_attribute_name(:birthday))
-          .and have_text(Person.human_attribute_name(:town))
-          .and have_text(Person.human_attribute_name(:sepa_mandate_date))
-      end
-    end
-  end
-
   describe "the statement" do
-    let(:yp) { people(:yp_a_1) }
-
-    before { ensure_payment_plan(yp) }
-
-    it "renders the pdf for an administrator" do
+    it "answers the PDF inline" do
       sign_in(people(:admin))
 
       get :statement, params: {person_id: yp.id}
 
-      expect(response).to be_successful
       expect(response.media_type).to eq("application/pdf")
       expect(response.body).to start_with("%PDF")
-      expect(response.headers["Content-Disposition"]).to start_with("inline")
-      expect(response.headers["Content-Disposition"]).to include("Beitragszahlungen")
+      expect(response.headers["Content-Disposition"]).to start_with("inline").and include("Beitragszahlungen")
     end
 
-    it "renders the pdf for the person themselves" do
+    it "is the person's own" do
+      allow_any_instance_of(Wsjrdp2027::FeeStatement).to receive(:to_pdf).and_return("%PDF-1.4\n")
       sign_in(yp)
 
       get :statement, params: {person_id: yp.id}
 
       expect(response).to be_successful
-      expect(response.body).to start_with("%PDF")
     end
 
-    it "refuses it to a leader of another unit" do
+    it "is refused to a leader of another unit" do
       sign_in(people(:ul_b_1))
 
       expect { get :statement, params: {person_id: yp.id} }.to raise_error(CanCan::AccessDenied)
     end
   end
 
-  it "offers the finance write tier the Rücklastschriften button" do
-    person = people(:yp_a_1)
-    ensure_payment_plan(person)
-    sign_in(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person)
+  describe "the page" do
+    render_views
 
-    get :show, params: {person_id: person.id}
-    expect(response).to be_successful
-    expect(response.body).to include(edit_person_debit_return_path(person))
-  end
-
-  describe "the Ratenplan section" do
-    let(:yp) { people(:yp_a_1) }
-    let(:finance) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+    let_it_be(:auditor) do
+      Fabricate(Group::Extern::FinanceAuditor.name.to_sym,
+        group: Group::Extern.create!(name: "Extern", parent: groups(:root))).person
+    end
 
     before do
-      ensure_payment_plan(yp)
+      yp.update_columns(sepa_name: "Erika Mustermann", sepa_iban: "DE02120300000000202051",
+        sepa_bic: "BYLADEM1001", status: "printed", birthday: Date.new(2010, 5, 1), town: "Musterstadt",
+        sepa_address: "Musterstraße 1", sepa_mandate_date: Date.new(2025, 9, 1))
       Wsj27RdpFeeRule.create!(people_id: yp.id, status: "deleted", activated_at: 3.days.ago, deleted_at: 1.day.ago,
         custom_installments_starting_year: 2026, custom_installments_cents: [0, 5_000],
         custom_installments_issue: "HELP-10", deleted_by: finance)
@@ -160,57 +100,6 @@ describe Person::FeeController do
         custom_installments_starting_year: 2026, custom_installments_cents: [0, 0, 7_000],
         custom_installments_issue: "HELP-12", custom_installments_comment: "Vereinbarung geplant")
       yp.update!(Wsjrdp2027::ParticipationFee.person_installments_attrs(active))
-    end
-
-    def page_as(viewer)
-      sign_in(viewer)
-      get :show, params: {person_id: yp.id}
-      expect(response).to be_successful
-      response.body
-    end
-
-    def section(body) = Nokogiri::HTML(body).at_css("section.installments")
-
-    it "shows the person themselves the section without issues, plans, history or buttons" do
-      html = section(page_as(yp))
-
-      expect(html).to be_present
-      expect(html.text).not_to include("HELP-11")
-      expect(html.text).not_to include("HELP-12")
-      expect(html.text).not_to include("HELP-10")
-      expect(html.text).not_to include("Vereinbarung")
-      expect(html.to_html).not_to include(edit_person_installments_path(yp))
-    end
-
-    it "shows a CMT leader the issue, the planned plan and the history, without comments or buttons" do
-      html = section(page_as(Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person))
-
-      expect(html.text).to include("HELP-11").and include("HELP-12").and include("HELP-10")
-      expect(html.text).not_to include("Vereinbarung")
-      expect(html.to_html).not_to include(edit_person_installments_path(yp))
-    end
-
-    it "carries the anchors the status page links to" do
-      doc = Nokogiri::HTML(page_as(finance))
-
-      expect(doc.at_css("section#payment_plan_#{yp.id}.installments")).to be_present
-      expect(doc.at_css("section#total_fee_#{yp.id}.fee-reduction")).to be_present
-    end
-
-    it "shows finance the comments and the buttons" do
-      html = section(page_as(finance))
-
-      expect(html.text).to include("Vereinbarung aktiv").and include("Vereinbarung geplant")
-      expect(html.to_html).to include(activate_person_installments_path(yp, context: "person"))
-      expect(html.to_html).to include(ERB::Util.html_escape(edit_person_installments_path(yp, mode: "edit", context: "person")))
-    end
-  end
-
-  describe "the Beitragshöhe section" do
-    let(:yp) { people(:yp_a_1) }
-
-    before do
-      ensure_payment_plan(yp)
       yp.update!(wsjrdp_total_fee_reduction: 250, wsjrdp_total_fee_reduction_hint: "Härtefall",
         wsjrdp_total_fee_reduction_issue: "HELP-123", wsjrdp_total_fee_reduction_comment: "Nachweis liegt vor",
         planned_total_fee_reduction: "400", planned_total_fee_reduction_comment: "Erhöhung")
@@ -219,35 +108,85 @@ describe Person::FeeController do
     def page_as(viewer)
       sign_in(viewer)
       get :show, params: {person_id: yp.id}
-      expect(response).to be_successful
-      response.body
+      Nokogiri::HTML(response.body)
     end
 
-    def section(body) = Nokogiri::HTML(body).at_css("section.fee-reduction")
+    def bank_account(doc) = doc.at_css("section.bank-account")
 
-    it "is not shown to the person themselves or their unit leader" do
-      expect(section(page_as(yp))).to be_nil
-      expect(section(page_as(people(:ul_a_1)))).to be_nil
+    def installments(doc) = doc.at_css("section.installments")
+
+    def fee_reduction(doc) = doc.at_css("section.fee-reduction")
+
+    def expect_bank_account(doc)
+      html = bank_account(doc)
+      expect(html.text).to include("Erika Mustermann", "BYLADEM1001", yp.sepa_mandate_id)
+      expect(html.text.delete(" ")).to include("DE02120300000000202051")
+      expect(html.at_css("a.sepa-account-change[href^='mailto:finanzen@worldscoutjamboree.de?']")).to be_present
     end
 
-    it "shows the reduction and the plan to a CMT leader, without comments or buttons" do
-      html = section(page_as(Fabricate(Group::Root::Leader.name.to_sym, group: groups(:root)).person))
+    it "shows the person themselves the bank account, the Ratenplan without issues, plans, history or " \
+       "buttons, and no Beitragshöhe" do
+      doc = page_as(yp)
 
-      expect(html.text).to include("Härtefall").and include("HELP-123").and include("Geplant: Reduktion 400")
-      expect(html.text).not_to include("Nachweis liegt vor")
-      expect(html.text).not_to include("Erhöhung")
-      expect(html.to_html).not_to include(activate_person_fee_reduction_path(yp))
-      expect(html.to_html).not_to include(edit_person_fee_reduction_path(yp))
+      aggregate_failures do
+        expect_bank_account(doc)
+        expect(installments(doc).text).not_to include("HELP-11", "HELP-12", "HELP-10", "Vereinbarung")
+        expect(installments(doc).to_html).not_to include(edit_person_installments_path(yp))
+        expect(fee_reduction(doc)).to be_nil
+      end
     end
 
-    it "shows comments and the plan's buttons to finance, and comes after the installments" do
-      body = page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person)
-      html = section(body)
+    it "shows the auditor the bank account" do
+      expect_bank_account(page_as(auditor))
+    end
 
-      expect(html.text).to include("Nachweis liegt vor").and include("Erhöhung")
-      expect(html.to_html).to include(activate_person_fee_reduction_path(yp))
-        .and include(discard_person_fee_reduction_path(yp))
-      expect(body.index("Ratenplan")).to be < body.index("Beitragshöhe")
+    it "hides the Beitragshöhe from the unit leader" do
+      expect(fee_reduction(page_as(people(:ul_a_1)))).to be_nil
+    end
+
+    it "shows a CMT leader the issues, plans and history, without comments or buttons" do
+      doc = page_as(people(:cmt_leader))
+
+      aggregate_failures do
+        expect(installments(doc).text).to include("HELP-11", "HELP-12", "HELP-10")
+        expect(installments(doc).text).not_to include("Vereinbarung")
+        expect(installments(doc).to_html).not_to include(edit_person_installments_path(yp))
+        expect(fee_reduction(doc).text).to include("Härtefall", "HELP-123", "Geplant: Reduktion 400")
+        expect(fee_reduction(doc).text).not_to include("Nachweis liegt vor", "Erhöhung")
+        expect(fee_reduction(doc).to_html)
+          .not_to include(activate_person_fee_reduction_path(yp), edit_person_fee_reduction_path(yp))
+      end
+    end
+
+    it "shows finance the SEPA mandate, the comments, the buttons and the anchors, on a page that morphs" do
+      doc = page_as(finance)
+
+      aggregate_failures do
+        expect(bank_account(doc).at_css("a[href='#{mandate_person_bank_account_path(yp)}']")).to be_present
+        expect(bank_account(doc).at_css(".sepa-mandate-missing")).to be_nil
+        expect(installments(doc).text).to include("Vereinbarung aktiv", "Vereinbarung geplant")
+        expect(installments(doc).to_html).to include(activate_person_installments_path(yp, context: "person"),
+          ERB::Util.html_escape(edit_person_installments_path(yp, mode: "edit", context: "person")))
+        expect(doc.at_css("section#payment_plan_#{yp.id}.installments")).to be_present
+        expect(doc.at_css("section#total_fee_#{yp.id}.fee-reduction")).to be_present
+        expect(response.body).to include(edit_person_debit_return_path(yp))
+        expect(fee_reduction(doc).text).to include("Nachweis liegt vor", "Erhöhung")
+        expect(fee_reduction(doc).to_html)
+          .to include(activate_person_fee_reduction_path(yp), discard_person_fee_reduction_path(yp))
+        expect(response.body.index("Ratenplan")).to be < response.body.index("Beitragshöhe")
+        expect(response.body).to include('<meta name="turbo-refresh-method" content="morph">',
+          '<meta name="turbo-refresh-scroll" content="preserve">')
+      end
+    end
+
+    it "disables the SEPA mandate for finance and names what is missing" do
+      yp.update_columns(birthday: nil, town: nil, sepa_mandate_date: nil)
+
+      html = bank_account(page_as(finance))
+
+      expect(html.at_css("a[href='#{mandate_person_bank_account_path(yp)}']")).to be_nil
+      expect(html.at_css(".sepa-mandate-missing").text).to include(Person.human_attribute_name(:birthday),
+        Person.human_attribute_name(:town), Person.human_attribute_name(:sepa_mandate_date))
     end
 
     it "lists the changes of the active reduction only, never the comment" do
@@ -258,17 +197,10 @@ describe Person::FeeController do
         yp.update!(nickname: "Anderswo")
       end
 
-      html = section(page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person))
+      html = fee_reduction(page_as(finance))
+
       expect(html.text).to include("250€ → 300€")
-      expect(html.text).not_to include("Neu vereinbart")
-      expect(html.text).not_to include("Anderswo")
-    end
-
-    it "morphs page refreshes and keeps the scroll position" do
-      body = page_as(Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person)
-
-      expect(body).to include('<meta name="turbo-refresh-method" content="morph">')
-        .and include('<meta name="turbo-refresh-scroll" content="preserve">')
+      expect(html.text).not_to include("Neu vereinbart", "Anderswo")
     end
   end
 end

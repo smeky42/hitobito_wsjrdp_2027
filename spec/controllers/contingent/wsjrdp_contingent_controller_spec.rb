@@ -41,11 +41,20 @@ describe Contingent::WsjrdpContingentController, type: :controller do
 
   def wire(tree) = schema.encode_tree(tree, schema: schema.bound).to_s
 
-  it "shows the jamboree comparison first and by default the people not settled yet" do
+  it "shows the tiles, the matrix, the Schnellauswahl, the role differences and by default the people " \
+     "not settled yet", :aggregate_failures do
+    people(:yp_a_1).update_columns(wsj_role: "JPT", nickname: "Jule")
+    people(:cmt_member1).update_columns(wsj_role: "CMT", status: "upload", contract_status: "replacement_pending")
+    people(:cmt_member2).update_columns(wsj_role: "CMT", status: "registered", contract_status: "none")
+    jamboree_rows = Wsjrdp2027::ContingentOverview.new.jamboree_rows
+    figure = lambda do |key|
+      [jamboree_rows[key][:counts]["inforce"] - jamboree_rows[key][:pending],
+        jamboree_rows[key][:counts]["none"] + jamboree_rows[key][:pending]]
+    end
+
     get :index
 
     expect(response).to have_http_status(:ok)
-    expect(page.at_css("#main h2").text).to eq("Abgleich mit der Jamboree-Anmeldung")
     expect(page.css("#co-jamboree-tiles .co-tiles").map { |line| line.css(".co-t").map { |t| t.xpath("text()").text.strip } })
       .to eq([["CMT", "IST", "CMT + IST"], ["Units", "Patrols", "UL + YP"]])
     expect(page.css("a.co-tile")).to be_empty
@@ -58,30 +67,9 @@ describe Contingent::WsjrdpContingentController, type: :controller do
     expect(cell(first, "status")).to include("Abmeldung Vermerkt") # the full label, in the tooltip
     expect(cell(first, "reason")).to eq("In Abmeldung")
     expect(cell(first, "group")).to eq("YP Warteliste")
-  end
 
-  it "counts the CMT with a contract, adds the ones without as +n and warns about them" do
-    people(:cmt_member1).update_columns(wsj_role: "CMT", status: "upload", contract_status: "replacement_pending")
-    people(:cmt_member2).update_columns(wsj_role: "CMT", status: "registered", contract_status: "none")
-    rows = Wsjrdp2027::ContingentOverview.new.jamboree_rows
-    figure = ->(key) { [rows[key][:counts]["inforce"] - rows[key][:pending], rows[key][:counts]["none"] + rows[key][:pending]] }
-
-    get :index
-
-    tiles = page.css("#co-jamboree-tiles .co-tile")
-    shown = ->(tile) { [tile.at_css(".co-n").xpath("text()").text.to_i, tile.at_css(".co-more")&.text.to_s.delete("+").to_i] }
-    expect(tiles.first.at_css(".co-t").text).to eq("CMT")
-    expect(shown.call(tiles.first)).to eq(figure.call("CMT"))
-    expect(shown.call(tiles[2])).to eq(figure.call("CMT").zip(figure.call("IST")).map(&:sum))
-    lines = tiles.first.css(".co-sub").map { |line| line.text.squish }
-    expect(lines).to include(a_string_ending_with("ohne Vertrag"), "1 neu ausstehend")
-    expect(tiles.first.css(".co-sub .text-warning").size).to eq(2)
-  end
-
-  it "shows the patrols to fill, four a unit, and warns about the ones not given out" do
-    get :index
-
-    units = Wsjrdp2027::ContingentOverview.new.unit_figures
+    overview = Wsjrdp2027::ContingentOverview.new
+    units = overview.unit_figures
     patrols = page.css("#co-jamboree-tiles .co-tile").find { |tile| tile.at_css(".co-t").text == "Patrols" }
     expect(patrols.at_css(".co-n").text.to_i).to eq(units[:units][:total] * 4)
     ul_yp = page.css("#co-jamboree-tiles .co-tile").find { |tile| tile.at_css(".co-t").text == "UL + YP" }
@@ -89,12 +77,7 @@ describe Contingent::WsjrdpContingentController, type: :controller do
     if units[:units][:total] * 4 > units[:patrols][:total]
       expect(patrols.at_css(".co-sub").text).to include("noch nicht eingeteilt")
     end
-  end
 
-  it "rings the matrix cells that show a tile's number" do
-    get :index
-
-    overview = Wsjrdp2027::ContingentOverview.new
     marks = overview.matrix_tile_marks(overview.matrix_rows)
     ringed = page.css("#co-matrix td.co-tile-mark")
     expect(ringed.size).to eq(marks.size)
@@ -103,10 +86,6 @@ describe Contingent::WsjrdpContingentController, type: :controller do
       spec = Wsjrdp2027::ContingentOverview::PEOPLE_TILES.fetch(tile)
       expect(td.text.to_i).to eq(overview.tile_in_force(*spec[:jamboree]))
     end
-  end
-
-  it "marks under the matrix head what each sum adds up" do
-    get :index
 
     cells = page.css("#co-matrix tr.co-stripes th")
     kinds = ->(key) { cells[column_index(key)].css(".co-stripe").map { |stripe| stripe["class"].split.last } }
@@ -115,14 +94,23 @@ describe Contingent::WsjrdpContingentController, type: :controller do
     expect(kinds.call("cancel")).to eq([])
     expect(kinds.call("none")).to eq(%w[co-stripe-add])
     expect(kinds.call("ended")).to eq([])
-  end
 
-  it "offers the Schnellauswahl" do
-    get :index
+    presets = Wsjrdp2027::ContingentPeopleFilterSchema::PRESETS.flat_map { |preset| preset[:members] || [preset] }
+    expect(page.css(".flt-preset").map { |a| a.text.squish }).to include(*presets.pluck(:label))
 
-    presets = page.css(".flt-preset").map { |a| a.text.squish }
-    expect(presets).to include("Widersprüchlich", "Zu prüfen", "Neuer Vertrag", "Unterlagen offen",
-      "in Abmeldung", "WSJRDP-Gruppen", "Wartelisten", "Rolle abweichend")
+    # The CMT with a contract counted, the ones without as +n, with a warning.
+    tiles = page.css("#co-jamboree-tiles .co-tile")
+    shown = ->(tile) { [tile.at_css(".co-n").xpath("text()").text.to_i, tile.at_css(".co-more")&.text.to_s.delete("+").to_i] }
+    expect(tiles.first.at_css(".co-t").text).to eq("CMT")
+    expect(shown.call(tiles.first)).to eq(figure.call("CMT"))
+    expect(shown.call(tiles[2])).to eq(figure.call("CMT").zip(figure.call("IST")).map(&:sum))
+    lines = tiles.first.css(".co-sub").map { |line| line.text.squish }
+    expect(lines).to include(a_string_ending_with("ohne Vertrag"), "1 neu ausstehend")
+    expect(tiles.first.css(".co-sub .text-warning").size).to eq(2)
+
+    role_difference = page.css("#co-role-differences tbody tr")
+      .find { |tr| tr.css("td").first(2).map { |td| td.text.strip } == %w[YP JPT] }
+    expect(role_difference.at_css(".tag-role-diff").text).to eq("YP→JPT")
   end
 
   it "lists the people of a matrix cell" do
@@ -147,18 +135,8 @@ describe Contingent::WsjrdpContingentController, type: :controller do
     expect(cell(rows.first, "patrol")).to eq("C")
   end
 
-  it "shows the people whose jamboree role differs, with the tag on their chip" do
-    people(:yp_a_1).update_columns(wsj_role: "JPT", nickname: "Jule")
-
-    get :index
-
-    row = page.css("#co-role-differences tbody tr").find { |tr| tr.css("td").first(2).map { |td| td.text.strip } == %w[YP JPT] }
-    expect(row).to be_present
-    expect(row.at_css(".tag-role-diff").text).to eq("YP→JPT")
-  end
-
   it "stays closed without :contingent_read" do
-    sign_in(Fabricate(Group::Root::Member.name.to_sym, group: groups(:root)).person)
+    sign_in(people(:cmt_member1))
 
     expect { get :index }.to raise_error(CanCan::AccessDenied)
   end

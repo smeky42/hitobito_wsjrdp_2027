@@ -28,6 +28,8 @@ require "spec_helper"
 #     person-level models -- that is what an external Kassenprüfer*in needs --
 #     and on Person only :show_finance, the read-only Beitrag page.
 describe "finance abilities" do
+  before_all(setup_fixtures: true) {}
+
   let(:fin_models) do
     [
       WsjrdpFinAccount,
@@ -55,10 +57,10 @@ describe "finance abilities" do
 
   # Not in the fixtures: a nested Group::Root (as "CMT Warteliste" is in
   # production) and an Extern layer for the auditor.
-  let(:nested_root) { Group::Root.create!(name: "CMT Warteliste", parent: groups(:root)) }
-  let(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
+  let_it_be(:nested_root) { Group::Root.create!(name: "CMT Warteliste", parent: groups(:root)) }
+  let_it_be(:extern) { Group::Extern.create!(name: "Extern", parent: groups(:root)) }
 
-  subject(:ability) { Ability.new(person.reload) }
+  subject { ability }
 
   shared_examples "a read tier" do
     it "may show every finance model but the person-level ones, so it reaches the section" do
@@ -148,13 +150,15 @@ describe "finance abilities" do
   end
 
   context "with Group::Root::FinanceReader role (read tier)" do
-    let(:person) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "a read tier"
   end
 
   context "with Group::Extern::FinanceAuditor role (audit tier, EXTERN layer)" do
-    let(:person) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
+    let_it_be(:person) { Fabricate(Group::Extern::FinanceAuditor.name.to_sym, group: extern).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     # The decisive one: the tiers are not root-bound, so an auditor sitting on
     # the Extern layer is not locked out.
@@ -162,7 +166,8 @@ describe "finance abilities" do
   end
 
   context "with Group::Extern::FinanceAccountant role (write tier, EXTERN layer)" do
-    let(:person) { Fabricate(Group::Extern::FinanceAccountant.name.to_sym, group: extern).person }
+    let_it_be(:person) { Fabricate(Group::Extern::FinanceAccountant.name.to_sym, group: extern).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "a write tier"
 
@@ -175,13 +180,15 @@ describe "finance abilities" do
   end
 
   context "with Group::Root::Finance role (write tier)" do
-    let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "a write tier"
   end
 
   context "with Group::Root::Finance role in a NESTED Group::Root (write tier)" do
-    let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: nested_root).person }
+    let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: nested_root).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     # Holds :finance on the nested layer, never on the root layer -- must still
     # pass, which a root-bound constraint would not allow.
@@ -189,7 +196,8 @@ describe "finance abilities" do
   end
 
   context "with Group::Root::Admin role (carries :finance, so write tier)" do
-    let(:person) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::Admin.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it_behaves_like "a write tier"
 
@@ -199,7 +207,8 @@ describe "finance abilities" do
   end
 
   context "with Group::Root::FinanceManager role (manage tier)" do
-    let(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+    let_it_be(:person) { Fabricate(Group::Root::FinanceManager.name.to_sym, group: groups(:root)).person }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may administer every finance model (class and instance)" do
       fin_models.each do |model|
@@ -225,7 +234,8 @@ describe "finance abilities" do
   end
 
   context "with Group::Root::Leader role (no finance permission)" do
-    let(:person) { people(:cmt_leader) }
+    let_it_be(:person) { people(:cmt_leader) }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may not touch the finance models at all" do
       fin_models.each do |model|
@@ -241,7 +251,8 @@ describe "finance abilities" do
   end
 
   context "with Group::Root::Member role" do
-    let(:person) { people(:cmt_member1) }
+    let_it_be(:person) { people(:cmt_member1) }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may not touch the finance models" do
       is_expected.not_to be_able_to(:show, WsjrdpFinAccount)
@@ -250,7 +261,8 @@ describe "finance abilities" do
   end
 
   context "with a unit leader role" do
-    let(:person) { people(:ul_a_1) }
+    let_it_be(:person) { people(:ul_a_1) }
+    let_it_be(:ability) { Ability.new(person.reload) }
 
     it "may not touch the finance models" do
       is_expected.not_to be_able_to(:show, WsjrdpFinAccount)

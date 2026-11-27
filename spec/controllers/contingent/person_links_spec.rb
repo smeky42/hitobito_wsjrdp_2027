@@ -25,9 +25,6 @@ shared_examples "contingent person link helpers" do
   def plain_names = page.css("#main span.p-chip-name, #main span.co-person-name")
 
   let(:leader) { people(:cmt_leader) }
-  let(:ehoc) { Fabricate(Group::Root::ExtendedHeadOfContingent.name.to_sym, group: groups(:root)).person }
-
-  before { ehoc.update_columns(primary_group_id: groups(:root).id) }
 end
 
 shared_examples "contingent person links for a CMT leader" do
@@ -63,6 +60,12 @@ end
 
 describe Contingent::WsjrdpContingentController, type: :controller do
   render_views
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:ehoc) do
+    Fabricate(Group::Root::ExtendedHeadOfContingent.name.to_sym, group: groups(:root)).person
+      .tap { |person| person.update_columns(primary_group_id: groups(:root).id) }
+  end
 
   # In the default list (no contract in force) and among the role differences.
   let(:expected_ids) { [people(:yp_a_1).id, people(:yp_a_2).id] }
@@ -76,7 +79,6 @@ describe Contingent::WsjrdpContingentController, type: :controller do
   # (:index_deep_full_people on the root group); an eHoC gets the figures
   # alone, the matrix's numbers without links into a list that is not there.
   it "shows an eHoC the figures without the people and without links into the list" do
-    ehoc = Fabricate(Group::Root::ExtendedHeadOfContingent.name.to_sym, group: groups(:root)).person
     sign_in(ehoc)
     get :index
 
@@ -107,6 +109,12 @@ end
 
 describe Contingent::WsjrdpCmtController, type: :controller do
   render_views
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:ehoc) do
+    Fabricate(Group::Root::ExtendedHeadOfContingent.name.to_sym, group: groups(:root)).person
+      .tap { |person| person.update_columns(primary_group_id: groups(:root).id) }
+  end
 
   let(:expected_ids) { [people(:cmt_leader).id, people(:cmt_member1).id, ehoc.id] }
 
@@ -129,10 +137,16 @@ end
 
 describe Contingent::WsjrdpIstController, type: :controller do
   render_views
+  before_all(setup_fixtures: true) {}
+
+  let_it_be(:ehoc) do
+    Fabricate(Group::Root::ExtendedHeadOfContingent.name.to_sym, group: groups(:root)).person
+      .tap { |person| person.update_columns(primary_group_id: groups(:root).id) }
+  end
 
   # The page reads fixed groups (here "IST Reg", id 4) and shows the chips
   # only while the people links are switched on.
-  let(:ist_reg) { Fabricate(Group::Ist.name.to_sym, id: 4, parent: groups(:root), name: "IST Reg") }
+  let_it_be(:ist_reg) { Fabricate(Group::Ist.name.to_sym, id: 4, parent: groups(:root), name: "IST Reg") }
   let(:expected_ids) { [people(:ist_a_1).id, people(:ist_a_2).id] }
 
   def chip_text(person) = person.nickname_or_short_first_name

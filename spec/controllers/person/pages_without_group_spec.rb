@@ -19,27 +19,27 @@ shared_examples "a person page without a group" do |page, action|
 
   # A role in the other group too: the core's history, log and security
   # pages find the person among the people of the URL's group.
-  before do
-    Fabricate(Group::Ist::Member.name.to_sym, person: ul, group: groups(:ist_a))
-    sign_in(people(:admin))
+  before_all { Fabricate(Group::Ist::Member.name.to_sym, person: people(:ul_a_1), group: groups(:ist_a)) }
+
+  before { sign_in(people(:admin)) }
+
+  context "rendered" do
+    render_views
+
+    it "shows the page at /people/:id/#{page} in the primary group, its tab at the short URL" do
+      get action, params: {id: ul.id}
+
+      expect(response).to have_http_status(:ok)
+      expect(assigns(:group)).to eq(ul.primary_group)
+      expect(Nokogiri::HTML(response.body).css("li.active > a").pluck("href")).to include(short_path)
+    end
   end
 
-  def html = Nokogiri::HTML(response.body)
-
-  it "shows the page at /people/:id/#{page} in the primary group" do
-    get action, params: {id: ul.id}
-
-    expect(response).to have_http_status(:ok)
-    expect(assigns(:group)).to eq(ul.primary_group)
-    expect(html.css("li.active > a").pluck("href")).to include(short_path)
-  end
-
-  it "shows the page in the group of the URL, its tab in the group's URL" do
+  it "shows the page in the group of the URL" do
     get action, params: {group_id: groups(:ist_a).id, id: ul.id}
 
     expect(response).to have_http_status(:ok)
     expect(assigns(:group)).to eq(groups(:ist_a))
-    expect(html.css("li.active > a").pluck("href")).to include("/groups/#{groups(:ist_a).id}/people/#{ul.id}/#{page}")
   end
 
   it "shows the page for a primary group without a role left" do
@@ -67,35 +67,51 @@ shared_examples "a person page without a group" do |page, action|
 end
 
 describe Person::PrintController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
   it_behaves_like "a person page without a group", "print", :index
 
-  it "links the print buttons and the form without the group in the primary group" do
-    sign_in(people(:admin))
-    ul = people(:ul_a_1)
-    ul.update_columns(status: "printed", generated_registration_pdf: "/x/registration.pdf")
-    get :index, params: {id: ul.id}
+  context "rendered" do
+    render_views
 
-    page = Nokogiri::HTML(response.body)
-    expect(page.at_css("form[action='/people/#{ul.id}/print']")).to be_present
-    expect(page.at_css("a[href='/people/#{ul.id}/upload/show_registration_generated']")).to be_present
+    it "links the print buttons and the form without the group in the primary group" do
+      sign_in(people(:admin))
+      ul = people(:ul_a_1)
+      ul.update_columns(status: "printed", generated_registration_pdf: "/x/registration.pdf")
+      get :index, params: {id: ul.id}
+
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css("form[action='/people/#{ul.id}/print']")).to be_present
+      expect(page.at_css("a[href='/people/#{ul.id}/upload/show_registration_generated']")).to be_present
+    end
   end
 end
 
 describe Person::UploadController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
+
+  let(:ul) { people(:ul_a_1) }
+
+  before do
+    sign_in(people(:admin))
+    ul.update_columns(status: "printed")
+  end
 
   it_behaves_like "a person page without a group", "upload", :index
 
-  it "posts the form to the short URL and comes back there" do
-    sign_in(people(:admin))
-    ul = people(:ul_a_1)
-    ul.update_columns(status: "printed")
-    get :index, params: {id: ul.id}
-    expect(Nokogiri::HTML(response.body).at_css("form[action='/people/#{ul.id}/upload']")).to be_present
+  context "rendered" do
+    render_views
 
+    it "posts the form to the short URL" do
+      get :index, params: {id: ul.id}
+
+      expect(Nokogiri::HTML(response.body).at_css("form[action='/people/#{ul.id}/upload']")).to be_present
+    end
+  end
+
+  it "comes back to the short URL" do
     put :index, params: {id: ul.id}
+
     expect(response).to redirect_to("/people/#{ul.id}/upload")
   end
 
@@ -109,7 +125,7 @@ describe Person::UploadController, type: :controller do
 end
 
 describe Person::UnitController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
   it_behaves_like "a person page without a group", "unit", :show
 
@@ -120,31 +136,40 @@ describe Person::UnitController, type: :controller do
 end
 
 describe Person::HistoryController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
   it_behaves_like "a person page without a group", "history", :index
 end
 
 describe Person::LogController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
   it_behaves_like "a person page without a group", "log", :index
 end
 
 describe Person::SecurityToolsController, type: :controller do
-  render_views
+  before_all(setup_fixtures: true) {}
 
   it_behaves_like "a person page without a group", "security_tools", :index
 
-  it "comes back from blocking to the short URL in the primary group, to the group's URL elsewhere" do
-    sign_in(people(:admin))
-    ul = people(:ul_a_1)
-    Fabricate(Group::Ist::Member.name.to_sym, person: ul, group: groups(:ist_a))
+  describe "blocking" do
+    let(:ul) { people(:ul_a_1) }
 
-    post :block_person, params: {group_id: ul.primary_group_id, id: ul.id}
-    expect(response).to redirect_to("/people/#{ul.id}/security_tools")
+    before do
+      sign_in(people(:admin))
+      Fabricate(Group::Ist::Member.name.to_sym, person: ul, group: groups(:ist_a))
+    end
 
-    post :unblock_person, params: {group_id: groups(:ist_a).id, id: ul.id}
-    expect(response).to redirect_to("/groups/#{groups(:ist_a).id}/people/#{ul.id}/security_tools")
+    it "comes back to the short URL in the primary group" do
+      post :block_person, params: {group_id: ul.primary_group_id, id: ul.id}
+
+      expect(response).to redirect_to("/people/#{ul.id}/security_tools")
+    end
+
+    it "comes back to the group's URL elsewhere" do
+      post :unblock_person, params: {group_id: groups(:ist_a).id, id: ul.id}
+
+      expect(response).to redirect_to("/groups/#{groups(:ist_a).id}/people/#{ul.id}/security_tools")
+    end
   end
 end

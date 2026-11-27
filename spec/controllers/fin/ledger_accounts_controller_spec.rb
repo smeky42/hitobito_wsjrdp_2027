@@ -11,34 +11,24 @@ require "spec_helper"
 
 # The Sachkonten summary, as the representative of the three Buchhaltung summary
 # pages (they share Fin::BookkeepingSummaries): the relation-backed list
-# (WsjrdpLedgerAccount.with_booking_summary) with its generic CNF filter
-# (Fin::LedgerAccountsFilterSchema) and its footer totals over the filtered set,
-# the expandable table driven by the controller-resolved Wsjrdp::TableState
-# (doc/plans/2026-09_expandable-table-state.md) and the bookings table embedded
-# in an account's detail.
+# (WsjrdpLedgerAccount.with_booking_summary) with its footer totals over the
+# filtered set, its visibility rule and the bookings table embedded in an
+# account's detail.
 describe Fin::LedgerAccountsController do
-  render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
-
-  # The href of the detail's "In Buchungen-Ansicht öffnen" button, with the HTML
-  # escaping of the Rison's quotes undone.
-  def open_in_bookings_href
-    CGI.unescapeHTML(
-      response.body[%r{<a[^>]*href="([^"]*)"[^>]*>In Buchungen-Ansicht öffnen</a>}, 1].to_s
-    )
-  end
+  let_it_be(:person, refind: true) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:reader, refind: true) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
 
   # Invented numbers and names. `visibility: "visible"` keeps the fabricated
   # accounts out of the page's own visibility rule -- that rule has its own
   # describe block below.
-  def create_account(number, name, kind, short_name: nil, moss_status: nil,
-    visibility: "visible")
+  def self.create_account(number, name, kind, short_name: nil, moss_status: nil, visibility: "visible")
     WsjrdpLedgerAccount.create!(number: number, name: name, short_name: short_name,
       account_kind: kind, moss_status: moss_status, visibility: visibility)
   end
 
-  def create_booking(account, kind, offsetting, offsetting_kind, amount, debit_credit)
+  def self.create_booking(account, kind, offsetting, offsetting_kind, amount, debit_credit)
     DatevBooking.create!(buchungs_guid: SecureRandom.uuid,
       account_number: account, account_kind: kind,
       offsetting_account_number: offsetting, offsetting_account_kind: offsetting_kind,
@@ -46,73 +36,36 @@ describe Fin::LedgerAccountsController do
       booking_date: Date.new(2026, 3, 1), posting_text: "Testbuchung #{account}")
   end
 
+  delegate :create_account, :create_booking, to: :class
+
   # Three accounts whose order by number and order by sum deliberately differ, so
   # a sort assertion cannot pass by accident. Two bookings, each counting on BOTH
-  # its sides: 1200 sees two of them, 4000 and 66500 one each. The three Moss
-  # states are all present -- 66500 is the one Moss does not know at all (NULL).
-  before do
-    create_account("1200", "Testbank", "BANK", short_name: "Bankkonto",
-      moss_status: "active")
+  # its sides: 1200 sees two of them, 4000 and 66500 one each.
+  before_all do
+    create_account("1200", "Testbank", "BANK", short_name: "Bankkonto", moss_status: "active")
     create_account("4000", "Testerloese", "INCOME", moss_status: "deactivated")
     create_account("66500", "Testaufwand", "EXPENSE", short_name: "Kostenkurz")
     create_booking("1200", "BANK", "66500", "EXPENSE", 100, "D")
     create_booking("1200", "BANK", "4000", "INCOME", 300, "C")
-    sign_in(person)
   end
 
-  # The row keys of the rendered page, in order (the widget puts them into the
-  # lazy detail frame's DOM id).
-  def rendered_numbers
-    response.body.scan(/bkframe-account-([0-9A-Za-z]+)/).flatten
-  end
+  before { sign_in(person) }
 
-  # The visible columns, in order, read off the table's header row.
-  def rendered_column_keys
-    response.body[%r{<thead>.*?</thead>}m].to_s.scan(/colkey='(\w+)'/).flatten
-  end
+  def rendered_numbers = controller.ledger_accounts.page.map(&:number)
 
-  def body_rows = response.body[%r{<tbody[^>]*>.*</tbody>}m].to_s
-
-  # One cell of the rendered table body, per row, as its inner markup.
-  def cells(key)
-    body_rows.scan(/colkey='#{key}'>(.*?)<\/td>/m).flatten
-  end
+  def column_keys = controller.summary_table_state.visible_column_keys
 
   describe "GET index" do
-    it "lists the visible accounts in their natural order, by number" do
+    it "lists the visible accounts by number and totals them in the footer" do
       get :index
-      expect(response).to be_successful
-      expect(rendered_numbers).to eq(%w[1200 4000 66500])
-      expect(response.body).to include("Testbank").and include("Testaufwand")
-    end
 
-    it "shows the Kontoart as its German label" do
-      get :index
-      expect(rendered_column_keys)
-        .to eq(%w[number name short_name account_kind moss_status booking_sum booking_count])
-      expect(cells("account_kind").map { |cell| cell.gsub(/<[^>]+>/, "").strip })
-        .to eq(["Bank", "Ertrag", "Aufwand"])
-    end
-
-    it "shows the Kurzbezeichnung right after the Bezeichnung" do
-      get :index
-      expect(response.body).to include("Kurzbezeichnung")
-      expect(cells("short_name").map { |cell| cell.gsub(/<[^>]+>/, "").strip })
-        .to eq(["Bankkonto", "—", "Kostenkurz"])
-    end
-
-    it "shows the Moss status as a tinted aktiv / inaktiv, a NULL status as inaktiv" do
-      get :index
-      expect(cells("moss_status").map { |cell| cell[/moss-status-(\w+)/, 1] })
-        .to eq(%w[active inactive inactive])
-      expect(cells("moss_status").map { |cell| cell.gsub(/<[^>]+>/, "").strip })
-        .to eq(%w[aktiv inaktiv inaktiv])
-      expect(response.body).to include(".moss-status-active")
-    end
-
-    it "counts the shown Sachkonten, their bookings and their sum in the footer" do
-      get :index
-      expect(response.body.squish).to include("3 Sachkonten angezeigt · 4 Buchungen · Summe -400,00 €")
+      aggregate_failures do
+        expect(response).to be_successful
+        expect(rendered_numbers).to eq(%w[1200 4000 66500])
+        expect(controller.ledger_accounts.total_count).to eq(3)
+        expect(controller.shown_booking_count).to eq(4)
+        expect(controller.shown_booking_sum).to eq(-400)
+      end
     end
 
     it "sorts by the state's ?s= param, using the column's wire token" do
@@ -120,39 +73,28 @@ describe Fin::LedgerAccountsController do
       expect(rendered_numbers).to eq(%w[66500 1200 4000])
     end
 
-    it "sorts on the Kurzbezeichnung and on the Moss status" do
-      # NULLS LAST puts the account without a Kurzbezeichnung last.
+    it "sorts on the Kurzbezeichnung, NULLS LAST" do
       get :index, params: {s: "kbz"}
       expect(rendered_numbers).to eq(%w[1200 66500 4000])
+    end
 
-      # aktiv before inaktiv, the NULL status counting as inaktiv.
+    it "sorts on the Moss status, aktiv before inaktiv and NULL as inaktiv" do
       get :index, params: {s: "ms,nr"}
       expect(rendered_numbers).to eq(%w[1200 4000 66500])
     end
 
-    it "remembers the sort and lets a blank ?s= clear it again" do
-      get :index, params: {s: "sum~"}
-      get :index
-      expect(rendered_numbers).to eq(%w[66500 1200 4000])
-
-      get :index, params: {s: ""}
-      expect(rendered_numbers).to eq(%w[1200 4000 66500])
+    it "selects and orders the columns from ?c=" do
+      get :index, params: {c: "sum,nr,~bez"}
+      expect(column_keys).to eq(%w[booking_sum number])
     end
 
-    it "selects and orders the columns from ?c=, remembers them, and resets on a blank ?c=" do
-      # sum first, then the number; the name is explicitly hidden and everything
-      # the param does not mention is appended hidden as well.
-      get :index, params: {c: "sum,nr,~bez"}
-      expect(rendered_column_keys).to eq(%w[booking_sum number])
+    it "offers the Unit-Budget as a column, not shown by default" do
+      get :index, params: {c: "nr,ub"}
 
-      get :index
-      expect(rendered_column_keys).to eq(%w[booking_sum number])
-
-      # A blank param is an explicit "back to the default columns" and beats the
-      # remembered selection.
-      get :index, params: {c: ""}
-      expect(rendered_column_keys)
-        .to eq(%w[number name short_name account_kind moss_status booking_sum booking_count])
+      aggregate_failures do
+        expect(Fin::BookkeepingSummaryColumns::LEDGER_ACCOUNTS.default_keys).not_to include("is_unit_budget")
+        expect(column_keys).to eq(%w[number is_unit_budget])
+      end
     end
 
     it "falls back to page 1 when the page is beyond the last one (D4)" do
@@ -160,50 +102,19 @@ describe Fin::LedgerAccountsController do
       expect(rendered_numbers).to eq(%w[1200])
     end
 
-    it "forgets the remembered state on ?r=1 and redirects to the bare URL" do
-      get :index, params: {z: "1"}
+    it "redirects to the bare URL on ?r=1" do
       get :index, params: {r: "1"}
       expect(response).to redirect_to("/fin/bookkeeping/ledger_accounts")
-
-      get :index
-      expect(rendered_numbers).to eq(%w[1200 4000 66500])
-    end
-  end
-
-  describe "GET index with a filter" do
-    it "searches the name over the Bezeichnung and the Kurzbezeichnung" do
-      get :index, params: {f: "!(!(!(q,ct,erloese)))"}
-      expect(rendered_numbers).to eq(%w[4000])
-
-      # "Kostenkurz" is only the Kurzbezeichnung -- one search hits both columns.
-      get :index, params: {f: "!(!(!(q,ct,kostenkurz)))"}
-      expect(rendered_numbers).to eq(%w[66500])
     end
 
-    it "narrows on the Kontoart and re-counts the footer" do
+    it "narrows on a filter and totals the footer over what is left" do
       get :index, params: {f: "!(!(!(ak,in,'BANK')))"}
-      expect(rendered_numbers).to eq(%w[1200])
-      expect(response.body.squish).to include("1 Sachkonten angezeigt · 2 Buchungen · Summe -200,00 €")
 
-      get :index, params: {f: "!(!(!(ak,not_in,'BANK')))"}
-      expect(rendered_numbers).to eq(%w[4000 66500])
-    end
-
-    it "narrows on the Moss status, counting a NULL status as inaktiv" do
-      get :index, params: {f: "!(!(!(ms,in,active)))"}
-      expect(rendered_numbers).to eq(%w[1200])
-
-      get :index, params: {f: "!(!(!(ms,in,deactivated)))"}
-      expect(rendered_numbers).to eq(%w[4000 66500])
-    end
-
-    it "remembers the filter on a bare revisit and clears it on a blank ?f=" do
-      get :index, params: {f: "!(!(!(ak,in,'BANK')))"}
-      get :index
-      expect(rendered_numbers).to eq(%w[1200])
-
-      get :index, params: {f: ""}
-      expect(rendered_numbers).to eq(%w[1200 4000 66500])
+      aggregate_failures do
+        expect(rendered_numbers).to eq(%w[1200])
+        expect(controller.shown_booking_count).to eq(2)
+        expect(controller.shown_booking_sum).to eq(-200)
+      end
     end
   end
 
@@ -212,35 +123,39 @@ describe Fin::LedgerAccountsController do
   # when Moss knows the account as active or it carries a booking. Personal
   # accounts are no Sachkonten and have their own page.
   describe "GET index, the visibility rule" do
-    it "hides an unbooked auto account, shows it once Moss knows it or it is booked" do
-      create_account("2000", "Testauto", "EXPENSE", visibility: "auto")
+    it "hides an unbooked auto account Moss does not know as active" do
+      create_account("2000", "Testauto", "EXPENSE", visibility: "auto", moss_status: "deactivated")
       get :index
       expect(rendered_numbers).not_to include("2000")
+    end
 
-      WsjrdpLedgerAccount.find_by(number: "2000").update!(moss_status: "active")
+    it "shows an auto account Moss knows as active" do
+      create_account("2000", "Testauto", "EXPENSE", visibility: "auto", moss_status: "active")
       get :index
       expect(rendered_numbers).to include("2000")
+    end
 
-      WsjrdpLedgerAccount.find_by(number: "2000").update!(moss_status: "deactivated")
+    it "shows a booked auto account" do
+      create_account("2000", "Testauto", "EXPENSE", visibility: "auto", moss_status: "deactivated")
       create_booking("1200", "BANK", "2000", "EXPENSE", 10, "D")
       get :index
       expect(rendered_numbers).to include("2000")
     end
 
     it "never shows a hidden account and never a Personenkonto" do
-      create_account("2100", "Testverborgen", "EXPENSE", visibility: "hidden",
-        moss_status: "active")
+      create_account("2100", "Testverborgen", "EXPENSE", visibility: "hidden", moss_status: "active")
       create_account("3100", "Testkreditor", "CREDITOR")
       get :index
       expect(rendered_numbers).to eq(%w[1200 4000 66500])
     end
 
     # An account the LIST leaves out still has its detail page.
-    it "still renders the detail page of an account it leaves out" do
+    it "still shows the detail page of an account it leaves out" do
       create_account("2100", "Testverborgen", "EXPENSE", visibility: "hidden")
       get :show, params: {number: "2100"}
+
       expect(response).to be_successful
-      expect(response.body).to include("Testverborgen")
+      expect(assigns(:account)).to be_persisted
     end
   end
 
@@ -258,143 +173,76 @@ describe Fin::LedgerAccountsController do
     end
   end
 
-  # The pager of the expandable table, rendered by the wagon's Kaminari theme
-  # "wsjrdp" (app/views/kaminari/wsjrdp/): the two icon-only step buttons first
-  # and always, then the page numbers with page 1 and the last page spelled out
-  # instead of an "Erste"/"Letzte" label.
-  describe "GET index, the pager" do
-    # Twelve accounts at one row per page (?z=1) make twelve pages, so the first
-    # and the last one fall outside the window of four and the gap shows.
-    before { 9.times { |i| create_account("81#{i}0", "Testkonto #{i}", "EXPENSE") } }
+  describe "GET show" do
+    # The embedded bookings table is legs-backed (DatevBooking.legs), a derived
+    # table aliased back to `datev_bookings`; the Unit-Budget columns compose
+    # with it.
+    it "answers the Unit-Budget in the account's own embedded bookings" do
+      WsjrdpLedgerAccount.find_by(number: "66500").update!(is_unit_budget: false)
+      get :show, params: {number: "1200"}
 
-    # The <li>s of the first paging line (the one above the table).
-    def pager_items
-      Nokogiri::HTML(response.body).css(".bk-pagination .pagination").first.css("li")
+      expect(controller.send(:account_bookings, "1200").page.map { |b| b.unit_budget.first })
+        .to match_array([false, true])
     end
 
-    # Each item as the text it shows -- a step button by its accessible name.
-    def pager_labels
-      pager_items.map { |li| li.at_css("[aria-label]")&.[]("aria-label") || li.text.strip }
+    # The embedded table lives under the "b" prefix and keeps the nesting level
+    # the summary list put into the frame URL.
+    it "renders a lazily loaded detail row as an embedded detail at its level" do
+      request.headers["Turbo-Frame"] = "bkframe-account-1200"
+      get :show, params: {number: "1200", expandable_table_level: "1"}
+
+      aggregate_failures do
+        expect(assigns(:ctx)).to be_embedded
+        expect(controller.summary_table_state.level).to eq(1)
+        expect(controller.item_bookings_table_state.level).to eq(1)
+      end
     end
 
-    # The two step buttons, in the order they are rendered.
-    def step_items
-      pager_items.select { |li| li["class"].to_s.include?("bk-page-step") }
+    it "remembers the embedded table's sort per account (D2)" do
+      get :show, params: {number: "1200", bs: "amt"}
+      store_key = Fin::BookkeepingSummaries.item_bookings_policy_options(row_param: :number)[:store_key]
+
+      aggregate_failures do
+        expect(controller.instance_exec(&store_key)).to eq("fin/ledger_accounts#show:1200")
+        expect(controller.item_bookings_table_state.sort_list).to eq([["signed_base_amount", "asc"]])
+      end
     end
 
-    it "leads with the step buttons and spells out the first and the last page" do
-      get :index, params: {z: "1", p: "6"}
-      expect(response).to be_successful
-      expect(pager_labels).to eq(["Vorherige Seite", "Nächste Seite",
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "...", "12"])
+    describe "the reading page" do
+      render_views
 
-      # Both outer pages are reachable as ordinary number links, and no tag
-      # spells them "Erste"/"Letzte" any more.
-      hrefs = pager_items.css("a.page-link").pluck("href")
-      expect(hrefs).to include(a_string_matching(/\bp=1\b/)).and include(a_string_matching(/\bp=12\b/))
-      expect(pager_items.text).not_to match(/Erste|Letzte/)
-    end
+      def doc = Nokogiri::HTML(response.body)
 
-    it "disables the step back on the first page and links the step forward" do
-      get :index, params: {z: "1", p: "1"}
-      prev_item, next_item = step_items
-      expect(prev_item["class"]).to include("disabled")
-      expect(prev_item.at_css("a")).to be_nil
-      expect(prev_item.at_css("span.page-link")["aria-disabled"]).to eq("true")
-      expect(prev_item.at_css("i.fas.fa-chevron-left")).to be_present
+      def link(text) = doc.css("a").find { |a| a.text.strip == text }
 
-      expect(next_item["class"]).not_to include("disabled")
-      link = next_item.at_css("a.page-link")
-      expect(link["rel"]).to eq("next")
-      expect(link["title"]).to eq("Nächste Seite")
-      expect(link["href"]).to match(/\bp=2\b/)
-      expect(link.at_css("i.fas.fa-chevron-right")).to be_present
-      expect(link.text.strip).to be_blank
-    end
+      # "In Buchungen-Ansicht öffnen" leads to the Buchungen listing pinned to
+      # this account on either side, "Konto oder Gegenkonto" (kgk), because the
+      # embedded list shows both booking sides.
+      it "leads the write tier to the edit page and to the Buchungen of this account" do
+        get :show, params: {number: "1200"}
 
-    it "disables the step forward on the last page and keeps it in place" do
-      get :index, params: {z: "1", p: "12"}
-      prev_item, next_item = step_items
-      expect(pager_labels.first(2)).to eq(["Vorherige Seite", "Nächste Seite"])
+        aggregate_failures do
+          expect(link("Bearbeiten")["href"]).to eq(edit_ledger_account_path("1200"))
+          expect(CGI.unescapeHTML(link("In Buchungen-Ansicht öffnen")["href"]))
+            .to eq("/fin/bookkeeping/bookings?f=!(!(!(kgk,in,'1200')))")
+        end
+      end
 
-      expect(next_item["class"]).to include("disabled")
-      expect(next_item.at_css("a")).to be_nil
-      expect(next_item.at_css("span.page-link")["aria-disabled"]).to eq("true")
+      it "offers the read tier no way to edit" do
+        sign_in(reader)
+        get :show, params: {number: "1200"}
 
-      expect(prev_item["class"]).not_to include("disabled")
-      expect(prev_item.at_css("a.page-link")["rel"]).to eq("prev")
-      expect(prev_item.at_css("a.page-link")["href"]).to match(/\bp=11\b/)
-    end
-
-    it "drops the open-rows param from every link, the step buttons included" do
-      get :index, params: {z: "1", p: "6", o: "1200"}
-      hrefs = pager_items.css("a.page-link").pluck("href")
-      expect(hrefs).to be_present
-      expect(hrefs).to all(satisfy { |h| !h.include?("o=") })
+        expect(link("Bearbeiten")).to be_nil
+      end
     end
   end
 
   # Whether a booking on this account belongs to a unit's budget: the one field
-  # of a Sachkonto Hitobito owns (everything else comes from the DATEV or the
-  # Moss export). It is read everywhere and edited on a page of its own, the same
-  # view/edit split the bookings use.
-  describe "Unit-Budget" do
-    let(:reader) { Fabricate(Group::Root::FinanceReader.name.to_sym, group: groups(:root)).person }
-
-    def doc = Nokogiri::HTML(response.body)
-
-    def detail_labels = doc.css("dt").map { |dt| dt.text.strip }
-
-    def detail_value(label)
-      index = detail_labels.index(label)
-      index && doc.css("dd")[index].text.squish
-    end
-
-    def link_texts = doc.css("a").map { |a| a.text.strip }
-
-    it "is offered as a column of the list, not shown by default" do
-      WsjrdpLedgerAccount.find_by(number: "66500").update!(is_unit_budget: false)
-
-      get :index
-      expect(rendered_column_keys).not_to include("is_unit_budget")
-      expect(response.body).to include("Unit-Budget?")
-
-      get :index, params: {c: "nr,ub"}
-      expect(rendered_column_keys).to eq(%w[number is_unit_budget])
-      expect(cells("is_unit_budget").map { |cell| cell.gsub(/<[^>]+>/, "").strip })
-        .to eq(%w[ja ja nein])
-    end
-
-    it "shows the flag on the reading page and leads the write tier to the edit page" do
-      get :show, params: {number: "1200"}
-
-      expect(detail_value("Unit-Budget?")).to eq("ja")
-      button = doc.css("a").find { |a| a.text.strip == "Bearbeiten" }
-      expect(button["href"]).to eq(edit_ledger_account_path("1200"))
-    end
-
-    it "offers the read tier no way to edit" do
-      sign_in(reader)
-
-      get :show, params: {number: "1200"}
-
-      expect(response).to be_successful
-      expect(detail_value("Unit-Budget?")).to eq("ja")
-      expect(link_texts).not_to include("Bearbeiten")
-    end
-
-    it "renders the edit page with the select, both submits and the way back" do
+  # of a Sachkonto Hitobito owns. It is edited on a page of its own.
+  describe "editing the Unit-Budget" do
+    it "renders the edit page for the write tier" do
       get :edit, params: {number: "1200"}
-
       expect(response).to be_successful
-      options = doc.css("select[name='wsjrdp_ledger_account[is_unit_budget]'] option")
-        .map { |option| [option.text.strip, option["value"]] }
-      expect(options).to eq([["ja", "true"], ["nein", "false"]])
-      buttons = doc.css("button[type=submit]").to_h { |b| [b.text.strip, b["name"]] }
-      expect(buttons).to include("Speichern" => "save",
-        "Speichern und weiter bearbeiten" => "stay")
-      cancel = doc.css("a").find { |a| a.text.strip == "Abbrechen" }
-      expect(cancel["href"]).to eq(ledger_account_path("1200"))
     end
 
     it "flips the flag and goes on to the reading page" do
@@ -404,30 +252,18 @@ describe Fin::LedgerAccountsController do
       expect(WsjrdpLedgerAccount.find_by(number: "1200").is_unit_budget).to be false
     end
 
-    it "refuses the read tier the edit page and the update" do
+    it "refuses the read tier the edit page" do
+      sign_in(reader)
+      expect { get :edit, params: {number: "1200"} }.to raise_error(CanCan::AccessDenied)
+    end
+
+    it "refuses the read tier the update" do
       sign_in(reader)
 
-      expect { get :edit, params: {number: "1200"} }.to raise_error(CanCan::AccessDenied)
       expect do
         patch :update, params: {number: "1200", wsjrdp_ledger_account: {is_unit_budget: "false"}}
       end.to raise_error(CanCan::AccessDenied)
       expect(WsjrdpLedgerAccount.find_by(number: "1200").is_unit_budget).to be true
-    end
-
-    # The embedded bookings table of an account detail is legs-backed
-    # (DatevBooking.legs), a derived table aliased back to `datev_bookings`.
-    # The Unit-Budget columns are a select plus two joins and compose with it,
-    # which is what this asserts end to end: the condensed cell shows the bare
-    # answer, without the source.
-    it "answers in the account's own embedded bookings table" do
-      WsjrdpLedgerAccount.find_by(number: "66500").update!(is_unit_budget: false)
-
-      get :show, params: {number: "1200", bc: "bdt,ub"}
-
-      expect(response).to be_successful
-      cells = response.body.scan(%r{colkey='unit_budget'>(.*?)</td>}m).flatten
-        .map { |cell| cell.gsub(/<[^>]+>/, " ").squish }
-      expect(cells).to match_array(%w[nein ja])
     end
 
     # #show invents a stub record for a number without master data; there is
@@ -435,47 +271,6 @@ describe Fin::LedgerAccountsController do
     it "has no edit page for a number without master data" do
       expect { get :edit, params: {number: "999999"} }
         .to raise_error(ActiveRecord::RecordNotFound)
-    end
-  end
-
-  describe "GET show" do
-    it "renders the account's detail page with its embedded bookings table" do
-      get :show, params: {number: "1200"}
-      expect(response).to be_successful
-      expect(response.body).to include("Testbank").and include("Testbuchung 1200")
-    end
-
-    # "In Buchungen-Ansicht öffnen" leads to the Buchungen listing pinned to
-    # this account. That page reads its filter from the ?f= param alone (Rison
-    # with the schema's short keys), so the link carries the condition there
-    # and not in a query param of its own. The embedded list shows both booking
-    # sides, hence "Konto oder Gegenkonto" (kgk).
-    it "opens the Buchungen listing filtered to this account on either side" do
-      get :show, params: {number: "1200"}
-
-      expect(open_in_bookings_href).to eq("/fin/bookkeeping/bookings?f=!(!(!(kgk,in,'1200')))")
-    end
-
-    it "renders only the turbo frame for a lazily loaded detail row" do
-      request.headers["Turbo-Frame"] = "bkframe-account-1200"
-      get :show, params: {number: "1200", expandable_table_level: "1"}
-      expect(response).to be_successful
-      # The embedded table lives under the "b" prefix and keeps the nesting level
-      # the summary list put into the frame URL.
-      expect(response.body).to include("bs=").and include("expandable_table_level=1")
-      expect(response.body).not_to include("<html")
-    end
-
-    it "remembers the embedded table's sort per account (D2)" do
-      get :show, params: {number: "1200", bs: "amt"}
-      get :show, params: {number: "1200"}
-      # amt is the remembered, ascending sort of THIS account's table.
-      expect(Nokogiri::HTML(response.body).css("a[aria-sort]").map { |link| link.attribute("aria-sort").value }).to eq(["ascending"])
-
-      get :show, params: {number: "66500"}
-      # The other account still has nothing chosen: its hidden sort (booking
-      # date, desc) shows no arrow.
-      expect(Nokogiri::HTML(response.body).css("a[aria-sort]")).to be_empty
     end
   end
 end

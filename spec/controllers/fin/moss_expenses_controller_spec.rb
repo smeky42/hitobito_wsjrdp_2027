@@ -13,22 +13,23 @@ require "spec_helper"
 # (Fin::MossExpensesController). All names and amounts are invented.
 describe Fin::MossExpensesController do
   render_views
+  before_all(setup_fixtures: true) {}
 
-  let(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
+  let_it_be(:person) { Fabricate(Group::Root::Finance.name.to_sym, group: groups(:root)).person }
 
-  let(:transaction) do
+  let_it_be(:transaction) do
     MossTransaction.create!(type: "MossReimbursement", moss_transaction_uuid: SecureRandom.uuid,
       signed_total_base_amount: -60, currency: "EUR", booking_date: Date.new(2026, 6, 1),
       transaction_name: "Fahrtkosten Vortreffen")
   end
 
-  let!(:expense) do
+  let_it_be(:expense, refind: true) do
     MossExpense.create!(moss_transaction: transaction, moss_expense_uuid: SecureRandom.uuid,
       type: "MossReimbursementExpense", expense_number: 1, signed_expense_base_amount: -60,
       expense_name: "Bahnfahrt", expense_posting_text: "Anreise")
   end
 
-  let!(:booking) do
+  let_it_be(:booking) do
     MossBooking.create!(moss_transaction: transaction, moss_expense: expense, sub_row_number: 1,
       signed_base_amount: -60, booking_posting_text: "Anreise")
   end
@@ -37,40 +38,31 @@ describe Fin::MossExpensesController do
 
   def page = Nokogiri::HTML(response.body)
 
-  it "renders the field list with Bearbeiten and the transaction, without inputs" do
-    get :show, params: {id: expense.id}
-
-    expect(page.at_css("#main h1").text).to include("Moss Ausgabe ##{expense.id}").and include("Bahnfahrt")
-    expect(page.at_css("#main h1 a[href='#{edit_moss_expense_path(expense)}']")).to be_present
-    expect(page.at_css("#main a[href='#{moss_transaction_path(transaction)}']")).to be_present
-    expect(page.css("#main textarea[name='moss_expense[comment]']")).to be_empty
-  end
-
   # The bookings stand as a table below, each row loading the booking's detail.
-  it "lists the expense's bookings as an expandable table" do
+  it "renders the field list with Bearbeiten, the transaction and the bookings as a table, without inputs" do
     get :show, params: {id: expense.id}
 
-    expect(response.body).to include("Buchungen (1)")
-    frame = page.at_css("turbo-frame[data-record='moss_booking_#{booking.id}']")
-    expect(frame["src"]).to start_with(moss_booking_path(booking))
-    expect(page.at_css("#bkframe-meb-#{booking.id}")).to be_present
+    aggregate_failures do
+      expect(page.at_css("#main h1 a[href='#{edit_moss_expense_path(expense)}']")).to be_present
+      expect(page.at_css("#main a[href='#{moss_transaction_path(transaction)}']")).to be_present
+      expect(page.css("#main textarea[name='moss_expense[comment]']")).to be_empty
+      frame = page.at_css("turbo-frame[data-record='moss_booking_#{booking.id}']")
+      expect(frame["src"]).to start_with(moss_booking_path(booking))
+      expect(page.at_css("#bkframe-meb-#{booking.id}")).to be_present
+    end
   end
 
-  it "lists the bookings as links in a row's detail" do
-    request.headers["Turbo-Frame"] = "bkframe-mte-#{expense.id}"
-    get :show, params: {id: expense.id, expandable_table_level: 1}
-
-    expect(page.at_css("a[href='#{moss_booking_path(booking)}']").text).to eq "##{booking.id}"
-    expect(page.css("table")).to be_empty
-  end
-
-  it "gives a row's detail the inline edit form" do
+  it "gives a row's detail the inline edit form and the bookings as links" do
     request.headers["Turbo-Frame"] = "bkframe-mte-#{expense.id}"
     get :show, params: {id: expense.id, expandable_table_level: 1}
 
     frame = page.at_css("turbo-frame#bkframe-mte-#{expense.id}")
-    expect(frame.at_css("h1")).to be_nil
-    expect(frame.at_css("textarea[name='moss_expense[comment]']")).to be_present
+    aggregate_failures do
+      expect(frame.at_css("h1")).to be_nil
+      expect(frame.at_css("textarea[name='moss_expense[comment]']")).to be_present
+      expect(page.at_css("a[href='#{moss_booking_path(booking)}']").text).to eq "##{booking.id}"
+      expect(page.css("table")).to be_empty
+    end
   end
 
   it "shows the comment as an input on the edit page and saves it" do

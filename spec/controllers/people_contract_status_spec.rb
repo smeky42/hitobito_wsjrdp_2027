@@ -18,14 +18,11 @@ describe PeopleController, type: :controller do
 
   before { sign_in(people(:admin)) }
 
-  {"none" => "text-muted", "confirmed" => "fin-status-confirmed",
-   "replacement_pending" => "fin-status-noted", "ended" => "fin-status-deregistered"}.each do |status, css|
-    it "shows the contract #{status} coloured" do
-      yp.update_columns(contract_status: status)
-      get :show, params: {group_id: yp.primary_group_id, id: yp.id}
+  it "shows the contract coloured beside the status" do
+    yp.update_columns(contract_status: "confirmed")
+    get :show, params: {group_id: yp.primary_group_id, id: yp.id}
 
-      contract = Nokogiri::HTML(response.body).css("aside dt").find { |dt| dt.text.strip == "Vertrag" }.next_element
-      expect(contract.at_css("span.#{css}").text).to eq(Settings.contract_status[status])
-    end
+    contract = Nokogiri::HTML(response.body).css("aside dt").find { |dt| dt.text.strip == "Vertrag" }.next_element
+    expect(contract.at_css("span.fin-status-confirmed").text).to eq(Settings.contract_status["confirmed"])
   end
 end

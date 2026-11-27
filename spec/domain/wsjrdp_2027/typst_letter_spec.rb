@@ -43,7 +43,8 @@ describe "wsjrdp2027.typ" do
 
       Mit freundlichen Grüßen
     TYPST
-    Typst::Base.from_s(source, format: :pdf, dependencies: dependencies, fonts: fonts)
+    Typst::Base.from_s(source, format: :pdf, dependencies: dependencies, fonts: fonts,
+      ignore_system_fonts: true)
       .compiled.pages.first
   end
 

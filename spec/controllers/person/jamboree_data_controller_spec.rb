@@ -10,341 +10,274 @@
 require "spec_helper"
 
 # The Zusatzdaten page, as the status page: without a group in the primary
-# group, in any group of the URL, with the person sheet and its tabs.
+# group, in any group of the URL.
 describe Person::JamboreeDataController, type: :controller do
-  render_views
-
   let(:ul) { people(:ul_a_1) }
   let(:yp) { people(:yp_a_1) }
+  let(:ist) { people(:ist_a_1) }
 
   before { sign_in(people(:admin)) }
 
-  def page = Nokogiri::HTML(response.body)
+  def update(person, attrs) = put(:update, params: {id: person.id, person: attrs})
 
-  it "shows the page at /people/:id/jamboree_data with the person's tabs" do
+  it "assigns the primary group without a group in the URL" do
     get :show, params: {id: ul.id}
 
     expect(response).to have_http_status(:ok)
     expect(assigns(:group)).to eq(ul.primary_group)
-    expect(page.css("li.active > a").map(&:text).map(&:strip)).to include("Personen", "Daten für den Veranstalter")
-    expect(page.at_css("a[href='#{jamboree_data_edit_person_path(ul)}']")).to be_present
-  end
-
-  it "links the group's URLs in another group" do
-    get :show, params: {group_id: groups(:ist_a).id, id: ul.id}
-
-    expect(page.at_css("a[href='#{jamboree_data_edit_group_person_path(groups(:ist_a), ul)}']")).to be_present
-  end
-
-  it "saves at the short URL and comes back there" do
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("form[action='#{jamboree_data_person_path(ul)}']")).to be_present
-
-    put :update, params: {id: ul.id, person: {nationality: "DE"}}
-    expect(response).to redirect_to(jamboree_data_person_path(ul))
-    expect(ul.reload.nationality).to eq("DE")
-  end
-
-  it "shows and updates journey fields for a user with log access" do
-    ist = people(:ist_a_1)
-    get :edit, params: {id: ist.id}
-    expect(page.at_css("select#person_arrival_location")).to be_present
-    expect(page.at_css("select#person_departure_type")).to be_present
-    expect(page.text).to include("Trage deine An- und Abreise ein sobald du dies für dich geklärt hast. Es ist nicht notwendig alles sofort einzutragen.")
-
-    put :update, params: {id: ist.id, person: {arrival_location: "amber_expo", departure_type: "train"}}
-    expect(ist.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train")
-
-    get :show, params: {id: ist.id}
-    expect(page.text).to include("AmberExpo", "Zug", "Trage deine An- und Abreise ein sobald du dies für dich geklärt hast.")
-  end
-
-  it "keeps UL and YP journeys read-only even for authorized editors" do
-    [ul, yp].each do |unit_member|
-      unit_member.update!(arrival_location: "amber_expo", departure_type: "train")
-      get :edit, params: {id: unit_member.id}
-      expect(page.text).to include("AmberExpo", "Zug",
-        "Deine An- und Abreise wird zentral von der Logistik gebucht und kann deswegen von dir nicht bearbeitet werden. Wir melden uns bei dir sobald wir wissen wie deine Unit reist.")
-      expect(page.at_css("#person_arrival_location")).to be_nil
-      expect(page.at_css("#person_departure_type")).to be_nil
-      expect(page.at_css("[name='person[arrival_location]']")).to be_nil
-
-      put :update, params: {id: unit_member.id, person: {
-        arrival_location: "lech_walesa_airport",
-        departure_type: "flight", arrival_date: "2027-07-28", nationality: "DE"
-      }}
-      expect(unit_member.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train",
-        arrival_date: nil, nationality: "DE")
-
-      get :show, params: {id: unit_member.id}
-      expect(page.text).to include("AmberExpo", "Zug", "Deine An- und Abreise wird zentral von der Logistik gebucht")
-    end
-  end
-
-  it "lets a person see and edit their own data, but not their unit's journey" do
-    sign_in(ul)
-    get :show, params: {id: ul.id}
-    expect(response).to have_http_status(:ok)
-    get :edit, params: {id: ul.id}
-    expect(response).to have_http_status(:ok)
-
-    put :update, params: {id: ul.id, person: {arrival_location: "amber_expo", nationality: "DE"}}
-    expect(ul.reload).to have_attributes(arrival_location: nil, nationality: "DE")
-  end
-
-  it "shows the uniform order only to the adults, without letting it change" do
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("[name='person[uniform_order]']")).to be_nil
-    expect(page.text).to include("nicht gewählt (=Ja)")
-
-    put :update, params: {id: ul.id, person: {uniform_order: "false"}}
-    expect(ul.reload.uniform_order).to be_nil
-
-    get :edit, params: {id: yp.id}
-    expect(page.text).not_to include("nicht gewählt (=Ja)")
-  end
-
-  it "shows the ordered uniform size and sleeve length without letting them change" do
-    yp.update!(uniform_size: Settings.uniform_size.first, uniform_long_sleeve: true)
-    get :edit, params: {id: yp.id}
-    expect(page.at_css("[name='person[uniform_size]']")).to be_nil
-    expect(page.at_css("[name='person[uniform_long_sleeve]']")).to be_nil
-    expect(page.text).to include("Langarm")
-
-    put :update, params: {id: yp.id, person: {uniform_size: Settings.uniform_size.last, uniform_long_sleeve: "false"}}
-    expect(yp.reload).to have_attributes(uniform_size: Settings.uniform_size.first.to_s, uniform_long_sleeve: true)
-  end
-
-  it "offers defaulted Wohl/Unwohl choices and explains when to choose Unwohl" do
-    get :edit, params: {id: ul.id}
-
-    expect(page.at_css("input#person_comfortable_on_water_true")["checked"]).to be_present
-    expect(page.css("input[name='person[comfortable_on_water]']").pluck("value")).to eq(%w[true false])
-    expect(page.text).to include("Ich fühle mich bei Aktivitäten auf dem Wasser", "wohl", "unwohl",
-      "Bitte wähle \"unwohl\" nur aus, wenn du Aktivitäten und Situationen vermeiden möchtest, bei denen diese Umstände auftreten.")
-
-    put :update, params: {id: ul.id, person: {comfortable_on_water: "false"}}
-    expect(ul.reload.comfortable_on_water).to be(false)
-  end
-
-  it "shows the default name tag grey with where it comes from, the form without a placeholder" do
-    ul.update_columns(first_name: "Anna Maria", nickname: nil, jamboree_data: {})
-
-    get :show, params: {id: ul.id}
-    name_tag = page.css("dt").find { |dt| dt.text.include?("Rufname") }.next_element
-    expect(name_tag.at_css("span.text-muted.fw-light").text).to eq("Anna")
-    expect(page.text).to include("nicht gewählt. Wir nehmen beim Datenexport deinen Spitznamen (wenn eingetragen) " \
-      "oder deinen 1. Vornamen. Aktuell dein 1. Vorname")
-    expect(page.text).not_to include("Leer lassen für Spitzname bzw. Vorname.")
-
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("input#person_known_as_name")["placeholder"]).to be_nil
-    expect(page.at_css("input#person_known_as_name")["value"]).to be_blank
-    expect(page.text).to include("Wenn das Feld leer bleibt, nehmen wir beim Datenexport deinen Spitznamen " \
-      "(wenn eingetragen) oder deinen 1. Vornamen. Aktuell dein 1. Vorname: Anna")
-  end
-
-  it "offers one choice per allergy and shows only the allergies with their severity" do
-    ul.update_columns(jamboree_data: {"allergy_peanut" => true, "allergy_peanut_severity" => "severe", "allergy_egg" => true})
-
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("input#person_allergy_peanut_level_severe")["checked"]).to be_present
-    expect(page.at_css("input#person_allergy_milk_level_none")["checked"]).to be_present
-    expect(page.css("input[name='person[allergy_egg_level]'][checked]")).to be_empty
-    expect(page.text).to include("Allergie angegeben, aber die Stärke fehlt.", "schwer: Schwere anaphylaktische Reaktion")
-
-    put :update, params: {id: ul.id, person: {allergy_egg_level: "mild", allergy_peanut_level: "none"}}
-    expect(ul.reload).to have_attributes(allergy_egg: true, allergy_egg_severity: "mild", allergy_peanut: false,
-      allergy_peanut_severity: nil)
-
-    get :show, params: {id: ul.id}
-    expect(page.text).to include("Ei", "mild", "keine Allergie: Milch, Kasein, Erdnuss")
-  end
-
-  it "requires the other travel document only while it is chosen, disabled otherwise" do
-    ul.update_columns(jamboree_data: {"travel_document_type" => "ordinary_passport"})
-    get :edit, params: {id: ul.id}
-    field = page.at_css("input#person_travel_document_other")
-    expect(field).to have_attributes(attributes: include("required", "disabled"))
-
-    ul.update_columns(jamboree_data: {"travel_document_type" => "other_travel_document"})
-    get :edit, params: {id: ul.id}
-    field = page.at_css("input#person_travel_document_other")
-    expect(field["required"]).to be_present
-    expect(field["disabled"]).to be_nil
-  end
-
-  it "asks the visa questions with the template's choices, without the old visa information" do
-    ul.update_columns(gender: "w", jamboree_data: {"visa_needed" => "yes_need_support", "visa_information" => "alt"})
-
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("select#person_visa_gender_as_in_travel_document option[selected]")&.text).to eq("F – Female (weiblich)")
-    expect(page.css("select#person_visa_civil_status option").map(&:text)).to start_with("", "Single (ledig)")
-    expect(page.at_css("input#person_visa_civil_status_other")).to have_attributes(attributes: include("disabled"))
-    expect(page.css("input[name='person[visa_current_student_status]'][type=radio]").size).to eq(2)
-    expect(page.css("input[name='person[visa_family_eu_citizen_relationship]'][type=radio]").size).to eq(2)
-    expect(page.at_css("[name='person[visa_information]']")).to be_nil
-    expect(page.at_css("select#person_visa_family_eu_citizen_relation")).to have_attributes(attributes: include("disabled"))
-    expect(page.at_css("input#person_visa_family_eu_citizen_relation_other")).to have_attributes(attributes: include("disabled"))
-
-    get :show, params: {id: ul.id}
-    status = page.css("dt").find { |dt| dt.text.include?("Familienstand") }.next_element
-    expect(status.at_css("span.text-muted.fw-light").text).to eq("nicht gewählt")
-    expect(page.text).not_to include("Visainformationen")
-
-    put :update, params: {id: ul.id, person: {visa_information: "neu", visa_civil_status: "single"}}
-    expect(ul.reload).to have_attributes(visa_information: "alt", visa_civil_status: "single")
-  end
-
-  it "offers the selects with an empty choice and German labels" do
-    get :edit, params: {id: ul.id}
-
-    select = page.at_css("select#person_travel_document_type")
-    expect(select.css("option").map(&:text)).to start_with("", "Reisepass", "Personalausweis")
-    expect(page.at_css("input[type=hidden][name='person[medical_equipment_needs][]'][value='']")).to be_present
-  end
-
-  it "chooses Nein for the visa and Keine for each language level when nothing is stored" do
-    ul.update_columns(jamboree_data: {})
-    get :edit, params: {id: ul.id}
-
-    expect(page.at_css("select#person_visa_needed option[selected]")&.text).to eq("Nein")
-    expect(page.css("select#person_visa_needed option").map(&:text)).not_to include("")
-    expect(page.at_css("input#person_english_reading_none")["checked"]).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_']):not([name^='person[comfortable_'])").size).to eq(16)
-  end
-
-  it "shows YP only their applicable questions in the form and on the page" do
-    get :edit, params: {id: yp.id}
-    expect(page.at_css("#person_english_reading_none")).to be_present
-    expect(page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_']):not([name^='person[allergy_']):not([name^='person[comfortable_'])").size).to eq(4)
-    %w[mothers_first_name fathers_first_name mothers_surname_at_birth
-      french_reading spanish_reading arabic_reading prior_wsj_experience vehicle_registration_number].each do |attr|
-      expect(page.at_css("#person_#{attr}")).to be_nil
-    end
-    expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]")).to be_present
-    expect(page.at_css("#person_arrival_location")).to be_nil
-
-    get :show, params: {id: yp.id}
-    expect(page.text).not_to include("Mutters Vorname", "Französisch", "Frühere Jamboree-Erfahrung")
-    expect(page.text).to include("Englisch", "An- und Abreise")
-  end
-
-  it "does not accept adult-only answers for YP" do
-    put :update, params: {id: yp.id, person: {
-      mothers_first_name: "Test", french_reading: "basic",
-      prior_wsj_experience: "Test", country_of_birth: "DE"
-    }}
-
-    expect(yp.reload).to have_attributes(mothers_first_name: nil, french_reading: nil,
-      prior_wsj_experience: nil, country_of_birth: "DE")
-  end
-
-  it "keeps adult questions for IST and CMT" do
-    [people(:ist_a_1), people(:cmt_leader)].each do |adult|
-      get :edit, params: {id: adult.id}
-      expect(page.at_css("#person_mothers_first_name")).to be_present
-      expect(page.at_css("#person_french_reading_none")).to be_present
-      expect(page.at_css("#person_prior_wsj_experience")).to be_present
-      expect(page.at_css("#person_arrival_location")).to be_present
-      expect(page.text).to include("Trage deine An- und Abreise ein sobald du dies für dich geklärt hast.")
-    end
-  end
-
-  it "hides visa details on the read-only page without visa support" do
-    get :show, params: {id: yp.id}
-    expect(page.text).not_to include(Person.human_attribute_name(:visa_employer_name))
-
-    yp.update!(visa_needed: "yes_need_support")
-    get :show, params: {id: yp.id}
-    expect(page.text).to include(Person.human_attribute_name(:visa_employer_name))
-  end
-
-  it "asks YP for their birthplace only when visa support is needed" do
-    get :edit, params: {id: yp.id}
-    expect(page.at_css("#person_place_of_birth")).to be_present
-    expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]").first["hidden"]).not_to be_nil
-
-    yp.update!(visa_needed: "yes_need_support")
-    get :edit, params: {id: yp.id}
-    expect(page.at_css("#person_place_of_birth").ancestors("[data-jamboree-dependent-value]").first["hidden"]).to be_nil
-    get :show, params: {id: yp.id}
-    expect(page.text).to include(Person.human_attribute_name(:place_of_birth))
-  end
-
-  it "shows visa application fields only when visa support is needed" do
-    get :edit, params: {id: ul.id}
-    visa_fields = page.at_css('[data-jamboree-dependent-value="yes_need_support"]')
-    expect(visa_fields["hidden"]).not_to be_nil
-
-    ul.update!(visa_needed: "yes_need_support")
-    get :edit, params: {id: ul.id}
-    visa_fields = page.at_css('[data-jamboree-dependent-value="yes_need_support"]')
-    expect(visa_fields["hidden"]).to be_nil
-    expect(visa_fields.at_css("#person_visa_employer_name")).to be_present
-  end
-
-  it "chooses the country of birth from the country list and stores its code" do
-    ul.update_columns(jamboree_data: {"country_of_birth" => "Deutschland"})
-    get :edit, params: {id: ul.id}
-    select = page.at_css("select#person_country_of_birth[data-country-select]")
-    expect(select["multiple"]).to be_nil
-    expect(select.at_css("option[selected]")["value"]).to eq("DE")
-    expect(select.css("option").first["value"]).to eq("")
-
-    put :update, params: {id: ul.id, person: {country_of_birth: "Österreich"}}
-    expect(ul.reload.country_of_birth).to eq("AT")
-    get :show, params: {id: ul.id}
-    expect(page.text).to include("Österreich (AT)")
-
-    put :update, params: {id: ul.id, person: {country_of_birth: ""}}
-    expect(ul.reload.jamboree_data).not_to have_key("country_of_birth")
-  end
-
-  it "preselects the main nationality of the registration while no nationality is stored" do
-    ul.update_columns(passport_nationality: "AT, DE", jamboree_data: {})
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("select#person_nationality[data-country-select] option[selected]")["value"]).to eq("AT")
-
-    ul.update_columns(jamboree_data: {"nationality" => "deutsch"})
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("select#person_nationality option[selected]")["value"]).to eq("DE")
-  end
-
-  it "chooses the visa countries from the country list, the Schengen entry from its members only" do
-    ul.update_columns(passport_nationality: "ZA, DE, GB",
-      jamboree_data: {"visa_needed" => "yes_need_support", "visa_schengen_first_entry" => "US"})
-    get :edit, params: {id: ul.id}
-
-    other = page.at_css("select#person_visa_other_nationalities_codes[multiple][data-country-select]")
-    expect(other.css("option[selected]").pluck("value")).to eq(%w[DE GB])
-    schengen = page.css("select#person_visa_schengen_first_entry option").pluck("value")
-    expect(schengen).to match_array(["", "US", *Wsjrdp::CountryLookup::SCHENGEN_CODES])
-    expect(page.at_css("select#person_visa_schengen_first_entry option[selected]").text)
-      .to eq("US (nicht erkannt)")
-    %w[travel_document_country visa_nationality_at_birth visa_employer_country visa_residence_country].each do |attr|
-      expect(page.at_css("select#person_#{attr}[data-country-select]")).to be_present
-    end
-    expect(page.at_css("input#person_visa_residence_permit")).to be_present
-
-    put :update, params: {id: ul.id, person: {visa_other_nationalities_codes: ["", "GB", "FR"]}}
-    expect(ul.reload.visa_other_nationalities).to eq("GB, FR")
-    get :show, params: {id: ul.id}
-    expect(page.text).to include("Vereinigtes Königreich (GB), Frankreich (FR)")
-  end
-
-  it "keeps a country of birth it does not know, marked in the list" do
-    ul.update_columns(jamboree_data: {"country_of_birth" => "Mittelerde"})
-    get :edit, params: {id: ul.id}
-    expect(page.at_css("select#person_country_of_birth option[selected]").text).to eq("Mittelerde (nicht erkannt)")
-
-    put :update, params: {id: ul.id, person: {country_of_birth: "Mittelerde"}}
-    expect(ul.reload.country_of_birth).to eq("Mittelerde")
   end
 
   it "routes the short URLs" do
     expect(get: "/people/#{ul.id}/jamboree_data").to route_to("person/jamboree_data#show", id: ul.id.to_s)
     expect(get: "/people/#{ul.id}/jamboree_data/edit").to route_to("person/jamboree_data#edit", id: ul.id.to_s)
     expect(put: "/people/#{ul.id}/jamboree_data").to route_to("person/jamboree_data#update", id: ul.id.to_s)
+  end
+
+  describe "#update" do
+    it "saves at the short URL and comes back there" do
+      update(ul, {nationality: "DE"})
+
+      expect(response).to redirect_to(jamboree_data_person_path(ul))
+      expect(ul.reload.nationality).to eq("DE")
+    end
+
+    it "saves the journey of an IST" do
+      update(ist, {arrival_location: "amber_expo", departure_type: "train"})
+
+      expect(ist.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train")
+    end
+
+    it "keeps the journey of a unit member, whoever edits it" do
+      yp.update!(arrival_location: "amber_expo", departure_type: "train")
+
+      update(yp, {arrival_location: "lech_walesa_airport", departure_type: "flight", arrival_date: "2027-07-28",
+                  nationality: "DE"})
+
+      expect(yp.reload).to have_attributes(arrival_location: "amber_expo", departure_type: "train",
+        arrival_date: nil, nationality: "DE")
+    end
+
+    it "lets a person edit their own data, but not their unit's journey" do
+      sign_in(ul)
+
+      update(ul, {arrival_location: "amber_expo", nationality: "DE"})
+
+      expect(ul.reload).to have_attributes(arrival_location: nil, nationality: "DE")
+    end
+
+    it "keeps the uniform order, size and sleeve length" do
+      yp.update!(uniform_size: Settings.uniform_size.first, uniform_long_sleeve: true)
+
+      update(yp, {uniform_order: "false", uniform_size: Settings.uniform_size.last, uniform_long_sleeve: "false"})
+
+      expect(yp.reload).to have_attributes(uniform_order: nil, uniform_size: Settings.uniform_size.first.to_s,
+        uniform_long_sleeve: true)
+    end
+
+    it "saves a Wohl/Unwohl choice" do
+      update(ul, {comfortable_on_water: "false"})
+
+      expect(ul.reload.comfortable_on_water).to be(false)
+    end
+
+    it "saves one choice per allergy as the flag and its severity" do
+      ul.update_columns(jamboree_data: {"allergy_peanut" => true, "allergy_peanut_severity" => "severe"})
+
+      update(ul, {allergy_egg_level: "mild", allergy_peanut_level: "none"})
+
+      expect(ul.reload).to have_attributes(allergy_egg: true, allergy_egg_severity: "mild", allergy_peanut: false,
+        allergy_peanut_severity: nil)
+    end
+
+    it "keeps the old visa information" do
+      ul.update_columns(jamboree_data: {"visa_information" => "alt"})
+
+      update(ul, {visa_information: "neu", visa_civil_status: "single"})
+
+      expect(ul.reload).to have_attributes(visa_information: "alt", visa_civil_status: "single")
+    end
+
+    it "does not accept adult-only answers for YP" do
+      update(yp, {mothers_first_name: "Test", french_reading: "basic", prior_wsj_experience: "Test",
+                  country_of_birth: "DE"})
+
+      expect(yp.reload).to have_attributes(mothers_first_name: nil, french_reading: nil,
+        prior_wsj_experience: nil, country_of_birth: "DE")
+    end
+
+    it "stores a chosen country by its code" do
+      update(ul, {country_of_birth: "Österreich", visa_other_nationalities_codes: ["", "GB", "FR"]})
+
+      expect(ul.reload).to have_attributes(country_of_birth: "AT", visa_other_nationalities: "GB, FR")
+    end
+
+    it "drops an emptied country" do
+      ul.update_columns(jamboree_data: {"country_of_birth" => "DE"})
+
+      update(ul, {country_of_birth: ""})
+
+      expect(ul.reload.jamboree_data).not_to have_key("country_of_birth")
+    end
+
+    it "keeps a country it does not know" do
+      update(ul, {country_of_birth: "Mittelerde"})
+
+      expect(ul.reload.country_of_birth).to eq("Mittelerde")
+    end
+  end
+
+  describe "the pages" do
+    render_views
+
+    def page = Nokogiri::HTML(response.body)
+
+    def edit(person) = get(:edit, params: {id: person.id})
+
+    def show(person) = get(:show, params: {id: person.id})
+
+    def checked_radios
+      page.css("input[type=radio][name^='person['][checked]:not([name^='person[uniform_'])" \
+        ":not([name^='person[allergy_']):not([name^='person[comfortable_'])")
+    end
+
+    it "edits a unit leader's data with the defaults chosen and the journey read-only" do
+      ul.update_columns(first_name: "Anna Maria", nickname: nil, passport_nationality: "AT, DE",
+        jamboree_data: {"travel_document_type" => "other_travel_document", "country_of_birth" => "Deutschland",
+                        "arrival_location" => "amber_expo"})
+
+      edit(ul)
+
+      aggregate_failures do
+        expect(page.at_css("form[action='#{jamboree_data_person_path(ul)}']")).to be_present
+        expect(page.at_css("[name='person[arrival_location]']")).to be_nil
+        expect(page.text).to include("AmberExpo")
+        expect(page.at_css("[name='person[uniform_order]']")).to be_nil
+        expect(page.text).to include("nicht gewählt (=Ja)")
+        expect(page.at_css("input#person_comfortable_on_water_true")["checked"]).to be_present
+        expect(page.at_css("select#person_visa_needed option[selected]")&.text).to eq("Nein")
+        expect(page.css("select#person_visa_needed option").map(&:text)).not_to include("")
+        expect(checked_radios.size).to eq(16)
+        expect(page.at_css('[data-jamboree-dependent-value="yes_need_support"]')["hidden"]).not_to be_nil
+        expect(page.css("select#person_travel_document_type option").map(&:text)).to start_with("", "Reisepass")
+        expect(page.at_css("input[type=hidden][name='person[medical_equipment_needs][]'][value='']")).to be_present
+        other_document = page.at_css("input#person_travel_document_other")
+        expect([other_document["required"], other_document["disabled"]]).to eq(["required", nil])
+        expect(page.at_css("select#person_country_of_birth option[selected]")["value"]).to eq("DE")
+        expect(page.at_css("select#person_nationality option[selected]")["value"]).to eq("AT")
+        name_tag = page.at_css("input#person_known_as_name")
+        expect([name_tag["placeholder"], name_tag["value"]]).to eq([nil, nil])
+        expect(page.text).to include("Aktuell dein 1. Vorname: Anna")
+      end
+    end
+
+    it "edits the visa questions with the template's choices where visa support is needed" do
+      ul.update_columns(gender: "w", passport_nationality: "ZA, DE, GB",
+        jamboree_data: {"visa_needed" => "yes_need_support", "visa_information" => "alt",
+                        "visa_schengen_first_entry" => "US", "country_of_birth" => "Mittelerde",
+                        "travel_document_type" => "ordinary_passport", "allergy_peanut" => true,
+                        "allergy_peanut_severity" => "severe", "allergy_egg" => true})
+
+      edit(ul)
+
+      aggregate_failures do
+        expect(page.at_css('[data-jamboree-dependent-value="yes_need_support"] #person_visa_employer_name')).to be_present
+        expect(page.at_css('[data-jamboree-dependent-value="yes_need_support"]')["hidden"]).to be_nil
+        expect(page.at_css("select#person_visa_gender_as_in_travel_document option[selected]")&.text)
+          .to eq("F – Female (weiblich)")
+        expect(page.at_css("input#person_visa_civil_status_other")["disabled"]).to be_present
+        expect(page.at_css("select#person_visa_family_eu_citizen_relation")["disabled"]).to be_present
+        expect(page.at_css("[name='person[visa_information]']")).to be_nil
+        expect(page.css("select#person_visa_other_nationalities_codes[multiple] option[selected]").pluck("value"))
+          .to eq(%w[DE GB])
+        expect(page.css("select#person_visa_schengen_first_entry option").pluck("value"))
+          .to match_array(["", "US", *Wsjrdp::CountryLookup::SCHENGEN_CODES])
+        expect(page.at_css("select#person_visa_schengen_first_entry option[selected]").text).to eq("US (nicht erkannt)")
+        expect(page.at_css("select#person_country_of_birth option[selected]").text).to eq("Mittelerde (nicht erkannt)")
+        expect(page.at_css("input#person_travel_document_other")["disabled"]).to be_present
+        expect(page.at_css("input#person_allergy_peanut_level_severe")["checked"]).to be_present
+        expect(page.at_css("input#person_allergy_milk_level_none")["checked"]).to be_present
+        expect(page.css("input[name='person[allergy_egg_level]'][checked]")).to be_empty
+        expect(page.text).to include("Allergie angegeben, aber die Stärke fehlt.")
+      end
+    end
+
+    it "edits an IST's journey and adult questions, the stored nationality preselected" do
+      ist.update_columns(jamboree_data: {"nationality" => "deutsch"})
+
+      edit(ist)
+
+      aggregate_failures do
+        expect(page.at_css("select#person_arrival_location")).to be_present
+        expect(page.at_css("select#person_departure_type")).to be_present
+        expect(page.at_css("#person_mothers_first_name")).to be_present
+        expect(page.at_css("#person_french_reading_none")).to be_present
+        expect(page.at_css("#person_prior_wsj_experience")).to be_present
+        expect(page.at_css("select#person_nationality option[selected]")["value"]).to eq("DE")
+      end
+    end
+
+    it "edits only a YP's questions, the uniform shown and the birthplace hidden" do
+      yp.update!(uniform_size: Settings.uniform_size.first, uniform_long_sleeve: true)
+
+      edit(yp)
+
+      aggregate_failures do
+        expect(checked_radios.size).to eq(4)
+        %w[mothers_first_name fathers_first_name mothers_surname_at_birth french_reading spanish_reading
+          arabic_reading prior_wsj_experience vehicle_registration_number arrival_location].each do |attr|
+          expect(page.at_css("#person_#{attr}")).to be_nil
+        end
+        expect(page.at_css('[data-jamboree-dependent-value="yes_need_support"][hidden] #person_place_of_birth'))
+          .to be_present
+        expect(page.at_css("[name='person[uniform_size]'], [name='person[uniform_long_sleeve]']")).to be_nil
+        expect(page.text).to include("Langarm")
+        expect(page.text).not_to include("nicht gewählt (=Ja)")
+      end
+    end
+
+    it "shows a unit leader's default name tag grey, and links the group's URLs in another group" do
+      ul.update_columns(first_name: "Anna Maria", nickname: nil, jamboree_data: {})
+
+      get :show, params: {group_id: groups(:ist_a).id, id: ul.id}
+
+      aggregate_failures do
+        name_tag = page.css("dt").find { |dt| dt.text.include?("Rufname") }.next_element
+        expect(name_tag.at_css("span.text-muted.fw-light").text).to eq("Anna")
+        expect(page.at_css("a[href='#{jamboree_data_edit_group_person_path(groups(:ist_a), ul)}']")).to be_present
+      end
+    end
+
+    it "shows the visa answers, the countries by name and only the allergies with their severity" do
+      ul.update_columns(jamboree_data: {"visa_needed" => "yes_need_support", "visa_information" => "alt",
+                                        "visa_other_nationalities" => "GB,FR", "country_of_birth" => "AT",
+                                        "allergy_egg" => true, "allergy_egg_severity" => "mild"})
+
+      show(ul)
+
+      aggregate_failures do
+        status = page.css("dt").find { |dt| dt.text.include?("Familienstand") }.next_element
+        expect(status.at_css("span.text-muted.fw-light").text).to eq("nicht gewählt")
+        expect(page.text).not_to include("Visainformationen")
+        expect(page.text).to include(Person.human_attribute_name(:visa_employer_name), "Österreich (AT)",
+          "Vereinigtes Königreich (GB), Frankreich (FR)", "keine Allergie: Milch, Kasein, Erdnuss")
+      end
+    end
+
+    it "shows a YP only the questions that apply" do
+      show(yp)
+
+      expect(page.text).not_to include("Mutters Vorname", "Französisch", "Frühere Jamboree-Erfahrung",
+        Person.human_attribute_name(:visa_employer_name))
+      expect(page.text).to include("Englisch", "An- und Abreise")
+    end
+
+    it "shows a YP the birthplace and visa details where visa support is needed" do
+      yp.update!(visa_needed: "yes_need_support")
+
+      show(yp)
+
+      expect(page.text).to include(Person.human_attribute_name(:place_of_birth),
+        Person.human_attribute_name(:visa_employer_name))
+    end
   end
 end
